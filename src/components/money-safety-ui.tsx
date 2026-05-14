@@ -1,12 +1,22 @@
 import Link from "next/link";
 import {
   AlertTriangle,
+  ArrowRight,
+  Camera,
+  CarFront,
   CheckCircle2,
+  Clock3,
+  FileImage,
   FileText,
   LockKeyhole,
   ReceiptText,
+  RefreshCcw,
+  Route,
   ShieldCheck,
+  Sparkles,
   Upload,
+  UsersRound,
+  XCircle,
 } from "lucide-react";
 import { cn } from "@/components/ui";
 import {
@@ -173,6 +183,26 @@ function getRidePodAuthorizedCount(pod: RidePod) {
   return pod.members.filter((member) => ["authorized", "charged"].includes(member.paymentStatus)).length;
 }
 
+function prettyProvider(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatProtectedDeparture(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
 function getHostQuoteState(pod: RidePod) {
   const protectedPod = getProtectedPod(pod.id);
 
@@ -181,13 +211,26 @@ function getHostQuoteState(pod: RidePod) {
     const snapshot = getMoneySafetySnapshot(protectedPod);
     const latestQuote = permission.latestQuote;
     const aboveMax = Boolean(latestQuote && latestQuote.quotedFareCents > protectedPod.approvedMaxTotalFareCents);
+    const routeLabel = `${protectedPod.originGeneral} ??${protectedPod.destinationGeneral}`;
+    const quotedFareCents = latestQuote?.quotedFareCents ?? protectedPod.estimatedTotalFareCents;
 
     return {
       canBook: permission.canBook,
       confirmed: snapshot.confirmedSeats,
       required: protectedPod.minSeatsToBook,
       approvedMax: formatCents(protectedPod.approvedMaxTotalFareCents, protectedPod.currency),
+      approvedMaxCents: protectedPod.approvedMaxTotalFareCents,
+      routeLabel,
+      departureLabel: formatProtectedDeparture(protectedPod.departureAt),
       quoteUploaded: Boolean(latestQuote),
+      quoteReviewState: latestQuote?.reviewState ?? "SUBMITTED",
+      provider: latestQuote ? prettyProvider(latestQuote.providerName) : "Uber",
+      vehicleType: latestQuote?.vehicleClass ?? pod.vehicleType,
+      quotedFare: formatCents(quotedFareCents, protectedPod.currency),
+      quotedFareCents,
+      routeSummary: latestQuote?.routeSummary ?? routeLabel,
+      screenshotUrl: latestQuote?.screenshotFileUrl ?? "mock://quote/preview.png",
+      estimatedTime: `${Math.max(15, protectedPod.departureWindowMinutes + 25)}??{Math.max(25, protectedPod.departureWindowMinutes + 35)} min`,
       aboveMax,
       reasons: permission.reasons,
     };
@@ -197,100 +240,262 @@ function getHostQuoteState(pod: RidePod) {
   const required = Math.min(3, pod.seatsTotal);
   const moneyStatus = pod.moneyStatus ?? "waiting_for_riders";
   const quoteUploaded = ["quote_approval_needed", "host_can_book", "ride_booked", "receipt_pending", "settlement_ready"].includes(moneyStatus);
+  const aboveMax = moneyStatus === "quote_approval_needed";
+  const quotedFare = aboveMax ? pod.maxFare + 8 : Math.max(pod.estimatedFare, pod.maxFare - 10);
 
   return {
     canBook: moneyStatus === "host_can_book",
     confirmed,
     required,
     approvedMax: formatMoney(pod.maxFare),
+    approvedMaxCents: Math.round(pod.maxFare * 100),
+    routeLabel: `${pod.fromLabel} ??${pod.toLabel}`,
+    departureLabel: `${pod.date}, ${pod.time}`,
     quoteUploaded,
-    aboveMax: moneyStatus === "quote_approval_needed",
+    quoteReviewState: aboveMax ? "NEEDS_APPROVAL" : "AUTO_APPROVED",
+    provider: pod.vehicleType.includes("Lyft") ? "Lyft" : pod.vehicleType.includes("Taxi") ? "Taxi" : "Uber",
+    vehicleType: pod.vehicleType,
+    quotedFare: formatMoney(quotedFare),
+    quotedFareCents: Math.round(quotedFare * 100),
+    routeSummary: `${pod.fromLabel} to ${pod.toLabel}`,
+    screenshotUrl: quoteUploaded ? `mock://quote/${pod.id}.png` : "mock://quote/preview.png",
+    estimatedTime: "35??5 min",
+    aboveMax,
     reasons: confirmed < required ? [`Waiting for participants: ${confirmed}/${required} authorized.`] : [],
   };
 }
 
+function QuoteFlowStatusPill({ children, tone }: { children: React.ReactNode; tone: "success" | "warning" | "info" }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-3 py-1 text-xs font-black",
+        tone === "success" && "border-emerald-300/25 bg-emerald-500/12 text-emerald-300 [[data-theme=light]_&]:bg-emerald-50 [[data-theme=light]_&]:text-emerald-700",
+        tone === "warning" && "border-amber-300/25 bg-amber-500/12 text-amber-200 [[data-theme=light]_&]:bg-amber-50 [[data-theme=light]_&]:text-amber-800",
+        tone === "info" && "border-blue-300/20 bg-blue-500/12 text-blue-200 [[data-theme=light]_&]:bg-blue-50 [[data-theme=light]_&]:text-blue-700",
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function QuoteStepHeader({
+  icon,
+  title,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <h3 className="text-base font-black text-[var(--rp-text)]">{title}</h3>
+        <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted)]">{children}</p>
+      </div>
+    </div>
+  );
+}
+
 export function HostQuoteUploadPanel({ pod }: { pod: RidePod }) {
   const state = getHostQuoteState(pod);
-  const disabledReason = state.reasons[0] ?? "Protected booking unlocks after payment authorization and quote approval.";
+  const disabledReason = state.aboveMax
+    ? "Quote is above approved max. Riders must approve a higher max before protected booking."
+    : state.reasons[0] ?? "Protected booking unlocks after payment authorization and quote approval.";
   const message = state.canBook
     ? "All required participants are payment-authorized. Quote is within approved max. You may book."
     : state.aboveMax
       ? "Quote is above approved max. Riders must approve a higher max before protected booking."
       : state.quoteUploaded && state.confirmed < state.required
         ? "Quote saved. Booking unlocks when required participants authorize payment."
-        : state.confirmed >= state.required
-          ? "Upload a fresh quote screenshot before booking."
-          : `Waiting for participants: ${state.confirmed}/${state.required} authorized.`;
+          : state.confirmed >= state.required
+            ? "Upload a fresh quote screenshot before booking."
+            : `Waiting for participants: ${state.confirmed}/${state.required} authorized.`;
+  const statusTone = state.canBook ? "success" : state.aboveMax ? "warning" : "info";
+  const statusLabel = state.canBook
+    ? "Within approved max"
+    : state.aboveMax
+      ? "Above approved max"
+      : "Waiting for more riders";
 
   return (
-    <section className="mt-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
-      <div className="flex items-start gap-2">
-        <Upload className="mt-0.5 h-4 w-4 shrink-0 text-emerald-700" />
-        <div>
-          <p className="text-sm font-bold text-zinc-950">Quote preview</p>
-          <p className="mt-1 text-xs leading-5 text-zinc-600">
-            You can preview fare now, but cannot book a protected ride yet.
-          </p>
-          {!state.canBook ? (
-            <p className="mt-1 text-xs font-semibold text-zinc-700">
-              Waiting for participants: {state.confirmed}/{state.required} authorized.
+    <section className="mt-4 overflow-hidden rounded-[26px] border border-[var(--rp-border)] bg-[var(--rp-card)] shadow-[var(--rp-shadow-soft)]">
+      <div className="bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.18),transparent_34%),var(--rp-card)] p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
+              Host quote check
             </p>
-          ) : null}
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-[var(--rp-text)]">
+              {state.routeLabel}
+            </h2>
+            <p className="mt-1 text-sm font-semibold text-[var(--rp-muted)]">{state.departureLabel}</p>
+          </div>
+          <QuoteFlowStatusPill tone={statusTone}>{statusLabel}</QuoteFlowStatusPill>
+        </div>
+
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <UsersRound className="h-4 w-4 text-[var(--rp-primary)]" />
+            <p className="mt-2 text-sm font-black text-[var(--rp-text)]">{state.confirmed}/{state.required}</p>
+            <p className="mt-0.5 text-[11px] font-bold text-[var(--rp-muted)]">Authorized</p>
+          </div>
+          <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <ShieldCheck className="h-4 w-4 text-[var(--rp-primary)]" />
+            <p className="mt-2 text-sm font-black text-[var(--rp-text)]">{state.approvedMax}</p>
+            <p className="mt-0.5 text-[11px] font-bold text-[var(--rp-muted)]">Approved max</p>
+          </div>
+          <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <Clock3 className="h-4 w-4 text-[var(--rp-primary)]" />
+            <p className="mt-2 text-sm font-black text-[var(--rp-text)]">{state.estimatedTime}</p>
+            <p className="mt-0.5 text-[11px] font-bold text-[var(--rp-muted)]">Est. time</p>
+          </div>
         </div>
       </div>
 
-      <form className="mt-3 grid gap-2">
-        <label className="grid gap-1 text-xs font-bold text-zinc-700">
-          Provider
-          <select className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-950">
-            <option>Uber</option>
-            <option>Lyft</option>
-            <option>Taxi</option>
-            <option>Private van</option>
-          </select>
-        </label>
-        <label className="grid gap-1 text-xs font-bold text-zinc-700">
-          Vehicle class
-          <input className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-950" defaultValue={pod.vehicleType} />
-        </label>
-        <label className="grid gap-1 text-xs font-bold text-zinc-700">
-          Quoted fare
-          <input className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-950" defaultValue={state.approvedMax.replace("$", "")} inputMode="decimal" />
-        </label>
-        <label className="grid gap-1 text-xs font-bold text-zinc-700">
-          Screenshot file URL
-          <input className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-950" placeholder="mock://quote.png" />
-        </label>
-        <label className="grid gap-1 text-xs font-bold text-zinc-700">
-          Route summary
-          <input className="h-10 rounded-lg border border-zinc-200 bg-white px-3 text-sm text-zinc-950" defaultValue={`${pod.fromLabel} to ${pod.toLabel}`} />
-        </label>
-      </form>
+      <div className="grid gap-4 p-4">
+        <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+          <QuoteStepHeader icon={<Upload className="h-5 w-5" />} title="1. Quote upload">
+            You can preview fare now, but protected booking unlocks only after required participants authorize payment.
+          </QuoteStepHeader>
+          <div className="mt-4 grid gap-3">
+            <button
+              type="button"
+              className="flex min-h-24 items-center gap-3 rounded-2xl border border-dashed border-[var(--rp-border-strong)] bg-[var(--rp-input-bg)] p-4 text-left"
+            >
+              <Camera className="h-7 w-7 shrink-0 text-[var(--rp-primary)]" />
+              <span>
+                <span className="block text-sm font-black text-[var(--rp-text)]">Upload quote screenshot</span>
+                <span className="mt-1 block text-xs font-semibold leading-5 text-[var(--rp-muted)]">
+                  Demo only. Use the image URL field below for this slice.
+                </span>
+              </span>
+            </button>
+            <div className="grid gap-2 min-[760px]:grid-cols-2">
+              <label className="grid gap-1 text-xs font-bold text-[var(--rp-muted-strong)]">
+                Provider
+                <select className="h-11 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-3 text-sm font-semibold text-[var(--rp-text)]">
+                  <option>{state.provider}</option>
+                  <option>Uber</option>
+                  <option>Lyft</option>
+                  <option>Taxi</option>
+                  <option>Private van</option>
+                </select>
+              </label>
+              <label className="grid gap-1 text-xs font-bold text-[var(--rp-muted-strong)]">
+                Vehicle type
+                <input className="h-11 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-3 text-sm font-semibold text-[var(--rp-text)]" defaultValue={state.vehicleType} />
+              </label>
+              <label className="grid gap-1 text-xs font-bold text-[var(--rp-muted-strong)]">
+                Quoted fare
+                <input className="h-11 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-3 text-sm font-semibold text-[var(--rp-text)]" defaultValue={state.quotedFare.replace("$", "")} inputMode="decimal" />
+              </label>
+              <label className="grid gap-1 text-xs font-bold text-[var(--rp-muted-strong)]">
+                Screenshot image URL
+                <input className="h-11 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-3 text-sm font-semibold text-[var(--rp-text)]" defaultValue={state.screenshotUrl} />
+              </label>
+              <label className="grid gap-1 text-xs font-bold text-[var(--rp-muted-strong)] min-[760px]:col-span-2">
+                Route note
+                <input className="h-11 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-3 text-sm font-semibold text-[var(--rp-text)]" defaultValue={state.routeSummary} />
+              </label>
+            </div>
+            <button
+              type="button"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)]"
+            >
+              Review quote <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </section>
 
-      <div
-        className={cn(
-          "mt-3 rounded-xl px-3 py-2 text-xs font-black",
-          state.canBook
-            ? "bg-emerald-50 text-emerald-800"
-            : state.aboveMax
-              ? "bg-amber-50 text-amber-900"
-              : "bg-white text-zinc-700",
-        )}
-      >
-        {message}
+        <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+          <QuoteStepHeader icon={<Sparkles className="h-5 w-5" />} title="2. Quote review & fare extracted">
+            RidePod checks the submitted quote against the approved max. No OCR or provider API is used in this demo.
+          </QuoteStepHeader>
+          <div className="mt-4 grid gap-3 min-[760px]:grid-cols-[0.85fr_1fr]">
+            <div className="relative min-h-40 overflow-hidden rounded-2xl border border-[var(--rp-border)] bg-[linear-gradient(135deg,rgba(59,130,246,0.2),rgba(15,23,42,0.08)),var(--rp-input-bg)] p-4">
+              <FileImage className="h-8 w-8 text-[var(--rp-primary)]" />
+              <p className="mt-5 text-sm font-black text-[var(--rp-text)]">Quote preview</p>
+              <p className="mt-1 text-xs font-semibold text-[var(--rp-muted)]">{state.screenshotUrl}</p>
+              <div className="absolute bottom-3 right-3 rounded-full bg-[var(--rp-card)] px-3 py-1 text-xs font-black text-[var(--rp-primary)]">
+                Mock image
+              </div>
+            </div>
+            <div className="grid gap-2 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card)] p-3">
+              {[
+                ["Provider", state.provider],
+                ["Fare", state.quotedFare],
+                ["Route", state.routeSummary],
+                ["Estimated time", state.estimatedTime],
+                ["Approved max", state.approvedMax],
+                ["Review", state.quoteReviewState.replaceAll("_", " ")],
+              ].map(([label, value]) => (
+                <div key={label} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-semibold text-[var(--rp-muted)]">{label}</span>
+                  <span className="max-w-[58%] text-right font-black text-[var(--rp-text)]">{value}</span>
+                </div>
+              ))}
+              <div
+                className={cn(
+                  "mt-2 rounded-xl px-3 py-2 text-xs font-black",
+                  state.aboveMax
+                    ? "bg-[var(--rp-warning-bg)] text-[var(--rp-warning)]"
+                    : "bg-[var(--rp-badge-success-bg)] text-[var(--rp-badge-success-text)]",
+                )}
+              >
+                {state.aboveMax ? "Above approved max" : "Within approved max"}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          className={cn(
+            "rounded-[22px] border p-4",
+            state.canBook
+              ? "border-emerald-300/20 bg-[var(--rp-badge-success-bg)]"
+              : "border-amber-300/20 bg-[var(--rp-warning-bg)]",
+          )}
+        >
+          <div className="flex items-start gap-3">
+            {state.canBook ? (
+              <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-[var(--rp-badge-success-text)]" />
+            ) : (
+              <XCircle className="mt-0.5 h-6 w-6 shrink-0 text-[var(--rp-warning)]" />
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-base font-black text-[var(--rp-text)]">
+                {state.canBook ? "3. Can book ??eligible" : "3. Cannot book ??blocked"}
+              </p>
+              <p className="mt-2 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">{message}</p>
+              {!state.canBook ? (
+                <div className="mt-3 grid gap-2 text-xs font-bold text-[var(--rp-muted-strong)]">
+                  <p className="flex gap-2"><RefreshCcw className="h-4 w-4 shrink-0 text-[var(--rp-warning)]" /> Wait for riders to authorize payment.</p>
+                  <p className="flex gap-2"><CarFront className="h-4 w-4 shrink-0 text-[var(--rp-warning)]" /> Choose a lower-cost option or adjust route/time.</p>
+                  <p className="flex gap-2"><Route className="h-4 w-4 shrink-0 text-[var(--rp-warning)]" /> Re-upload quote after checking the route.</p>
+                </div>
+              ) : null}
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={!state.canBook}
+            className="mt-4 h-12 w-full rounded-2xl bg-[var(--rp-gradient-primary)] text-sm font-black text-[var(--rp-primary-text)] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {state.canBook ? "Book protected ride" : "Protected booking locked"}
+          </button>
+          {!state.canBook ? (
+            <p className="mt-3 rounded-2xl bg-[var(--rp-card-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
+              Disabled: {disabledReason}
+            </p>
+          ) : null}
+        </section>
       </div>
-      <button
-        type="button"
-        disabled={!state.canBook}
-        className="mt-3 h-11 w-full rounded-xl bg-zinc-950 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
-      >
-        Protected booking
-      </button>
-      {!state.canBook ? (
-        <p className="mt-2 rounded-xl bg-white px-3 py-2 text-xs font-semibold leading-5 text-zinc-600">
-          Disabled: {disabledReason}
-        </p>
-      ) : null}
     </section>
   );
 }
