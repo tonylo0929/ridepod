@@ -35,7 +35,7 @@ export type JoinPodMapFirstScreenProps = {
   blockingReason?: string | null;
   themeVariant?: ThemeVariant;
   backHref?: string;
-  onAuthorize?: () => Promise<boolean | void> | boolean | void;
+  onAuthorize?: () => Promise<boolean> | boolean;
 };
 
 function formatDollars(cents: number) {
@@ -99,7 +99,10 @@ function StaticRouteMap({
         <path className="join-map-road" d="M40 0 C72 76 94 128 108 335" />
         <path className="join-map-road" d="M262 0 C252 88 282 150 268 335" />
         <path className="join-map-road" d="M0 156 C84 144 180 152 430 138" />
+        <path className="join-map-road" d="M164 0 C154 58 178 106 170 162 S156 252 170 335" />
+        <path className="join-map-road" d="M340 0 C326 84 348 160 338 335" />
         <path className="join-map-road thin" d="M0 104 C58 112 116 98 170 116 S314 126 430 110" />
+        <path className="join-map-road thin" d="M0 198 C56 188 118 204 188 194 S326 176 430 182" />
         <path className="join-map-road thin" d="M0 282 C84 258 184 266 430 252" />
         <path className="join-map-route-shadow" d="M84 137 H126 L139 174 H164 L176 198 H244 L262 220 H286 L298 238 H318 L330 256 H366" />
         <path className="join-map-route" d="M84 137 H126 L139 174 H164 L176 198 H244 L262 220 H286 L298 238 H318 L330 256 H366" />
@@ -176,7 +179,7 @@ export function JoinPodMapFirstScreen({
   destinationLabel = "LAX",
   routeLabel,
   departureTime = "Today, 4:30 PM",
-  estimate = "Est. 35-45 min",
+  estimate = "Est. 35–45 min",
   riderCount = 3,
   riderCapacity = 4,
   seatsLeft = 4,
@@ -196,10 +199,11 @@ export function JoinPodMapFirstScreen({
 
   async function handleAuthorize() {
     if (!isEligible || pending || authorized) return;
+    if (!onAuthorize) return;
     setPending(true);
-    const result = await onAuthorize?.();
+    const result = await onAuthorize();
     setPending(false);
-    if (result !== false) setAuthorized(true);
+    if (result) setAuthorized(true);
   }
 
   return (
