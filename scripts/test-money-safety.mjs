@@ -64,6 +64,8 @@ const podAdminReview = loadTsModule("src/lib/pod-admin-review.ts");
 const podPaymentCapture = loadTsModule("src/lib/pod-payment-capture.ts");
 const stripeWebhooks = loadTsModule("src/lib/stripe-webhooks.ts");
 const stripeWebhookRoute = loadTsModule("src/app/api/stripe/webhook/route.ts");
+const stripeConnect = loadTsModule("src/lib/stripe-connect.ts");
+const stripeConnectRoute = loadTsModule("src/app/api/stripe/connect/onboarding/route.ts");
 const moneySafetyMock = loadTsModule("src/lib/money-safety-mock.ts");
 const stripeConfig = loadTsModule("src/lib/stripe-config.ts");
 const paymentProvider = loadTsModule("src/lib/payment-provider.ts");
@@ -167,6 +169,8 @@ assert.ok(moneySafety.HOST_PAYOUT_STATES.includes("HELD_FOR_REVIEW"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("SAFETY_MODE_SET"));
 assert.ok(moneySafety.RISK_TYPES.includes("SAFETY_MODE_VIOLATION"));
 assert.ok(moneySafety.RISK_TYPES.includes("HOST_CANCELED_AFTER_BOOKING"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("STRIPE_CONNECT_ACCOUNT_CREATED"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("STRIPE_CONNECT_ONBOARDING_LINK_CREATED"));
 const moneySafetyUiSource = readFileSync("src/components/money-safety-ui.tsx", "utf8");
 assert.ok(
   moneySafetyUiSource.includes("Host reimbursement is based on verified final receipt and approved max fare."),
@@ -181,15 +185,17 @@ const stripeSource = [
   "src/lib/stripe-seat-authorization.ts",
   "src/lib/stripe-settlement-capture.ts",
   "src/lib/stripe-webhooks.ts",
+  "src/lib/stripe-connect.ts",
   "src/app/api/stripe/setup-intent/route.ts",
   "src/app/api/stripe/webhook/route.ts",
+  "src/app/api/stripe/connect/onboarding/route.ts",
 ]
   .filter((path) => existsSync(path))
   .map((path) => readFileSync(path, "utf8"))
   .join("\n");
 assert.equal(stripeSource.includes("NEXT_PUBLIC_STRIPE_SECRET_KEY"), false);
 assert.equal(/console\.(?:log|warn|error)\([^)]*secret/i.test(stripeSource), false);
-assert.equal(/\b(?:transfers|payouts|accounts)\.create\s*\(/.test(stripeSource), false);
+assert.equal(/\b(?:transfers|payouts)\.create\s*\(/.test(stripeSource), false);
 assert.equal(/\b(?:cardNumber|card_number|cvc)\b/i.test(stripeSource), false);
 
 assert.equal(stripeConfig.getConfiguredPaymentProvider({}), "MOCK");
@@ -383,6 +389,9 @@ function localPaymentIntent(overrides = {}) {
 
 const createdStripeCustomers = [];
 const createdStripeSetupIntents = [];
+const createdStripeConnectAccounts = [];
+const retrievedStripeConnectAccounts = [];
+const createdStripeAccountLinks = [];
 const fakeStripe = {
   customers: {
     create: async (input) => {
@@ -399,6 +408,35 @@ const fakeStripe = {
       };
     },
   },
+  accounts: {
+    create: async (input) => {
+      createdStripeConnectAccounts.push(input);
+      return {
+        id: `acct_test_${createdStripeConnectAccounts.length}`,
+        charges_enabled: false,
+        payouts_enabled: false,
+        requirements: { currently_due: ["external_account"], past_due: [] },
+      };
+    },
+    retrieve: async (accountId) => {
+      retrievedStripeConnectAccounts.push(accountId);
+      return {
+        id: accountId,
+        charges_enabled: accountId.includes("complete"),
+        payouts_enabled: accountId.includes("complete"),
+        requirements: accountId.includes("complete") ? { currently_due: [], past_due: [] } : { currently_due: ["external_account"], past_due: [] },
+      };
+    },
+  },
+  accountLinks: {
+    create: async (input) => {
+      createdStripeAccountLinks.push(input);
+      return {
+        url: `https://connect.stripe.test/setup/${input.account}`,
+        expires_at: 1770000000,
+      };
+    },
+  },
 };
 const stripeTestEnv = { PAYMENT_PROVIDER: "STRIPE_TEST", STRIPE_SECRET_KEY: "sk_test_123" };
 
@@ -406,6 +444,10 @@ moneySafetyMock.protectedUsers.push(
   user({ id: "stripe-existing-user", email: "existing-stripe@example.com", stripeCustomerId: "cus_existing_123" }),
   user({ id: "stripe-new-user", email: "new-stripe@example.com", stripeCustomerId: null }),
   user({ id: "stripe-mock-user", email: "mock-stripe@example.com", stripeCustomerId: null }),
+  user({ id: "stripe-host-new", email: "host-new@example.com", stripeConnectAccountId: null, payoutsEnabled: false }),
+  user({ id: "stripe-host-existing", email: "host-existing@example.com", stripeConnectAccountId: "acct_complete_existing", payoutsEnabled: false }),
+  user({ id: "stripe-host-mock", email: "host-mock@example.com", stripeConnectAccountId: null, payoutsEnabled: false }),
+  user({ id: "stripe-host-suspended", email: "host-suspended@example.com", riskStatus: "SUSPENDED", stripeConnectAccountId: null }),
 );
 
 const existingCustomer = await stripeSetup.createOrGetStripeCustomer("stripe-existing-user", {
@@ -426,6 +468,111 @@ const mockCustomerAttempt = await stripeSetup.createOrGetStripeCustomer("stripe-
 });
 assert.equal(mockCustomerAttempt.error, "PAYMENT_PROVIDER_MOCK");
 assert.equal(moneySafetyMock.protectedUsers.find((candidate) => candidate.id === "stripe-mock-user").stripeCustomerId, null);
+
+const mockConnectAttempt = await stripeConnect.createOrGetHostConnectedAccount("stripe-host-mock", {
+  env: { PAYMENT_PROVIDER: "MOCK", STRIPE_SECRET_KEY: "sk_test_123" },
+  stripe: fakeStripe,
+});
+assert.equal(mockConnectAttempt.error, "PAYMENT_PROVIDER_MOCK");
+assert.equal(moneySafetyMock.protectedUsers.find((candidate) => candidate.id === "stripe-host-mock").stripeConnectAccountId, null);
+
+assert.equal(
+  (await stripeConnect.createOrGetHostConnectedAccount("stripe-host-new", {
+    env: { PAYMENT_PROVIDER: "STRIPE_TEST" },
+    stripe: fakeStripe,
+  })).error,
+  "STRIPE_SECRET_KEY_REQUIRED",
+);
+assert.equal(
+  (await stripeConnect.createOrGetHostConnectedAccount("stripe-host-new", {
+    env: { PAYMENT_PROVIDER: "STRIPE_TEST", STRIPE_SECRET_KEY: "sk_live_bad" },
+    stripe: fakeStripe,
+  })).error,
+  "STRIPE_LIVE_KEYS_NOT_ALLOWED",
+);
+
+const suspendedConnectAttempt = await stripeConnect.createOrGetHostConnectedAccount("stripe-host-suspended", {
+  env: stripeTestEnv,
+  stripe: fakeStripe,
+});
+assert.equal(suspendedConnectAttempt.error, "HOST_CONNECT_NOT_ALLOWED");
+
+const existingConnectAccount = await stripeConnect.createOrGetHostConnectedAccount("stripe-host-existing", {
+  env: stripeTestEnv,
+  stripe: fakeStripe,
+});
+assert.equal(existingConnectAccount.ok, true);
+assert.equal(existingConnectAccount.reused, true);
+assert.equal(existingConnectAccount.accountId, "acct_complete_existing");
+assert.equal(existingConnectAccount.payoutsEnabled, true);
+assert.equal(moneySafetyMock.protectedUsers.find((candidate) => candidate.id === "stripe-host-existing").payoutsEnabled, true);
+
+const newConnectAccount = await stripeConnect.createOrGetHostConnectedAccount("stripe-host-new", {
+  env: stripeTestEnv,
+  stripe: fakeStripe,
+});
+assert.equal(newConnectAccount.ok, true);
+assert.equal(newConnectAccount.reused, false);
+assert.equal(newConnectAccount.accountId, "acct_test_1");
+assert.equal(newConnectAccount.payoutsEnabled, false);
+assert.equal(moneySafetyMock.protectedUsers.find((candidate) => candidate.id === "stripe-host-new").stripeConnectAccountId, "acct_test_1");
+assert.equal(moneySafetyMock.protectedUsers.find((candidate) => candidate.id === "stripe-host-new").payoutsEnabled, false);
+assert.deepEqual(createdStripeConnectAccounts[0].metadata, {
+  userId: "stripe-host-new",
+  app: "RidePod",
+  environment: "test",
+  purpose: "host_reimbursement",
+});
+assert.deepEqual(createdStripeConnectAccounts[0].capabilities, {
+  transfers: { requested: true },
+});
+
+const onboardingLink = await stripeConnect.createHostOnboardingLink("stripe-host-new", {
+  env: stripeTestEnv,
+  stripe: fakeStripe,
+  returnUrl: "https://ridepod.test/host/return",
+  refreshUrl: "https://ridepod.test/host/refresh",
+});
+assert.equal(onboardingLink.ok, true);
+assert.equal(onboardingLink.accountId, "acct_test_1");
+assert.equal(onboardingLink.url, "https://connect.stripe.test/setup/acct_test_1");
+assert.equal(onboardingLink.expiresAt, "2026-02-02T02:40:00.000Z");
+assert.deepEqual(createdStripeAccountLinks[0], {
+  account: "acct_test_1",
+  refresh_url: "https://ridepod.test/host/refresh",
+  return_url: "https://ridepod.test/host/return",
+  type: "account_onboarding",
+});
+assert.equal(moneySafetyMock.mockHostReimbursements.length, 0);
+assert.equal(moneySafetyMock.mockAuditEvents.some((event) => event.eventType === "STRIPE_CONNECT_ACCOUNT_CREATED"), true);
+assert.equal(moneySafetyMock.mockAuditEvents.some((event) => event.eventType === "STRIPE_CONNECT_ONBOARDING_LINK_CREATED"), true);
+
+const refreshedConnectStatus = await stripeConnect.refreshHostConnectStatus("stripe-host-existing", {
+  env: stripeTestEnv,
+  stripe: fakeStripe,
+});
+assert.equal(refreshedConnectStatus.ok, true);
+assert.equal(refreshedConnectStatus.payoutsEnabled, true);
+
+const originalConnectEnv = {
+  PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+};
+process.env.PAYMENT_PROVIDER = "MOCK";
+process.env.STRIPE_SECRET_KEY = undefined;
+const connectRouteResponse = await stripeConnectRoute.POST(
+  new Request("http://localhost/api/stripe/connect/onboarding", {
+    method: "POST",
+    body: JSON.stringify({
+      userId: "stripe-host-existing",
+      returnUrl: "https://ridepod.test/host",
+      refreshUrl: "https://ridepod.test/host",
+    }),
+  }),
+);
+assert.equal(connectRouteResponse.status, 400);
+process.env.PAYMENT_PROVIDER = originalConnectEnv.PAYMENT_PROVIDER;
+process.env.STRIPE_SECRET_KEY = originalConnectEnv.STRIPE_SECRET_KEY;
 
 const newCustomer = await stripeSetup.createOrGetStripeCustomer("stripe-new-user", {
   env: stripeTestEnv,
