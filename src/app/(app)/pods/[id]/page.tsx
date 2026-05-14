@@ -38,6 +38,9 @@ export default async function PodDetailPage({
   const progress = (pod.seatsFilled / pod.seatsTotal) * 100;
   const isFull = pod.seatsFilled >= pod.seatsTotal;
   const protectedPod = getProtectedPod(pod.id);
+  const confirmedRiders = pod.members.filter(
+    (member) => member.role === "member" && ["authorized", "charged"].includes(member.paymentStatus),
+  );
 
   return (
     <div className="grid gap-5">
@@ -119,6 +122,11 @@ export default async function PodDetailPage({
                 );
               })}
             </div>
+            {confirmedRiders.length === 0 ? (
+              <div className="mt-4 rounded-lg bg-zinc-50 p-3 text-sm font-semibold text-zinc-600">
+                No confirmed riders yet. Seats lock after payment authorization.
+              </div>
+            ) : null}
             {pod.waitlist.length ? (
               <div className="mt-4 rounded-lg bg-zinc-50 p-3 text-sm text-zinc-700">
                 Waitlist: {pod.waitlist.map((userId) => getUser(userId).name).join(", ")}

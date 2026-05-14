@@ -57,7 +57,7 @@ const accessModeLabels: Record<NonNullable<RidePod["accessMode"]>, string | null
 };
 
 const moneyStatusLabels: Record<NonNullable<RidePod["moneyStatus"]>, string> = {
-  payment_needed: "Payment needed",
+  payment_needed: "Payment protected",
   seat_locked: "Seat locked",
   waiting_for_riders: "Waiting for riders",
   host_can_book: "Host can book",

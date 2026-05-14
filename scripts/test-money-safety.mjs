@@ -73,6 +73,7 @@ const moneySafetyMock = loadTsModule("src/lib/money-safety-mock.ts");
 const stripeConfig = loadTsModule("src/lib/stripe-config.ts");
 const paymentProvider = loadTsModule("src/lib/payment-provider.ts");
 const stripeSetup = loadTsModule("src/lib/stripe-setup.ts");
+const mockData = loadTsModule("src/lib/mock-data.ts");
 
 assert.deepEqual(moneySafety.POD_LIFECYCLE_STATES, [
   "DRAFT",
@@ -180,6 +181,8 @@ assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("PAYMENT_AUTHORIZATION_RELEASED
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDEPOD_DISPUTE_OPENED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDEPOD_DISPUTE_RESOLVED"));
 const moneySafetyUiSource = readFileSync("src/components/money-safety-ui.tsx", "utf8");
+const uiSource = readFileSync("src/components/ui.tsx", "utf8");
+const podDetailSource = readFileSync("src/app/(app)/pods/[id]/page.tsx", "utf8");
 assert.ok(
   moneySafetyUiSource.includes("Host reimbursement is based on verified final receipt and approved max fare."),
 );
@@ -187,6 +190,54 @@ assert.equal(
   moneySafetyUiSource.includes("Host reimbursement is based on the verified final receipt and approved max fare."),
   false,
 );
+assert.ok(moneySafetyUiSource.includes("Quote approved — host can book"));
+assert.equal(moneySafetyUiSource.includes("??host"), false);
+assert.ok(moneySafetyUiSource.includes("Off-app payments are not protected"));
+assert.ok(podDetailSource.includes("No confirmed riders yet. Seats lock after payment authorization."));
+for (const label of [
+  "Women-only",
+  "Mixed pod",
+  "Payment protected",
+  "Seat locked",
+  "Host can book",
+  "Quote approval needed",
+  "Host replacement needed",
+  "Receipt pending",
+  "Settlement ready",
+]) {
+  assert.ok(uiSource.includes(label) || moneySafetyUiSource.includes(label), `Missing demo copy label: ${label}`);
+}
+assert.equal(`${uiSource}\n${moneySafetyUiSource}`.includes("gal only"), false);
+assert.equal(`${uiSource}\n${moneySafetyUiSource}`.includes("boy and gal"), false);
+
+const demoPodIds = [
+  "women-only-demo",
+  "mixed-open-demo",
+  "airport-sfo-721",
+  "locked-no-quote-demo",
+  "usc-lax-001",
+  "campus-commute-442",
+  "host-replacement-demo",
+  "private-car-napa-906",
+  "settlement-complete-demo",
+];
+for (const podId of demoPodIds) {
+  assert.ok(mockData.getPod(podId), `Missing UI demo pod ${podId}`);
+  assert.ok(moneySafetyMock.getProtectedPod(podId), `Missing protected demo pod ${podId}`);
+}
+assert.equal(mockData.getPod("women-only-demo").genderMode, "women_only");
+assert.equal(mockData.getPod("mixed-open-demo").genderMode, "mixed");
+assert.equal(mockData.getPod("airport-sfo-721").moneyStatus, "waiting_for_riders");
+assert.equal(mockData.getPod("locked-no-quote-demo").moneyStatus, "seat_locked");
+assert.equal(mockData.getPod("usc-lax-001").moneyStatus, "host_can_book");
+assert.equal(mockData.getPod("campus-commute-442").moneyStatus, "quote_approval_needed");
+assert.equal(mockData.getPod("host-replacement-demo").moneyStatus, "host_replacement_needed");
+assert.equal(mockData.getPod("private-car-napa-906").moneyStatus, "receipt_pending");
+assert.equal(mockData.getPod("settlement-complete-demo").moneyStatus, "settlement_ready");
+assert.equal(moneySafety.canHostBook("u1", moneySafetyMock.getProtectedPod("airport-sfo-721")).canBook, false);
+assert.equal(moneySafety.canHostBook("u1", moneySafetyMock.getProtectedPod("locked-no-quote-demo")).canBook, false);
+assert.equal(moneySafety.canHostBook("u1", moneySafetyMock.getProtectedPod("usc-lax-001")).canBook, true);
+assert.equal(moneySafety.canHostBook("u4", moneySafetyMock.getProtectedPod("campus-commute-442")).canBook, false);
 const stripeSource = [
   "src/lib/stripe-config.ts",
   "src/lib/stripe-setup.ts",
