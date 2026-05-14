@@ -152,6 +152,14 @@ assert.ok(moneySafety.HOST_PAYOUT_STATES.includes("HELD_FOR_REVIEW"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("SAFETY_MODE_SET"));
 assert.ok(moneySafety.RISK_TYPES.includes("SAFETY_MODE_VIOLATION"));
 assert.ok(moneySafety.RISK_TYPES.includes("HOST_CANCELED_AFTER_BOOKING"));
+const moneySafetyUiSource = readFileSync("src/components/money-safety-ui.tsx", "utf8");
+assert.ok(
+  moneySafetyUiSource.includes("Host reimbursement is based on verified final receipt and approved max fare."),
+);
+assert.equal(
+  moneySafetyUiSource.includes("Host reimbursement is based on the verified final receipt and approved max fare."),
+  false,
+);
 
 const now = "2026-05-13T12:00:00.000Z";
 
@@ -838,6 +846,17 @@ assert.ok(afterBookingCancel.auditEvents.some((event) => event.eventType === "HO
 assert.equal(afterBookingCancel.riskFlags[0].riskType, "HOST_CANCELED_AFTER_BOOKING");
 assert.ok(moneySafetyMock.mockRiskFlags.some((flag) => flag.podId === "host-cancel-after-booking"));
 
+const legacyAfterBookingCancel = moneySafety.cancelHostAfterBooking(
+  "host",
+  pod({
+    id: "legacy-host-cancel-after-booking",
+    lifecycleState: "RIDE_BOOKED",
+    bookingState: "BOOKED",
+  }),
+  "Host left after booking.",
+);
+assert.equal(legacyAfterBookingCancel.riskFlags[0].riskType, "HOST_CANCELED_AFTER_BOOKING");
+
 const receiptUploadBlockedPod = pod({
   id: "settlement-upload-blocked",
   hostUserId: "u1",
@@ -1006,6 +1025,12 @@ assert.equal(rejectedDecision.receipt.verificationState, "REJECTED");
 assert.equal(rejectedDecision.settlementResult, null);
 assert.equal(rejectedDecision.pod.lifecycleState, "ADMIN_REVIEW");
 assert.equal(rejectedDecision.pod.adminReviewRequired, true);
+assert.ok(rejectedDecision.auditEvents.some((event) => event.eventType === "ADMIN_OVERRIDE"));
+assert.ok(rejectedDecision.auditEvents.some((event) => event.eventPayload.action === "RECEIPT_REJECTED"));
+assert.equal(
+  moneySafetyMock.mockHostReimbursements.some((reimbursement) => reimbursement.podId === "settlement-rejected-receipt"),
+  false,
+);
 
 const underMaxReceiptPod = pod({
   id: "settlement-under-max",
@@ -1329,6 +1354,8 @@ const fraudDecision = podSettlement.adminVerifyReceipt("admin-1", fraudReceipt.r
 });
 assert.equal(fraudDecision.ok, true);
 assert.equal(fraudDecision.pod.lifecycleState, "ADMIN_REVIEW");
+assert.ok(fraudDecision.auditEvents.some((event) => event.eventType === "ADMIN_OVERRIDE"));
+assert.ok(fraudDecision.auditEvents.some((event) => event.eventPayload.action === "RECEIPT_FRAUD_SUSPECTED"));
 assert.equal(fraudDecision.riskFlags[0].riskType, "FAKE_RECEIPT_SUSPECTED");
 
 const hostFaultPod = pod({

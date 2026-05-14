@@ -1055,7 +1055,7 @@ export function cancelHostAfterBooking(
       createRiskFlag({
         podId: pod.id,
         userId: hostUserId,
-        riskType: "HOST_BOOKED_BEFORE_AUTH",
+        riskType: "HOST_CANCELED_AFTER_BOOKING",
         severity: "HIGH",
         notes: "Host cancellation after booking requires admin reimbursement review.",
       }),

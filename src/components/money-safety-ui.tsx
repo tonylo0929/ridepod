@@ -359,7 +359,7 @@ export function SettlementProtectionSummary({ podId }: { podId: string }) {
         <div>
           <h2 className="text-lg font-black text-[var(--rp-text)]">Receipt protection</h2>
           <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-            Host reimbursement is based on the verified final receipt and approved max fare.
+            Host reimbursement is based on verified final receipt and approved max fare.
           </p>
           <dl className="mt-4 grid gap-2 text-sm">
             <div className="flex justify-between gap-4">

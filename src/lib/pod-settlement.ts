@@ -312,6 +312,19 @@ export function adminVerifyReceipt(
   if (decision.decision === "FRAUD_SUSPECTED") {
     pod.lifecycleState = "ADMIN_REVIEW";
     pod.adminReviewRequired = true;
+    const auditEvents = recordAudit([
+      makeAuditEvent("ADMIN_OVERRIDE", {
+        podId: pod.id,
+        userId: adminUserId,
+        eventPayload: {
+          action: "RECEIPT_FRAUD_SUSPECTED",
+          receiptId,
+          decision: decision.decision,
+          rejectionReason: decision.rejectionReason,
+          fraudScore: decision.fraudScore,
+        },
+      }),
+    ]);
     const riskFlags = recordRiskFlags([
       makeRiskFlag({
         podId: pod.id,
@@ -322,13 +335,27 @@ export function adminVerifyReceipt(
       }),
     ]);
 
-    return { ok: true, pod, receipt, settlementResult: null, auditEvents: [], riskFlags };
+    return { ok: true, pod, receipt, settlementResult: null, auditEvents, riskFlags };
   }
 
   if (decision.decision === "REJECTED") {
     pod.lifecycleState = "ADMIN_REVIEW";
     pod.adminReviewRequired = true;
     pod.updatedAt = now;
+    const auditEvents = recordAudit([
+      makeAuditEvent("ADMIN_OVERRIDE", {
+        podId: pod.id,
+        userId: adminUserId,
+        eventPayload: {
+          action: "RECEIPT_REJECTED",
+          receiptId,
+          decision: decision.decision,
+          rejectionReason: decision.rejectionReason,
+        },
+      }),
+    ]);
+
+    return { ok: true, pod, receipt, settlementResult: null, auditEvents, riskFlags: [] };
   }
 
   return { ok: true, pod, receipt, settlementResult: null, auditEvents: [], riskFlags: [] };
