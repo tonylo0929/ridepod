@@ -66,6 +66,7 @@ const stripeWebhooks = loadTsModule("src/lib/stripe-webhooks.ts");
 const stripeWebhookRoute = loadTsModule("src/app/api/stripe/webhook/route.ts");
 const stripeConnect = loadTsModule("src/lib/stripe-connect.ts");
 const stripeConnectRoute = loadTsModule("src/app/api/stripe/connect/onboarding/route.ts");
+const stripeHostReimbursement = loadTsModule("src/lib/stripe-host-reimbursement.ts");
 const moneySafetyMock = loadTsModule("src/lib/money-safety-mock.ts");
 const stripeConfig = loadTsModule("src/lib/stripe-config.ts");
 const paymentProvider = loadTsModule("src/lib/payment-provider.ts");
@@ -171,6 +172,7 @@ assert.ok(moneySafety.RISK_TYPES.includes("SAFETY_MODE_VIOLATION"));
 assert.ok(moneySafety.RISK_TYPES.includes("HOST_CANCELED_AFTER_BOOKING"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("STRIPE_CONNECT_ACCOUNT_CREATED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("STRIPE_CONNECT_ONBOARDING_LINK_CREATED"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("HOST_REIMBURSEMENT_SCHEDULED"));
 const moneySafetyUiSource = readFileSync("src/components/money-safety-ui.tsx", "utf8");
 assert.ok(
   moneySafetyUiSource.includes("Host reimbursement is based on verified final receipt and approved max fare."),
@@ -186,6 +188,7 @@ const stripeSource = [
   "src/lib/stripe-settlement-capture.ts",
   "src/lib/stripe-webhooks.ts",
   "src/lib/stripe-connect.ts",
+  "src/lib/stripe-host-reimbursement.ts",
   "src/app/api/stripe/setup-intent/route.ts",
   "src/app/api/stripe/webhook/route.ts",
   "src/app/api/stripe/connect/onboarding/route.ts",
@@ -195,7 +198,7 @@ const stripeSource = [
   .join("\n");
 assert.equal(stripeSource.includes("NEXT_PUBLIC_STRIPE_SECRET_KEY"), false);
 assert.equal(/console\.(?:log|warn|error)\([^)]*secret/i.test(stripeSource), false);
-assert.equal(/\b(?:transfers|payouts)\.create\s*\(/.test(stripeSource), false);
+assert.equal(/\bpayouts\.create\s*\(/.test(stripeSource), false);
 assert.equal(/\b(?:cardNumber|card_number|cvc)\b/i.test(stripeSource), false);
 
 assert.equal(stripeConfig.getConfiguredPaymentProvider({}), "MOCK");
@@ -387,11 +390,55 @@ function localPaymentIntent(overrides = {}) {
   };
 }
 
+function settlementRecord(podId, overrides = {}) {
+  return {
+    id: `settlement-${podId}`,
+    podId,
+    settlementState: "FINALIZED",
+    version: 1,
+    approvedFareCents: moneySafety.cents(60),
+    verifiedFareCents: moneySafety.cents(60),
+    billableSeatCount: 2,
+    totalPlatformFeeCents: 0,
+    hostReimbursementCents: moneySafety.cents(60),
+    hostRewardCents: 0,
+    roundingPolicy: "test",
+    disputeDeadlineAt: null,
+    adminReviewRequired: false,
+    items: [],
+    createdAt: now,
+    finalizedAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}
+
+function hostReimbursementRecord(podId, settlementId, hostUserId = "u1", overrides = {}) {
+  return {
+    id: `host-reimbursement-${podId}`,
+    podId,
+    settlementId,
+    hostUserId,
+    fareReimbursementCents: moneySafety.cents(60),
+    hostRewardCents: 0,
+    adjustmentCents: 0,
+    totalTransferCents: moneySafety.cents(60),
+    payoutState: "PENDING",
+    externalTransferId: null,
+    scheduledAt: null,
+    paidAt: null,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
+}
+
 const createdStripeCustomers = [];
 const createdStripeSetupIntents = [];
 const createdStripeConnectAccounts = [];
 const retrievedStripeConnectAccounts = [];
 const createdStripeAccountLinks = [];
+const createdStripeTransfers = [];
 const fakeStripe = {
   customers: {
     create: async (input) => {
@@ -435,6 +482,12 @@ const fakeStripe = {
         url: `https://connect.stripe.test/setup/${input.account}`,
         expires_at: 1770000000,
       };
+    },
+  },
+  transfers: {
+    create: async (input, options) => {
+      createdStripeTransfers.push({ input, options });
+      return { id: `tr_test_${createdStripeTransfers.length}` };
     },
   },
 };
@@ -1521,6 +1574,296 @@ assert.ok(
     (reimbursement) => reimbursement.id === lowerReceiptVerified.settlementResult.hostReimbursement.id,
   ),
 );
+
+const mockReimbursementTransfer = await stripeHostReimbursement.reimburseHostForSettledPod("settlement-lower-receipt", {
+  env: { PAYMENT_PROVIDER: "MOCK" },
+});
+assert.equal(mockReimbursementTransfer.ok, true);
+assert.equal(mockReimbursementTransfer.provider, "MOCK");
+assert.equal(mockReimbursementTransfer.hostReimbursement.payoutState, "SCHEDULED");
+assert.ok(mockReimbursementTransfer.hostReimbursement.externalTransferId.startsWith("mock_transfer_"));
+assert.ok(mockReimbursementTransfer.auditEvents.some((event) => event.eventType === "HOST_REIMBURSEMENT_SCHEDULED"));
+const duplicateMockReimbursementTransfer = await stripeHostReimbursement.reimburseHostForSettledPod("settlement-lower-receipt", {
+  env: { PAYMENT_PROVIDER: "MOCK" },
+});
+assert.equal(duplicateMockReimbursementTransfer.ok, false);
+assert.equal(duplicateMockReimbursementTransfer.error, "HOST_REIMBURSEMENT_ALREADY_TRANSFERRED");
+
+const reimbursementDraftPod = pod({
+  id: "reimbursement-draft",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [settlementMember("reimbursement-draft", "u1", { role: "HOST" }), settlementMember("reimbursement-draft", "u2")],
+  receipts: [
+    {
+      id: "receipt-reimbursement-draft",
+      podId: "reimbursement-draft",
+      hostUserId: "u1",
+      providerName: "UBER",
+      vehicleClass: null,
+      fareTotalCents: moneySafety.cents(60),
+      currency: "USD",
+      receiptFileUrl: "mock://receipt-reimbursement-draft.png",
+      receiptFileId: null,
+      rideStartedAt: null,
+      rideCompletedAt: null,
+      submittedAt: now,
+      verificationState: "VERIFIED",
+      verifiedByAdminId: "admin-1",
+      verifiedAt: now,
+      adminNotes: null,
+    },
+  ],
+});
+moneySafetyMock.protectedPods.push(reimbursementDraftPod);
+const draftSettlement = settlementRecord("reimbursement-draft", { settlementState: "DRAFT", finalizedAt: null });
+moneySafetyMock.mockSettlements.push(draftSettlement);
+moneySafetyMock.mockHostReimbursements.push(hostReimbursementRecord("reimbursement-draft", draftSettlement.id));
+assert.equal(
+  (await stripeHostReimbursement.reimburseHostForSettledPod("reimbursement-draft")).error,
+  "SETTLEMENT_NOT_FINALIZED",
+);
+
+const noVerifiedReceiptPod = pod({
+  id: "reimbursement-no-verified-receipt",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("reimbursement-no-verified-receipt", "u1", { role: "HOST" }),
+    settlementMember("reimbursement-no-verified-receipt", "u2"),
+  ],
+  receipts: [
+    {
+      id: "receipt-reimbursement-unverified",
+      podId: "reimbursement-no-verified-receipt",
+      hostUserId: "u1",
+      providerName: "UBER",
+      vehicleClass: null,
+      fareTotalCents: moneySafety.cents(60),
+      currency: "USD",
+      receiptFileUrl: null,
+      receiptFileId: null,
+      rideStartedAt: null,
+      rideCompletedAt: null,
+      submittedAt: now,
+      verificationState: "SUBMITTED",
+      verifiedByAdminId: null,
+      verifiedAt: null,
+      adminNotes: null,
+    },
+  ],
+});
+moneySafetyMock.protectedPods.push(noVerifiedReceiptPod);
+const noVerifiedSettlement = settlementRecord("reimbursement-no-verified-receipt");
+moneySafetyMock.mockSettlements.push(noVerifiedSettlement);
+moneySafetyMock.mockHostReimbursements.push(hostReimbursementRecord("reimbursement-no-verified-receipt", noVerifiedSettlement.id));
+assert.equal(
+  (await stripeHostReimbursement.reimburseHostForSettledPod("reimbursement-no-verified-receipt")).error,
+  "VERIFIED_RECEIPT_REQUIRED",
+);
+
+const adminReviewReimbursementPod = pod({
+  id: "reimbursement-admin-review",
+  hostUserId: "u1",
+  lifecycleState: "ADMIN_REVIEW",
+  bookingState: "BOOKED",
+  adminReviewRequired: true,
+  members: [
+    settlementMember("reimbursement-admin-review", "u1", { role: "HOST" }),
+    settlementMember("reimbursement-admin-review", "u2"),
+  ],
+  receipts: [lowerReceiptUpload.receipt],
+});
+adminReviewReimbursementPod.receipts[0] = { ...adminReviewReimbursementPod.receipts[0], id: "receipt-reimbursement-admin-review", podId: "reimbursement-admin-review", verificationState: "VERIFIED" };
+moneySafetyMock.protectedPods.push(adminReviewReimbursementPod);
+const adminReviewSettlement = settlementRecord("reimbursement-admin-review");
+moneySafetyMock.mockSettlements.push(adminReviewSettlement);
+moneySafetyMock.mockHostReimbursements.push(hostReimbursementRecord("reimbursement-admin-review", adminReviewSettlement.id));
+assert.equal(
+  (await stripeHostReimbursement.reimburseHostForSettledPod("reimbursement-admin-review")).error,
+  "POD_ADMIN_REVIEW_HOLD",
+);
+
+const disputeHoldReimbursementPod = pod({
+  id: "reimbursement-dispute-hold",
+  hostUserId: "u1",
+  lifecycleState: "DISPUTE_HOLD",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("reimbursement-dispute-hold", "u1", { role: "HOST" }),
+    settlementMember("reimbursement-dispute-hold", "u2"),
+  ],
+  receipts: [{ ...adminReviewReimbursementPod.receipts[0], id: "receipt-reimbursement-dispute-hold", podId: "reimbursement-dispute-hold" }],
+});
+moneySafetyMock.protectedPods.push(disputeHoldReimbursementPod);
+const disputeHoldSettlement = settlementRecord("reimbursement-dispute-hold");
+moneySafetyMock.mockSettlements.push(disputeHoldSettlement);
+moneySafetyMock.mockHostReimbursements.push(hostReimbursementRecord("reimbursement-dispute-hold", disputeHoldSettlement.id));
+assert.equal(
+  (await stripeHostReimbursement.reimburseHostForSettledPod("reimbursement-dispute-hold")).error,
+  "POD_ADMIN_REVIEW_HOLD",
+);
+
+const settlementReviewReimbursementPod = pod({
+  id: "reimbursement-settlement-review",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("reimbursement-settlement-review", "u1", { role: "HOST" }),
+    settlementMember("reimbursement-settlement-review", "u2"),
+  ],
+  receipts: [{ ...adminReviewReimbursementPod.receipts[0], id: "receipt-reimbursement-settlement-review", podId: "reimbursement-settlement-review" }],
+});
+moneySafetyMock.protectedPods.push(settlementReviewReimbursementPod);
+const settlementReviewSettlement = settlementRecord("reimbursement-settlement-review", { adminReviewRequired: true });
+moneySafetyMock.mockSettlements.push(settlementReviewSettlement);
+moneySafetyMock.mockHostReimbursements.push(hostReimbursementRecord("reimbursement-settlement-review", settlementReviewSettlement.id));
+assert.equal(
+  (await stripeHostReimbursement.reimburseHostForSettledPod("reimbursement-settlement-review")).error,
+  "SETTLEMENT_ADMIN_REVIEW_REQUIRED",
+);
+
+const stripeReimbursementPod = pod({
+  id: "reimbursement-stripe-success",
+  hostUserId: "stripe-host-existing",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("reimbursement-stripe-success", "stripe-host-existing", { role: "HOST" }),
+    settlementMember("reimbursement-stripe-success", "u2"),
+  ],
+  receipts: [{ ...adminReviewReimbursementPod.receipts[0], id: "receipt-reimbursement-stripe-success", podId: "reimbursement-stripe-success", hostUserId: "stripe-host-existing" }],
+});
+moneySafetyMock.protectedPods.push(stripeReimbursementPod);
+const stripeReimbursementSettlement = settlementRecord("reimbursement-stripe-success", { hostReimbursementCents: moneySafety.cents(90) });
+moneySafetyMock.mockSettlements.push(stripeReimbursementSettlement);
+moneySafetyMock.mockHostReimbursements.push(
+  hostReimbursementRecord("reimbursement-stripe-success", stripeReimbursementSettlement.id, "stripe-host-existing", {
+    fareReimbursementCents: moneySafety.cents(90),
+    totalTransferCents: moneySafety.cents(90),
+  }),
+);
+moneySafetyMock.protectedUsers.find((candidate) => candidate.id === "stripe-host-existing").payoutsEnabled = true;
+const stripeReimbursementTransfer = await stripeHostReimbursement.reimburseHostForSettledPod("reimbursement-stripe-success", {
+  env: stripeTestEnv,
+  stripe: fakeStripe,
+});
+assert.equal(stripeReimbursementTransfer.ok, true);
+assert.equal(stripeReimbursementTransfer.provider, "STRIPE");
+assert.equal(stripeReimbursementTransfer.hostReimbursement.payoutState, "PAID");
+assert.equal(stripeReimbursementTransfer.hostReimbursement.externalTransferId, "tr_test_1");
+assert.equal(createdStripeTransfers.at(-1).input.amount, moneySafety.cents(90));
+assert.equal(createdStripeTransfers.at(-1).input.destination, "acct_complete_existing");
+assert.equal(createdStripeTransfers.at(-1).input.metadata.transferType, "host_reimbursement");
+assert.equal(createdStripeTransfers.at(-1).input.metadata.environment, "test");
+assert.equal(createdStripeTransfers.at(-1).input.transfer_group, "ridepod_pod_reimbursement-stripe-success");
+assert.equal(createdStripeTransfers.at(-1).options.idempotencyKey, "ridepod-host-reimbursement-host-reimbursement-reimbursement-stripe-success");
+
+const stripeMissingConnectPod = pod({
+  id: "reimbursement-stripe-missing-connect",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("reimbursement-stripe-missing-connect", "u1", { role: "HOST" }),
+    settlementMember("reimbursement-stripe-missing-connect", "u2"),
+  ],
+  receipts: [{ ...adminReviewReimbursementPod.receipts[0], id: "receipt-reimbursement-stripe-missing-connect", podId: "reimbursement-stripe-missing-connect" }],
+});
+moneySafetyMock.protectedPods.push(stripeMissingConnectPod);
+const stripeMissingConnectSettlement = settlementRecord("reimbursement-stripe-missing-connect");
+moneySafetyMock.mockSettlements.push(stripeMissingConnectSettlement);
+moneySafetyMock.mockHostReimbursements.push(hostReimbursementRecord("reimbursement-stripe-missing-connect", stripeMissingConnectSettlement.id));
+moneySafetyMock.protectedUsers.find((candidate) => candidate.id === "u1").stripeConnectAccountId = null;
+assert.equal(
+  (await stripeHostReimbursement.reimburseHostForSettledPod("reimbursement-stripe-missing-connect", {
+    env: stripeTestEnv,
+    stripe: fakeStripe,
+  })).error,
+  "STRIPE_CONNECT_ACCOUNT_REQUIRED",
+);
+
+const stripeIncompletePayoutPod = pod({
+  id: "reimbursement-stripe-incomplete-payout",
+  hostUserId: "stripe-host-new",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("reimbursement-stripe-incomplete-payout", "stripe-host-new", { role: "HOST" }),
+    settlementMember("reimbursement-stripe-incomplete-payout", "u2"),
+  ],
+  receipts: [{ ...adminReviewReimbursementPod.receipts[0], id: "receipt-reimbursement-stripe-incomplete-payout", podId: "reimbursement-stripe-incomplete-payout", hostUserId: "stripe-host-new" }],
+});
+moneySafetyMock.protectedPods.push(stripeIncompletePayoutPod);
+const stripeIncompletePayoutSettlement = settlementRecord("reimbursement-stripe-incomplete-payout");
+moneySafetyMock.mockSettlements.push(stripeIncompletePayoutSettlement);
+moneySafetyMock.mockHostReimbursements.push(hostReimbursementRecord("reimbursement-stripe-incomplete-payout", stripeIncompletePayoutSettlement.id, "stripe-host-new"));
+moneySafetyMock.protectedUsers.find((candidate) => candidate.id === "stripe-host-new").stripeConnectAccountId = "acct_test_incomplete";
+moneySafetyMock.protectedUsers.find((candidate) => candidate.id === "stripe-host-new").payoutsEnabled = false;
+assert.equal(
+  (await stripeHostReimbursement.reimburseHostForSettledPod("reimbursement-stripe-incomplete-payout", {
+    env: stripeTestEnv,
+    stripe: fakeStripe,
+  })).error,
+  "HOST_PAYOUTS_NOT_ENABLED",
+);
+
+const reimbursementExceedsPod = pod({
+  id: "reimbursement-exceeds-settlement",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("reimbursement-exceeds-settlement", "u1", { role: "HOST" }),
+    settlementMember("reimbursement-exceeds-settlement", "u2"),
+  ],
+  receipts: [{ ...adminReviewReimbursementPod.receipts[0], id: "receipt-reimbursement-exceeds-settlement", podId: "reimbursement-exceeds-settlement" }],
+});
+moneySafetyMock.protectedPods.push(reimbursementExceedsPod);
+const reimbursementExceedsSettlement = settlementRecord("reimbursement-exceeds-settlement", { hostReimbursementCents: moneySafety.cents(50) });
+moneySafetyMock.mockSettlements.push(reimbursementExceedsSettlement);
+moneySafetyMock.mockHostReimbursements.push(
+  hostReimbursementRecord("reimbursement-exceeds-settlement", reimbursementExceedsSettlement.id, "u1", {
+    totalTransferCents: moneySafety.cents(60),
+  }),
+);
+assert.equal(
+  (await stripeHostReimbursement.reimburseHostForSettledPod("reimbursement-exceeds-settlement")).error,
+  "HOST_REIMBURSEMENT_EXCEEDS_SETTLEMENT",
+);
+
+const stripeFailedTransferPod = pod({
+  id: "reimbursement-stripe-failure",
+  hostUserId: "stripe-host-existing",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("reimbursement-stripe-failure", "stripe-host-existing", { role: "HOST" }),
+    settlementMember("reimbursement-stripe-failure", "u2"),
+  ],
+  receipts: [{ ...adminReviewReimbursementPod.receipts[0], id: "receipt-reimbursement-stripe-failure", podId: "reimbursement-stripe-failure", hostUserId: "stripe-host-existing" }],
+});
+moneySafetyMock.protectedPods.push(stripeFailedTransferPod);
+const stripeFailedTransferSettlement = settlementRecord("reimbursement-stripe-failure");
+moneySafetyMock.mockSettlements.push(stripeFailedTransferSettlement);
+moneySafetyMock.mockHostReimbursements.push(hostReimbursementRecord("reimbursement-stripe-failure", stripeFailedTransferSettlement.id, "stripe-host-existing"));
+const failedTransfer = await stripeHostReimbursement.reimburseHostForSettledPod("reimbursement-stripe-failure", {
+  env: stripeTestEnv,
+  stripe: {
+    transfers: {
+      create: async () => {
+        throw new Error("Insufficient test balance.");
+      },
+    },
+  },
+});
+assert.equal(failedTransfer.ok, false);
+assert.equal(failedTransfer.error, "STRIPE_TRANSFER_FAILED");
+assert.equal(failedTransfer.hostReimbursement.payoutState, "FAILED");
+assert.equal(failedTransfer.hostReimbursement.externalTransferId, null);
 
 const receiptNeedsInfoPod = pod({
   id: "settlement-needs-info",
