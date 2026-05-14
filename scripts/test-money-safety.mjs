@@ -201,11 +201,15 @@ assert.equal(paymentProvider.getPaymentProvider({}).provider, "MOCK");
 const stripeProviderMissingConfig = paymentProvider.getPaymentProvider({ PAYMENT_PROVIDER: "STRIPE_TEST" });
 assert.equal(stripeProviderMissingConfig.provider, "STRIPE");
 assert.deepEqual(
-  stripeProviderMissingConfig.createSeatAuthorization({
+  await stripeProviderMissingConfig.createSeatAuthorization({
     podId: "pod-stripe-config",
     podMemberId: "pm-stripe-config",
     userId: "u2",
     amountAuthorizedCents: 1200,
+    maxChargeCents: 1200,
+    platformFeeCents: 200,
+    approvedMaxTotalFareCents: 4000,
+    currency: "USD",
   }),
   {
     ok: false,
@@ -219,13 +223,17 @@ const stripeProviderStub = paymentProvider.getPaymentProvider({
   STRIPE_SECRET_KEY: "sk_test_123",
 });
 assert.equal(
-  stripeProviderStub.authorizeSeat({
+  (await stripeProviderStub.authorizeSeat({
     podId: "pod-stripe-stub",
     podMemberId: "pm-stripe-stub",
     userId: "u2",
     amountAuthorizedCents: 1200,
-  }).error,
-  "STRIPE_SEAT_AUTHORIZATION_NOT_IMPLEMENTED",
+    maxChargeCents: 1200,
+    platformFeeCents: 200,
+    approvedMaxTotalFareCents: 4000,
+    currency: "USD",
+  })).error,
+  "STRIPE_CUSTOMER_REQUIRED",
 );
 assert.equal((await stripeProviderMissingConfig.createSetupIntent({ userId: "u2" })).error, "STRIPE_SECRET_KEY_REQUIRED");
 assert.equal(stripeProviderStub.captureAuthorizedPayment().error, "STRIPE_CAPTURE_NOT_IMPLEMENTED");
@@ -438,6 +446,156 @@ function pod(overrides = {}) {
   };
 }
 
+function stripeAuthorizationProvider(status, captured = {}) {
+  const calls = [];
+  return {
+    calls,
+    provider: paymentProvider.createStripeTestProvider(stripeTestEnv, {
+      paymentIntents: {
+        create: async (input, options) => {
+          calls.push({ input, options });
+          if (status === "throw") {
+            const error = new Error("Card declined.");
+            error.code = "card_declined";
+            throw error;
+          }
+
+          return {
+            id: captured.id ?? `pi_${status}_${calls.length}`,
+            status,
+            amount: input.amount,
+            currency: input.currency,
+            last_payment_error:
+              status === "requires_payment_method"
+                ? { code: "card_declined", message: "Card declined." }
+                : null,
+          };
+        },
+      },
+    }),
+  };
+}
+
+const stripeAuthUser = moneySafetyMock.protectedUsers.find((candidate) => candidate.id === "u2");
+stripeAuthUser.stripeCustomerId = "cus_auth_u2";
+const stripeAuthSuccessPod = pod({
+  id: "stripe-auth-success",
+  hostUserId: "u1",
+  minSeatsToBook: 3,
+  maxSeats: 4,
+  targetSeats: 4,
+  members: [podMember("stripe-auth-success", "u1", { role: "HOST" })],
+});
+moneySafetyMock.protectedPods.push(stripeAuthSuccessPod);
+const stripeRequiresCapture = stripeAuthorizationProvider("requires_capture", { id: "pi_requires_capture_success" });
+const stripeAuthorization = await podJoin.authorizeSeat("u2", "stripe-auth-success", {
+  stripePaymentMethodId: "pm_card_visa",
+  idempotencyKey: "seat-auth-stripe-success-u2",
+  paymentProvider: stripeRequiresCapture.provider,
+});
+assert.equal(stripeAuthorization.ok, true);
+assert.equal(stripeAuthorization.member.memberState, "CONFIRMED");
+assert.equal(stripeAuthorization.member.paymentState, "AUTHORIZED");
+assert.equal(stripeAuthorization.paymentIntent.provider, "STRIPE");
+assert.equal(stripeAuthorization.paymentIntent.externalPaymentIntentId, "pi_requires_capture_success");
+assert.equal(stripeAuthorization.paymentIntent.status, "AUTHORIZED");
+assert.equal(stripeAuthorization.paymentIntent.captureMethod, "MANUAL");
+assert.equal(stripeAuthorization.paymentIntent.amountAuthorizedCents, stripeAuthorization.member.maxChargeCents);
+assert.equal(stripeAuthorization.paymentIntent.amountCapturedCents, 0);
+assert.equal(stripeAuthorization.paymentIntent.amountRefundedCents, 0);
+assert.equal(stripeAuthorization.paymentIntent.currency, "USD");
+assert.equal(stripeAuthorization.paymentIntent.idempotencyKey, "seat-auth-stripe-success-u2");
+assert.equal(stripeRequiresCapture.calls[0].input.amount, stripeAuthorization.member.maxChargeCents);
+assert.equal(stripeRequiresCapture.calls[0].input.currency, "usd");
+assert.equal(stripeRequiresCapture.calls[0].input.customer, "cus_auth_u2");
+assert.equal(stripeRequiresCapture.calls[0].input.payment_method, "pm_card_visa");
+assert.equal(stripeRequiresCapture.calls[0].input.capture_method, "manual");
+assert.equal(stripeRequiresCapture.calls[0].input.confirm, true);
+assert.deepEqual(stripeRequiresCapture.calls[0].input.metadata, {
+  podId: "stripe-auth-success",
+  podMemberId: stripeAuthorization.member.id,
+  userId: "u2",
+  chargeType: "seat_authorization",
+  approvedMaxTotalFareCents: String(stripeAuthSuccessPod.approvedMaxTotalFareCents),
+  maxChargeCents: String(stripeAuthorization.member.maxChargeCents),
+  platformFeeCents: String(stripeAuthSuccessPod.ridepodFeeCents),
+  environment: "test",
+});
+assert.equal(stripeAuthorization.pod.lifecycleState, "PAYMENT_LOCKING");
+assert.notEqual(stripeAuthorization.pod.lifecycleState, "HOST_CAN_BOOK");
+
+const stripeFailedPod = pod({
+  id: "stripe-auth-failed",
+  hostUserId: "u1",
+  members: [podMember("stripe-auth-failed", "u1", { role: "HOST" })],
+});
+moneySafetyMock.protectedPods.push(stripeFailedPod);
+const stripeRequiresPaymentMethod = stripeAuthorizationProvider("requires_payment_method");
+const failedStripeAuthorization = await podJoin.authorizeSeat("u2", "stripe-auth-failed", {
+  stripePaymentMethodId: "pm_card_declined",
+  paymentProvider: stripeRequiresPaymentMethod.provider,
+});
+assert.equal(failedStripeAuthorization.ok, false);
+assert.equal(failedStripeAuthorization.member.memberState, "REQUESTED");
+assert.equal(failedStripeAuthorization.member.paymentState, "NOT_STARTED");
+assert.equal(failedStripeAuthorization.paymentIntent.status, "REQUIRES_PAYMENT_METHOD");
+assert.equal(failedStripeAuthorization.paymentIntent.failureCode, "card_declined");
+
+const stripeActionPod = pod({
+  id: "stripe-auth-action",
+  hostUserId: "u1",
+  members: [podMember("stripe-auth-action", "u1", { role: "HOST" })],
+});
+moneySafetyMock.protectedPods.push(stripeActionPod);
+const stripeRequiresAction = stripeAuthorizationProvider("requires_action");
+const actionStripeAuthorization = await podJoin.authorizeSeat("u2", "stripe-auth-action", {
+  stripePaymentMethodId: "pm_card_authenticationRequired",
+  paymentProvider: stripeRequiresAction.provider,
+});
+assert.equal(actionStripeAuthorization.ok, false);
+assert.equal(actionStripeAuthorization.member.memberState, "REQUESTED");
+assert.equal(actionStripeAuthorization.member.paymentState, "NOT_STARTED");
+assert.equal(actionStripeAuthorization.error, "STRIPE_PAYMENT_REQUIRES_ACTION");
+assert.equal(actionStripeAuthorization.paymentIntent.status, "REQUIRES_ACTION");
+
+const stripeMissingMethodPod = pod({
+  id: "stripe-auth-missing-method",
+  hostUserId: "u1",
+  members: [podMember("stripe-auth-missing-method", "u1", { role: "HOST" })],
+});
+moneySafetyMock.protectedPods.push(stripeMissingMethodPod);
+const missingMethodAuthorization = await podJoin.authorizeSeat("u2", "stripe-auth-missing-method", {
+  paymentProvider: stripeRequiresCapture.provider,
+});
+assert.equal(missingMethodAuthorization.ok, false);
+assert.equal(missingMethodAuthorization.error, "STRIPE_PAYMENT_METHOD_REQUIRED");
+assert.equal(missingMethodAuthorization.member.memberState, "REQUESTED");
+
+const stripeLockPod = pod({
+  id: "stripe-auth-locks",
+  hostUserId: "u1",
+  minSeatsToBook: 3,
+  maxSeats: 4,
+  targetSeats: 4,
+  members: [podMember("stripe-auth-locks", "u1", { role: "HOST" })],
+});
+moneySafetyMock.protectedPods.push(stripeLockPod);
+const stripeAuthUserTwo = moneySafetyMock.protectedUsers.find((candidate) => candidate.id === "u6");
+stripeAuthUserTwo.stripeCustomerId = "cus_auth_u6";
+assert.equal(
+  (await podJoin.authorizeSeat("u2", "stripe-auth-locks", {
+    stripePaymentMethodId: "pm_card_visa",
+    paymentProvider: stripeAuthorizationProvider("requires_capture").provider,
+  })).pod.lifecycleState,
+  "PAYMENT_LOCKING",
+);
+const secondStripeAuthorization = await podJoin.authorizeSeat("u6", "stripe-auth-locks", {
+  stripePaymentMethodId: "pm_card_mastercard",
+  paymentProvider: stripeAuthorizationProvider("requires_capture").provider,
+});
+assert.equal(secondStripeAuthorization.pod.lifecycleState, "LOCKED");
+assert.notEqual(secondStripeAuthorization.pod.lifecycleState, "HOST_CAN_BOOK");
+
 const womenOnly = pod({ genderMode: "WOMEN_ONLY", accessMode: "VERIFIED_ONLY" });
 const maleWomenOnly = moneySafety.checkPodEligibility(user({ genderIdentity: "MALE" }), womenOnly);
 const unknownWomenOnly = moneySafety.checkPodEligibility(user({ genderIdentity: "UNKNOWN" }), womenOnly);
@@ -593,7 +751,7 @@ assert.equal(
     .members.some((candidate) => candidate.userId === "u2"),
   false,
 );
-assert.equal(podJoin.authorizeSeat("u2", "women-only-demo").ok, false);
+assert.equal((await podJoin.authorizeSeat("u2", "women-only-demo")).ok, false);
 
 const singleLockPod = pod({
   id: "join-single-lock",
@@ -623,7 +781,7 @@ assert.equal(podJoin.canAccessPodChat("u2", "join-single-lock"), false);
 assert.ok(joinRequest.auditEvents.some((event) => event.eventType === "JOIN_REQUESTED"));
 assert.ok(joinRequest.auditEvents.some((event) => event.eventType === "ELIGIBILITY_PASSED"));
 
-const authorization = podJoin.authorizeSeat("u2", "join-single-lock");
+const authorization = await podJoin.authorizeSeat("u2", "join-single-lock");
 assert.equal(authorization.ok, true);
 assert.equal(authorization.member.memberState, "CONFIRMED");
 assert.equal(authorization.member.paymentState, "AUTHORIZED");
@@ -661,9 +819,9 @@ const enoughLockPod = pod({
 moneySafetyMock.protectedPods.push(enoughLockPod);
 
 assert.equal(podJoin.requestJoinPod("u2", "join-enough-lock").ok, true);
-assert.equal(podJoin.authorizeSeat("u2", "join-enough-lock").pod.lifecycleState, "PAYMENT_LOCKING");
+assert.equal((await podJoin.authorizeSeat("u2", "join-enough-lock")).pod.lifecycleState, "PAYMENT_LOCKING");
 assert.equal(podJoin.requestJoinPod("u6", "join-enough-lock").ok, true);
-const enoughAuthorization = podJoin.authorizeSeat("u6", "join-enough-lock");
+const enoughAuthorization = await podJoin.authorizeSeat("u6", "join-enough-lock");
 assert.equal(enoughAuthorization.pod.lifecycleState, "LOCKED");
 assert.notEqual(enoughAuthorization.pod.lifecycleState, "HOST_CAN_BOOK");
 assert.equal(enoughAuthorization.pod.bookingState, "QUOTE_ALLOWED");
@@ -760,9 +918,9 @@ assert.equal(
   "You can book at your own risk, but this ride is not RidePod-protected until participants are payment-authorized. RidePod cannot guarantee reimbursement for unconfirmed seats.",
 );
 assert.equal(podJoin.requestJoinPod("u2", "quote-before-confirm").ok, true);
-assert.equal(podJoin.authorizeSeat("u2", "quote-before-confirm").pod.lifecycleState, "PAYMENT_LOCKING");
+assert.equal((await podJoin.authorizeSeat("u2", "quote-before-confirm")).pod.lifecycleState, "PAYMENT_LOCKING");
 assert.equal(podJoin.requestJoinPod("u6", "quote-before-confirm").ok, true);
-const earlyQuoteReady = podJoin.authorizeSeat("u6", "quote-before-confirm");
+const earlyQuoteReady = await podJoin.authorizeSeat("u6", "quote-before-confirm");
 assert.equal(earlyQuoteReady.pod.lifecycleState, "LOCKED");
 assert.equal(earlyQuoteReady.pod.bookingState, "QUOTE_APPROVED");
 assert.equal(earlyQuoteReady.auditEvents.some((event) => event.eventType === "HOST_CAN_BOOK"), false);
@@ -785,9 +943,9 @@ const bookingReadyPod = pod({
 moneySafetyMock.protectedPods.push(bookingReadyPod);
 
 assert.equal(podJoin.requestJoinPod("u2", "protected-booking-ready").ok, true);
-assert.equal(podJoin.authorizeSeat("u2", "protected-booking-ready").pod.lifecycleState, "PAYMENT_LOCKING");
+assert.equal((await podJoin.authorizeSeat("u2", "protected-booking-ready")).pod.lifecycleState, "PAYMENT_LOCKING");
 assert.equal(podJoin.requestJoinPod("u6", "protected-booking-ready").ok, true);
-assert.equal(podJoin.authorizeSeat("u6", "protected-booking-ready").pod.lifecycleState, "LOCKED");
+assert.equal((await podJoin.authorizeSeat("u6", "protected-booking-ready")).pod.lifecycleState, "LOCKED");
 
 const approvedQuote = podBooking.uploadQuoteScreenshot("u1", "protected-booking-ready", {
   providerName: "LYFT",
@@ -831,9 +989,9 @@ const aboveMaxServicePod = pod({
 moneySafetyMock.protectedPods.push(aboveMaxServicePod);
 
 assert.equal(podJoin.requestJoinPod("u2", "quote-above-max-blocks").ok, true);
-assert.equal(podJoin.authorizeSeat("u2", "quote-above-max-blocks").ok, true);
+assert.equal((await podJoin.authorizeSeat("u2", "quote-above-max-blocks")).ok, true);
 assert.equal(podJoin.requestJoinPod("u6", "quote-above-max-blocks").ok, true);
-assert.equal(podJoin.authorizeSeat("u6", "quote-above-max-blocks").pod.lifecycleState, "LOCKED");
+assert.equal((await podJoin.authorizeSeat("u6", "quote-above-max-blocks")).pod.lifecycleState, "LOCKED");
 
 const aboveMaxServiceQuote = podBooking.uploadQuoteScreenshot("u1", "quote-above-max-blocks", {
   providerName: "UBER",

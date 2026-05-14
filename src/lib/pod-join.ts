@@ -8,11 +8,13 @@ import {
   type PodLifecycleState,
   type ProtectedPod,
   type ProtectedPodMember,
+  type RidePodPaymentIntent,
   type RiskFlag,
 } from "./money-safety";
 import { checkPodEligibility } from "./pod-eligibility";
 import { mockAuditEvents, mockRiskFlags, protectedPods, protectedUsers } from "./money-safety-mock";
-import { getPaymentProvider } from "./payment-provider";
+import { getPaymentProvider, type PaymentProviderAdapter } from "./payment-provider";
+import { createOrGetStripeCustomer } from "./stripe-setup";
 
 type JoinServiceResult = {
   ok: boolean;
@@ -20,6 +22,7 @@ type JoinServiceResult = {
   member: ProtectedPodMember | null;
   eligibility: EligibilityResult | null;
   auditEvents: AuditEvent[];
+  paymentIntent?: RidePodPaymentIntent | null;
   mockPaymentIntentId?: string | null;
   error?: string;
 };
@@ -190,7 +193,15 @@ export function requestJoinPod(
   };
 }
 
-export function authorizeSeat(userId: string, podId: string): JoinServiceResult {
+export async function authorizeSeat(
+  userId: string,
+  podId: string,
+  options: {
+    stripePaymentMethodId?: string | null;
+    idempotencyKey?: string | null;
+    paymentProvider?: PaymentProviderAdapter;
+  } = {},
+): Promise<JoinServiceResult> {
   const { user, pod } = getPodAndUser(userId, podId);
   if (!user) return failed("USER_NOT_FOUND");
   if (!pod) return failed("POD_NOT_FOUND");
@@ -222,13 +233,39 @@ export function authorizeSeat(userId: string, podId: string): JoinServiceResult 
   const now = new Date().toISOString();
   const member = getOrCreateMember(pod, userId, now);
   const mockPaymentIntentId = member.mockPaymentIntentId ?? makeMockPaymentIntentId(podId, userId);
-  const provider = getPaymentProvider();
-  const paymentIntentResult = provider.authorizeSeat({
+  const provider = options.paymentProvider ?? getPaymentProvider();
+  let stripeCustomerId = user.stripeCustomerId;
+
+  if (provider.provider === "STRIPE" && !stripeCustomerId && !options.paymentProvider) {
+    const customerResult = await createOrGetStripeCustomer(userId, { forceStripe: true });
+    if (!customerResult.ok) {
+      return {
+        ok: false,
+        pod,
+        member,
+        eligibility,
+        auditEvents: [],
+        error: customerResult.error,
+      };
+    }
+
+    stripeCustomerId = customerResult.customerId;
+  }
+
+  const maxChargeCents = Math.ceil(pod.approvedMaxTotalFareCents / pod.maxSeats) + pod.ridepodFeeCents;
+  const paymentIntentResult = await provider.authorizeSeat({
     podId,
     podMemberId: member.id,
     userId,
-    amountAuthorizedCents: Math.ceil(pod.approvedMaxTotalFareCents / pod.maxSeats) + pod.ridepodFeeCents,
-    externalPaymentIntentId: mockPaymentIntentId,
+    amountAuthorizedCents: maxChargeCents,
+    maxChargeCents,
+    platformFeeCents: pod.ridepodFeeCents,
+    approvedMaxTotalFareCents: pod.approvedMaxTotalFareCents,
+    currency: pod.currency,
+    customerId: stripeCustomerId,
+    paymentMethodId: options.stripePaymentMethodId ?? null,
+    externalPaymentIntentId: provider.provider === "MOCK" ? mockPaymentIntentId : null,
+    idempotencyKey: options.idempotencyKey ?? null,
   });
 
   if (!paymentIntentResult.ok) {
@@ -238,16 +275,17 @@ export function authorizeSeat(userId: string, podId: string): JoinServiceResult 
       member,
       eligibility,
       auditEvents: [],
+      paymentIntent: paymentIntentResult.paymentIntent,
       error: paymentIntentResult.error ?? "PAYMENT_AUTHORIZATION_FAILED",
     };
   }
 
   member.paymentState = "AUTHORIZED";
   member.memberState = "CONFIRMED";
-  member.maxChargeCents = Math.ceil(pod.approvedMaxTotalFareCents / pod.maxSeats) + pod.ridepodFeeCents;
+  member.maxChargeCents = maxChargeCents;
   member.estimatedShareCents = Math.ceil(pod.estimatedTotalFareCents / Math.max(1, pod.targetSeats));
   member.platformFeeCents = pod.ridepodFeeCents;
-  member.mockPaymentIntentId = mockPaymentIntentId;
+  member.mockPaymentIntentId = provider.provider === "MOCK" ? mockPaymentIntentId : (member.mockPaymentIntentId ?? null);
   member.lockedAt = now;
   member.eligibilityPassed = true;
   member.updatedAt = now;
@@ -256,8 +294,9 @@ export function authorizeSeat(userId: string, podId: string): JoinServiceResult 
     podId,
     userId,
     eventPayload: {
-      provider: "MOCK",
-      mockPaymentIntentId,
+      provider: provider.provider,
+      externalPaymentIntentId: paymentIntentResult.paymentIntent?.externalPaymentIntentId ?? mockPaymentIntentId,
+      mockPaymentIntentId: provider.provider === "MOCK" ? mockPaymentIntentId : null,
       maxChargeCents: member.maxChargeCents,
       platformFeeCents: member.platformFeeCents,
     },
@@ -271,7 +310,8 @@ export function authorizeSeat(userId: string, podId: string): JoinServiceResult 
     member,
     eligibility,
     auditEvents,
-    mockPaymentIntentId,
+    paymentIntent: paymentIntentResult.paymentIntent,
+    mockPaymentIntentId: provider.provider === "MOCK" ? mockPaymentIntentId : null,
   };
 }
 

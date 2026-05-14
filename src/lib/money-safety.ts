@@ -148,11 +148,16 @@ export const PAYMENT_INTENT_TYPES = [
 
 export type RidePodPaymentIntentType = (typeof PAYMENT_INTENT_TYPES)[number];
 
+export const CAPTURE_METHODS = ["MANUAL", "AUTOMATIC"] as const;
+export type CaptureMethod = (typeof CAPTURE_METHODS)[number];
+
 export const PAYMENT_INTENT_STATUSES = [
   "CREATED",
   "REQUIRES_PAYMENT_METHOD",
+  "REQUIRES_ACTION",
   "AUTHORIZING",
   "AUTHORIZED",
+  "PROCESSING",
   "SUCCEEDED",
   "CANCELED",
   "FAILED",
@@ -467,14 +472,20 @@ export type RidePodPaymentIntent = {
   id: string;
   provider: PaymentProvider;
   intentType: RidePodPaymentIntentType;
+  captureMethod: CaptureMethod;
   podId: string;
   podMemberId: string;
   userId: string;
   externalPaymentIntentId: string | null;
   amountAuthorizedCents: MoneyCents;
   amountCapturedCents: MoneyCents;
+  amountRefundedCents: MoneyCents;
+  currency: string;
   status: RidePodPaymentIntentStatus;
   authorizationExpiresAt: string | null;
+  idempotencyKey: string | null;
+  failureCode: string | null;
+  failureMessage: string | null;
   createdAt: string;
   updatedAt: string;
 };

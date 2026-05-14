@@ -1,4 +1,5 @@
 import type {
+  CaptureMethod,
   MoneyCents,
   PaymentProvider,
   RidePodPaymentIntent,
@@ -6,6 +7,7 @@ import type {
 } from "./money-safety";
 import { mockPaymentIntents } from "./money-safety-mock";
 import { getConfiguredPaymentProvider, getStripeTestConfig } from "./stripe-config";
+import type { StripeSeatAuthorizationClient } from "./stripe-seat-authorization";
 
 type EnvLike = Partial<Record<string, string | undefined>>;
 
@@ -14,8 +16,15 @@ export type SeatAuthorizationInput = {
   podMemberId: string;
   userId: string;
   amountAuthorizedCents: MoneyCents;
+  maxChargeCents: MoneyCents;
+  platformFeeCents: MoneyCents;
+  approvedMaxTotalFareCents: MoneyCents;
+  currency: string;
+  customerId?: string | null;
+  paymentMethodId?: string | null;
   externalPaymentIntentId?: string | null;
   authorizationExpiresAt?: string | null;
+  idempotencyKey?: string | null;
 };
 
 export type SeatAuthorizationResult = {
@@ -51,14 +60,25 @@ export type SetupIntentResult =
 
 export type PaymentProviderAdapter = {
   provider: PaymentProvider;
-  createSeatAuthorization(input: SeatAuthorizationInput): SeatAuthorizationResult;
-  authorizeSeat(input: SeatAuthorizationInput): SeatAuthorizationResult;
+  createSeatAuthorization(input: SeatAuthorizationInput): Promise<SeatAuthorizationResult> | SeatAuthorizationResult;
+  authorizeSeat(input: SeatAuthorizationInput): Promise<SeatAuthorizationResult> | SeatAuthorizationResult;
   captureAuthorizedPayment(): ProviderStubResult;
   cancelAuthorization(): ProviderStubResult;
   createSetupIntent(input: SetupIntentInput): Promise<SetupIntentResult> | SetupIntentResult;
 };
 
-function upsertLocalPaymentIntent(input: SeatAuthorizationInput, provider: PaymentProvider, status: RidePodPaymentIntentStatus) {
+export function upsertLocalPaymentIntent(
+  input: SeatAuthorizationInput,
+  provider: PaymentProvider,
+  status: RidePodPaymentIntentStatus,
+  options: {
+    captureMethod?: CaptureMethod;
+    amountCapturedCents?: MoneyCents;
+    amountRefundedCents?: MoneyCents;
+    failureCode?: string | null;
+    failureMessage?: string | null;
+  } = {},
+) {
   const now = new Date().toISOString();
   const externalPaymentIntentId =
     input.externalPaymentIntentId ?? `${provider.toLowerCase()}_pi_${input.podId}_${input.userId}_${Date.now().toString(36)}`;
@@ -72,8 +92,14 @@ function upsertLocalPaymentIntent(input: SeatAuthorizationInput, provider: Payme
   if (existing) {
     existing.externalPaymentIntentId = externalPaymentIntentId;
     existing.amountAuthorizedCents = input.amountAuthorizedCents;
+    existing.amountCapturedCents = options.amountCapturedCents ?? existing.amountCapturedCents;
+    existing.amountRefundedCents = options.amountRefundedCents ?? existing.amountRefundedCents;
+    existing.currency = input.currency.toUpperCase();
     existing.status = status;
     existing.authorizationExpiresAt = input.authorizationExpiresAt ?? existing.authorizationExpiresAt;
+    existing.idempotencyKey = input.idempotencyKey ?? existing.idempotencyKey;
+    existing.failureCode = options.failureCode ?? null;
+    existing.failureMessage = options.failureMessage ?? null;
     existing.updatedAt = now;
     return existing;
   }
@@ -82,14 +108,20 @@ function upsertLocalPaymentIntent(input: SeatAuthorizationInput, provider: Payme
     id: `ridepod-pi-${provider.toLowerCase()}-${input.podMemberId}`,
     provider,
     intentType: "SEAT_AUTHORIZATION",
+    captureMethod: options.captureMethod ?? "MANUAL",
     podId: input.podId,
     podMemberId: input.podMemberId,
     userId: input.userId,
     externalPaymentIntentId,
     amountAuthorizedCents: input.amountAuthorizedCents,
-    amountCapturedCents: 0,
+    amountCapturedCents: options.amountCapturedCents ?? 0,
+    amountRefundedCents: options.amountRefundedCents ?? 0,
+    currency: input.currency.toUpperCase(),
     status,
     authorizationExpiresAt: input.authorizationExpiresAt ?? null,
+    idempotencyKey: input.idempotencyKey ?? null,
+    failureCode: options.failureCode ?? null,
+    failureMessage: options.failureMessage ?? null,
     createdAt: now,
     updatedAt: now,
   };
@@ -125,25 +157,19 @@ export const mockPaymentProvider: PaymentProviderAdapter = {
   },
 };
 
-export function createStripeTestProvider(env: EnvLike = process.env): PaymentProviderAdapter {
-  function stripeStub(error: string): SeatAuthorizationResult {
-    const config = getStripeTestConfig(env);
-
-    return {
-      ok: false,
-      provider: "STRIPE",
-      paymentIntent: null,
-      error: config.ok ? error : config.error,
-    };
-  }
-
+export function createStripeTestProvider(
+  env: EnvLike = process.env,
+  stripe?: StripeSeatAuthorizationClient,
+): PaymentProviderAdapter {
   return {
     provider: "STRIPE",
-    createSeatAuthorization() {
-      return stripeStub("STRIPE_SEAT_AUTHORIZATION_NOT_IMPLEMENTED");
+    async createSeatAuthorization(input) {
+      const { createStripeSeatAuthorization } = await import("./stripe-seat-authorization");
+      return createStripeSeatAuthorization(input, { env, stripe });
     },
-    authorizeSeat() {
-      return stripeStub("STRIPE_SEAT_AUTHORIZATION_NOT_IMPLEMENTED");
+    async authorizeSeat(input) {
+      const { createStripeSeatAuthorization } = await import("./stripe-seat-authorization");
+      return createStripeSeatAuthorization(input, { env, stripe });
     },
     captureAuthorizedPayment() {
       const config = getStripeTestConfig(env);
