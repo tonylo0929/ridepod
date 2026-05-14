@@ -8,6 +8,7 @@ import type {
 import { mockPaymentIntents } from "./money-safety-mock";
 import { getConfiguredPaymentProvider, getStripeTestConfig } from "./stripe-config";
 import type { StripeSeatAuthorizationClient } from "./stripe-seat-authorization";
+import type { StripeSettlementCaptureClient } from "./stripe-settlement-capture";
 
 type EnvLike = Partial<Record<string, string | undefined>>;
 
@@ -34,12 +35,6 @@ export type SeatAuthorizationResult = {
   error?: string;
 };
 
-export type ProviderStubResult = {
-  ok: false;
-  provider: PaymentProvider;
-  error: string;
-};
-
 export type SetupIntentInput = {
   userId: string;
 };
@@ -58,13 +53,35 @@ export type SetupIntentResult =
       error: string;
     };
 
+export type PaymentFinalizationInput = {
+  podId: string;
+  podMemberId: string;
+  userId: string;
+  externalPaymentIntentId: string | null;
+  amountAuthorizedCents: MoneyCents;
+  finalChargeCents: MoneyCents;
+  currency: string;
+};
+
+export type PaymentFinalizationResult = {
+  ok: boolean;
+  provider: PaymentProvider;
+  paymentIntent: RidePodPaymentIntent | null;
+  error?: string;
+};
+
 export type PaymentProviderAdapter = {
   provider: PaymentProvider;
   createSeatAuthorization(input: SeatAuthorizationInput): Promise<SeatAuthorizationResult> | SeatAuthorizationResult;
   authorizeSeat(input: SeatAuthorizationInput): Promise<SeatAuthorizationResult> | SeatAuthorizationResult;
-  captureAuthorizedPayment(): ProviderStubResult;
-  cancelAuthorization(): ProviderStubResult;
+  captureAuthorizedPayment(input: PaymentFinalizationInput): Promise<PaymentFinalizationResult> | PaymentFinalizationResult;
+  cancelAuthorization(input: PaymentFinalizationInput): Promise<PaymentFinalizationResult> | PaymentFinalizationResult;
   createSetupIntent(input: SetupIntentInput): Promise<SetupIntentResult> | SetupIntentResult;
+};
+
+type StripeProviderClient = {
+  paymentIntents: Partial<StripeSeatAuthorizationClient["paymentIntents"]> &
+    Partial<StripeSettlementCaptureClient["paymentIntents"]>;
 };
 
 export function upsertLocalPaymentIntent(
@@ -130,10 +147,6 @@ export function upsertLocalPaymentIntent(
   return paymentIntent;
 }
 
-function stub(provider: PaymentProvider, error: string): ProviderStubResult {
-  return { ok: false, provider, error };
-}
-
 export const mockPaymentProvider: PaymentProviderAdapter = {
   provider: "MOCK",
   createSeatAuthorization(input) {
@@ -146,11 +159,49 @@ export const mockPaymentProvider: PaymentProviderAdapter = {
   authorizeSeat(input) {
     return this.createSeatAuthorization(input);
   },
-  captureAuthorizedPayment() {
-    return stub("MOCK", "MOCK_CAPTURE_NOT_IMPLEMENTED");
+  captureAuthorizedPayment(input) {
+    return {
+      ok: true,
+      provider: "MOCK",
+      paymentIntent: upsertLocalPaymentIntent(
+        {
+          podId: input.podId,
+          podMemberId: input.podMemberId,
+          userId: input.userId,
+          amountAuthorizedCents: input.amountAuthorizedCents,
+          maxChargeCents: input.amountAuthorizedCents,
+          platformFeeCents: 0,
+          approvedMaxTotalFareCents: input.amountAuthorizedCents,
+          currency: input.currency,
+          externalPaymentIntentId: input.externalPaymentIntentId,
+        },
+        "MOCK",
+        "SUCCEEDED",
+        { amountCapturedCents: input.finalChargeCents },
+      ),
+    };
   },
-  cancelAuthorization() {
-    return stub("MOCK", "MOCK_CANCEL_AUTHORIZATION_NOT_IMPLEMENTED");
+  cancelAuthorization(input) {
+    return {
+      ok: true,
+      provider: "MOCK",
+      paymentIntent: upsertLocalPaymentIntent(
+        {
+          podId: input.podId,
+          podMemberId: input.podMemberId,
+          userId: input.userId,
+          amountAuthorizedCents: input.amountAuthorizedCents,
+          maxChargeCents: input.amountAuthorizedCents,
+          platformFeeCents: 0,
+          approvedMaxTotalFareCents: input.amountAuthorizedCents,
+          currency: input.currency,
+          externalPaymentIntentId: input.externalPaymentIntentId,
+        },
+        "MOCK",
+        "CANCELED",
+        { amountCapturedCents: 0 },
+      ),
+    };
   },
   createSetupIntent() {
     return { ok: false, provider: "MOCK", error: "PAYMENT_PROVIDER_MOCK" };
@@ -159,25 +210,33 @@ export const mockPaymentProvider: PaymentProviderAdapter = {
 
 export function createStripeTestProvider(
   env: EnvLike = process.env,
-  stripe?: StripeSeatAuthorizationClient,
+  stripe?: StripeProviderClient,
 ): PaymentProviderAdapter {
+  const seatAuthorizationStripe = stripe?.paymentIntents.create ? (stripe as StripeSeatAuthorizationClient) : undefined;
+  const settlementStripe =
+    stripe?.paymentIntents.capture && stripe?.paymentIntents.cancel ? (stripe as StripeSettlementCaptureClient) : undefined;
+
   return {
     provider: "STRIPE",
     async createSeatAuthorization(input) {
       const { createStripeSeatAuthorization } = await import("./stripe-seat-authorization");
-      return createStripeSeatAuthorization(input, { env, stripe });
+      return createStripeSeatAuthorization(input, { env, stripe: seatAuthorizationStripe });
     },
     async authorizeSeat(input) {
       const { createStripeSeatAuthorization } = await import("./stripe-seat-authorization");
-      return createStripeSeatAuthorization(input, { env, stripe });
+      return createStripeSeatAuthorization(input, { env, stripe: seatAuthorizationStripe });
     },
-    captureAuthorizedPayment() {
+    async captureAuthorizedPayment(input) {
       const config = getStripeTestConfig(env);
-      return stub("STRIPE", config.ok ? "STRIPE_CAPTURE_NOT_IMPLEMENTED" : config.error);
+      if (!config.ok) return { ok: false, provider: "STRIPE", paymentIntent: null, error: config.error };
+      const { captureStripeAuthorizedPayment } = await import("./stripe-settlement-capture");
+      return captureStripeAuthorizedPayment(input, { env, stripe: settlementStripe });
     },
-    cancelAuthorization() {
+    async cancelAuthorization(input) {
       const config = getStripeTestConfig(env);
-      return stub("STRIPE", config.ok ? "STRIPE_CANCEL_AUTHORIZATION_NOT_IMPLEMENTED" : config.error);
+      if (!config.ok) return { ok: false, provider: "STRIPE", paymentIntent: null, error: config.error };
+      const { cancelStripeAuthorization } = await import("./stripe-settlement-capture");
+      return cancelStripeAuthorization(input, { env, stripe: settlementStripe });
     },
     async createSetupIntent(input) {
       const { createSetupIntent } = await import("./stripe-setup");

@@ -61,6 +61,7 @@ const podBooking = loadTsModule("src/lib/pod-booking.ts");
 const podHostReplacement = loadTsModule("src/lib/pod-host-replacement.ts");
 const podSettlement = loadTsModule("src/lib/pod-settlement.ts");
 const podAdminReview = loadTsModule("src/lib/pod-admin-review.ts");
+const podPaymentCapture = loadTsModule("src/lib/pod-payment-capture.ts");
 const moneySafetyMock = loadTsModule("src/lib/money-safety-mock.ts");
 const stripeConfig = loadTsModule("src/lib/stripe-config.ts");
 const paymentProvider = loadTsModule("src/lib/payment-provider.ts");
@@ -236,8 +237,25 @@ assert.equal(
   "STRIPE_CUSTOMER_REQUIRED",
 );
 assert.equal((await stripeProviderMissingConfig.createSetupIntent({ userId: "u2" })).error, "STRIPE_SECRET_KEY_REQUIRED");
-assert.equal(stripeProviderStub.captureAuthorizedPayment().error, "STRIPE_CAPTURE_NOT_IMPLEMENTED");
-assert.equal(stripeProviderStub.cancelAuthorization().error, "STRIPE_CANCEL_AUTHORIZATION_NOT_IMPLEMENTED");
+const stripeProviderMissingIntentInput = {
+  podId: "pod-stripe-stub",
+  podMemberId: "pm-stripe-stub",
+  userId: "u2",
+  localPaymentIntentId: "pi-local-stripe-stub",
+  externalPaymentIntentId: null,
+  finalChargeCents: 1200,
+  amountAuthorizedCents: 1200,
+  maxChargeCents: 1200,
+  currency: "USD",
+};
+assert.equal(
+  (await stripeProviderStub.captureAuthorizedPayment(stripeProviderMissingIntentInput)).error,
+  "STRIPE_PAYMENT_INTENT_ID_REQUIRED",
+);
+assert.equal(
+  (await stripeProviderStub.cancelAuthorization(stripeProviderMissingIntentInput)).error,
+  "STRIPE_PAYMENT_INTENT_ID_REQUIRED",
+);
 
 const now = "2026-05-13T12:00:00.000Z";
 
@@ -309,6 +327,31 @@ function settlementMember(podId, userId, overrides = {}) {
     createdAt: `2026-05-11T10:0${["u1", "u2", "u6", "u7"].indexOf(userId) + 1}:00.000Z`,
     ...overrides,
   });
+}
+
+function localPaymentIntent(overrides = {}) {
+  return {
+    id: `ridepod-pi-${overrides.podMemberId ?? "pm-test"}`,
+    provider: "MOCK",
+    intentType: "SEAT_AUTHORIZATION",
+    captureMethod: "MANUAL",
+    podId: overrides.podId ?? "pod-test",
+    podMemberId: overrides.podMemberId ?? "pm-test",
+    userId: overrides.userId ?? "u2",
+    externalPaymentIntentId: overrides.externalPaymentIntentId ?? "mock_pi_test",
+    amountAuthorizedCents: overrides.amountAuthorizedCents ?? moneySafety.cents(50),
+    amountCapturedCents: overrides.amountCapturedCents ?? 0,
+    amountRefundedCents: overrides.amountRefundedCents ?? 0,
+    currency: overrides.currency ?? "USD",
+    status: overrides.status ?? "AUTHORIZED",
+    authorizationExpiresAt: overrides.authorizationExpiresAt ?? null,
+    idempotencyKey: overrides.idempotencyKey ?? null,
+    failureCode: overrides.failureCode ?? null,
+    failureMessage: overrides.failureMessage ?? null,
+    createdAt: overrides.createdAt ?? now,
+    updatedAt: overrides.updatedAt ?? now,
+    ...overrides,
+  };
 }
 
 const createdStripeCustomers = [];
@@ -1715,6 +1758,540 @@ assert.equal(hostFaultVerified.ok, true);
 assert.equal(hostFaultVerified.settlementResult.settlement.settlementState, "ADMIN_REVIEW");
 assert.equal(hostFaultVerified.settlementResult.hostReimbursement.payoutState, "HELD_FOR_REVIEW");
 assert.equal(hostFaultVerified.settlementResult.auditEvents.some((event) => event.eventType === "SETTLEMENT_FINALIZED"), false);
+
+const captureBeforeSettlementPod = pod({
+  id: "capture-before-settlement",
+  hostUserId: "u1",
+  lifecycleState: "RIDE_BOOKED",
+  bookingState: "BOOKED",
+  members: [settlementMember("capture-before-settlement", "u1", { role: "HOST", finalChargeCents: moneySafety.cents(20) })],
+});
+moneySafetyMock.protectedPods.push(captureBeforeSettlementPod);
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    podId: "capture-before-settlement",
+    podMemberId: "pm-capture-before-settlement-u1",
+    userId: "u1",
+    amountAuthorizedCents: moneySafety.cents(30),
+  }),
+);
+assert.equal(
+  (await podPaymentCapture.captureMemberPayment("pm-capture-before-settlement-u1")).error,
+  "SETTLEMENT_REQUIRED",
+);
+
+const mockCapturePod = pod({
+  id: "capture-mock-finalized",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("capture-mock-finalized", "u1", {
+      role: "HOST",
+      finalChargeCents: moneySafety.cents(24),
+      maxChargeCents: moneySafety.cents(40),
+    }),
+    settlementMember("capture-mock-finalized", "u2", {
+      finalChargeCents: 0,
+      maxChargeCents: moneySafety.cents(40),
+    }),
+  ],
+  receipts: [
+    {
+      id: "receipt-capture-mock-finalized",
+      podId: "capture-mock-finalized",
+      hostUserId: "u1",
+      providerName: "UBER",
+      vehicleClass: null,
+      externalTripReferenceHash: null,
+      receiptFileUrl: "mock://receipt-capture.png",
+      receiptFileId: null,
+      fareTotalCents: moneySafety.cents(24),
+      baseFareCents: null,
+      taxesCents: null,
+      tollsCents: null,
+      feesCents: null,
+      tipCents: null,
+      currency: "USD",
+      rideStartedAt: null,
+      rideCompletedAt: null,
+      submittedAt: now,
+      verificationState: "VERIFIED",
+      reviewedByAdminId: "admin-1",
+      rejectionReason: null,
+      fraudScore: null,
+      createdAt: now,
+      updatedAt: now,
+    },
+  ],
+});
+moneySafetyMock.protectedPods.push(mockCapturePod);
+moneySafetyMock.mockSettlements.push({
+  id: "settlement-capture-mock-finalized",
+  podId: "capture-mock-finalized",
+  settlementState: "FINALIZED",
+  version: 1,
+  approvedFareCents: moneySafety.cents(24),
+  verifiedFareCents: moneySafety.cents(24),
+  billableSeatCount: 2,
+  totalPlatformFeeCents: 0,
+  hostReimbursementCents: moneySafety.cents(24),
+  hostRewardCents: 0,
+  roundingPolicy: "test",
+  disputeDeadlineAt: null,
+  adminReviewRequired: false,
+  items: [
+    {
+      id: "settlement-capture-mock-finalized-host-fare",
+      settlementId: "settlement-capture-mock-finalized",
+      podMemberId: "pm-capture-mock-finalized-u1",
+      userId: "u1",
+      itemType: "FARE_SHARE",
+      direction: "DEBIT_USER",
+      amountCents: moneySafety.cents(24),
+      reasonCode: "TEST",
+      createdAt: now,
+    },
+    {
+      id: "settlement-capture-mock-finalized-u2-fare",
+      settlementId: "settlement-capture-mock-finalized",
+      podMemberId: "pm-capture-mock-finalized-u2",
+      userId: "u2",
+      itemType: "FARE_SHARE",
+      direction: "DEBIT_USER",
+      amountCents: 0,
+      reasonCode: "TEST",
+      createdAt: now,
+    },
+  ],
+  createdAt: now,
+  finalizedAt: now,
+  updatedAt: now,
+});
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    podId: "capture-mock-finalized",
+    podMemberId: "pm-capture-mock-finalized-u1",
+    userId: "u1",
+    externalPaymentIntentId: "mock_pi_capture_u1",
+    amountAuthorizedCents: moneySafety.cents(40),
+  }),
+  localPaymentIntent({
+    podId: "capture-mock-finalized",
+    podMemberId: "pm-capture-mock-finalized-u2",
+    userId: "u2",
+    externalPaymentIntentId: "mock_pi_capture_u2",
+    amountAuthorizedCents: moneySafety.cents(40),
+  }),
+);
+const mockCaptureResult = await podPaymentCapture.captureMemberPayment("pm-capture-mock-finalized-u1");
+assert.equal(mockCaptureResult.ok, true);
+assert.equal(mockCaptureResult.member.paymentState, "CAPTURED");
+assert.equal(mockCaptureResult.paymentIntent.status, "SUCCEEDED");
+assert.equal(mockCaptureResult.paymentIntent.amountCapturedCents, moneySafety.cents(24));
+const mockCancelResult = await podPaymentCapture.cancelMemberAuthorization("pm-capture-mock-finalized-u2");
+assert.equal(mockCancelResult.ok, true);
+assert.equal(mockCancelResult.member.paymentState, "REFUNDED");
+assert.equal(mockCancelResult.paymentIntent.status, "CANCELED");
+assert.equal(mockCancelResult.paymentIntent.amountCapturedCents, 0);
+
+const captureAllResult = await podPaymentCapture.captureSettledRidePayments("capture-mock-finalized");
+assert.equal(captureAllResult.ok, false);
+assert.ok(captureAllResult.results.some((result) => result.error === "PAYMENT_INTENT_NOT_CAPTURABLE"));
+
+const unverifiedCapturePod = pod({
+  id: "capture-unverified-receipt",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [settlementMember("capture-unverified-receipt", "u1", { role: "HOST", finalChargeCents: moneySafety.cents(10) })],
+  receipts: [],
+});
+moneySafetyMock.protectedPods.push(unverifiedCapturePod);
+moneySafetyMock.mockSettlements.push({
+  ...moneySafetyMock.mockSettlements.find((settlement) => settlement.id === "settlement-capture-mock-finalized"),
+  id: "settlement-capture-unverified-receipt",
+  podId: "capture-unverified-receipt",
+  items: [],
+});
+assert.equal(
+  (await podPaymentCapture.captureSettledRidePayments("capture-unverified-receipt")).error,
+  "VERIFIED_RECEIPT_REQUIRED",
+);
+
+const adminHoldCapturePod = pod({
+  id: "capture-admin-hold",
+  hostUserId: "u1",
+  lifecycleState: "ADMIN_REVIEW",
+  bookingState: "BOOKED",
+  adminReviewRequired: true,
+  members: [settlementMember("capture-admin-hold", "u1", { role: "HOST", finalChargeCents: moneySafety.cents(10) })],
+  receipts: mockCapturePod.receipts.map((receipt) => ({ ...receipt, id: "receipt-capture-admin-hold", podId: "capture-admin-hold" })),
+});
+moneySafetyMock.protectedPods.push(adminHoldCapturePod);
+moneySafetyMock.mockSettlements.push({
+  ...moneySafetyMock.mockSettlements.find((settlement) => settlement.id === "settlement-capture-mock-finalized"),
+  id: "settlement-capture-admin-hold",
+  podId: "capture-admin-hold",
+  adminReviewRequired: false,
+});
+assert.equal(
+  (await podPaymentCapture.captureSettledRidePayments("capture-admin-hold")).error,
+  "POD_ADMIN_REVIEW_HOLD",
+);
+
+const disputeHoldCapturePod = pod({
+  id: "capture-dispute-hold",
+  hostUserId: "u1",
+  lifecycleState: "DISPUTE_HOLD",
+  bookingState: "BOOKED",
+  members: [settlementMember("capture-dispute-hold", "u1", { role: "HOST", finalChargeCents: moneySafety.cents(10) })],
+  receipts: mockCapturePod.receipts.map((receipt) => ({ ...receipt, id: "receipt-capture-dispute-hold", podId: "capture-dispute-hold" })),
+});
+moneySafetyMock.protectedPods.push(disputeHoldCapturePod);
+moneySafetyMock.mockSettlements.push({
+  ...moneySafetyMock.mockSettlements.find((settlement) => settlement.id === "settlement-capture-mock-finalized"),
+  id: "settlement-capture-dispute-hold",
+  podId: "capture-dispute-hold",
+  adminReviewRequired: false,
+});
+assert.equal(
+  (await podPaymentCapture.captureSettledRidePayments("capture-dispute-hold")).error,
+  "POD_ADMIN_REVIEW_HOLD",
+);
+
+const settlementHoldPod = pod({
+  id: "capture-settlement-review",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [settlementMember("capture-settlement-review", "u1", { role: "HOST", finalChargeCents: moneySafety.cents(10) })],
+  receipts: mockCapturePod.receipts.map((receipt) => ({ ...receipt, id: "receipt-capture-settlement-review", podId: "capture-settlement-review" })),
+});
+moneySafetyMock.protectedPods.push(settlementHoldPod);
+moneySafetyMock.mockSettlements.push({
+  ...moneySafetyMock.mockSettlements.find((settlement) => settlement.id === "settlement-capture-mock-finalized"),
+  id: "settlement-capture-settlement-review",
+  podId: "capture-settlement-review",
+  adminReviewRequired: true,
+});
+assert.equal(
+  (await podPaymentCapture.captureSettledRidePayments("capture-settlement-review")).error,
+  "SETTLEMENT_ADMIN_REVIEW_REQUIRED",
+);
+
+const maxCapPod = pod({
+  id: "capture-max-cap",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("capture-max-cap", "u1", {
+      role: "HOST",
+      finalChargeCents: moneySafety.cents(45),
+      maxChargeCents: moneySafety.cents(40),
+    }),
+  ],
+  receipts: mockCapturePod.receipts.map((receipt) => ({ ...receipt, id: "receipt-capture-max-cap", podId: "capture-max-cap" })),
+});
+moneySafetyMock.protectedPods.push(maxCapPod);
+moneySafetyMock.mockSettlements.push({
+  ...moneySafetyMock.mockSettlements.find((settlement) => settlement.id === "settlement-capture-mock-finalized"),
+  id: "settlement-capture-max-cap",
+  podId: "capture-max-cap",
+  items: [
+    {
+      id: "settlement-capture-max-cap-host-fare",
+      settlementId: "settlement-capture-max-cap",
+      podMemberId: "pm-capture-max-cap-u1",
+      userId: "u1",
+      itemType: "FARE_SHARE",
+      direction: "DEBIT_USER",
+      amountCents: moneySafety.cents(45),
+      reasonCode: "TEST",
+      createdAt: now,
+    },
+  ],
+  adminReviewRequired: false,
+});
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    podId: "capture-max-cap",
+    podMemberId: "pm-capture-max-cap-u1",
+    userId: "u1",
+    amountAuthorizedCents: moneySafety.cents(50),
+  }),
+);
+assert.equal(
+  (await podPaymentCapture.captureMemberPayment("pm-capture-max-cap-u1")).error,
+  "FINAL_CHARGE_EXCEEDS_MAX_CHARGE",
+);
+
+const authCapPod = pod({
+  id: "capture-auth-cap",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("capture-auth-cap", "u1", {
+      role: "HOST",
+      finalChargeCents: moneySafety.cents(35),
+      maxChargeCents: moneySafety.cents(50),
+    }),
+  ],
+  receipts: mockCapturePod.receipts.map((receipt) => ({ ...receipt, id: "receipt-capture-auth-cap", podId: "capture-auth-cap" })),
+});
+moneySafetyMock.protectedPods.push(authCapPod);
+moneySafetyMock.mockSettlements.push({
+  ...moneySafetyMock.mockSettlements.find((settlement) => settlement.id === "settlement-capture-mock-finalized"),
+  id: "settlement-capture-auth-cap",
+  podId: "capture-auth-cap",
+  items: [
+    {
+      id: "settlement-capture-auth-cap-host-fare",
+      settlementId: "settlement-capture-auth-cap",
+      podMemberId: "pm-capture-auth-cap-u1",
+      userId: "u1",
+      itemType: "FARE_SHARE",
+      direction: "DEBIT_USER",
+      amountCents: moneySafety.cents(35),
+      reasonCode: "TEST",
+      createdAt: now,
+    },
+  ],
+  adminReviewRequired: false,
+});
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    podId: "capture-auth-cap",
+    podMemberId: "pm-capture-auth-cap-u1",
+    userId: "u1",
+    amountAuthorizedCents: moneySafety.cents(30),
+  }),
+);
+assert.equal(
+  (await podPaymentCapture.captureMemberPayment("pm-capture-auth-cap-u1")).error,
+  "FINAL_CHARGE_EXCEEDS_AUTHORIZATION",
+);
+
+function stripeCaptureProvider({ captureStatus = "succeeded", cancelStatus = "canceled", failCapture = false } = {}) {
+  const calls = { captures: [], cancels: [] };
+  return {
+    calls,
+    provider: paymentProvider.createStripeTestProvider(stripeTestEnv, {
+      paymentIntents: {
+        capture: async (id, input, options) => {
+          calls.captures.push({ id, input, options });
+          if (failCapture) {
+            const error = new Error("Capture failed.");
+            error.code = "capture_failed";
+            throw error;
+          }
+          return { id, status: captureStatus, amount_received: input.amount_to_capture };
+        },
+        cancel: async (id, input, options) => {
+          calls.cancels.push({ id, input, options });
+          return { id, status: cancelStatus, cancellation_reason: input?.cancellation_reason ?? null };
+        },
+      },
+    }),
+  };
+}
+
+const stripeCapturePod = pod({
+  id: "capture-stripe-finalized",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("capture-stripe-finalized", "u1", {
+      role: "HOST",
+      finalChargeCents: moneySafety.cents(22),
+      maxChargeCents: moneySafety.cents(40),
+      paymentState: "AUTHORIZED",
+    }),
+    settlementMember("capture-stripe-finalized", "u2", {
+      finalChargeCents: 0,
+      maxChargeCents: moneySafety.cents(40),
+      paymentState: "AUTHORIZED",
+    }),
+  ],
+  receipts: mockCapturePod.receipts.map((receipt) => ({ ...receipt, id: "receipt-capture-stripe-finalized", podId: "capture-stripe-finalized" })),
+});
+moneySafetyMock.protectedPods.push(stripeCapturePod);
+moneySafetyMock.mockSettlements.push({
+  ...moneySafetyMock.mockSettlements.find((settlement) => settlement.id === "settlement-capture-mock-finalized"),
+  id: "settlement-capture-stripe-finalized",
+  podId: "capture-stripe-finalized",
+  items: [
+    {
+      id: "settlement-capture-stripe-finalized-host-fare",
+      settlementId: "settlement-capture-stripe-finalized",
+      podMemberId: "pm-capture-stripe-finalized-u1",
+      userId: "u1",
+      itemType: "FARE_SHARE",
+      direction: "DEBIT_USER",
+      amountCents: moneySafety.cents(22),
+      reasonCode: "TEST",
+      createdAt: now,
+    },
+    {
+      id: "settlement-capture-stripe-finalized-u2-fare",
+      settlementId: "settlement-capture-stripe-finalized",
+      podMemberId: "pm-capture-stripe-finalized-u2",
+      userId: "u2",
+      itemType: "FARE_SHARE",
+      direction: "DEBIT_USER",
+      amountCents: 0,
+      reasonCode: "TEST",
+      createdAt: now,
+    },
+  ],
+  adminReviewRequired: false,
+});
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    provider: "STRIPE",
+    podId: "capture-stripe-finalized",
+    podMemberId: "pm-capture-stripe-finalized-u1",
+    userId: "u1",
+    externalPaymentIntentId: "pi_capture_stripe_u1",
+    amountAuthorizedCents: moneySafety.cents(40),
+  }),
+  localPaymentIntent({
+    provider: "STRIPE",
+    podId: "capture-stripe-finalized",
+    podMemberId: "pm-capture-stripe-finalized-u2",
+    userId: "u2",
+    externalPaymentIntentId: "pi_capture_stripe_u2",
+    amountAuthorizedCents: moneySafety.cents(40),
+  }),
+);
+const stripeCapture = stripeCaptureProvider();
+const stripeCaptureResult = await podPaymentCapture.captureMemberPayment("pm-capture-stripe-finalized-u1", {
+  paymentProvider: stripeCapture.provider,
+});
+assert.equal(stripeCaptureResult.ok, true);
+assert.equal(stripeCaptureResult.member.paymentState, "CAPTURED");
+assert.equal(stripeCaptureResult.paymentIntent.status, "SUCCEEDED");
+assert.equal(stripeCaptureResult.paymentIntent.amountCapturedCents, moneySafety.cents(22));
+assert.equal(stripeCapture.calls.captures[0].id, "pi_capture_stripe_u1");
+assert.equal(stripeCapture.calls.captures[0].input.amount_to_capture, moneySafety.cents(22));
+const stripeCancelResult = await podPaymentCapture.cancelMemberAuthorization("pm-capture-stripe-finalized-u2", {
+  paymentProvider: stripeCapture.provider,
+});
+assert.equal(stripeCancelResult.ok, true);
+assert.equal(stripeCancelResult.member.paymentState, "REFUNDED");
+assert.equal(stripeCancelResult.paymentIntent.status, "CANCELED");
+assert.equal(stripeCapture.calls.cancels[0].id, "pi_capture_stripe_u2");
+assert.equal(stripeCapture.calls.cancels[0].input.cancellation_reason, "requested_by_customer");
+
+const missingExternalPod = pod({
+  id: "capture-missing-external",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("capture-missing-external", "u1", {
+      role: "HOST",
+      finalChargeCents: moneySafety.cents(10),
+      maxChargeCents: moneySafety.cents(20),
+      paymentState: "AUTHORIZED",
+    }),
+  ],
+  receipts: mockCapturePod.receipts.map((receipt) => ({ ...receipt, id: "receipt-capture-missing-external", podId: "capture-missing-external" })),
+});
+moneySafetyMock.protectedPods.push(missingExternalPod);
+moneySafetyMock.mockSettlements.push({
+  ...moneySafetyMock.mockSettlements.find((settlement) => settlement.id === "settlement-capture-mock-finalized"),
+  id: "settlement-capture-missing-external",
+  podId: "capture-missing-external",
+  items: [
+    {
+      id: "settlement-capture-missing-external-host-fare",
+      settlementId: "settlement-capture-missing-external",
+      podMemberId: "pm-capture-missing-external-u1",
+      userId: "u1",
+      itemType: "FARE_SHARE",
+      direction: "DEBIT_USER",
+      amountCents: moneySafety.cents(10),
+      reasonCode: "TEST",
+      createdAt: now,
+    },
+  ],
+  adminReviewRequired: false,
+});
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    provider: "STRIPE",
+    podId: "capture-missing-external",
+    podMemberId: "pm-capture-missing-external-u1",
+    userId: "u1",
+    externalPaymentIntentId: null,
+    amountAuthorizedCents: moneySafety.cents(20),
+  }),
+);
+assert.equal(
+  (await podPaymentCapture.captureMemberPayment("pm-capture-missing-external-u1", {
+    paymentProvider: stripeCapture.provider,
+  })).error,
+  "STRIPE_PAYMENT_INTENT_ID_REQUIRED",
+);
+
+const failedStripeCapture = stripeCaptureProvider({ failCapture: true });
+const stripeFailurePod = pod({
+  id: "capture-stripe-failure",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("capture-stripe-failure", "u1", {
+      role: "HOST",
+      finalChargeCents: moneySafety.cents(18),
+      maxChargeCents: moneySafety.cents(40),
+      paymentState: "AUTHORIZED",
+    }),
+  ],
+  receipts: mockCapturePod.receipts.map((receipt) => ({ ...receipt, id: "receipt-capture-stripe-failure", podId: "capture-stripe-failure" })),
+});
+moneySafetyMock.protectedPods.push(stripeFailurePod);
+moneySafetyMock.mockSettlements.push({
+  ...moneySafetyMock.mockSettlements.find((settlement) => settlement.id === "settlement-capture-mock-finalized"),
+  id: "settlement-capture-stripe-failure",
+  podId: "capture-stripe-failure",
+  items: [
+    {
+      id: "settlement-capture-stripe-failure-host-fare",
+      settlementId: "settlement-capture-stripe-failure",
+      podMemberId: "pm-capture-stripe-failure-u1",
+      userId: "u1",
+      itemType: "FARE_SHARE",
+      direction: "DEBIT_USER",
+      amountCents: moneySafety.cents(18),
+      reasonCode: "TEST",
+      createdAt: now,
+    },
+  ],
+  adminReviewRequired: false,
+});
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    provider: "STRIPE",
+    podId: "capture-stripe-failure",
+    podMemberId: "pm-capture-stripe-failure-u1",
+    userId: "u1",
+    externalPaymentIntentId: "pi_capture_stripe_failure",
+    amountAuthorizedCents: moneySafety.cents(40),
+  }),
+);
+const failedStripeCaptureResult = await podPaymentCapture.captureMemberPayment("pm-capture-stripe-failure-u1", {
+  paymentProvider: failedStripeCapture.provider,
+});
+assert.equal(failedStripeCaptureResult.ok, false);
+assert.equal(failedStripeCaptureResult.error, "capture_failed");
+assert.equal(failedStripeCaptureResult.member.paymentState, "CAPTURE_FAILED");
+assert.equal(failedStripeCaptureResult.paymentIntent.status, "FAILED");
+assert.equal(failedStripeCaptureResult.paymentIntent.amountCapturedCents, 0);
 
 const adminReviewPod = pod({
   id: "admin-review-helper",
