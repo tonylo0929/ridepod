@@ -19,7 +19,7 @@ export type StripeTestConfigResult =
       error: string;
     };
 
-function isBlank(value: string | undefined) {
+function isBlank(value: string | null | undefined) {
   return !value || value.trim().length === 0;
 }
 
@@ -73,4 +73,19 @@ export function assertStripeTestModeConfig(env: EnvLike = process.env): StripeTe
   }
 
   return result.config;
+}
+
+export function getStripeWebhookConfig(env: EnvLike = process.env): StripeTestConfigResult {
+  const result = getStripeTestConfig(env);
+  if (!result.ok) return result;
+
+  if (isBlank(result.config.webhookSecret)) {
+    return { ok: false, error: "STRIPE_WEBHOOK_SECRET_REQUIRED" };
+  }
+
+  if (!result.config.webhookSecret?.startsWith("whsec_")) {
+    return { ok: false, error: "STRIPE_WEBHOOK_SECRET_INVALID" };
+  }
+
+  return result;
 }

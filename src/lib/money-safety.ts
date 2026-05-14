@@ -237,6 +237,7 @@ export const RISK_TYPES = [
   "HOST_BOOKED_BEFORE_AUTH",
   "HOST_CANCELED_AFTER_BOOKING",
   "QUOTE_RECEIPT_MISMATCH",
+  "STRIPE_PAYMENT_DISPUTE",
 ] as const;
 
 export type RiskType = (typeof RISK_TYPES)[number];
@@ -306,6 +307,12 @@ export const AUDIT_EVENT_TYPES = [
   "SETTLEMENT_FINALIZED",
   "OFF_APP_WARNING_TRIGGERED",
   "ADMIN_OVERRIDE",
+  "STRIPE_WEBHOOK_RECEIVED",
+  "STRIPE_WEBHOOK_PROCESSED",
+  "STRIPE_WEBHOOK_DUPLICATE",
+  "STRIPE_WEBHOOK_INVALID_SIGNATURE",
+  "PAYMENT_INTENT_UPDATED",
+  "STRIPE_DISPUTE_CREATED",
 ] as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT_TYPES)[number];
@@ -492,8 +499,12 @@ export type RidePodPaymentIntent = {
 
 export type ProcessedStripeWebhookEvent = {
   id: string;
+  provider: "STRIPE";
+  externalEventId: string;
   eventType: string;
   processedAt: string;
+  status: "PROCESSED" | "IGNORED" | "ERROR";
+  error: string | null;
 };
 
 export type EligibilityResult = {

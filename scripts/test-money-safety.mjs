@@ -62,6 +62,8 @@ const podHostReplacement = loadTsModule("src/lib/pod-host-replacement.ts");
 const podSettlement = loadTsModule("src/lib/pod-settlement.ts");
 const podAdminReview = loadTsModule("src/lib/pod-admin-review.ts");
 const podPaymentCapture = loadTsModule("src/lib/pod-payment-capture.ts");
+const stripeWebhooks = loadTsModule("src/lib/stripe-webhooks.ts");
+const stripeWebhookRoute = loadTsModule("src/app/api/stripe/webhook/route.ts");
 const moneySafetyMock = loadTsModule("src/lib/money-safety-mock.ts");
 const stripeConfig = loadTsModule("src/lib/stripe-config.ts");
 const paymentProvider = loadTsModule("src/lib/payment-provider.ts");
@@ -2292,6 +2294,256 @@ assert.equal(failedStripeCaptureResult.error, "capture_failed");
 assert.equal(failedStripeCaptureResult.member.paymentState, "CAPTURE_FAILED");
 assert.equal(failedStripeCaptureResult.paymentIntent.status, "FAILED");
 assert.equal(failedStripeCaptureResult.paymentIntent.amountCapturedCents, 0);
+
+function stripeEvent(id, type, object, overrides = {}) {
+  return {
+    id,
+    type,
+    livemode: false,
+    data: {
+      object,
+    },
+    ...overrides,
+  };
+}
+
+const originalStripeEnv = {
+  PAYMENT_PROVIDER: process.env.PAYMENT_PROVIDER,
+  STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+  STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
+};
+process.env.PAYMENT_PROVIDER = "STRIPE_TEST";
+process.env.STRIPE_SECRET_KEY = "sk_test_webhook";
+process.env.STRIPE_WEBHOOK_SECRET = "whsec_test_secret";
+const invalidWebhookResponse = await stripeWebhookRoute.POST(
+  new Request("http://localhost/api/stripe/webhook", {
+    method: "POST",
+    headers: { "stripe-signature": "invalid" },
+    body: JSON.stringify({ id: "evt_invalid_signature", type: "payment_intent.succeeded" }),
+  }),
+);
+assert.equal(invalidWebhookResponse.status, 400);
+assert.ok(moneySafetyMock.mockAuditEvents.some((event) => event.eventType === "STRIPE_WEBHOOK_INVALID_SIGNATURE"));
+const StripeForWebhookTests = require("stripe");
+const stripeForWebhookTests = new StripeForWebhookTests("sk_test_webhook");
+const validRoutePayload = JSON.stringify({
+  id: "evt_route_valid_unknown",
+  type: "payment_intent.succeeded",
+  livemode: false,
+  data: { object: { id: "pi_route_unknown", object: "payment_intent", status: "succeeded" } },
+});
+const validRouteSignature = stripeForWebhookTests.webhooks.generateTestHeaderString({
+  payload: validRoutePayload,
+  secret: "whsec_test_secret",
+});
+const validWebhookResponse = await stripeWebhookRoute.POST(
+  new Request("http://localhost/api/stripe/webhook", {
+    method: "POST",
+    headers: { "stripe-signature": validRouteSignature },
+    body: validRoutePayload,
+  }),
+);
+assert.equal(validWebhookResponse.status, 200);
+assert.ok(moneySafetyMock.mockProcessedStripeWebhookEvents.some((event) => event.externalEventId === "evt_route_valid_unknown"));
+process.env.PAYMENT_PROVIDER = originalStripeEnv.PAYMENT_PROVIDER;
+process.env.STRIPE_SECRET_KEY = originalStripeEnv.STRIPE_SECRET_KEY;
+process.env.STRIPE_WEBHOOK_SECRET = originalStripeEnv.STRIPE_WEBHOOK_SECRET;
+
+const webhookAuthPod = pod({
+  id: "webhook-auth",
+  hostUserId: "u1",
+  lifecycleState: "FORMING",
+  minSeatsToBook: 1,
+  members: [
+    podMember("webhook-auth", "u1", { role: "HOST" }),
+    podMember("webhook-auth", "u2", {
+      memberState: "AUTHORIZING",
+      paymentState: "AUTHORIZING",
+      lockedAt: null,
+    }),
+  ],
+});
+moneySafetyMock.protectedPods.push(webhookAuthPod);
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    provider: "STRIPE",
+    podId: "webhook-auth",
+    podMemberId: "pm-webhook-auth-u2",
+    userId: "u2",
+    externalPaymentIntentId: "pi_webhook_requires_capture",
+    status: "AUTHORIZING",
+    amountAuthorizedCents: moneySafety.cents(32),
+  }),
+);
+const requiresCaptureWebhook = stripeWebhooks.handleStripeWebhookEvent(
+  stripeEvent("evt_requires_capture", "payment_intent.requires_capture", {
+    id: "pi_webhook_requires_capture",
+    object: "payment_intent",
+    status: "requires_capture",
+    amount_capturable: moneySafety.cents(32),
+  }),
+);
+assert.equal(requiresCaptureWebhook.ok, true);
+assert.equal(requiresCaptureWebhook.paymentIntent.status, "AUTHORIZED");
+const webhookAuthorizedMember = webhookAuthPod.members.find((member) => member.id === "pm-webhook-auth-u2");
+assert.equal(webhookAuthorizedMember.paymentState, "AUTHORIZED");
+assert.equal(webhookAuthorizedMember.memberState, "CONFIRMED");
+assert.equal(webhookAuthPod.lifecycleState, "LOCKED");
+assert.notEqual(webhookAuthPod.lifecycleState, "HOST_CAN_BOOK");
+const duplicateRequiresCapture = stripeWebhooks.handleStripeWebhookEvent(
+  stripeEvent("evt_requires_capture", "payment_intent.requires_capture", {
+    id: "pi_webhook_requires_capture",
+    object: "payment_intent",
+    status: "requires_capture",
+  }),
+);
+assert.equal(duplicateRequiresCapture.ok, true);
+assert.equal(duplicateRequiresCapture.duplicate, true);
+
+const unknownPaymentIntentWebhook = stripeWebhooks.handleStripeWebhookEvent(
+  stripeEvent("evt_unknown_pi", "payment_intent.succeeded", {
+    id: "pi_unknown_from_webhook",
+    object: "payment_intent",
+    status: "succeeded",
+  }),
+);
+assert.equal(unknownPaymentIntentWebhook.ok, true);
+assert.equal(unknownPaymentIntentWebhook.paymentIntent, null);
+assert.equal(unknownPaymentIntentWebhook.processedEvent.status, "IGNORED");
+
+const failedWebhookPod = pod({
+  id: "webhook-failed-auth",
+  hostUserId: "u1",
+  lifecycleState: "FORMING",
+  members: [
+    podMember("webhook-failed-auth", "u2", {
+      memberState: "AUTHORIZING",
+      paymentState: "AUTHORIZING",
+      lockedAt: null,
+    }),
+  ],
+});
+moneySafetyMock.protectedPods.push(failedWebhookPod);
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    provider: "STRIPE",
+    podId: "webhook-failed-auth",
+    podMemberId: "pm-webhook-failed-auth-u2",
+    userId: "u2",
+    externalPaymentIntentId: "pi_webhook_failed",
+    status: "AUTHORIZING",
+  }),
+);
+const paymentFailedWebhook = stripeWebhooks.handleStripeWebhookEvent(
+  stripeEvent("evt_payment_failed", "payment_intent.payment_failed", {
+    id: "pi_webhook_failed",
+    object: "payment_intent",
+    status: "requires_payment_method",
+    last_payment_error: { code: "card_declined", message: "Card declined." },
+  }),
+);
+assert.equal(paymentFailedWebhook.paymentIntent.status, "FAILED");
+const webhookFailedMember = failedWebhookPod.members.find((member) => member.id === "pm-webhook-failed-auth-u2");
+assert.equal(webhookFailedMember.paymentState, "AUTH_FAILED");
+assert.equal(webhookFailedMember.memberState, "PAYMENT_REQUIRED");
+
+const canceledWebhookPod = pod({
+  id: "webhook-canceled-auth",
+  hostUserId: "u1",
+  lifecycleState: "PAYMENT_LOCKING",
+  members: [podMember("webhook-canceled-auth", "u2", { paymentState: "AUTHORIZED" })],
+});
+moneySafetyMock.protectedPods.push(canceledWebhookPod);
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    provider: "STRIPE",
+    podId: "webhook-canceled-auth",
+    podMemberId: "pm-webhook-canceled-auth-u2",
+    userId: "u2",
+    externalPaymentIntentId: "pi_webhook_canceled",
+  }),
+);
+const canceledWebhook = stripeWebhooks.handleStripeWebhookEvent(
+  stripeEvent("evt_payment_canceled", "payment_intent.canceled", {
+    id: "pi_webhook_canceled",
+    object: "payment_intent",
+    status: "canceled",
+  }),
+);
+assert.equal(canceledWebhook.paymentIntent.status, "CANCELED");
+assert.equal(canceledWebhookPod.members[0].paymentState, "AUTH_EXPIRED");
+
+const succeededWebhookPod = pod({
+  id: "webhook-succeeded-capture",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  members: [podMember("webhook-succeeded-capture", "u2", { paymentState: "AUTHORIZED" })],
+});
+moneySafetyMock.protectedPods.push(succeededWebhookPod);
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    provider: "STRIPE",
+    podId: "webhook-succeeded-capture",
+    podMemberId: "pm-webhook-succeeded-capture-u2",
+    userId: "u2",
+    externalPaymentIntentId: "pi_webhook_succeeded",
+  }),
+);
+const succeededWebhook = stripeWebhooks.handleStripeWebhookEvent(
+  stripeEvent("evt_payment_succeeded", "payment_intent.succeeded", {
+    id: "pi_webhook_succeeded",
+    object: "payment_intent",
+    status: "succeeded",
+    amount_received: moneySafety.cents(21),
+  }),
+);
+assert.equal(succeededWebhook.paymentIntent.status, "SUCCEEDED");
+assert.equal(succeededWebhook.paymentIntent.amountCapturedCents, moneySafety.cents(21));
+assert.equal(succeededWebhookPod.members[0].paymentState, "CAPTURED");
+
+const refundedWebhook = stripeWebhooks.handleStripeWebhookEvent(
+  stripeEvent("evt_charge_refunded", "charge.refunded", {
+    id: "ch_webhook_refunded",
+    object: "charge",
+    payment_intent: "pi_webhook_succeeded",
+    amount_refunded: moneySafety.cents(21),
+    refunded: true,
+  }),
+);
+assert.equal(refundedWebhook.paymentIntent.status, "REFUNDED");
+assert.equal(refundedWebhook.paymentIntent.amountRefundedCents, moneySafety.cents(21));
+assert.equal(succeededWebhookPod.members[0].paymentState, "REFUNDED");
+
+const disputeWebhookPod = pod({
+  id: "webhook-dispute",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  members: [podMember("webhook-dispute", "u2", { paymentState: "CAPTURED" })],
+});
+moneySafetyMock.protectedPods.push(disputeWebhookPod);
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    provider: "STRIPE",
+    status: "SUCCEEDED",
+    podId: "webhook-dispute",
+    podMemberId: "pm-webhook-dispute-u2",
+    userId: "u2",
+    externalPaymentIntentId: "pi_webhook_dispute",
+    amountCapturedCents: moneySafety.cents(20),
+  }),
+);
+const disputeWebhook = stripeWebhooks.handleStripeWebhookEvent(
+  stripeEvent("evt_charge_dispute", "charge.dispute.created", {
+    id: "dp_webhook_dispute",
+    object: "dispute",
+    payment_intent: "pi_webhook_dispute",
+  }),
+);
+assert.equal(disputeWebhook.paymentIntent.status, "DISPUTED");
+assert.equal(disputeWebhookPod.members[0].paymentState, "DISPUTED");
+assert.equal(disputeWebhookPod.lifecycleState, "DISPUTE_HOLD");
+assert.ok(moneySafetyMock.mockRiskFlags.some((flag) => flag.riskType === "STRIPE_PAYMENT_DISPUTE" && flag.podId === "webhook-dispute"));
+assert.ok(moneySafetyMock.mockAuditEvents.some((event) => event.eventType === "STRIPE_DISPUTE_CREATED"));
 
 const adminReviewPod = pod({
   id: "admin-review-helper",
