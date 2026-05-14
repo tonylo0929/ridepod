@@ -67,6 +67,7 @@ const stripeWebhookRoute = loadTsModule("src/app/api/stripe/webhook/route.ts");
 const stripeConnect = loadTsModule("src/lib/stripe-connect.ts");
 const stripeConnectRoute = loadTsModule("src/app/api/stripe/connect/onboarding/route.ts");
 const stripeHostReimbursement = loadTsModule("src/lib/stripe-host-reimbursement.ts");
+const stripeRefunds = loadTsModule("src/lib/stripe-refunds.ts");
 const moneySafetyMock = loadTsModule("src/lib/money-safety-mock.ts");
 const stripeConfig = loadTsModule("src/lib/stripe-config.ts");
 const paymentProvider = loadTsModule("src/lib/payment-provider.ts");
@@ -173,6 +174,10 @@ assert.ok(moneySafety.RISK_TYPES.includes("HOST_CANCELED_AFTER_BOOKING"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("STRIPE_CONNECT_ACCOUNT_CREATED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("STRIPE_CONNECT_ONBOARDING_LINK_CREATED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("HOST_REIMBURSEMENT_SCHEDULED"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("PAYMENT_REFUNDED"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("PAYMENT_AUTHORIZATION_RELEASED"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDEPOD_DISPUTE_OPENED"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDEPOD_DISPUTE_RESOLVED"));
 const moneySafetyUiSource = readFileSync("src/components/money-safety-ui.tsx", "utf8");
 assert.ok(
   moneySafetyUiSource.includes("Host reimbursement is based on verified final receipt and approved max fare."),
@@ -189,6 +194,7 @@ const stripeSource = [
   "src/lib/stripe-webhooks.ts",
   "src/lib/stripe-connect.ts",
   "src/lib/stripe-host-reimbursement.ts",
+  "src/lib/stripe-refunds.ts",
   "src/app/api/stripe/setup-intent/route.ts",
   "src/app/api/stripe/webhook/route.ts",
   "src/app/api/stripe/connect/onboarding/route.ts",
@@ -439,6 +445,7 @@ const createdStripeConnectAccounts = [];
 const retrievedStripeConnectAccounts = [];
 const createdStripeAccountLinks = [];
 const createdStripeTransfers = [];
+const createdStripeRefunds = [];
 const fakeStripe = {
   customers: {
     create: async (input) => {
@@ -488,6 +495,12 @@ const fakeStripe = {
     create: async (input, options) => {
       createdStripeTransfers.push({ input, options });
       return { id: `tr_test_${createdStripeTransfers.length}` };
+    },
+  },
+  refunds: {
+    create: async (input, options) => {
+      createdStripeRefunds.push({ input, options });
+      return { id: `re_test_${createdStripeRefunds.length}`, amount: input.amount, status: "succeeded" };
     },
   },
 };
@@ -1864,6 +1877,333 @@ assert.equal(failedTransfer.ok, false);
 assert.equal(failedTransfer.error, "STRIPE_TRANSFER_FAILED");
 assert.equal(failedTransfer.hostReimbursement.payoutState, "FAILED");
 assert.equal(failedTransfer.hostReimbursement.externalTransferId, null);
+
+const mockRefundPod = pod({
+  id: "refund-mock-captured",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("refund-mock-captured", "u1", { role: "HOST" }),
+    settlementMember("refund-mock-captured", "u2", { paymentState: "CAPTURED" }),
+  ],
+});
+moneySafetyMock.protectedPods.push(mockRefundPod);
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    id: "ridepod-pi-refund-mock",
+    provider: "MOCK",
+    podId: "refund-mock-captured",
+    podMemberId: "pm-refund-mock-captured-u2",
+    userId: "u2",
+    externalPaymentIntentId: "mock_pi_refund_captured",
+    amountAuthorizedCents: moneySafety.cents(50),
+    amountCapturedCents: moneySafety.cents(40),
+    amountRefundedCents: 0,
+    status: "SUCCEEDED",
+  }),
+);
+const partialMockRefund = await stripeRefunds.refundMemberPayment(
+  "pm-refund-mock-captured-u2",
+  moneySafety.cents(15),
+  "Settlement overcharge correction.",
+);
+assert.equal(partialMockRefund.ok, true);
+assert.equal(partialMockRefund.paymentIntent.amountRefundedCents, moneySafety.cents(15));
+assert.equal(partialMockRefund.member.paymentState, "PARTIALLY_REFUNDED");
+const fullMockRefund = await stripeRefunds.refundMemberPayment(
+  "pm-refund-mock-captured-u2",
+  moneySafety.cents(25),
+  "Rider dispute accepted.",
+);
+assert.equal(fullMockRefund.ok, true);
+assert.equal(fullMockRefund.paymentIntent.amountRefundedCents, moneySafety.cents(40));
+assert.equal(fullMockRefund.paymentIntent.status, "REFUNDED");
+assert.equal(fullMockRefund.member.paymentState, "REFUNDED");
+assert.ok(fullMockRefund.auditEvents.some((event) => event.eventType === "PAYMENT_REFUNDED"));
+
+const refundUncapturedPod = pod({
+  id: "refund-uncaptured",
+  hostUserId: "u1",
+  lifecycleState: "HOST_REPLACEMENT_NEEDED",
+  bookingState: "CANCELED_BY_HOST",
+  members: [
+    settlementMember("refund-uncaptured", "u1", { role: "HOST" }),
+    settlementMember("refund-uncaptured", "u2", { memberState: "CONFIRMED", paymentState: "AUTHORIZED" }),
+  ],
+});
+moneySafetyMock.protectedPods.push(refundUncapturedPod);
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    id: "ridepod-pi-refund-uncaptured",
+    provider: "MOCK",
+    podId: "refund-uncaptured",
+    podMemberId: "pm-refund-uncaptured-u2",
+    userId: "u2",
+    externalPaymentIntentId: "mock_pi_refund_uncaptured",
+    amountAuthorizedCents: moneySafety.cents(50),
+    amountCapturedCents: 0,
+    amountRefundedCents: 0,
+    status: "AUTHORIZED",
+  }),
+);
+assert.equal(
+  (await stripeRefunds.refundMemberPayment("pm-refund-uncaptured-u2", moneySafety.cents(10), "Host canceled before booking.")).error,
+  "PAYMENT_NOT_CAPTURED",
+);
+const releaseAuthorization = await stripeRefunds.releaseUncapturedAuthorization(
+  "pm-refund-uncaptured-u2",
+  "Host canceled before booking.",
+);
+assert.equal(releaseAuthorization.ok, true);
+assert.equal(releaseAuthorization.paymentIntent.status, "CANCELED");
+assert.equal(releaseAuthorization.member.paymentState, "AUTH_EXPIRED");
+assert.equal(releaseAuthorization.member.memberState, "CANCELED");
+assert.ok(releaseAuthorization.auditEvents.some((event) => event.eventType === "PAYMENT_AUTHORIZATION_RELEASED"));
+
+const refundTooMuch = await stripeRefunds.refundMemberPayment(
+  "pm-refund-mock-captured-u2",
+  moneySafety.cents(1),
+  "Cannot over-refund.",
+);
+assert.equal(refundTooMuch.ok, false);
+assert.equal(refundTooMuch.error, "REFUND_EXCEEDS_CAPTURED_AMOUNT");
+
+const stripeRefundPod = pod({
+  id: "refund-stripe-captured",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("refund-stripe-captured", "u1", { role: "HOST" }),
+    settlementMember("refund-stripe-captured", "u2", { paymentState: "CAPTURED" }),
+  ],
+});
+moneySafetyMock.protectedPods.push(stripeRefundPod);
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    id: "ridepod-pi-refund-stripe",
+    provider: "STRIPE",
+    podId: "refund-stripe-captured",
+    podMemberId: "pm-refund-stripe-captured-u2",
+    userId: "u2",
+    externalPaymentIntentId: "pi_refund_stripe_captured",
+    amountAuthorizedCents: moneySafety.cents(50),
+    amountCapturedCents: moneySafety.cents(30),
+    amountRefundedCents: 0,
+    status: "SUCCEEDED",
+  }),
+);
+const stripeRefund = await stripeRefunds.refundMemberPayment(
+  "pm-refund-stripe-captured-u2",
+  moneySafety.cents(30),
+  "Receipt rejected by admin.",
+  { env: stripeTestEnv, stripe: fakeStripe },
+);
+assert.equal(stripeRefund.ok, true);
+assert.equal(stripeRefund.provider, "STRIPE");
+assert.equal(stripeRefund.paymentIntent.amountRefundedCents, moneySafety.cents(30));
+assert.equal(stripeRefund.member.paymentState, "REFUNDED");
+assert.equal(createdStripeRefunds.at(-1).input.payment_intent, "pi_refund_stripe_captured");
+assert.equal(createdStripeRefunds.at(-1).input.amount, moneySafety.cents(30));
+assert.equal(createdStripeRefunds.at(-1).input.metadata.refundType, "ridepod_refund");
+assert.equal(createdStripeRefunds.at(-1).options.idempotencyKey, "ridepod-refund-ridepod-pi-refund-stripe-3000");
+
+const stripeRefundMissingTargetPod = pod({
+  id: "refund-stripe-missing-target",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("refund-stripe-missing-target", "u1", { role: "HOST" }),
+    settlementMember("refund-stripe-missing-target", "u2", { paymentState: "CAPTURED" }),
+  ],
+});
+moneySafetyMock.protectedPods.push(stripeRefundMissingTargetPod);
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    id: "ridepod-pi-refund-missing-target",
+    provider: "STRIPE",
+    podId: "refund-stripe-missing-target",
+    podMemberId: "pm-refund-stripe-missing-target-u2",
+    userId: "u2",
+    externalPaymentIntentId: null,
+    amountCapturedCents: moneySafety.cents(20),
+    status: "SUCCEEDED",
+  }),
+);
+const missingRefundTarget = await stripeRefunds.refundMemberPayment(
+  "pm-refund-stripe-missing-target-u2",
+  moneySafety.cents(10),
+  "Missing Stripe refund target.",
+  { env: stripeTestEnv, stripe: fakeStripe },
+);
+assert.equal(missingRefundTarget.ok, false);
+assert.equal(missingRefundTarget.error, "STRIPE_REFUND_TARGET_REQUIRED");
+assert.equal(stripeRefundMissingTargetPod.lifecycleState, "ADMIN_REVIEW");
+
+const stripeRefundFailurePod = pod({
+  id: "refund-stripe-failure",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("refund-stripe-failure", "u1", { role: "HOST" }),
+    settlementMember("refund-stripe-failure", "u2", { paymentState: "CAPTURED" }),
+  ],
+});
+moneySafetyMock.protectedPods.push(stripeRefundFailurePod);
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    id: "ridepod-pi-refund-stripe-failure",
+    provider: "STRIPE",
+    podId: "refund-stripe-failure",
+    podMemberId: "pm-refund-stripe-failure-u2",
+    userId: "u2",
+    externalPaymentIntentId: "pi_refund_stripe_failure",
+    amountCapturedCents: moneySafety.cents(20),
+    amountRefundedCents: 0,
+    status: "SUCCEEDED",
+  }),
+);
+const failedStripeRefund = await stripeRefunds.refundMemberPayment(
+  "pm-refund-stripe-failure-u2",
+  moneySafety.cents(10),
+  "Stripe refund failure.",
+  {
+    env: stripeTestEnv,
+    stripe: {
+      refunds: {
+        create: async () => {
+          throw new Error("Stripe refund failed.");
+        },
+      },
+    },
+  },
+);
+assert.equal(failedStripeRefund.ok, false);
+assert.equal(failedStripeRefund.error, "STRIPE_REFUND_FAILED");
+assert.equal(failedStripeRefund.paymentIntent.amountRefundedCents, 0);
+assert.equal(failedStripeRefund.member.paymentState, "CAPTURED");
+
+const disputePod = pod({
+  id: "refund-dispute",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("refund-dispute", "u1", { role: "HOST" }),
+    settlementMember("refund-dispute", "u2", { paymentState: "CAPTURED" }),
+  ],
+  receipts: [{ ...adminReviewReimbursementPod.receipts[0], id: "receipt-refund-dispute", podId: "refund-dispute" }],
+});
+moneySafetyMock.protectedPods.push(disputePod);
+const disputeSettlement = settlementRecord("refund-dispute");
+moneySafetyMock.mockSettlements.push(disputeSettlement);
+moneySafetyMock.mockHostReimbursements.push(hostReimbursementRecord("refund-dispute", disputeSettlement.id, "u1"));
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    id: "ridepod-pi-dispute",
+    provider: "MOCK",
+    podId: "refund-dispute",
+    podMemberId: "pm-refund-dispute-u2",
+    userId: "u2",
+    amountCapturedCents: moneySafety.cents(30),
+    amountRefundedCents: 0,
+    status: "SUCCEEDED",
+  }),
+);
+const openedDispute = stripeRefunds.openRidePodDispute(
+  "refund-dispute",
+  "pm-refund-dispute-u2",
+  "Rider disputes host fault.",
+  { source: "manual_qa" },
+);
+assert.equal(openedDispute.ok, true);
+assert.equal(openedDispute.pod.lifecycleState, "DISPUTE_HOLD");
+assert.equal(openedDispute.member.paymentState, "DISPUTED");
+assert.equal(openedDispute.paymentIntent.status, "DISPUTED");
+assert.equal(moneySafetyMock.mockHostReimbursements.find((reimbursement) => reimbursement.podId === "refund-dispute").payoutState, "HELD_FOR_REVIEW");
+assert.ok(moneySafetyMock.mockRiskFlags.some((flag) => flag.riskType === "STRIPE_PAYMENT_DISPUTE" && flag.podId === "refund-dispute"));
+assert.ok(openedDispute.auditEvents.some((event) => event.eventType === "RIDEPOD_DISPUTE_OPENED"));
+const resolvedRiderRefund = await stripeRefunds.resolveRidePodDispute(
+  "admin-1",
+  "refund-dispute",
+  "RIDER_REFUND",
+  "Rider dispute accepted.",
+  { podMemberId: "pm-refund-dispute-u2", refundAmountCents: moneySafety.cents(30) },
+);
+assert.equal(resolvedRiderRefund.ok, true);
+assert.equal(resolvedRiderRefund.refundResult.ok, true);
+assert.equal(resolvedRiderRefund.member.paymentState, "REFUNDED");
+assert.ok(resolvedRiderRefund.auditEvents.some((event) => event.eventType === "RIDEPOD_DISPUTE_RESOLVED"));
+
+const disputeReleasePod = pod({
+  id: "refund-dispute-release",
+  hostUserId: "u1",
+  lifecycleState: "HOST_REPLACEMENT_NEEDED",
+  bookingState: "CANCELED_BY_HOST",
+  members: [
+    settlementMember("refund-dispute-release", "u1", { role: "HOST" }),
+    settlementMember("refund-dispute-release", "u2", { memberState: "CONFIRMED", paymentState: "AUTHORIZED" }),
+  ],
+});
+moneySafetyMock.protectedPods.push(disputeReleasePod);
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    id: "ridepod-pi-dispute-release",
+    provider: "MOCK",
+    podId: "refund-dispute-release",
+    podMemberId: "pm-refund-dispute-release-u2",
+    userId: "u2",
+    amountCapturedCents: 0,
+    status: "AUTHORIZED",
+  }),
+);
+stripeRefunds.openRidePodDispute("refund-dispute-release", "pm-refund-dispute-release-u2", "Host canceled before booking.");
+const resolvedRelease = await stripeRefunds.resolveRidePodDispute(
+  "admin-1",
+  "refund-dispute-release",
+  "RIDER_REFUND",
+  "Release authorization after host cancellation.",
+  { podMemberId: "pm-refund-dispute-release-u2" },
+);
+assert.equal(resolvedRelease.ok, true);
+assert.equal(resolvedRelease.refundResult.ok, true);
+assert.equal(resolvedRelease.member.paymentState, "AUTH_EXPIRED");
+assert.equal(resolvedRelease.paymentIntent.status, "CANCELED");
+
+const paidTransferDisputePod = pod({
+  id: "refund-paid-transfer-dispute",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("refund-paid-transfer-dispute", "u1", { role: "HOST" }),
+    settlementMember("refund-paid-transfer-dispute", "u2", { paymentState: "CAPTURED" }),
+  ],
+});
+moneySafetyMock.protectedPods.push(paidTransferDisputePod);
+const paidTransferSettlement = settlementRecord("refund-paid-transfer-dispute");
+moneySafetyMock.mockSettlements.push(paidTransferSettlement);
+moneySafetyMock.mockHostReimbursements.push(
+  hostReimbursementRecord("refund-paid-transfer-dispute", paidTransferSettlement.id, "u1", {
+    payoutState: "PAID",
+    externalTransferId: "tr_paid_no_auto_reversal",
+    paidAt: now,
+  }),
+);
+const paidTransferDispute = stripeRefunds.openRidePodDispute(
+  "refund-paid-transfer-dispute",
+  null,
+  "Host transfer already paid; review manually.",
+);
+assert.equal(paidTransferDispute.ok, true);
+assert.equal(paidTransferDispute.pod.lifecycleState, "DISPUTE_HOLD");
+const paidTransferReimbursement = moneySafetyMock.mockHostReimbursements.find((reimbursement) => reimbursement.podId === "refund-paid-transfer-dispute");
+assert.equal(paidTransferReimbursement.payoutState, "PAID");
+assert.equal(paidTransferReimbursement.externalTransferId, "tr_paid_no_auto_reversal");
+assert.equal(stripeSource.includes("wallet"), false);
 
 const receiptNeedsInfoPod = pod({
   id: "settlement-needs-info",
