@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { JoinFlow } from "@/components/join-flow";
-import { SectionHeader } from "@/components/ui";
 import { getPod } from "@/lib/mock-data";
 
 export default async function JoinPodPage({
@@ -13,8 +12,7 @@ export default async function JoinPodPage({
   if (!pod) notFound();
 
   return (
-    <div className="grid gap-5">
-      <SectionHeader eyebrow="Join flow" title="Claim your seat" />
+    <div className="grid min-h-[calc(100vh-8rem)] place-items-start justify-center">
       <JoinFlow pod={pod} />
     </div>
   );
