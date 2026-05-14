@@ -42,8 +42,8 @@ export const designVariants: Record<DesignVariantSlug, DesignVariant> = {
     slug: "fintech",
     name: "Fintech",
     bestFor: "Trust and payments",
-    tone: "Structured, crisp, payment-protection first",
-    headline: "Protected seats before anyone books.",
+    tone: "Structured, crisp, money-lock first",
+    headline: "Seat authorizations before anyone books.",
     subhead:
       "A calm, banking-grade RidePod concept where deposits, authorizations, and lock deadlines are always visible.",
     navLabel: "Fintech",

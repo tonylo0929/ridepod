@@ -183,6 +183,23 @@ assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDEPOD_DISPUTE_RESOLVED"));
 const moneySafetyUiSource = readFileSync("src/components/money-safety-ui.tsx", "utf8");
 const uiSource = readFileSync("src/components/ui.tsx", "utf8");
 const podDetailSource = readFileSync("src/app/(app)/pods/[id]/page.tsx", "utf8");
+const legalCopySource = [
+  "src/app/layout.tsx",
+  "src/app/invite/[id]/page.tsx",
+  "src/components/create-pod-choose-type.tsx",
+  "src/components/create-pod-form.tsx",
+  "src/components/design-variation.tsx",
+  "src/components/join-flow.tsx",
+  "src/components/landing-page.tsx",
+  "src/components/money-safety-ui.tsx",
+  "src/components/premium-join-pod-flow.tsx",
+  "src/components/premium-pod-detail.tsx",
+  "src/components/settlement-page.tsx",
+  "src/lib/design-variants.ts",
+  "src/lib/money-safety.ts",
+  "src/lib/money-safety-mock.ts",
+  "src/lib/pod-host-replacement.ts",
+].map((path) => readFileSync(path, "utf8")).join("\n");
 assert.ok(
   moneySafetyUiSource.includes("Host reimbursement is based on verified final receipt and approved max fare."),
 );
@@ -194,6 +211,30 @@ assert.ok(moneySafetyUiSource.includes("Quote approved — host can book"));
 assert.equal(moneySafetyUiSource.includes("??host"), false);
 assert.ok(moneySafetyUiSource.includes("Off-app payments are not protected"));
 assert.ok(podDetailSource.includes("No confirmed riders yet. Seats lock after payment authorization."));
+assert.ok(legalCopySource.includes("RidePod helps users coordinate planned ride pods."));
+assert.ok(legalCopySource.includes("RidePod does not provide drivers."));
+assert.ok(legalCopySource.includes("The host books the external ride."));
+assert.ok(legalCopySource.includes("Host may preview fare early, but protected booking unlocks only after required participants authorize payment."));
+assert.ok(legalCopySource.includes("Host reimbursement is based on verified final receipt and approved max fare."));
+assert.ok(legalCopySource.includes("You will never pay more than your approved max unless you approve a higher fare."));
+for (const bannedCopy of [
+  "prepaid and protected",
+  "safe and secure",
+  "full refund",
+  "easy refund",
+  "guaranteed safety",
+  "guaranteed refund",
+  "guaranteed reimbursement",
+  "insured ride",
+  "official Uber",
+  "official Lyft",
+  "Uber/Lyft integration",
+  "RidePod driver",
+  "100% safe",
+  "verified safe",
+]) {
+  assert.equal(legalCopySource.toLowerCase().includes(bannedCopy.toLowerCase()), false, `Risky copy remains: ${bannedCopy}`);
+}
 for (const label of [
   "Women-only",
   "Mixed pod",
@@ -1408,7 +1449,7 @@ assert.equal(beforeBookingCancel.pod.originalHostUserId, "u1");
 assert.ok(beforeBookingCancel.pod.hostReplacementStartedAt);
 assert.equal(
   beforeBookingCancel.participantMessage,
-  "Host canceled. Your pod is still active while RidePod looks for a replacement host. Your payment authorization will not be captured unless a replacement host books the ride.",
+  "Host canceled. Your pod is still active while RidePod looks for a replacement host. Your payment authorization will not be captured unless a replacement host books the external ride.",
 );
 assert.ok(beforeBookingCancel.auditEvents.some((event) => event.eventType === "HOST_CANCELED_BEFORE_BOOKING"));
 assert.ok(beforeBookingCancel.auditEvents.some((event) => event.eventType === "HOST_REPLACEMENT_STARTED"));

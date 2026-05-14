@@ -18,8 +18,8 @@ const steps = [
     body: "Every seat gets a financial owner before anyone books a car.",
   },
   {
-    title: "Host books Uber or taxi",
-    body: "One host handles the manual booking with clear max fare approval.",
+    title: "Host books externally",
+    body: "RidePod does not provide drivers. The host books the external ride under the approved max.",
   },
   {
     title: "Everyone splits fairly",
@@ -50,11 +50,10 @@ export function LandingPage() {
               Scheduled pods, not instant ride-hailing
             </div>
             <h1 className="mt-5 max-w-3xl text-5xl font-black leading-[1.02] tracking-tight text-zinc-950 sm:text-6xl lg:text-7xl">
-              Planned shared rides, prepaid and protected.
+              Planned ride pods with money lock.
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-8 text-zinc-700">
-              RidePod helps people form planned shared ride groups, lock commitments, then let
-              one trusted host book Uber, Lyft, taxi, or private car manually.
+              RidePod helps users coordinate planned ride pods. RidePod does not provide drivers. The host books the external ride.
             </p>
             <div className="mt-7 grid gap-3 sm:flex">
               <Link
@@ -96,7 +95,7 @@ export function LandingPage() {
                   </div>
                 </div>
                 <div className="rounded-lg bg-emerald-500 p-3 text-zinc-950">
-                  <p className="text-xs font-bold uppercase">Host protected</p>
+                  <p className="text-xs font-bold uppercase">Money lock ready</p>
                   <p className="mt-1 text-sm font-semibold">
                     No booking until each seat is authorized.
                   </p>

@@ -1010,7 +1010,7 @@ function InfoNotice({
         <Info className="mt-0.5 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
         <div className="text-sm font-semibold leading-5">
           <p>
-            Host can book with any supported ride app or taxi, as long as the final fare is at or below the approved max fare.
+            RidePod helps users coordinate planned ride pods. RidePod does not provide drivers. The host books the external ride at or below the approved max fare.
           </p>
           <p className="mt-1 text-[var(--rp-muted)]">Best value usually starts at 3+ riders.</p>
           <p className="mt-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--rp-primary)]">
@@ -1109,7 +1109,7 @@ function PeopleVehicleStep({
 
           <div className="mt-auto pt-7">
             <p className="mb-3 text-center text-xs font-bold text-[var(--rp-muted)]">
-              {selectedRideOption?.title ?? "Host's Choice"} selected. Host books under approved max fare.
+              {selectedRideOption?.title ?? "Host's Choice"} selected. Host books the external ride under approved max fare.
             </p>
             <PrimaryButton onClick={onContinue}>Continue</PrimaryButton>
           </div>
@@ -1218,7 +1218,7 @@ function PricingSummaryCard({
         </div>
       </dl>
       <p className="mx-auto mt-5 max-w-[260px] text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
-        Host books under approved max fare. Everyone pays their share.
+        Host books the external ride under approved max fare. Everyone pays their share.
       </p>
     </section>
   );
@@ -1362,7 +1362,7 @@ function DetailSummaryCard({
     {
       icon: ShieldCheck,
       label: "Fare rule",
-      value: "Host books under max fare.",
+      value: "Host books the external ride under max fare.",
     },
     {
       icon: MapPin,
@@ -1675,7 +1675,7 @@ export function CreatePodChooseType() {
     bags: 2,
     rideOption: "hosts_choice",
     vehicleType: "Host's Choice",
-    priceSource: "Host books under approved max fare",
+    priceSource: "Host books the external ride under approved max fare",
   });
   const [pricing] = useState<PricingState>({
     estimatedFare: 84,

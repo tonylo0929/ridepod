@@ -167,7 +167,7 @@ function ProtectedPaymentBanner({ compact }: { compact?: boolean }) {
       )}
     >
       <ShieldCheck className="h-5 w-5 shrink-0 text-[#ffd36a]" />
-      <span>Payment is protected until the ride is completed.</span>
+      <span>Your max charge is authorized before the host books externally.</span>
     </div>
   );
 }
@@ -256,14 +256,14 @@ function TripDetailsCard() {
 function SafetyCard() {
   const items = [
     "Every seat has a financial owner",
-    "Payment is held until ride complete",
+    "Final settlement uses a verified receipt",
     "No cash or pay-later",
-    "You\u2019re protected from no-shows",
+    "No-show rules apply through RidePod review",
   ];
 
   return (
     <PremiumCard className="p-4">
-      <h2 className="text-base font-black text-white">Why RidePod is safe</h2>
+      <h2 className="text-base font-black text-white">RidePod money lock</h2>
       <div className="mt-3 grid gap-2">
         {items.map((item) => (
           <div key={item} className="flex items-center gap-2 text-sm font-semibold text-[#d7dee8]">
@@ -302,7 +302,7 @@ function RulesStep({
     },
     {
       icon: Clock3,
-      text: "Cancel before Mon, May 13 \u2022 6:00 PM for easy refund.",
+      text: "Cancel before Mon, May 13 \u2022 6:00 PM may release your authorization when eligible.",
       tone: "gold",
     },
     {
@@ -373,7 +373,7 @@ function PaymentStep({ authorized }: { authorized: boolean }) {
         <h1 className="text-2xl font-black tracking-tight text-white">Payment authorization</h1>
         <div className="mt-3 flex items-center gap-2 text-xs font-bold text-[#8eea7a]">
           <ShieldCheck className="h-4 w-4" />
-          Payment is protected until the ride is completed.
+          Your max charge is authorized before the host books externally.
         </div>
 
         <div className="mt-5 divide-y divide-white/10">
@@ -397,7 +397,7 @@ function PaymentStep({ authorized }: { authorized: boolean }) {
             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#8eea7a]" />
             <p className="text-xs font-semibold leading-5 text-[#cbd5e1]">
               We’ll only charge you after the ride, and never more than the max charge.
-              You can cancel before the deadline for a full refund.
+              You will never pay more than your approved max unless you approve a higher fare. Cancellation before the deadline may release your authorization when eligible.
             </p>
           </div>
         </div>

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "RidePod",
-  description: "Planned shared rides, prepaid and protected.",
+  description: "Planned ride pod coordination with money lock and verified receipt settlement.",
 };
 
 export default function RootLayout({

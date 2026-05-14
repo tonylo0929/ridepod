@@ -295,7 +295,7 @@ export const protectedPods: ProtectedPod[] = [
     approvedMaxTotalFareCents: cents(90),
     currency: "USD",
     ridepodFeeCents: cents(2),
-    providerPolicy: "Host books under approved max fare. Everyone pays their share.",
+    providerPolicy: "Host books the external ride under approved max fare. Everyone pays their share.",
     cancellationPolicyId: "standard-airport",
     lockDeadlineAt: "2026-05-13T20:00:00.000-07:00",
     bookingDeadlineAt: "2026-05-14T07:00:00.000-07:00",

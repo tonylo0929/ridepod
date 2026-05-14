@@ -240,7 +240,7 @@ export function RouteDetailsCard() {
 
 export function PaymentProtectionCard() {
   const items = [
-    "Your payment is protected until the ride is completed.",
+    "Your max charge is authorized before the host books externally.",
     "No cash or pay-later.",
     "Host never has to chase people for money.",
   ];
@@ -310,7 +310,7 @@ export function MembersCard() {
 
 export function RulesCard() {
   const rules = [
-    "Cancel before the deadline for easy refund.",
+    "Cancel before the deadline may release your authorization when eligible.",
     "Cancel after lock and penalties may apply.",
     "If someone replaces your seat, you may receive credit.",
     "No cash or pay-later. Pay in app only.",

@@ -246,9 +246,9 @@ function HostTrustCard() {
 
 function ProtectionBadges() {
   const items = [
-    ["Payment protected", "Your payment is safe and secure."],
+    ["Payment protected", "Your max charge is authorized before the host books externally."],
     ["Confirmed members only", "All members are verified."],
-    ["No cash or pay-later", "Everything is paid upfront."],
+    ["No cash or pay-later", "Off-app payments are not protected."],
   ];
 
   return (
@@ -278,7 +278,7 @@ function InvitePriceCard() {
         <PriceRow label="Max charge" value={invite.maxCharge} />
       </div>
       <p className="mt-4 rounded-[18px] bg-[var(--rp-card-soft)] p-3 text-sm font-black text-[var(--rp-muted-strong)]">
-        You&apos;ll only pay your fair share. Never more.
+        You will never pay more than your approved max unless you approve a higher fare.
       </p>
     </InviteCard>
   );

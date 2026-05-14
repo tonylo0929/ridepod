@@ -312,7 +312,7 @@ export function ScheduledPodForm() {
         <div>
           <p className="text-sm font-bold text-zinc-950">I can host</p>
           <p className="mt-1 text-xs text-zinc-600">
-            Host books Uber, Lyft, taxi, or private car after seats are financially owned.
+            RidePod helps users coordinate planned ride pods. RidePod does not provide drivers. The host books the external ride.
           </p>
         </div>
         <ToggleRight className={cn("h-8 w-8", canHost ? "text-emerald-700" : "text-zinc-300")} />

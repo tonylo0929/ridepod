@@ -43,7 +43,7 @@ function variantIntroCopy(variant: DesignVariant) {
     travel:
       "Route, date, time, terminal, and itinerary state dominate the screen for trip-planning clarity.",
     premium:
-      "Verified members, reliability metrics, and host protection get a black-car transfer treatment.",
+      "Verified members, reliability metrics, and money-lock status get a black-car transfer treatment.",
     campus:
       "The interface makes shared rides feel low-cost, quick to share, and easy for student groups.",
   } as const;
@@ -338,7 +338,7 @@ function DetailScreen({ variant, pod }: { variant: DesignVariant; pod: RidePod }
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className={cn("border p-4", variant.radius, variant.card)}>
           <div className="flex flex-wrap items-center gap-2">
-            <Pill variant={variant} tone="accent">Host protected</Pill>
+            <Pill variant={variant} tone="accent">Money lock</Pill>
             <Pill variant={variant} tone="success">Payment authorized</Pill>
             <Pill variant={variant} tone="warning">No-show rules active</Pill>
           </div>
@@ -413,7 +413,7 @@ function CreateScreen({ variant }: { variant: DesignVariant }) {
           <PlusCircle className={cn("h-8 w-8", variant.accentText)} />
           <h3 className="mt-4 text-xl font-black">Host preference on</h3>
           <p className={cn("mt-2 text-sm leading-6", variant.muted)}>
-            RidePod will show the pod as forming until every seat has a deposit or authorization. Host protected means no one books before the money state is clear.
+            RidePod will show the pod as forming until every seat has a deposit or authorization. Money lock means the host does not book before the payment state is clear.
           </p>
           <button className={cn("mt-5 h-12 w-full font-black", variant.radius, variant.button)}>
             Preview pod
@@ -575,7 +575,7 @@ export function DesignVariationPage({ variant }: { variant: DesignVariant }) {
           <div className="flex items-start gap-3">
             <Sparkles className={cn("mt-1 h-5 w-5", variant.accentText)} />
             <p className={cn("text-sm leading-6", variant.muted)}>
-              Design-only route. It uses the same RidePod mock data and preserves the MVP logic: planned pods, locked seats, mock deposits, payment authorization, host protection, waitlist replacement, and no-show rules.
+              Design-only route. It uses the same RidePod mock data and preserves the MVP logic: planned pods, locked seats, mock deposits, payment authorization, money lock, waitlist replacement, and no-show rules.
             </p>
           </div>
         </section>

@@ -394,7 +394,7 @@ export function HostReplacementModePanel({ podId }: { podId: string }) {
           <div>
             <h1 className="text-2xl font-black text-[var(--rp-text)]">Host canceled. Your pod is still active.</h1>
             <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-              RidePod is looking for a replacement host. Your payment authorization will not be captured unless a replacement host books the ride.
+              RidePod is looking for a replacement host. Your payment authorization will not be captured unless a replacement host books the external ride.
             </p>
           </div>
         </div>

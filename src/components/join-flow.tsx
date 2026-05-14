@@ -100,7 +100,7 @@ export function JoinFlow({ pod }: { pod: RidePod }) {
           <h1 className="mt-4 text-2xl font-bold text-zinc-950">Payment authorization</h1>
           <div className="mt-4 rounded-lg bg-zinc-50 p-4 text-sm text-zinc-700">
             <p className="font-bold text-zinc-950">Your max charge: {formatMoney(maxCharge)}</p>
-            <p className="mt-2">You will never pay more than this unless you approve a higher fare.</p>
+            <p className="mt-2">You will never pay more than your approved max unless you approve a higher fare.</p>
             <p className="mt-2">Your seat is confirmed only after payment authorization.</p>
             <p className="mt-2">Chat and exact pickup unlock after your seat is locked.</p>
             <p>Expected charge: {formatMoney(pod.estimatedShare + pod.platformFee)}</p>
