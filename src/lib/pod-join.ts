@@ -12,6 +12,7 @@ import {
 } from "./money-safety";
 import { checkPodEligibility } from "./pod-eligibility";
 import { mockAuditEvents, mockRiskFlags, protectedPods, protectedUsers } from "./money-safety-mock";
+import { getPaymentProvider } from "./payment-provider";
 
 type JoinServiceResult = {
   ok: boolean;
@@ -221,6 +222,25 @@ export function authorizeSeat(userId: string, podId: string): JoinServiceResult 
   const now = new Date().toISOString();
   const member = getOrCreateMember(pod, userId, now);
   const mockPaymentIntentId = member.mockPaymentIntentId ?? makeMockPaymentIntentId(podId, userId);
+  const provider = getPaymentProvider();
+  const paymentIntentResult = provider.authorizeSeat({
+    podId,
+    podMemberId: member.id,
+    userId,
+    amountAuthorizedCents: Math.ceil(pod.approvedMaxTotalFareCents / pod.maxSeats) + pod.ridepodFeeCents,
+    externalPaymentIntentId: mockPaymentIntentId,
+  });
+
+  if (!paymentIntentResult.ok) {
+    return {
+      ok: false,
+      pod,
+      member,
+      eligibility,
+      auditEvents: [],
+      error: paymentIntentResult.error ?? "PAYMENT_AUTHORIZATION_FAILED",
+    };
+  }
 
   member.paymentState = "AUTHORIZED";
   member.memberState = "CONFIRMED";

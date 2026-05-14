@@ -136,6 +136,32 @@ export const PAYMENT_STATES = [
 
 export type PaymentState = (typeof PAYMENT_STATES)[number];
 
+export const PAYMENT_PROVIDERS = ["MOCK", "STRIPE"] as const;
+export type PaymentProvider = (typeof PAYMENT_PROVIDERS)[number];
+
+export const PAYMENT_INTENT_TYPES = [
+  "SEAT_AUTHORIZATION",
+  "DEPOSIT",
+  "FINAL_CAPTURE",
+  "PLATFORM_FEE",
+] as const;
+
+export type RidePodPaymentIntentType = (typeof PAYMENT_INTENT_TYPES)[number];
+
+export const PAYMENT_INTENT_STATUSES = [
+  "CREATED",
+  "REQUIRES_PAYMENT_METHOD",
+  "AUTHORIZING",
+  "AUTHORIZED",
+  "SUCCEEDED",
+  "CANCELED",
+  "FAILED",
+  "REFUNDED",
+  "DISPUTED",
+] as const;
+
+export type RidePodPaymentIntentStatus = (typeof PAYMENT_INTENT_STATUSES)[number];
+
 export const CHECKIN_STATES = [
   "NOT_CHECKED_IN",
   "CHECKED_IN",
@@ -435,6 +461,28 @@ export type RiskFlag = {
   notes: string | null;
   createdAt: string;
   updatedAt: string;
+};
+
+export type RidePodPaymentIntent = {
+  id: string;
+  provider: PaymentProvider;
+  intentType: RidePodPaymentIntentType;
+  podId: string;
+  podMemberId: string;
+  userId: string;
+  externalPaymentIntentId: string | null;
+  amountAuthorizedCents: MoneyCents;
+  amountCapturedCents: MoneyCents;
+  status: RidePodPaymentIntentStatus;
+  authorizationExpiresAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ProcessedStripeWebhookEvent = {
+  id: string;
+  eventType: string;
+  processedAt: string;
 };
 
 export type EligibilityResult = {

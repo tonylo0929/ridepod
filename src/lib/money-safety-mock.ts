@@ -5,9 +5,11 @@ import {
   getMoneySafetySnapshot,
   type AuditEvent,
   type HostReimbursement,
+  type ProcessedStripeWebhookEvent,
   type ProtectedPod,
   type ProtectedPodMember,
   type ProtectedUser,
+  type RidePodPaymentIntent,
   type RiskFlag,
   type Settlement,
 } from "@/lib/money-safety";
@@ -490,6 +492,8 @@ export const mockAuditEvents: AuditEvent[] = [];
 export const mockRiskFlags: RiskFlag[] = [];
 export const mockSettlements: Settlement[] = [];
 export const mockHostReimbursements: HostReimbursement[] = [];
+export const mockPaymentIntents: RidePodPaymentIntent[] = [];
+export const mockProcessedStripeWebhookEvents: ProcessedStripeWebhookEvent[] = [];
 
 export function getProtectedUser(userId: string) {
   return protectedUsers.find((user) => user.id === userId) ?? protectedUsers[0];

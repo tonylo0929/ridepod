@@ -62,6 +62,8 @@ const podHostReplacement = loadTsModule("src/lib/pod-host-replacement.ts");
 const podSettlement = loadTsModule("src/lib/pod-settlement.ts");
 const podAdminReview = loadTsModule("src/lib/pod-admin-review.ts");
 const moneySafetyMock = loadTsModule("src/lib/money-safety-mock.ts");
+const stripeConfig = loadTsModule("src/lib/stripe-config.ts");
+const paymentProvider = loadTsModule("src/lib/payment-provider.ts");
 
 assert.deepEqual(moneySafety.POD_LIFECYCLE_STATES, [
   "DRAFT",
@@ -128,6 +130,15 @@ assert.deepEqual(moneySafety.PAYMENT_STATES, [
   "CAPTURE_FAILED",
   "DISPUTED",
 ]);
+assert.deepEqual(moneySafety.PAYMENT_PROVIDERS, ["MOCK", "STRIPE"]);
+assert.deepEqual(moneySafety.PAYMENT_INTENT_TYPES, [
+  "SEAT_AUTHORIZATION",
+  "DEPOSIT",
+  "FINAL_CAPTURE",
+  "PLATFORM_FEE",
+]);
+assert.ok(moneySafety.PAYMENT_INTENT_STATUSES.includes("AUTHORIZED"));
+assert.ok(moneySafety.PAYMENT_INTENT_STATUSES.includes("SUCCEEDED"));
 assert.deepEqual(moneySafety.GENDER_MODES, ["MIXED", "WOMEN_ONLY"]);
 assert.equal(moneySafety.getGenderModeLabel("MIXED"), "Mixed pod");
 assert.equal(moneySafety.getGenderModeLabel("WOMEN_ONLY"), "Women-only");
@@ -160,6 +171,64 @@ assert.equal(
   moneySafetyUiSource.includes("Host reimbursement is based on the verified final receipt and approved max fare."),
   false,
 );
+
+assert.equal(stripeConfig.getConfiguredPaymentProvider({}), "MOCK");
+assert.equal(stripeConfig.getConfiguredPaymentProviderName({}), "MOCK");
+assert.equal(stripeConfig.getConfiguredPaymentProvider({ PAYMENT_PROVIDER: "MOCK" }), "MOCK");
+assert.equal(stripeConfig.getConfiguredPaymentProvider({ PAYMENT_PROVIDER: "STRIPE_TEST" }), "STRIPE");
+assert.equal(stripeConfig.getConfiguredPaymentProviderName({ PAYMENT_PROVIDER: "STRIPE_TEST" }), "STRIPE_TEST");
+assert.equal(stripeConfig.getConfiguredPaymentProvider({ RIDEPOD_PAYMENT_PROVIDER: "STRIPE_TEST" }), "STRIPE");
+assert.deepEqual(stripeConfig.getStripeTestConfig({ STRIPE_SECRET_KEY: "sk_live_bad" }), {
+  ok: false,
+  error: "STRIPE_LIVE_KEYS_NOT_ALLOWED",
+});
+assert.deepEqual(stripeConfig.getStripeTestConfig({}), {
+  ok: false,
+  error: "STRIPE_SECRET_KEY_REQUIRED",
+});
+assert.deepEqual(stripeConfig.getStripeTestConfig({ STRIPE_SECRET_KEY: "sk_test_123", NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_live_bad" }), {
+  ok: false,
+  error: "STRIPE_LIVE_KEYS_NOT_ALLOWED",
+});
+assert.equal(stripeConfig.getStripeTestConfig({ STRIPE_SECRET_KEY: "sk_test_123" }).ok, true);
+assert.equal(stripeConfig.assertStripeTestModeConfig({ STRIPE_SECRET_KEY: "sk_test_123" }).secretKey, "sk_test_123");
+assert.throws(
+  () => stripeConfig.assertStripeTestModeConfig({ STRIPE_SECRET_KEY: "sk_live_bad" }),
+  /STRIPE_LIVE_KEYS_NOT_ALLOWED/,
+);
+assert.equal(paymentProvider.getPaymentProvider({}).provider, "MOCK");
+const stripeProviderMissingConfig = paymentProvider.getPaymentProvider({ PAYMENT_PROVIDER: "STRIPE_TEST" });
+assert.equal(stripeProviderMissingConfig.provider, "STRIPE");
+assert.deepEqual(
+  stripeProviderMissingConfig.createSeatAuthorization({
+    podId: "pod-stripe-config",
+    podMemberId: "pm-stripe-config",
+    userId: "u2",
+    amountAuthorizedCents: 1200,
+  }),
+  {
+    ok: false,
+    provider: "STRIPE",
+    paymentIntent: null,
+    error: "STRIPE_SECRET_KEY_REQUIRED",
+  },
+);
+const stripeProviderStub = paymentProvider.getPaymentProvider({
+  PAYMENT_PROVIDER: "STRIPE_TEST",
+  STRIPE_SECRET_KEY: "sk_test_123",
+});
+assert.equal(
+  stripeProviderStub.authorizeSeat({
+    podId: "pod-stripe-stub",
+    podMemberId: "pm-stripe-stub",
+    userId: "u2",
+    amountAuthorizedCents: 1200,
+  }).error,
+  "STRIPE_SEAT_AUTHORIZATION_NOT_IMPLEMENTED",
+);
+assert.equal(stripeProviderStub.createSetupIntent().error, "STRIPE_SETUP_INTENT_NOT_IMPLEMENTED");
+assert.equal(stripeProviderStub.captureAuthorizedPayment().error, "STRIPE_CAPTURE_NOT_IMPLEMENTED");
+assert.equal(stripeProviderStub.cancelAuthorization().error, "STRIPE_CANCEL_AUTHORIZATION_NOT_IMPLEMENTED");
 
 const now = "2026-05-13T12:00:00.000Z";
 
@@ -470,6 +539,15 @@ assert.equal(authorization.member.platformFeeCents, singleLockPod.ridepodFeeCent
 assert.ok(authorization.member.lockedAt);
 assert.ok(authorization.mockPaymentIntentId.startsWith("mock_pi_join-single-lock_u2_"));
 assert.equal(authorization.member.mockPaymentIntentId, authorization.mockPaymentIntentId);
+const localMockPaymentIntent = moneySafetyMock.mockPaymentIntents.find(
+  (paymentIntent) => paymentIntent.podMemberId === authorization.member.id,
+);
+assert.equal(localMockPaymentIntent.provider, "MOCK");
+assert.equal(localMockPaymentIntent.intentType, "SEAT_AUTHORIZATION");
+assert.equal(localMockPaymentIntent.externalPaymentIntentId, authorization.mockPaymentIntentId);
+assert.equal(localMockPaymentIntent.amountAuthorizedCents, authorization.member.maxChargeCents);
+assert.equal(localMockPaymentIntent.amountCapturedCents, 0);
+assert.equal(localMockPaymentIntent.status, "AUTHORIZED");
 assert.equal(authorization.pod.lifecycleState, "PAYMENT_LOCKING");
 assert.equal(podJoin.recomputePodLockState("join-single-lock").confirmedCount, 1);
 
