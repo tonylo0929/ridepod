@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   AlertTriangle,
+  ArrowLeft,
   ArrowRight,
   Camera,
   CarFront,
@@ -12,12 +13,15 @@ import {
   ReceiptText,
   RefreshCcw,
   Route,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   Upload,
   UsersRound,
+  Venus,
   XCircle,
 } from "lucide-react";
+import { RidePodLogo } from "@/components/ridepod-logo";
 import { cn } from "@/components/ui";
 import {
   canHostBook,
@@ -588,94 +592,142 @@ export function SettlementProtectionSummary({ podId }: { podId: string }) {
 
 export function HostReplacementModePanel({ podId }: { podId: string }) {
   const pod = getProtectedPodOrFallback(podId);
-  const replacementCandidate = pod.members.find((member) => member.role !== "HOST");
-  const permission = canHostBook(pod.replacementHostUserId ?? pod.hostUserId, pod);
+  const confirmedRiders = pod.members.filter((member) => member.role !== "HOST" && member.memberState === "CONFIRMED").length;
+  const riderCount = Math.max(3, confirmedRiders + 1);
 
   return (
-    <div className="mx-auto grid max-w-[430px] gap-4">
-      <section className="rounded-[24px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="mt-1 h-6 w-6 shrink-0 text-[var(--rp-warning)]" />
-          <div>
-            <h1 className="text-2xl font-black text-[var(--rp-text)]">Host canceled. Your pod is still active.</h1>
-            <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-              RidePod is looking for a replacement host. Your payment authorization will not be captured unless a replacement host books the external ride.
-            </p>
-          </div>
-        </div>
-      </section>
+    <HostReplacementActiveScreen
+      backHref={`/pods/${podId}`}
+      routeLabel="USC → LAX"
+      departureTime="Today, 4:30 PM"
+      riderCount={riderCount}
+      riderCapacity={pod.maxSeats}
+      genderMode="WOMEN_ONLY"
+      lifecycleState={pod.lifecycleState}
+      paymentAuthorizationSafe
+    />
+  );
+}
 
-      <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-        <h2 className="text-lg font-black text-[var(--rp-text)]">Replacement host flow</h2>
-        <div className="mt-4 grid gap-3 text-sm font-semibold text-[var(--rp-muted)]">
-          <p>1. Confirm responsibility.</p>
-          <p>2. Upload a fresh quote screenshot.</p>
-          <p>3. Book only after quote approval and participant locks remain valid.</p>
-        </div>
-        <div className="mt-4 rounded-2xl bg-[var(--rp-card-soft)] p-3 text-sm">
-          <p className="font-black text-[var(--rp-text)]">
-            Candidate: {replacementCandidate ? replacementCandidate.userId : "No confirmed candidate yet"}
+export function HostReplacementActiveScreen({
+  backHref = "/pods",
+  routeLabel = "USC → LAX",
+  departureTime = "Today, 4:30 PM",
+  riderCount = 3,
+  riderCapacity = 4,
+  genderMode = "WOMEN_ONLY",
+  lifecycleState = "HOST_REPLACEMENT_NEEDED",
+  paymentAuthorizationSafe = true,
+}: {
+  backHref?: string;
+  routeLabel?: string;
+  departureTime?: string;
+  riderCount?: number;
+  riderCapacity?: number;
+  genderMode?: "WOMEN_ONLY" | "MIXED";
+  lifecycleState?: string;
+  paymentAuthorizationSafe?: boolean;
+}) {
+  const genderLabel = genderMode === "WOMEN_ONLY" ? "Women-only" : "Mixed pod";
+  const replacementNeeded = lifecycleState === "HOST_REPLACEMENT_NEEDED";
+
+  return (
+    <main className="mx-auto min-h-[calc(100svh-2rem)] w-full max-w-[430px] overflow-hidden rounded-[32px] border border-[var(--rp-border)] bg-[var(--rp-shell)] shadow-[var(--rp-shadow-soft)]">
+      <div className="flex min-h-[calc(100svh-2rem)] flex-col bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.16),transparent_34%),var(--rp-gradient-app)] px-5 py-5">
+        <header className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-3">
+          <Link
+            href={backHref}
+            aria-label="Back to pod"
+            className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-text)]"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <RidePodLogo className="mx-auto h-8 justify-center" imageClassName="max-w-[150px]" priority />
+          <div
+            aria-label="Host replacement status"
+            className="grid h-11 w-11 place-items-center rounded-full border border-[rgba(245,158,11,0.35)] bg-[var(--rp-warning-bg)] text-[var(--rp-warning)]"
+          >
+            <ShieldAlert className="h-5 w-5" />
+          </div>
+        </header>
+
+        <section className="mt-8 rounded-[28px] border border-[rgba(245,158,11,0.42)] bg-[linear-gradient(135deg,rgba(245,158,11,0.22),rgba(245,158,11,0.08))] p-5 shadow-[0_18px_40px_rgba(0,0,0,0.18)]">
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[rgba(245,158,11,0.18)] text-[var(--rp-warning)] ring-1 ring-[rgba(245,158,11,0.34)]">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <h1 className="text-[2rem] font-black leading-[1.08] tracking-normal text-[var(--rp-text)]">
+              Host canceled.
+              <br />
+              Your pod is still active.
+            </h1>
+          </div>
+        </section>
+
+        <section className="mt-5 grid gap-3">
+          <p className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] px-5 py-4 text-base font-black leading-6 text-[var(--rp-text)] shadow-[var(--rp-shadow-soft)]">
+            RidePod is looking for a replacement host.
           </p>
-          <p className="mt-1 font-semibold text-[var(--rp-muted)]">
-            Current booking status: {permission.canBook ? "Can book" : "Fresh replacement quote required"}
+          <p className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] px-5 py-4 text-sm font-semibold leading-6 text-[var(--rp-muted)] shadow-[var(--rp-shadow-soft)]">
+            Your payment authorization will not be captured unless a replacement host books the ride.
           </p>
-        </div>
-        <form className="mt-4 grid gap-2">
-          <label className="grid gap-1 text-xs font-bold text-[var(--rp-muted-strong)]">
-            Provider
-            <select className="h-10 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-sm font-semibold text-[var(--rp-text)]">
-              <option>Uber</option>
-              <option>Lyft</option>
-              <option>Taxi</option>
-              <option>Private van</option>
-            </select>
-          </label>
-          <label className="grid gap-1 text-xs font-bold text-[var(--rp-muted-strong)]">
-            Vehicle class
-            <input className="h-10 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-sm font-semibold text-[var(--rp-text)]" placeholder="XL, taxi van, private van" />
-          </label>
-          <label className="grid gap-1 text-xs font-bold text-[var(--rp-muted-strong)]">
-            Quoted fare
-            <input className="h-10 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-sm font-semibold text-[var(--rp-text)]" inputMode="decimal" placeholder="90.00" />
-          </label>
-          <label className="grid gap-1 text-xs font-bold text-[var(--rp-muted-strong)]">
-            Screenshot file URL
-            <input className="h-10 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-sm font-semibold text-[var(--rp-text)]" placeholder="mock://replacement-quote.png" />
-          </label>
-          <label className="grid gap-1 text-xs font-bold text-[var(--rp-muted-strong)]">
-            Route summary
-            <input className="h-10 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-sm font-semibold text-[var(--rp-text)]" placeholder="USC to LAX" />
-          </label>
-        </form>
-        <div
+        </section>
+
+        <section className="mt-7">
+          <p className="px-1 text-[11px] font-black uppercase tracking-[0.18em] text-[var(--rp-muted)]">POD SUMMARY</p>
+          <div className="mt-3 rounded-[28px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[2rem] font-black leading-none text-[var(--rp-text)]">{routeLabel}</p>
+                <p className="mt-3 text-sm font-bold text-[var(--rp-muted)]">{departureTime}</p>
+              </div>
+              <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 py-3 text-right">
+                <p className="text-xl font-black text-[var(--rp-text)]">
+                  {riderCount} / {riderCapacity}
+                </p>
+                <p className="mt-1 text-[11px] font-black uppercase tracking-[0.08em] text-[var(--rp-muted)]">Riders</p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[rgba(192,38,211,0.28)] bg-[rgba(192,38,211,0.14)] px-3 py-2 text-xs font-black text-[#e879f9]">
+                <Venus className="h-4 w-4" />
+                {genderLabel}
+              </span>
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-black",
+                  replacementNeeded
+                    ? "border-[rgba(245,158,11,0.32)] bg-[var(--rp-warning-bg)] text-[var(--rp-warning)]"
+                    : "border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted-strong)]",
+                )}
+              >
+                <RefreshCcw className="h-4 w-4" />
+                Host replacement needed
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <section
           className={cn(
-            "mt-4 rounded-2xl px-3 py-2 text-xs font-black",
-            permission.canBook
-              ? "bg-[var(--rp-badge-success-bg)] text-[var(--rp-badge-success-text)]"
-              : "bg-[var(--rp-warning-bg)] text-[var(--rp-warning)]",
+            "mt-5 rounded-[28px] border p-5 shadow-[var(--rp-shadow-soft)]",
+            paymentAuthorizationSafe
+              ? "border-[rgba(59,130,246,0.38)] bg-[linear-gradient(135deg,rgba(37,99,235,0.22),rgba(37,99,235,0.08))]"
+              : "border-[var(--rp-border)] bg-[var(--rp-card)]",
           )}
         >
-          {permission.canBook
-            ? "All required participants are payment-authorized. Quote is within approved max. You may book."
-            : "Replacement host must upload a fresh quote before protected booking."}
-        </div>
-      </section>
-
-      <div className="grid gap-3">
-        <button className="h-12 rounded-xl bg-[var(--rp-gradient-primary)] text-sm font-black text-[var(--rp-primary-text)]">
-          Become replacement host
-        </button>
-        <button className="h-12 rounded-xl border border-[var(--rp-border-strong)] text-sm font-black text-[var(--rp-primary)]">
-          Stay in pod
-        </button>
-        <Link
-          href={`/pods/${podId}`}
-          className="flex h-12 items-center justify-center rounded-xl border border-[var(--rp-border)] text-sm font-black text-[var(--rp-muted-strong)]"
-        >
-          Leave pod / release authorization
-        </Link>
+          <div className="flex items-center gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[rgba(37,99,235,0.16)] text-[#60a5fa] ring-1 ring-[rgba(96,165,250,0.32)]">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            <p className="text-base font-black leading-6 text-[var(--rp-text)]">
+              Your payment authorization is safe with RidePod.
+            </p>
+          </div>
+        </section>
       </div>
-    </div>
+    </main>
   );
 }
 
