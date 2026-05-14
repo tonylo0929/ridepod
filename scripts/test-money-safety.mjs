@@ -64,6 +64,7 @@ const podAdminReview = loadTsModule("src/lib/pod-admin-review.ts");
 const moneySafetyMock = loadTsModule("src/lib/money-safety-mock.ts");
 const stripeConfig = loadTsModule("src/lib/stripe-config.ts");
 const paymentProvider = loadTsModule("src/lib/payment-provider.ts");
+const stripeSetup = loadTsModule("src/lib/stripe-setup.ts");
 
 assert.deepEqual(moneySafety.POD_LIFECYCLE_STATES, [
   "DRAFT",
@@ -226,7 +227,7 @@ assert.equal(
   }).error,
   "STRIPE_SEAT_AUTHORIZATION_NOT_IMPLEMENTED",
 );
-assert.equal(stripeProviderStub.createSetupIntent().error, "STRIPE_SETUP_INTENT_NOT_IMPLEMENTED");
+assert.equal((await stripeProviderMissingConfig.createSetupIntent({ userId: "u2" })).error, "STRIPE_SECRET_KEY_REQUIRED");
 assert.equal(stripeProviderStub.captureAuthorizedPayment().error, "STRIPE_CAPTURE_NOT_IMPLEMENTED");
 assert.equal(stripeProviderStub.cancelAuthorization().error, "STRIPE_CANCEL_AUTHORIZATION_NOT_IMPLEMENTED");
 
@@ -301,6 +302,98 @@ function settlementMember(podId, userId, overrides = {}) {
     ...overrides,
   });
 }
+
+const createdStripeCustomers = [];
+const createdStripeSetupIntents = [];
+const fakeStripe = {
+  customers: {
+    create: async (input) => {
+      createdStripeCustomers.push(input);
+      return { id: `cus_test_${createdStripeCustomers.length}` };
+    },
+  },
+  setupIntents: {
+    create: async (input) => {
+      createdStripeSetupIntents.push(input);
+      return {
+        id: `seti_test_${createdStripeSetupIntents.length}`,
+        client_secret: `seti_test_${createdStripeSetupIntents.length}_secret_test`,
+      };
+    },
+  },
+};
+const stripeTestEnv = { PAYMENT_PROVIDER: "STRIPE_TEST", STRIPE_SECRET_KEY: "sk_test_123" };
+
+moneySafetyMock.protectedUsers.push(
+  user({ id: "stripe-existing-user", email: "existing-stripe@example.com", stripeCustomerId: "cus_existing_123" }),
+  user({ id: "stripe-new-user", email: "new-stripe@example.com", stripeCustomerId: null }),
+  user({ id: "stripe-mock-user", email: "mock-stripe@example.com", stripeCustomerId: null }),
+);
+
+const existingCustomer = await stripeSetup.createOrGetStripeCustomer("stripe-existing-user", {
+  env: stripeTestEnv,
+  stripe: fakeStripe,
+});
+assert.deepEqual(existingCustomer, {
+  ok: true,
+  provider: "STRIPE",
+  customerId: "cus_existing_123",
+  reused: true,
+});
+assert.equal(createdStripeCustomers.length, 0);
+
+const mockCustomerAttempt = await stripeSetup.createOrGetStripeCustomer("stripe-mock-user", {
+  env: { PAYMENT_PROVIDER: "MOCK", STRIPE_SECRET_KEY: "sk_test_123" },
+  stripe: fakeStripe,
+});
+assert.equal(mockCustomerAttempt.error, "PAYMENT_PROVIDER_MOCK");
+assert.equal(moneySafetyMock.protectedUsers.find((candidate) => candidate.id === "stripe-mock-user").stripeCustomerId, null);
+
+const newCustomer = await stripeSetup.createOrGetStripeCustomer("stripe-new-user", {
+  env: stripeTestEnv,
+  stripe: fakeStripe,
+});
+assert.equal(newCustomer.ok, true);
+assert.equal(newCustomer.customerId, "cus_test_1");
+assert.equal(newCustomer.reused, false);
+assert.equal(moneySafetyMock.protectedUsers.find((candidate) => candidate.id === "stripe-new-user").stripeCustomerId, "cus_test_1");
+assert.deepEqual(createdStripeCustomers[0].metadata, {
+  userId: "stripe-new-user",
+  app: "RidePod",
+  environment: "test",
+});
+
+const lifecycleBeforeSetupIntent = moneySafetyMock.protectedPods[0].lifecycleState;
+const memberStateBeforeSetupIntent = moneySafetyMock.protectedPods[0].members[0].memberState;
+const setupIntent = await stripeSetup.createSetupIntent("stripe-new-user", {
+  env: stripeTestEnv,
+  stripe: fakeStripe,
+});
+assert.deepEqual(setupIntent, {
+  ok: true,
+  provider: "STRIPE",
+  setupIntentId: "seti_test_1",
+  clientSecret: "seti_test_1_secret_test",
+  customerId: "cus_test_1",
+});
+assert.deepEqual(createdStripeSetupIntents[0], {
+  customer: "cus_test_1",
+  usage: "off_session",
+  payment_method_types: ["card"],
+  metadata: {
+    userId: "stripe-new-user",
+    purpose: "ridepod_payment_method_setup",
+  },
+});
+assert.equal(moneySafetyMock.protectedPods[0].lifecycleState, lifecycleBeforeSetupIntent);
+assert.equal(moneySafetyMock.protectedPods[0].members[0].memberState, memberStateBeforeSetupIntent);
+assert.equal(moneySafetyMock.mockPaymentIntents.some((intent) => intent.userId === "stripe-new-user"), false);
+
+const mockSetupAttempt = await stripeSetup.createSetupIntent("stripe-mock-user", {
+  env: { PAYMENT_PROVIDER: "MOCK", STRIPE_SECRET_KEY: "sk_test_123" },
+  stripe: fakeStripe,
+});
+assert.equal(mockSetupAttempt.error, "PAYMENT_PROVIDER_MOCK");
 
 function pod(overrides = {}) {
   return {

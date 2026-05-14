@@ -31,13 +31,31 @@ export type ProviderStubResult = {
   error: string;
 };
 
+export type SetupIntentInput = {
+  userId: string;
+};
+
+export type SetupIntentResult =
+  | {
+      ok: true;
+      provider: PaymentProvider;
+      setupIntentId: string;
+      clientSecret: string;
+      customerId: string;
+    }
+  | {
+      ok: false;
+      provider: PaymentProvider;
+      error: string;
+    };
+
 export type PaymentProviderAdapter = {
   provider: PaymentProvider;
   createSeatAuthorization(input: SeatAuthorizationInput): SeatAuthorizationResult;
   authorizeSeat(input: SeatAuthorizationInput): SeatAuthorizationResult;
   captureAuthorizedPayment(): ProviderStubResult;
   cancelAuthorization(): ProviderStubResult;
-  createSetupIntent(): ProviderStubResult;
+  createSetupIntent(input: SetupIntentInput): Promise<SetupIntentResult> | SetupIntentResult;
 };
 
 function upsertLocalPaymentIntent(input: SeatAuthorizationInput, provider: PaymentProvider, status: RidePodPaymentIntentStatus) {
@@ -103,7 +121,7 @@ export const mockPaymentProvider: PaymentProviderAdapter = {
     return stub("MOCK", "MOCK_CANCEL_AUTHORIZATION_NOT_IMPLEMENTED");
   },
   createSetupIntent() {
-    return stub("MOCK", "MOCK_SETUP_INTENT_NOT_IMPLEMENTED");
+    return { ok: false, provider: "MOCK", error: "PAYMENT_PROVIDER_MOCK" };
   },
 };
 
@@ -135,9 +153,9 @@ export function createStripeTestProvider(env: EnvLike = process.env): PaymentPro
       const config = getStripeTestConfig(env);
       return stub("STRIPE", config.ok ? "STRIPE_CANCEL_AUTHORIZATION_NOT_IMPLEMENTED" : config.error);
     },
-    createSetupIntent() {
-      const config = getStripeTestConfig(env);
-      return stub("STRIPE", config.ok ? "STRIPE_SETUP_INTENT_NOT_IMPLEMENTED" : config.error);
+    async createSetupIntent(input) {
+      const { createSetupIntent } = await import("./stripe-setup");
+      return createSetupIntent(input.userId, { env });
     },
   };
 }
