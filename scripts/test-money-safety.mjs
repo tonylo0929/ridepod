@@ -175,6 +175,22 @@ assert.equal(
   moneySafetyUiSource.includes("Host reimbursement is based on the verified final receipt and approved max fare."),
   false,
 );
+const stripeSource = [
+  "src/lib/stripe-config.ts",
+  "src/lib/stripe-setup.ts",
+  "src/lib/stripe-seat-authorization.ts",
+  "src/lib/stripe-settlement-capture.ts",
+  "src/lib/stripe-webhooks.ts",
+  "src/app/api/stripe/setup-intent/route.ts",
+  "src/app/api/stripe/webhook/route.ts",
+]
+  .filter((path) => existsSync(path))
+  .map((path) => readFileSync(path, "utf8"))
+  .join("\n");
+assert.equal(stripeSource.includes("NEXT_PUBLIC_STRIPE_SECRET_KEY"), false);
+assert.equal(/console\.(?:log|warn|error)\([^)]*secret/i.test(stripeSource), false);
+assert.equal(/\b(?:transfers|payouts|accounts)\.create\s*\(/.test(stripeSource), false);
+assert.equal(/\b(?:cardNumber|card_number|cvc)\b/i.test(stripeSource), false);
 
 assert.equal(stripeConfig.getConfiguredPaymentProvider({}), "MOCK");
 assert.equal(stripeConfig.getConfiguredPaymentProviderName({}), "MOCK");
@@ -195,6 +211,15 @@ assert.deepEqual(stripeConfig.getStripeTestConfig({ STRIPE_SECRET_KEY: "sk_test_
   error: "STRIPE_LIVE_KEYS_NOT_ALLOWED",
 });
 assert.equal(stripeConfig.getStripeTestConfig({ STRIPE_SECRET_KEY: "sk_test_123" }).ok, true);
+assert.deepEqual(stripeConfig.getStripeWebhookConfig({ STRIPE_SECRET_KEY: "sk_test_123" }), {
+  ok: false,
+  error: "STRIPE_WEBHOOK_SECRET_REQUIRED",
+});
+assert.deepEqual(stripeConfig.getStripeWebhookConfig({ STRIPE_SECRET_KEY: "sk_test_123", STRIPE_WEBHOOK_SECRET: "not_whsec" }), {
+  ok: false,
+  error: "STRIPE_WEBHOOK_SECRET_INVALID",
+});
+assert.equal(stripeConfig.getStripeWebhookConfig({ STRIPE_SECRET_KEY: "sk_test_123", STRIPE_WEBHOOK_SECRET: "whsec_123" }).ok, true);
 assert.equal(stripeConfig.assertStripeTestModeConfig({ STRIPE_SECRET_KEY: "sk_test_123" }).secretKey, "sk_test_123");
 assert.throws(
   () => stripeConfig.assertStripeTestModeConfig({ STRIPE_SECRET_KEY: "sk_live_bad" }),
@@ -1761,6 +1786,8 @@ assert.equal(hostFaultVerified.settlementResult.settlement.settlementState, "ADM
 assert.equal(hostFaultVerified.settlementResult.hostReimbursement.payoutState, "HELD_FOR_REVIEW");
 assert.equal(hostFaultVerified.settlementResult.auditEvents.some((event) => event.eventType === "SETTLEMENT_FINALIZED"), false);
 
+const hostReimbursementCountBeforeStripeFinalizationQa = moneySafetyMock.mockHostReimbursements.length;
+
 const captureBeforeSettlementPod = pod({
   id: "capture-before-settlement",
   hostUserId: "u1",
@@ -2411,6 +2438,22 @@ assert.equal(unknownPaymentIntentWebhook.ok, true);
 assert.equal(unknownPaymentIntentWebhook.paymentIntent, null);
 assert.equal(unknownPaymentIntentWebhook.processedEvent.status, "IGNORED");
 
+const liveModeWebhook = stripeWebhooks.handleStripeWebhookEvent(
+  stripeEvent(
+    "evt_live_mode",
+    "payment_intent.succeeded",
+    {
+      id: "pi_live_not_allowed",
+      object: "payment_intent",
+      status: "succeeded",
+    },
+    { livemode: true },
+  ),
+);
+assert.equal(liveModeWebhook.ok, false);
+assert.equal(liveModeWebhook.error, "STRIPE_LIVE_EVENTS_NOT_ALLOWED");
+assert.equal(liveModeWebhook.processedEvent.status, "ERROR");
+
 const failedWebhookPod = pod({
   id: "webhook-failed-auth",
   hostUserId: "u1",
@@ -2544,6 +2587,17 @@ assert.equal(disputeWebhookPod.members[0].paymentState, "DISPUTED");
 assert.equal(disputeWebhookPod.lifecycleState, "DISPUTE_HOLD");
 assert.ok(moneySafetyMock.mockRiskFlags.some((flag) => flag.riskType === "STRIPE_PAYMENT_DISPUTE" && flag.podId === "webhook-dispute"));
 assert.ok(moneySafetyMock.mockAuditEvents.some((event) => event.eventType === "STRIPE_DISPUTE_CREATED"));
+assert.equal(moneySafetyMock.mockHostReimbursements.length, hostReimbursementCountBeforeStripeFinalizationQa);
+assert.equal(
+  /(?:cardNumber|card_number|cvc)/i.test(
+    JSON.stringify({
+      users: moneySafetyMock.protectedUsers,
+      pods: moneySafetyMock.protectedPods,
+      paymentIntents: moneySafetyMock.mockPaymentIntents,
+    }),
+  ),
+  false,
+);
 
 const adminReviewPod = pod({
   id: "admin-review-helper",
