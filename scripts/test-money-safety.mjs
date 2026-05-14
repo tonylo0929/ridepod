@@ -68,6 +68,7 @@ const stripeConnect = loadTsModule("src/lib/stripe-connect.ts");
 const stripeConnectRoute = loadTsModule("src/app/api/stripe/connect/onboarding/route.ts");
 const stripeHostReimbursement = loadTsModule("src/lib/stripe-host-reimbursement.ts");
 const stripeRefunds = loadTsModule("src/lib/stripe-refunds.ts");
+const paymentReconciliation = loadTsModule("src/lib/payment-reconciliation.ts");
 const moneySafetyMock = loadTsModule("src/lib/money-safety-mock.ts");
 const stripeConfig = loadTsModule("src/lib/stripe-config.ts");
 const paymentProvider = loadTsModule("src/lib/payment-provider.ts");
@@ -2204,6 +2205,180 @@ const paidTransferReimbursement = moneySafetyMock.mockHostReimbursements.find((r
 assert.equal(paidTransferReimbursement.payoutState, "PAID");
 assert.equal(paidTransferReimbursement.externalTransferId, "tr_paid_no_auto_reversal");
 assert.equal(stripeSource.includes("wallet"), false);
+
+const reconciliationCapturedOverFinalPod = pod({
+  id: "reconcile-captured-over-final",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("reconcile-captured-over-final", "u1", { role: "HOST" }),
+    settlementMember("reconcile-captured-over-final", "u2", {
+      finalChargeCents: moneySafety.cents(20),
+      maxChargeCents: moneySafety.cents(60),
+      paymentState: "CAPTURED",
+    }),
+  ],
+});
+moneySafetyMock.protectedPods.push(reconciliationCapturedOverFinalPod);
+moneySafetyMock.mockPaymentIntents.push(
+  localPaymentIntent({
+    id: "ridepod-pi-reconcile-captured-over-final",
+    provider: "MOCK",
+    podId: "reconcile-captured-over-final",
+    podMemberId: "pm-reconcile-captured-over-final-u2",
+    userId: "u2",
+    amountCapturedCents: moneySafety.cents(25),
+    status: "SUCCEEDED",
+  }),
+);
+const capturedOverFinalSnapshot = paymentReconciliation.getPaymentReconciliationSnapshot("reconcile-captured-over-final");
+assert.equal(capturedOverFinalSnapshot.members.length, 2);
+assert.ok(capturedOverFinalSnapshot.warnings.includes("Captured amount exceeds final charge for u2."));
+
+const reconciliationFinalOverMaxPod = pod({
+  id: "reconcile-final-over-max",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [
+    settlementMember("reconcile-final-over-max", "u1", { role: "HOST" }),
+    settlementMember("reconcile-final-over-max", "u2", {
+      finalChargeCents: moneySafety.cents(65),
+      maxChargeCents: moneySafety.cents(60),
+    }),
+  ],
+});
+moneySafetyMock.protectedPods.push(reconciliationFinalOverMaxPod);
+assert.ok(
+  paymentReconciliation
+    .getPaymentReconciliationSnapshot("reconcile-final-over-max")
+    .warnings.includes("Final charge exceeds max charge for u2."),
+);
+
+const reconciliationNoVerifiedReceiptPod = pod({
+  id: "reconcile-no-verified-receipt",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [settlementMember("reconcile-no-verified-receipt", "u1", { role: "HOST" })],
+  receipts: [
+    {
+      id: "receipt-reconcile-no-verified",
+      podId: "reconcile-no-verified-receipt",
+      hostUserId: "u1",
+      providerName: "UBER",
+      vehicleClass: null,
+      externalTripReferenceHash: null,
+      receiptFileUrl: null,
+      receiptFileId: null,
+      fareTotalCents: moneySafety.cents(45),
+      baseFareCents: null,
+      taxesCents: null,
+      tollsCents: null,
+      feesCents: null,
+      tipCents: null,
+      currency: "USD",
+      rideStartedAt: null,
+      rideCompletedAt: null,
+      submittedAt: now,
+      verificationState: "SUBMITTED",
+      reviewedByAdminId: null,
+      rejectionReason: null,
+      fraudScore: null,
+      createdAt: now,
+      updatedAt: now,
+    },
+  ],
+});
+moneySafetyMock.protectedPods.push(reconciliationNoVerifiedReceiptPod);
+moneySafetyMock.mockSettlements.push(settlementRecord("reconcile-no-verified-receipt"));
+assert.ok(
+  paymentReconciliation
+    .getPaymentReconciliationSnapshot("reconcile-no-verified-receipt")
+    .warnings.includes("Settlement exists without a verified receipt."),
+);
+
+const reconciliationTransferHoldPod = pod({
+  id: "reconcile-transfer-hold",
+  hostUserId: "u1",
+  lifecycleState: "DISPUTE_HOLD",
+  bookingState: "BOOKED",
+  members: [settlementMember("reconcile-transfer-hold", "u1", { role: "HOST" })],
+  receipts: [{ ...adminReviewReimbursementPod.receipts[0], id: "receipt-reconcile-transfer-hold", podId: "reconcile-transfer-hold" }],
+});
+moneySafetyMock.protectedPods.push(reconciliationTransferHoldPod);
+const transferHoldSettlement = settlementRecord("reconcile-transfer-hold");
+moneySafetyMock.mockSettlements.push(transferHoldSettlement);
+moneySafetyMock.mockHostReimbursements.push(
+  hostReimbursementRecord("reconcile-transfer-hold", transferHoldSettlement.id, "u1", {
+    payoutState: "PAID",
+    externalTransferId: "tr_reconcile_hold",
+    paidAt: now,
+  }),
+);
+const transferHoldWarnings = paymentReconciliation.getPaymentReconciliationSnapshot("reconcile-transfer-hold").warnings;
+assert.ok(transferHoldWarnings.includes("Transfer exists while pod is in admin review or dispute hold."));
+assert.ok(transferHoldWarnings.includes("Host reimbursement is paid while dispute hold is active."));
+
+const reconciliationHostReimbursementOverPod = pod({
+  id: "reconcile-host-reimbursement-over",
+  hostUserId: "u1",
+  lifecycleState: "SETTLEMENT_PENDING",
+  bookingState: "BOOKED",
+  members: [settlementMember("reconcile-host-reimbursement-over", "u1", { role: "HOST" })],
+  receipts: [{ ...adminReviewReimbursementPod.receipts[0], id: "receipt-reconcile-host-reimbursement-over", podId: "reconcile-host-reimbursement-over" }],
+});
+moneySafetyMock.protectedPods.push(reconciliationHostReimbursementOverPod);
+const reimbursementOverSettlement = settlementRecord("reconcile-host-reimbursement-over", {
+  hostReimbursementCents: moneySafety.cents(40),
+  hostRewardCents: moneySafety.cents(5),
+});
+moneySafetyMock.mockSettlements.push(reimbursementOverSettlement);
+moneySafetyMock.mockHostReimbursements.push(
+  hostReimbursementRecord("reconcile-host-reimbursement-over", reimbursementOverSettlement.id, "u1", {
+    totalTransferCents: moneySafety.cents(50),
+  }),
+);
+assert.ok(
+  paymentReconciliation
+    .getPaymentReconciliationSnapshot("reconcile-host-reimbursement-over")
+    .warnings.includes("Host reimbursement exceeds eligible fare plus approved host reward."),
+);
+
+const reconciliationHostCanBookNoQuotePod = pod({
+  id: "reconcile-host-can-book-no-quote",
+  hostUserId: "u1",
+  lifecycleState: "HOST_CAN_BOOK",
+  bookingState: "CAN_BOOK",
+  minSeatsToBook: 1,
+  members: [settlementMember("reconcile-host-can-book-no-quote", "u1", { role: "HOST", paymentState: "AUTHORIZED", memberState: "CONFIRMED" })],
+  quotes: [],
+});
+moneySafetyMock.protectedPods.push(reconciliationHostCanBookNoQuotePod);
+assert.ok(
+  paymentReconciliation
+    .getPaymentReconciliationSnapshot("reconcile-host-can-book-no-quote")
+    .warnings.includes("HOST_CAN_BOOK exists without an approved quote."),
+);
+
+const reconciliationRideBookedNoLocksPod = pod({
+  id: "reconcile-ride-booked-no-locks",
+  hostUserId: "u1",
+  lifecycleState: "RIDE_BOOKED",
+  bookingState: "BOOKED",
+  minSeatsToBook: 3,
+  members: [
+    settlementMember("reconcile-ride-booked-no-locks", "u1", { role: "HOST", paymentState: "AUTHORIZED", memberState: "CONFIRMED" }),
+    settlementMember("reconcile-ride-booked-no-locks", "u2", { paymentState: "PAYMENT_METHOD_REQUIRED", memberState: "PAYMENT_REQUIRED" }),
+  ],
+});
+moneySafetyMock.protectedPods.push(reconciliationRideBookedNoLocksPod);
+assert.ok(
+  paymentReconciliation
+    .getPaymentReconciliationSnapshot("reconcile-ride-booked-no-locks")
+    .warnings.includes("RIDE_BOOKED exists without required payment-authorized participants."),
+);
 
 const receiptNeedsInfoPod = pod({
   id: "settlement-needs-info",
