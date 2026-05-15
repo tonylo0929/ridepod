@@ -13,6 +13,7 @@ import {
   Upload,
   UsersRound,
 } from "lucide-react";
+import { SettlementReceiptVerifiedScreen } from "@/components/settlement-receipt-verified-screen";
 import { PrimaryButton, SecondaryButton, cn } from "@/components/ui";
 import { getUser, type RidePod } from "@/lib/mock-data";
 
@@ -88,6 +89,16 @@ export function SettlementPage({ pod }: { pod: RidePod }) {
     { label: "Tip", value: tip, colorVar: "--rp-chart-tip" },
     { label: "Platform fee", value: platformFee, colorVar: "--rp-chart-platform" },
   ];
+
+  if (pod.status === "completed" || pod.moneyStatus === "settlement_ready") {
+    return (
+      <SettlementReceiptVerifiedScreen
+        backHref="/pods"
+        onViewSettlementBreakdown={() => setSettlementReviewReady(true)}
+        onViewFinalSplit={() => setSettlementReviewReady(true)}
+      />
+    );
+  }
 
   return (
     <div className="mx-auto grid min-h-[calc(100vh-7rem)] w-full max-w-[430px] gap-5 pb-4 min-[560px]:max-w-4xl">

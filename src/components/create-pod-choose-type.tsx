@@ -28,9 +28,7 @@ import {
   UserPlus,
   UsersRound,
 } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/components/ui";
-import { RidePodLogo } from "@/components/ridepod-logo";
 
 type PodType = "scheduled" | "recurring";
 type CreateStep = 0 | 1 | 2 | 3 | 4 | 5;
@@ -270,7 +268,7 @@ function CreatePodTopBar({
   onBack?: () => void;
 }) {
   return (
-    <header className="px-6 pt-[max(1.5rem,env(safe-area-inset-top))]">
+    <header className="px-6 pt-5">
       <div className="grid grid-cols-[44px_1fr_44px] items-center gap-3">
         {onBack ? (
           <button
@@ -284,14 +282,8 @@ function CreatePodTopBar({
         ) : (
           <span />
         )}
-        <Link
-          href="/home"
-          aria-label="Go to Home page"
-          className="mx-auto flex h-11 items-center justify-center rounded-full px-2 transition hover:bg-[var(--rp-card-muted)]"
-        >
-          <RidePodLogo className="h-8 justify-center" priority />
-        </Link>
-        <ThemeToggle compact />
+        <span />
+        <span />
       </div>
       <CreatePodStepper currentStep={currentStep} />
     </header>

@@ -203,6 +203,168 @@ select {
   border-color: var(--rp-border) !important;
 }
 
+.ridepod-mobile-drawer {
+  background: #07111a;
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.1);
+  scrollbar-color: rgba(242, 193, 91, 0.58) rgba(255, 255, 255, 0.05);
+  scrollbar-width: thin;
+}
+
+.ridepod-mobile-drawer::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ridepod-mobile-drawer::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.ridepod-mobile-drawer::-webkit-scrollbar-thumb {
+  background: rgba(242, 193, 91, 0.58);
+  border-radius: 999px;
+}
+
+.ridepod-drawer-header,
+.ridepod-drawer-divider {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.ridepod-drawer-logo-card {
+  background: #050b12;
+  border-color: rgba(242, 193, 91, 0.14);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.ridepod-drawer-subtitle {
+  color: #aab3be;
+}
+
+.ridepod-drawer-close,
+.ridepod-drawer-link-icon {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+.ridepod-drawer-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ridepod-drawer-profile {
+  background: rgba(7, 140, 153, 0.12);
+  border-color: rgba(7, 140, 153, 0.28);
+  color: #f8fafc;
+}
+
+.ridepod-drawer-avatar {
+  background: #078c99;
+}
+
+.ridepod-drawer-profile-subtitle {
+  color: #9ad4d8;
+}
+
+.ridepod-drawer-link {
+  color: #cbd5e1;
+}
+
+.ridepod-drawer-link:hover,
+.ridepod-drawer-link.is-active {
+  background: rgba(242, 193, 91, 0.14);
+  color: #f8fafc;
+}
+
+.ridepod-drawer-link.is-active {
+  box-shadow: inset 3px 0 0 #f2c15b;
+}
+
+.ridepod-drawer-link.is-active .ridepod-drawer-link-icon {
+  background: rgba(242, 193, 91, 0.16);
+  color: #ffd36a;
+}
+
+.ridepod-drawer-section-label {
+  color: #ffd36a;
+}
+
+[data-theme="light"] .ridepod-mobile-drawer {
+  background: #ffffff;
+  color: #071326;
+  border-color: rgba(15, 23, 42, 0.08);
+  scrollbar-color: rgba(7, 140, 153, 0.45) rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="light"] .ridepod-mobile-drawer::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.05);
+}
+
+[data-theme="light"] .ridepod-mobile-drawer::-webkit-scrollbar-thumb {
+  background: rgba(7, 140, 153, 0.45);
+}
+
+[data-theme="light"] .ridepod-drawer-header,
+[data-theme="light"] .ridepod-drawer-divider {
+  border-color: rgba(15, 23, 42, 0.08);
+}
+
+[data-theme="light"] .ridepod-drawer-logo-card {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="light"] .ridepod-drawer-subtitle {
+  color: #64748b;
+}
+
+[data-theme="light"] .ridepod-drawer-close,
+[data-theme="light"] .ridepod-drawer-link-icon {
+  background: #f8fafc;
+  border-color: rgba(15, 23, 42, 0.1);
+  color: #078c99;
+}
+
+[data-theme="light"] .ridepod-drawer-close {
+  color: #071326;
+}
+
+[data-theme="light"] .ridepod-drawer-close:hover {
+  background: #eef2f7;
+}
+
+[data-theme="light"] .ridepod-drawer-profile {
+  background: #e6fbf9;
+  border-color: #b8ebe7;
+  color: #071326;
+}
+
+[data-theme="light"] .ridepod-drawer-profile-subtitle {
+  color: #497174;
+}
+
+[data-theme="light"] .ridepod-drawer-link {
+  color: #334155;
+}
+
+[data-theme="light"] .ridepod-drawer-link:hover,
+[data-theme="light"] .ridepod-drawer-link.is-active {
+  background: #e6fbf9;
+  color: #071326;
+}
+
+[data-theme="light"] .ridepod-drawer-link.is-active {
+  box-shadow: inset 3px 0 0 #078c99;
+}
+
+[data-theme="light"] .ridepod-drawer-link.is-active .ridepod-drawer-link-icon {
+  background: #ffffff;
+  color: #056f78;
+}
+
+[data-theme="light"] .ridepod-drawer-section-label {
+  color: #078c99;
+}
+
 .premium-app .text-zinc-950,
 .premium-app .text-zinc-900,
 .premium-app .text-zinc-800,

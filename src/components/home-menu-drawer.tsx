@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -17,6 +16,7 @@ import {
   UserRound,
   X,
 } from "lucide-react";
+import { RidePodLogo } from "@/components/ridepod-logo";
 import { cn } from "@/components/ui";
 
 const primaryItems = [
@@ -53,17 +53,11 @@ function DrawerNavLink({
       href={href}
       onClick={onNavigate}
       className={cn(
-        "flex min-h-14 items-center gap-3 rounded-2xl px-3 text-[15px] font-semibold text-[#334155] transition",
-        "hover:bg-[#f1f5f9] hover:text-[#071326]",
-        active && "bg-[#e6fbf9] text-[#071326] shadow-[inset_3px_0_0_#078c99]",
+        "ridepod-drawer-link flex min-h-14 items-center gap-3 rounded-2xl px-3 text-[15px] font-semibold transition",
+        active && "is-active",
       )}
     >
-      <span
-        className={cn(
-          "grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#f8fafc] text-[#078c99]",
-          active && "bg-[#ffffff] text-[#056f78]",
-        )}
-      >
+      <span className="ridepod-drawer-link-icon grid h-10 w-10 shrink-0 place-items-center rounded-xl">
         <Icon className="h-5 w-5" />
       </span>
       <span>{label}</span>
@@ -104,12 +98,11 @@ export function HomeMenuDrawer() {
         <aside
           aria-label="RidePod sidebar"
           className={cn(
-            "absolute inset-y-0 left-0 z-[90] flex h-[100dvh] w-[min(82vw,420px)] flex-col overflow-hidden border-r border-[rgba(15,23,42,0.08)] text-[#071326] shadow-[24px_0_70px_rgba(15,23,42,0.24)] transition-transform duration-300 ease-out",
+            "ridepod-mobile-drawer absolute inset-y-0 left-0 z-[90] flex h-[100dvh] w-[min(82vw,420px)] flex-col overflow-y-auto overscroll-contain border-r shadow-[24px_0_70px_rgba(0,0,0,0.34)] transition-transform duration-300 ease-out",
             open ? "translate-x-0" : "-translate-x-full",
           )}
-          style={{ backgroundColor: "#ffffff" }}
         >
-          <div className="border-b border-[rgba(15,23,42,0.08)] px-5 pb-5 pt-[max(18px,env(safe-area-inset-top))]">
+          <div className="ridepod-drawer-header border-b px-5 pb-5 pt-[max(18px,env(safe-area-inset-top))]">
             <div className="flex items-start justify-between gap-4">
               <Link
                 href="/home"
@@ -117,17 +110,10 @@ export function HomeMenuDrawer() {
                 aria-label="RidePod home"
                 className="min-w-0"
               >
-                <span className="inline-flex rounded-2xl border border-[rgba(15,23,42,0.08)] bg-[#f8fafc] px-3 py-2 shadow-[0_10px_24px_rgba(15,23,42,0.06)]">
-                  <Image
-                    src="/ridepod/lightmode-logo.png"
-                    alt="RidePod"
-                    width={260}
-                    height={72}
-                    priority
-                    className="h-auto w-[150px] object-contain"
-                  />
+                <span className="ridepod-drawer-logo-card inline-flex rounded-2xl border px-3 py-2">
+                  <RidePodLogo className="h-9" imageClassName="max-w-[150px]" priority />
                 </span>
-                <span className="mt-2 block text-[12px] font-black uppercase tracking-[0.18em] text-[#64748b]">
+                <span className="ridepod-drawer-subtitle mt-2 block text-[12px] font-black uppercase tracking-[0.18em]">
                   Premium ride pods
                 </span>
               </Link>
@@ -136,7 +122,7 @@ export function HomeMenuDrawer() {
                 type="button"
                 aria-label="Close sidebar"
                 onClick={closeDrawer}
-                className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-[rgba(15,23,42,0.10)] bg-[#f8fafc] text-[#071326] transition hover:bg-[#eef2f7]"
+                className="ridepod-drawer-close grid h-14 w-14 shrink-0 place-items-center rounded-2xl border transition"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -145,27 +131,27 @@ export function HomeMenuDrawer() {
             <Link
               href="/profile"
               onClick={closeDrawer}
-              className="mt-5 flex items-center gap-3 rounded-2xl border border-[#b8ebe7] bg-[#e6fbf9] p-3 text-[#071326] transition hover:bg-[#d8f6f3]"
+              className="ridepod-drawer-profile mt-5 flex items-center gap-3 rounded-2xl border p-3 transition"
             >
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#078c99] text-base font-black text-white">
+              <span className="ridepod-drawer-avatar grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-base font-black text-white">
                 M
               </span>
               <span className="min-w-0">
                 <span className="block truncate text-base font-black">Maya Chen</span>
-                <span className="block text-sm font-semibold text-[#497174]">View profile</span>
+                <span className="ridepod-drawer-profile-subtitle block text-sm font-semibold">View profile</span>
               </span>
             </Link>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+          <div className="flex min-h-[520px] flex-1 flex-col">
             <nav className="grid gap-1 px-4 py-5">
               {primaryItems.map((item) => (
                 <DrawerNavLink key={item.href} {...item} onNavigate={closeDrawer} />
               ))}
             </nav>
 
-            <div className="mx-5 border-t border-[rgba(15,23,42,0.08)] pt-4">
-              <p className="px-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#078c99]">
+            <div className="ridepod-drawer-divider mx-5 border-t pt-4">
+              <p className="ridepod-drawer-section-label px-2 text-[11px] font-black uppercase tracking-[0.18em]">
                 Support
               </p>
               <nav className="mt-2 grid gap-1">
@@ -175,12 +161,12 @@ export function HomeMenuDrawer() {
               </nav>
             </div>
 
-            <div className="mt-auto border-t border-[rgba(15,23,42,0.08)] p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+            <div className="ridepod-drawer-divider mt-auto border-t p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
               <button
                 type="button"
-                className="flex min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold text-[#334155] transition hover:bg-[#f1f5f9] hover:text-[#071326]"
+                className="ridepod-drawer-link flex min-h-14 w-full items-center gap-3 rounded-2xl px-3 text-left text-[15px] font-semibold transition"
               >
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#f8fafc] text-[#078c99]">
+                <span className="ridepod-drawer-link-icon grid h-10 w-10 shrink-0 place-items-center rounded-xl">
                   <LogOut className="h-5 w-5" />
                 </span>
                 Logout

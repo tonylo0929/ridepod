@@ -78,19 +78,22 @@ function PremiumBottomNav() {
 function PremiumTopNav() {
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_92%,transparent)] px-4 py-3 shadow-[0_12px_30px_rgba(0,0,0,0.14)] backdrop-blur-xl lg:hidden">
-      <div className="mx-auto grid max-w-3xl grid-cols-[56px_1fr_56px] items-center gap-3">
+      <div className="mx-auto grid max-w-3xl grid-cols-[56px_1fr_auto] items-center gap-3">
         <HomeMenuDrawer />
         <Link href="/home" className="justify-self-center" aria-label="RidePod home">
           <RidePodLogo className="h-9 justify-center" priority />
         </Link>
-        <Link
-          href="/notifications"
-          aria-label="Notifications"
-          className="relative grid h-12 w-12 place-items-center justify-self-end rounded-[20px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] text-[var(--rp-text)] shadow-[var(--rp-shadow-soft)] transition hover:bg-[var(--rp-card-muted)]"
-        >
-          <Bell className="h-5 w-5 stroke-[2.2]" />
-          <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full border border-[var(--rp-shell)] bg-[var(--rp-primary)]" />
-        </Link>
+        <div className="flex justify-self-end gap-2">
+          <ThemeToggle compact />
+          <Link
+            href="/notifications"
+            aria-label="Notifications"
+            className="relative grid h-12 w-12 place-items-center rounded-[20px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] text-[var(--rp-text)] shadow-[var(--rp-shadow-soft)] transition hover:bg-[var(--rp-card-muted)]"
+          >
+            <Bell className="h-5 w-5 stroke-[2.2]" />
+            <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full border border-[var(--rp-shell)] bg-[var(--rp-primary)]" />
+          </Link>
+        </div>
       </div>
     </header>
   );
