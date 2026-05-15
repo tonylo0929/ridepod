@@ -8,11 +8,13 @@ import {
   CircleHelp,
   CalendarCheck,
   Home,
+  Info,
   LogOut,
   Menu,
   MessageCircle,
   PlusCircle,
   Settings,
+  ShieldCheck,
   UserRound,
   X,
 } from "lucide-react";
@@ -29,7 +31,9 @@ const primaryItems = [
 ];
 
 const supportItems = [
-  { href: "/settings", label: "Help & safety", icon: CircleHelp },
+  { href: "/how-it-works", label: "How it works", icon: ShieldCheck },
+  { href: "/faq", label: "FAQ", icon: CircleHelp },
+  { href: "/about", label: "About", icon: Info },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

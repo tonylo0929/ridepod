@@ -261,26 +261,30 @@ select {
 }
 
 .ridepod-drawer-profile-subtitle {
-  color: #9ad4d8;
+  color: #ffd36a;
 }
 
 .ridepod-drawer-link {
   color: #cbd5e1;
 }
 
-.ridepod-drawer-link:hover,
-.ridepod-drawer-link.is-active {
+.ridepod-drawer-link:hover {
   background: rgba(242, 193, 91, 0.14);
-  color: #f8fafc;
+  color: #ffd36a;
 }
 
 .ridepod-drawer-link.is-active {
-  box-shadow: inset 3px 0 0 #f2c15b;
+  background: linear-gradient(135deg, #f2c15b 0%, #ffd36a 100%);
+  color: #071326;
+}
+
+.ridepod-drawer-link.is-active {
+  box-shadow: 0 14px 30px rgba(242, 193, 91, 0.18);
 }
 
 .ridepod-drawer-link.is-active .ridepod-drawer-link-icon {
-  background: rgba(242, 193, 91, 0.16);
-  color: #ffd36a;
+  background: rgba(7, 19, 38, 0.12);
+  color: #071326;
 }
 
 .ridepod-drawer-section-label {
@@ -339,26 +343,27 @@ select {
 }
 
 [data-theme="light"] .ridepod-drawer-profile-subtitle {
-  color: #497174;
+  color: #078c99;
 }
 
 [data-theme="light"] .ridepod-drawer-link {
   color: #334155;
 }
 
-[data-theme="light"] .ridepod-drawer-link:hover,
-[data-theme="light"] .ridepod-drawer-link.is-active {
-  background: #e6fbf9;
-  color: #071326;
+[data-theme="light"] .ridepod-drawer-link:hover {
+  background: #edfdfc;
+  color: #056f78;
 }
 
 [data-theme="light"] .ridepod-drawer-link.is-active {
-  box-shadow: inset 3px 0 0 #078c99;
+  background: linear-gradient(135deg, #078c99 0%, #10b5c0 100%);
+  color: #ffffff;
+  box-shadow: 0 14px 30px rgba(7, 140, 153, 0.18);
 }
 
 [data-theme="light"] .ridepod-drawer-link.is-active .ridepod-drawer-link-icon {
-  background: #ffffff;
-  color: #056f78;
+  background: rgba(255, 255, 255, 0.2);
+  color: #ffffff;
 }
 
 [data-theme="light"] .ridepod-drawer-section-label {

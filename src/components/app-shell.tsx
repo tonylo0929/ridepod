@@ -5,10 +5,13 @@ import { usePathname } from "next/navigation";
 import {
   Bell,
   CalendarCheck,
+  CircleHelp,
   Home,
+  Info,
   MessageCircle,
   PlusCircle,
   Settings,
+  ShieldCheck,
   UserRound,
   UsersRound,
 } from "lucide-react";
@@ -26,6 +29,9 @@ const primaryNav = [
 
 const utilityNav = [
   { href: "/host", label: "Host", icon: UsersRound },
+  { href: "/how-it-works", label: "How it works", icon: ShieldCheck },
+  { href: "/faq", label: "FAQ", icon: CircleHelp },
+  { href: "/about", label: "About", icon: Info },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

@@ -20,7 +20,6 @@ import {
   Luggage,
   MapPin,
   Minus,
-  Plane,
   Plus,
   RefreshCcw,
   ShieldCheck,
@@ -53,6 +52,7 @@ type RideOptionId =
 type DateTimeState = {
   scheduleType: ScheduleType;
   date: string;
+  selectedDate: string;
   selectedDay: number;
   time: string;
   flexibility: string;
@@ -102,43 +102,13 @@ const podTypes: Array<{
   },
 ];
 
-const may2024Days: Array<{ label: string; day: number; inMonth: boolean }> = [
-  { label: "Sun Apr 28", day: 28, inMonth: false },
-  { label: "Mon Apr 29", day: 29, inMonth: false },
-  { label: "Tue Apr 30", day: 30, inMonth: false },
-  { label: "Wed May 1", day: 1, inMonth: true },
-  { label: "Thu May 2", day: 2, inMonth: true },
-  { label: "Fri May 3", day: 3, inMonth: true },
-  { label: "Sat May 4", day: 4, inMonth: true },
-  { label: "Sun May 5", day: 5, inMonth: true },
-  { label: "Mon May 6", day: 6, inMonth: true },
-  { label: "Tue May 7", day: 7, inMonth: true },
-  { label: "Wed May 8", day: 8, inMonth: true },
-  { label: "Thu May 9", day: 9, inMonth: true },
-  { label: "Fri May 10", day: 10, inMonth: true },
-  { label: "Sat May 11", day: 11, inMonth: true },
-  { label: "Sun May 12", day: 12, inMonth: true },
-  { label: "Mon May 13", day: 13, inMonth: true },
-  { label: "Tue May 14", day: 14, inMonth: true },
-  { label: "Wed May 15", day: 15, inMonth: true },
-  { label: "Thu May 16", day: 16, inMonth: true },
-  { label: "Fri May 17", day: 17, inMonth: true },
-  { label: "Sat May 18", day: 18, inMonth: true },
-  { label: "Sun May 19", day: 19, inMonth: true },
-  { label: "Mon May 20", day: 20, inMonth: true },
-  { label: "Tue May 21", day: 21, inMonth: true },
-  { label: "Wed May 22", day: 22, inMonth: true },
-  { label: "Thu May 23", day: 23, inMonth: true },
-  { label: "Fri May 24", day: 24, inMonth: true },
-  { label: "Sat May 25", day: 25, inMonth: true },
-  { label: "Sun May 26", day: 26, inMonth: true },
-  { label: "Mon May 27", day: 27, inMonth: true },
-  { label: "Tue May 28", day: 28, inMonth: true },
-  { label: "Wed May 29", day: 29, inMonth: true },
-  { label: "Thu May 30", day: 30, inMonth: true },
-  { label: "Fri May 31", day: 31, inMonth: true },
-  { label: "Sat Jun 1", day: 1, inMonth: false },
-];
+type CalendarDay = {
+  label: string;
+  day: number;
+  inMonth: boolean;
+  isoDate: string;
+  disabled: boolean;
+};
 
 const timeHours = Array.from({ length: 12 }, (_, index) =>
   String(index + 1).padStart(2, "0"),
@@ -218,6 +188,64 @@ const accessModeOptions: Array<{ id: AccessMode; label: string }> = [
 
 function formatCalendarLabel(label: string) {
   return label.replace(/^([A-Za-z]{3}) /, "$1, ");
+}
+
+function toLocalIsoDate(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function getTodayIsoDate() {
+  return toLocalIsoDate(new Date());
+}
+
+function parseIsoDateToLocalDate(isoDate: string) {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatCalendarDayLabel(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(date).replace(",", "");
+}
+
+function formatCalendarMonthLabel(date: Date) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function buildCalendarDays(selectedDate: string): { monthLabel: string; days: CalendarDay[] } {
+  const todayIso = getTodayIsoDate();
+  const selected = parseIsoDateToLocalDate(selectedDate < todayIso ? todayIso : selectedDate);
+  const year = selected.getFullYear();
+  const month = selected.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const gridStart = new Date(firstOfMonth);
+  gridStart.setDate(firstOfMonth.getDate() - firstOfMonth.getDay());
+
+  const days = Array.from({ length: 35 }, (_, index) => {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    const isoDate = toLocalIsoDate(date);
+
+    return {
+      label: formatCalendarDayLabel(date),
+      day: date.getDate(),
+      inMonth: date.getMonth() === month,
+      isoDate,
+      disabled: isoDate < todayIso,
+    };
+  });
+
+  return { monthLabel: formatCalendarMonthLabel(firstOfMonth), days };
 }
 
 function formatMoney(value: number) {
@@ -449,7 +477,7 @@ function ThemeAwareHeroStrip() {
       className="relative min-h-[430px] w-full shrink-0 overflow-hidden border-r border-[var(--rp-border)]"
     >
       <Image
-        src="/ridepod/dark-mode-background.png"
+        src="/ridepod/create-pod-dark-background.png"
         alt=""
         fill
         sizes="(max-width: 768px) 52vw, 360px"
@@ -478,8 +506,6 @@ function RouteMarker({
   type: "pickup" | "stop" | "dropoff";
   isLast: boolean;
 }) {
-  const Icon = type === "dropoff" ? Plane : MapPin;
-
   return (
     <div className="relative flex min-h-[92px] w-10 justify-center pt-4">
       {!isLast ? (
@@ -497,7 +523,7 @@ function RouteMarker({
         {type === "stop" ? (
           <span className="h-3 w-3 rounded-full bg-[var(--rp-primary)]" />
         ) : (
-          <Icon className="h-5 w-5 stroke-[2.4]" />
+          <MapPin className="h-5 w-5 stroke-[2.4]" />
         )}
       </span>
     </div>
@@ -519,8 +545,8 @@ function AddressField({
   onChange: (value: string) => void;
   onRemove?: () => void;
 }) {
-  const Icon = type === "dropoff" ? Plane : MapPin;
   const fieldId = useId();
+  const iconLabel = type === "dropoff" ? "Destination" : type === "pickup" ? "Pickup" : "Stop";
 
   return (
     <div
@@ -530,7 +556,8 @@ function AddressField({
       )}
     >
       <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
-        <Icon className="h-6 w-6 fill-[var(--rp-primary)]/10 stroke-[2.3]" />
+        <span className="sr-only">{iconLabel}</span>
+        <MapPin className="h-6 w-6 fill-[var(--rp-primary)]/10 stroke-[2.3]" />
       </span>
       <span className="min-w-0">
         <label
@@ -714,17 +741,21 @@ function RouteStopsStep({
 }
 
 function CalendarPicker({
+  selectedDate,
   selectedDay,
   onSelectDay,
 }: {
+  selectedDate: string;
   selectedDay: number;
-  onSelectDay: (day: number, label: string) => void;
+  onSelectDay: (day: number, label: string, isoDate: string) => void;
 }) {
+  const calendar = buildCalendarDays(selectedDate);
+
   return (
     <section aria-label="Calendar picker" className="mt-9">
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-[22px] font-black leading-none text-[var(--rp-text)]">
-          May 2024
+          {calendar.monthLabel}
         </h2>
         <div className="flex items-center gap-2 text-[var(--rp-primary)]">
           <button
@@ -753,25 +784,25 @@ function CalendarPicker({
           ))}
         </div>
         <div className="mt-3 grid grid-cols-7 gap-y-2 text-center">
-          {may2024Days.map((date, index) => {
-            const selected = date.inMonth && date.day === selectedDay;
+          {calendar.days.map((date, index) => {
+            const selected = date.inMonth && date.isoDate === selectedDate && date.day === selectedDay;
             const label = selected ? `${date.label}, selected` : date.label;
 
             return (
               <button
-                key={`${date.label}-${index}`}
+                key={`${date.isoDate}-${index}`}
                 type="button"
                 aria-label={label}
                 aria-current={selected ? "date" : undefined}
-                onClick={() => date.inMonth && onSelectDay(date.day, date.label)}
-                disabled={!date.inMonth}
+                onClick={() => date.inMonth && !date.disabled && onSelectDay(date.day, date.label, date.isoDate)}
+                disabled={!date.inMonth || date.disabled}
                 className={cn(
                   "mx-auto grid h-10 w-10 place-items-center rounded-full text-base font-bold transition",
                   selected
                     ? "bg-[var(--rp-primary)] text-[var(--rp-primary-text)] ring-2 ring-[var(--rp-focus)]"
-                    : date.inMonth
+                    : date.inMonth && !date.disabled
                       ? "text-[var(--rp-text)] hover:bg-[var(--rp-card-muted)]"
-                      : "cursor-default text-[var(--rp-muted)] opacity-45",
+                      : "cursor-not-allowed text-[var(--rp-muted)] opacity-35",
                 )}
               >
                 <span>{date.day}</span>
@@ -1061,6 +1092,7 @@ function RecurringScheduleFields({
         Start date
         <input
           type="date"
+          min={getTodayIsoDate()}
           value={dateTime.recurringStartDate}
           onChange={(event) => onDateTimeChange({ ...dateTime, recurringStartDate: event.target.value })}
           className="h-14 rounded-[12px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
@@ -1121,6 +1153,7 @@ function RecurringScheduleFields({
             End date
             <input
               type="date"
+              min={dateTime.recurringStartDate || getTodayIsoDate()}
               value={dateTime.recurringEndDate}
               onChange={(event) => onDateTimeChange({ ...dateTime, recurringEndDate: event.target.value })}
               className="h-12 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
@@ -1184,11 +1217,13 @@ function DateTimeStep({
         {dateTime.scheduleType === "ONE_TIME" ? (
           <>
             <CalendarPicker
+              selectedDate={dateTime.selectedDate}
               selectedDay={dateTime.selectedDay}
-              onSelectDay={(day, label) =>
+              onSelectDay={(day, label, isoDate) =>
                 onDateTimeChange({
                   ...dateTime,
                   selectedDay: day,
+                  selectedDate: isoDate,
                   date: formatCalendarLabel(label),
                 })
               }
@@ -2060,6 +2095,8 @@ function SuccessStep({
 }
 
 export function CreatePodChooseType() {
+  const todayIsoDate = getTodayIsoDate();
+  const todayDate = parseIsoDateToLocalDate(todayIsoDate);
   const [step, setStep] = useState<CreateStep>(0);
   const [podType, setPodType] = useState<PodType>("scheduled");
   const [pickupAddress, setPickupAddress] = useState("USC Village, Rideshare zone");
@@ -2068,15 +2105,16 @@ export function CreatePodChooseType() {
   const [nextStopId, setNextStopId] = useState(1);
   const [dateTime, setDateTime] = useState<DateTimeState>({
     scheduleType: "ONE_TIME",
-    date: "Tue, May 14",
-    selectedDay: 14,
+    date: formatCalendarLabel(formatCalendarDayLabel(todayDate)),
+    selectedDate: todayIsoDate,
+    selectedDay: todayDate.getDate(),
     time: "7:30 AM",
     flexibility: "\u00b1 15 min",
     recurringWeekdays: ["TU"],
-    recurringStartDate: "2024-05-14",
+    recurringStartDate: todayIsoDate,
     recurringEndMode: "after",
     recurringOccurrenceLimit: 8,
-    recurringEndDate: "2024-07-09",
+    recurringEndDate: todayIsoDate,
   });
   const [peopleVehicle, setPeopleVehicle] = useState<PeopleVehicleState>({
     seatsAvailable: 4,
