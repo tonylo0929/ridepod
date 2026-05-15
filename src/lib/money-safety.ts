@@ -424,6 +424,11 @@ export type Receipt = {
 export type ProtectedPod = {
   id: string;
   hostUserId: string;
+  scheduleType?: "ONE_TIME" | "RECURRING";
+  recurringTemplateId?: string | null;
+  occurrenceDate?: string | null;
+  isRecurringOccurrence?: boolean;
+  generatedFromTemplateAt?: string | null;
   lifecycleState: PodLifecycleState;
   bookingState: HostBookingState;
   genderMode: GenderMode;

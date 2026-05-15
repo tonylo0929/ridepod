@@ -74,6 +74,7 @@ const stripeConfig = loadTsModule("src/lib/stripe-config.ts");
 const paymentProvider = loadTsModule("src/lib/payment-provider.ts");
 const stripeSetup = loadTsModule("src/lib/stripe-setup.ts");
 const mockData = loadTsModule("src/lib/mock-data.ts");
+const podSchedule = loadTsModule("src/lib/pod-schedule.ts");
 
 assert.deepEqual(moneySafety.POD_LIFECYCLE_STATES, [
   "DRAFT",
@@ -152,6 +153,88 @@ assert.ok(moneySafety.PAYMENT_INTENT_STATUSES.includes("SUCCEEDED"));
 assert.deepEqual(moneySafety.GENDER_MODES, ["MIXED", "WOMEN_ONLY"]);
 assert.equal(moneySafety.getGenderModeLabel("MIXED"), "Mixed pod");
 assert.equal(moneySafety.getGenderModeLabel("WOMEN_ONLY"), "Women-only");
+assert.deepEqual(podSchedule.SCHEDULE_TYPES, ["ONE_TIME", "RECURRING"]);
+assert.deepEqual(podSchedule.RECURRENCE_FREQUENCIES, ["WEEKLY"]);
+const oneTimeOccurrence = podSchedule.createOneTimeOccurrence({
+  scheduleType: "ONE_TIME",
+  occurrenceDate: "2026-05-19",
+  departureTimeLocal: "16:30",
+  flexibilityMinutes: 15,
+});
+assert.equal(oneTimeOccurrence.departureAt, "2026-05-19T16:30:00");
+assert.equal(oneTimeOccurrence.isGeneratedFromRecurringTemplate, false);
+assert.deepEqual(oneTimeOccurrence.quoteIds, []);
+assert.deepEqual(oneTimeOccurrence.receiptIds, []);
+assert.equal(oneTimeOccurrence.settlementId, null);
+const recurringTemplate = {
+  id: "template-usc-lax-weekly",
+  hostUserId: "u1",
+  originGeneral: "USC",
+  destinationGeneral: "LAX",
+  genderMode: "WOMEN_ONLY",
+  accessMode: "VERIFIED_ONLY",
+  targetSeats: 4,
+  minSeatsToBook: 3,
+  estimatedTotalFareCents: 8400,
+  approvedMaxTotalFareCents: 9600,
+  ridepodFeeCents: 200,
+  recurrenceFrequency: "WEEKLY",
+  weekdays: ["TU"],
+  departureTimeLocal: "16:30",
+  startDate: "2026-05-19",
+  endDate: null,
+  occurrenceLimit: 3,
+  flexibilityMinutes: 15,
+  status: "ACTIVE",
+  createdAt: "2026-05-01T00:00:00.000Z",
+  updatedAt: "2026-05-01T00:00:00.000Z",
+};
+const tuesdayOccurrences = podSchedule.generateRecurringOccurrences(recurringTemplate, {
+  generatedAt: "2026-05-01T00:00:00.000Z",
+});
+assert.deepEqual(tuesdayOccurrences.map((occurrence) => occurrence.occurrenceDate), [
+  "2026-05-19",
+  "2026-05-26",
+  "2026-06-02",
+]);
+assert.ok(tuesdayOccurrences.every((occurrence) => occurrence.recurringTemplateId === recurringTemplate.id));
+assert.ok(tuesdayOccurrences.every((occurrence) => occurrence.isGeneratedFromRecurringTemplate));
+assert.ok(tuesdayOccurrences.every((occurrence) => occurrence.lifecycleState === "FORMING"));
+assert.ok(tuesdayOccurrences.every((occurrence) => occurrence.bookingState === "QUOTE_ALLOWED"));
+assert.ok(tuesdayOccurrences.every((occurrence) => occurrence.quoteIds.length === 0));
+assert.ok(tuesdayOccurrences.every((occurrence) => occurrence.receiptIds.length === 0));
+assert.ok(tuesdayOccurrences.every((occurrence) => occurrence.settlementId === null));
+const multiWeekdayOccurrences = podSchedule.generateRecurringOccurrences({
+  ...recurringTemplate,
+  id: "template-mwf",
+  weekdays: ["FR", "MO", "WE"],
+  startDate: "2026-05-18",
+  occurrenceLimit: 5,
+});
+assert.deepEqual(multiWeekdayOccurrences.map((occurrence) => occurrence.occurrenceDate), [
+  "2026-05-18",
+  "2026-05-20",
+  "2026-05-22",
+  "2026-05-25",
+  "2026-05-27",
+]);
+const endDateLimitedOccurrences = podSchedule.generateRecurringOccurrences({
+  ...recurringTemplate,
+  occurrenceLimit: null,
+  endDate: "2026-05-31",
+});
+assert.deepEqual(endDateLimitedOccurrences.map((occurrence) => occurrence.occurrenceDate), [
+  "2026-05-19",
+  "2026-05-26",
+]);
+const defaultLimitedOccurrences = podSchedule.generateRecurringOccurrences({
+  ...recurringTemplate,
+  occurrenceLimit: null,
+  endDate: null,
+});
+assert.equal(defaultLimitedOccurrences.length, 8);
+assert.equal(podSchedule.createRecurringTemplateRRule(recurringTemplate), "FREQ=WEEKLY;BYDAY=TU");
+assert.equal("paymentIntentId" in recurringTemplate, false);
 assert.deepEqual(moneySafety.ACCESS_MODES, [
   "OPEN",
   "VERIFIED_ONLY",

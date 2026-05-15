@@ -29,6 +29,14 @@ import {
   UsersRound,
 } from "lucide-react";
 import { cn } from "@/components/ui";
+import {
+  WEEKDAYS,
+  createRecurringTemplateRRule,
+  generateRecurringOccurrences,
+  type RecurringPodTemplate,
+  type ScheduleType,
+  type Weekday,
+} from "@/lib/pod-schedule";
 
 type PodType = "scheduled" | "recurring";
 type CreateStep = 0 | 1 | 2 | 3 | 4 | 5;
@@ -43,10 +51,16 @@ type RideOptionId =
   | "taxi_meter"
   | "comfort_premium";
 type DateTimeState = {
+  scheduleType: ScheduleType;
   date: string;
   selectedDay: number;
   time: string;
   flexibility: string;
+  recurringWeekdays: Weekday[];
+  recurringStartDate: string;
+  recurringEndMode: "after" | "on_date" | "none";
+  recurringOccurrenceLimit: number;
+  recurringEndDate: string;
 };
 type PeopleVehicleState = {
   seatsAvailable: number;
@@ -135,6 +149,15 @@ const timeMinutes = Array.from({ length: 12 }, (_, index) =>
 const timePeriods = ["AM", "PM"] as const;
 
 const weekdayLabels = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+const recurringWeekdayOptions: Array<{ id: Weekday; label: string }> = [
+  { id: "MO", label: "Mon" },
+  { id: "TU", label: "Tue" },
+  { id: "WE", label: "Wed" },
+  { id: "TH", label: "Thu" },
+  { id: "FR", label: "Fri" },
+  { id: "SA", label: "Sat" },
+  { id: "SU", label: "Sun" },
+];
 
 const rideOptions: Array<{
   id: RideOptionId;
@@ -202,6 +225,53 @@ function formatMoney(value: number) {
     style: "currency",
     currency: "USD",
   }).format(value);
+}
+
+function parseFlexibilityMinutes(value: string) {
+  const match = value.match(/(\d+)/);
+  return match ? Number(match[1]) : 15;
+}
+
+function displayTimeToLocalTime(value: string) {
+  const parsed = parseDisplayTime(value);
+  const hour12 = Number(parsed.hour);
+  const hour24 =
+    parsed.period === "PM"
+      ? hour12 === 12
+        ? 12
+        : hour12 + 12
+      : hour12 === 12
+        ? 0
+        : hour12;
+
+  return `${String(hour24).padStart(2, "0")}:${parsed.minute}`;
+}
+
+function formatDateForPreview(date: string) {
+  const parsed = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return date;
+
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(parsed);
+}
+
+function getRecurringDateSummary(dateTime: DateTimeState) {
+  const weekdays = dateTime.recurringWeekdays
+    .map((weekday) => recurringWeekdayOptions.find((option) => option.id === weekday)?.label ?? weekday)
+    .join(", ");
+
+  return `Weekly ${weekdays || "days"} from ${formatDateForPreview(dateTime.recurringStartDate)}`;
+}
+
+function getScheduleDateSummary(dateTime: DateTimeState) {
+  return dateTime.scheduleType === "RECURRING" ? getRecurringDateSummary(dateTime) : dateTime.date;
+}
+
+function getScheduleTypeLabel(dateTime: DateTimeState) {
+  return dateTime.scheduleType === "RECURRING" ? "Recurring pod" : "Scheduled pod";
 }
 
 function routeCode(address: string, fallback: string) {
@@ -814,17 +884,279 @@ function FlexibilityField({
   );
 }
 
+function ScheduleTypeSwitch({
+  value,
+  onChange,
+}: {
+  value: ScheduleType;
+  onChange: (value: ScheduleType) => void;
+}) {
+  const options: Array<{ value: ScheduleType; label: string; helper: string }> = [
+    { value: "ONE_TIME", label: "One-time", helper: "Single protected ride" },
+    { value: "RECURRING", label: "Recurring", helper: "Weekly ride template" },
+  ];
+
+  return (
+    <section aria-label="Schedule type">
+      <h2 className="text-base font-black text-[var(--rp-text)]">Schedule type</h2>
+      <div className="mt-3 grid grid-cols-2 gap-2 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-1.5">
+        {options.map((option) => {
+          const selected = value === option.value;
+
+          return (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onChange(option.value)}
+              aria-pressed={selected}
+              className={cn(
+                "rounded-[12px] px-3 py-3 text-center transition",
+                selected
+                  ? "bg-[var(--rp-primary)] text-[var(--rp-primary-text)] shadow-[0_10px_22px_color-mix(in_srgb,var(--rp-primary)_28%,transparent)]"
+                  : "text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-muted)]",
+              )}
+            >
+              <span className="block text-sm font-black">{option.label}</span>
+              <span className="mt-1 block text-[11px] font-bold opacity-80">{option.helper}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function buildPreviewTemplate(dateTime: DateTimeState): RecurringPodTemplate {
+  const now = new Date(0).toISOString();
+
+  return {
+    id: "create-preview-template",
+    hostUserId: "current-user",
+    originGeneral: "Pickup",
+    destinationGeneral: "Dropoff",
+    genderMode: "MIXED",
+    accessMode: "VERIFIED_ONLY",
+    targetSeats: 4,
+    minSeatsToBook: 3,
+    estimatedTotalFareCents: 8400,
+    approvedMaxTotalFareCents: 9600,
+    ridepodFeeCents: 200,
+    recurrenceFrequency: "WEEKLY",
+    weekdays: dateTime.recurringWeekdays,
+    departureTimeLocal: displayTimeToLocalTime(dateTime.time),
+    startDate: dateTime.recurringStartDate,
+    endDate: dateTime.recurringEndMode === "on_date" ? dateTime.recurringEndDate : null,
+    occurrenceLimit:
+      dateTime.recurringEndMode === "after" ? Math.max(1, dateTime.recurringOccurrenceLimit) : null,
+    flexibilityMinutes: parseFlexibilityMinutes(dateTime.flexibility),
+    status: "ACTIVE",
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+
+function RecurringOccurrencePreview({ dateTime }: { dateTime: DateTimeState }) {
+  const template = buildPreviewTemplate(dateTime);
+  const occurrences = generateRecurringOccurrences(template, {
+    defaultOccurrenceLimit: 8,
+    generatedAt: new Date(0).toISOString(),
+  });
+  const preview = occurrences.slice(0, 3);
+
+  return (
+    <section className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+      <div className="flex items-start gap-3">
+        <RefreshCcw className="mt-0.5 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
+        <div>
+          <h3 className="text-sm font-black text-[var(--rp-text)]">Recurring protection</h3>
+          <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+            Recurring pods create separate protected rides for each date. Each ride has its own payment lock, quote, receipt, and settlement.
+          </p>
+          <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+            You will authorize payment per ride, not for the entire recurring schedule.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+        <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
+          Next rides
+        </p>
+        {preview.length > 0 ? (
+          <p className="mt-2 text-sm font-black leading-6 text-[var(--rp-text)]">
+            {preview.map((occurrence) => formatDateForPreview(occurrence.occurrenceDate)).join(", ")}
+          </p>
+        ) : (
+          <p className="mt-2 text-sm font-bold text-[var(--rp-muted)]">
+            Pick at least one weekday to preview rides.
+          </p>
+        )}
+        <p className="mt-2 text-xs font-semibold text-[var(--rp-muted)]">
+          {createRecurringTemplateRRule(template)}
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function RecurringScheduleFields({
+  dateTime,
+  onDateTimeChange,
+}: {
+  dateTime: DateTimeState;
+  onDateTimeChange: (dateTime: DateTimeState) => void;
+}) {
+  const toggleWeekday = (weekday: Weekday) => {
+    const selected = dateTime.recurringWeekdays.includes(weekday);
+    const nextWeekdays = selected
+      ? dateTime.recurringWeekdays.filter((current) => current !== weekday)
+      : [...dateTime.recurringWeekdays, weekday].sort(
+          (a, b) => WEEKDAYS.indexOf(a) - WEEKDAYS.indexOf(b),
+        );
+
+    onDateTimeChange({ ...dateTime, recurringWeekdays: nextWeekdays });
+  };
+
+  return (
+    <section className="mt-7 grid gap-6 border-t border-[var(--rp-border)] pt-7">
+      <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+        <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
+          Repeats
+        </p>
+        <p className="mt-1 text-lg font-black text-[var(--rp-text)]">Weekly</p>
+      </div>
+
+      <fieldset>
+        <legend className="text-base font-bold text-[var(--rp-muted-strong)]">Repeat on</legend>
+        <div className="mt-3 grid grid-cols-4 gap-2 min-[390px]:grid-cols-7">
+          {recurringWeekdayOptions.map((option) => {
+            const selected = dateTime.recurringWeekdays.includes(option.id);
+
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => toggleWeekday(option.id)}
+                aria-pressed={selected}
+                className={cn(
+                  "h-11 rounded-xl border text-sm font-black transition",
+                  selected
+                    ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                    : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-muted)]",
+                )}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+
+      <TimeField
+        value={dateTime.time}
+        onChange={(time) => onDateTimeChange({ ...dateTime, time })}
+      />
+
+      <label className="grid gap-3 text-base font-bold text-[var(--rp-muted-strong)]">
+        Start date
+        <input
+          type="date"
+          value={dateTime.recurringStartDate}
+          onChange={(event) => onDateTimeChange({ ...dateTime, recurringStartDate: event.target.value })}
+          className="h-14 rounded-[12px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+        />
+      </label>
+
+      <fieldset className="grid gap-3">
+        <legend className="text-base font-bold text-[var(--rp-muted-strong)]">End</legend>
+        <div className="grid gap-2">
+          {[
+            { id: "after", label: "After N rides" },
+            { id: "on_date", label: "On date" },
+            { id: "none", label: "No end date" },
+          ].map((option) => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() =>
+                onDateTimeChange({
+                  ...dateTime,
+                  recurringEndMode: option.id as DateTimeState["recurringEndMode"],
+                })
+              }
+              className={cn(
+                "flex min-h-12 items-center justify-between rounded-xl border px-4 text-sm font-black",
+                dateTime.recurringEndMode === option.id
+                  ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                  : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
+              )}
+            >
+              {option.label}
+              {dateTime.recurringEndMode === option.id ? <Check className="h-4 w-4" /> : null}
+            </button>
+          ))}
+        </div>
+
+        {dateTime.recurringEndMode === "after" ? (
+          <label className="grid gap-2 text-sm font-black text-[var(--rp-text)]">
+            Number of rides
+            <input
+              type="number"
+              min={1}
+              max={12}
+              value={dateTime.recurringOccurrenceLimit}
+              onChange={(event) =>
+                onDateTimeChange({
+                  ...dateTime,
+                  recurringOccurrenceLimit: Number(event.target.value),
+                })
+              }
+              className="h-12 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+            />
+          </label>
+        ) : null}
+
+        {dateTime.recurringEndMode === "on_date" ? (
+          <label className="grid gap-2 text-sm font-black text-[var(--rp-text)]">
+            End date
+            <input
+              type="date"
+              value={dateTime.recurringEndDate}
+              onChange={(event) => onDateTimeChange({ ...dateTime, recurringEndDate: event.target.value })}
+              className="h-12 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+            />
+          </label>
+        ) : null}
+      </fieldset>
+
+      <FlexibilityField
+        value={dateTime.flexibility}
+        onChange={(flexibility) => onDateTimeChange({ ...dateTime, flexibility })}
+      />
+
+      <RecurringOccurrencePreview dateTime={dateTime} />
+    </section>
+  );
+}
+
 function DateTimeStep({
   dateTime,
   onDateTimeChange,
+  onScheduleTypeChange,
   onBack,
   onContinue,
 }: {
   dateTime: DateTimeState;
   onDateTimeChange: (dateTime: DateTimeState) => void;
+  onScheduleTypeChange: (scheduleType: ScheduleType) => void;
   onBack: () => void;
   onContinue: () => void;
 }) {
+  const canContinue =
+    dateTime.scheduleType === "ONE_TIME" ||
+    (dateTime.recurringWeekdays.length > 0 &&
+      (dateTime.recurringEndMode !== "after" || dateTime.recurringOccurrenceLimit > 0));
+
   return (
     <>
       <CreatePodTopBar currentStep={2} onBack={onBack} />
@@ -839,32 +1171,51 @@ function DateTimeStep({
           </p>
         </section>
 
-        <CalendarPicker
-          selectedDay={dateTime.selectedDay}
-          onSelectDay={(day, label) =>
-            onDateTimeChange({
-              ...dateTime,
-              selectedDay: day,
-              date: formatCalendarLabel(label),
-            })
-          }
-        />
+        <div className="mt-8">
+          <ScheduleTypeSwitch
+            value={dateTime.scheduleType}
+            onChange={(scheduleType) => {
+              onScheduleTypeChange(scheduleType);
+              onDateTimeChange({ ...dateTime, scheduleType });
+            }}
+          />
+        </div>
 
-        <section className="mt-7 grid gap-6 border-t border-[var(--rp-border)] pt-7">
-          <TimeField
-            value={dateTime.time}
-            onChange={(time) => onDateTimeChange({ ...dateTime, time })}
+        {dateTime.scheduleType === "ONE_TIME" ? (
+          <>
+            <CalendarPicker
+              selectedDay={dateTime.selectedDay}
+              onSelectDay={(day, label) =>
+                onDateTimeChange({
+                  ...dateTime,
+                  selectedDay: day,
+                  date: formatCalendarLabel(label),
+                })
+              }
+            />
+
+            <section className="mt-7 grid gap-6 border-t border-[var(--rp-border)] pt-7">
+              <TimeField
+                value={dateTime.time}
+                onChange={(time) => onDateTimeChange({ ...dateTime, time })}
+              />
+              <FlexibilityField
+                value={dateTime.flexibility}
+                onChange={(flexibility) => onDateTimeChange({ ...dateTime, flexibility })}
+              />
+            </section>
+          </>
+        ) : (
+          <RecurringScheduleFields
+            dateTime={dateTime}
+            onDateTimeChange={onDateTimeChange}
           />
-          <FlexibilityField
-            value={dateTime.flexibility}
-            onChange={(flexibility) => onDateTimeChange({ ...dateTime, flexibility })}
-          />
-        </section>
+        )}
       </main>
 
       <footer className="fixed inset-x-0 bottom-[88px] z-50 mx-auto max-w-[430px] px-6 pb-4 pt-8 md:static md:mx-0 md:max-w-none md:px-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pt-0">
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-28 bg-[linear-gradient(180deg,transparent,var(--rp-bg)_42%)] md:hidden" />
-        <PrimaryButton onClick={onContinue}>Continue</PrimaryButton>
+        <PrimaryButton onClick={onContinue} disabled={!canContinue}>Continue</PrimaryButton>
       </footer>
     </>
   );
@@ -1176,13 +1527,11 @@ function PeopleVehicleStep({
 }
 
 function ReviewHeroCard({
-  podType,
   routeFrom,
   routeTo,
   dateTime,
   peopleVehicle,
 }: {
-  podType: PodType;
   routeFrom: string;
   routeTo: string;
   dateTime: DateTimeState;
@@ -1211,7 +1560,7 @@ function ReviewHeroCard({
       </div>
       <div className="px-4 pb-4 text-center">
         <p className="text-sm font-black text-[var(--rp-primary)]">
-          {podType === "scheduled" ? "Scheduled pod" : "Recurring pod"}
+          {getScheduleTypeLabel(dateTime)}
         </p>
         <div className="mt-3 flex items-center justify-center gap-4 text-[26px] font-black tracking-wide text-[var(--rp-text)]">
           <span>{routeFrom}</span>
@@ -1221,7 +1570,7 @@ function ReviewHeroCard({
         <dl className="mt-5 grid grid-cols-4 gap-2 text-left text-xs font-bold text-[var(--rp-text)]">
           <div className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
-            <span className="truncate">{dateTime.date}</span>
+            <span className="truncate">{getScheduleDateSummary(dateTime)}</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock3 className="h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
@@ -1462,7 +1811,6 @@ function DetailSummaryCard({
 }
 
 function ReviewPodStep({
-  podType,
   pickupAddress,
   dropoffAddress,
   dateTime,
@@ -1471,7 +1819,6 @@ function ReviewPodStep({
   onBack,
   onCreate,
 }: {
-  podType: PodType;
   pickupAddress: string;
   dropoffAddress: string;
   dateTime: DateTimeState;
@@ -1499,7 +1846,6 @@ function ReviewPodStep({
 
         <div className="mt-5 grid gap-4">
           <ReviewHeroCard
-            podType={podType}
             routeFrom={routeFrom}
             routeTo={routeTo}
             dateTime={dateTime}
@@ -1592,7 +1938,7 @@ function PodCreatedSummaryCard({
     {
       icon: CalendarDays,
       label: "Date & time",
-      value: `${dateTime.date} \u2022 ${dateTime.time}`,
+      value: `${getScheduleDateSummary(dateTime)} \u2022 ${dateTime.time}`,
     },
     {
       icon: UsersRound,
@@ -1721,10 +2067,16 @@ export function CreatePodChooseType() {
   const [stops, setStops] = useState<RouteStop[]>([]);
   const [nextStopId, setNextStopId] = useState(1);
   const [dateTime, setDateTime] = useState<DateTimeState>({
+    scheduleType: "ONE_TIME",
     date: "Tue, May 14",
     selectedDay: 14,
     time: "7:30 AM",
     flexibility: "\u00b1 15 min",
+    recurringWeekdays: ["TU"],
+    recurringStartDate: "2024-05-14",
+    recurringEndMode: "after",
+    recurringOccurrenceLimit: 8,
+    recurringEndDate: "2024-07-09",
   });
   const [peopleVehicle, setPeopleVehicle] = useState<PeopleVehicleState>({
     seatsAvailable: 4,
@@ -1751,7 +2103,6 @@ export function CreatePodChooseType() {
         />
       ) : step === 4 ? (
         <ReviewPodStep
-          podType={podType}
           pickupAddress={pickupAddress}
           dropoffAddress={dropoffAddress}
           dateTime={dateTime}
@@ -1771,6 +2122,9 @@ export function CreatePodChooseType() {
         <DateTimeStep
           dateTime={dateTime}
           onDateTimeChange={setDateTime}
+          onScheduleTypeChange={(scheduleType) =>
+            setPodType(scheduleType === "RECURRING" ? "recurring" : "scheduled")
+          }
           onBack={() => setStep(1)}
           onContinue={() => setStep(3)}
         />
@@ -1819,7 +2173,13 @@ export function CreatePodChooseType() {
                     key={item.id}
                     item={item}
                     selected={podType === item.id}
-                    onSelect={() => setPodType(item.id)}
+                    onSelect={() => {
+                      setPodType(item.id);
+                      setDateTime((current) => ({
+                        ...current,
+                        scheduleType: item.id === "recurring" ? "RECURRING" : "ONE_TIME",
+                      }));
+                    }}
                   />
                 ))}
               </div>
