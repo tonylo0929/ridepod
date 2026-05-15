@@ -60,8 +60,8 @@ function Chip({
       className={cn(
         "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-3 text-sm font-black",
         tone === "purple"
-          ? "border-fuchsia-300/30 bg-fuchsia-500/14 text-fuchsia-200 [[data-theme=light]_&]:border-fuchsia-200 [[data-theme=light]_&]:bg-fuchsia-50 [[data-theme=light]_&]:text-fuchsia-700"
-          : "border-blue-300/18 bg-blue-500/12 text-[#2f84ff] [[data-theme=light]_&]:border-blue-100 [[data-theme=light]_&]:bg-white [[data-theme=light]_&]:text-blue-700",
+          ? "border-fuchsia-300/30 bg-fuchsia-500/14 text-fuchsia-200"
+          : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[#2f84ff]",
       )}
     >
       {icon}
@@ -113,7 +113,7 @@ function StaticRouteMap({
         <div className="join-map-marker bg-[#246dff]">
           <Building2 className="h-7 w-7 text-white" />
         </div>
-        <p className="mt-2 text-[32px] font-black leading-none text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] [[data-theme=light]_&]:text-slate-950 [[data-theme=light]_&]:drop-shadow-none">
+        <p className="mt-2 text-[32px] font-black leading-none text-[var(--rp-text)] drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
           {originLabel}
         </p>
       </div>
@@ -122,7 +122,7 @@ function StaticRouteMap({
         <div className="join-map-marker bg-[#092344]">
           <Plane className="h-7 w-7 fill-white text-white" />
         </div>
-        <p className="mt-2 text-[32px] font-black leading-none text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] [[data-theme=light]_&]:text-slate-950 [[data-theme=light]_&]:drop-shadow-none">
+        <p className="mt-2 text-[32px] font-black leading-none text-[var(--rp-text)] drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]">
           {destinationLabel}
         </p>
       </div>
@@ -148,14 +148,14 @@ function ProtectionTile({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-w-0 rounded-[22px] border border-white/12 bg-white/[0.035] p-4 [[data-theme=light]_&]:border-[#e0e7f0] [[data-theme=light]_&]:bg-white">
+    <div className="min-w-0 rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4">
       <div className="flex items-start gap-3">
         <div className="grid h-12 w-12 shrink-0 place-items-center">{icon}</div>
         <div className="min-w-0">
-          <h3 className="text-base font-black leading-6 text-white [[data-theme=light]_&]:text-slate-950">
+          <h3 className="text-base font-black leading-6 text-[var(--rp-text)]">
             {title}
           </h3>
-          <p className="mt-2 text-sm font-semibold leading-6 text-[#b9c7d8] [[data-theme=light]_&]:text-slate-700">
+          <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
             {children}
           </p>
         </div>
@@ -167,9 +167,9 @@ function ProtectionTile({
 function ShieldLockVisual() {
   return (
     <div className="relative grid h-28 w-28 shrink-0 place-items-center">
-      <div className="absolute inset-0 rounded-full bg-[#f2c15b]/18 blur-2xl [[data-theme=light]_&]:bg-blue-500/12" />
-      <ShieldCheck className="relative h-24 w-24 fill-[#f2c15b]/18 text-[#f2c15b] drop-shadow-[0_12px_26px_rgba(242,193,91,0.24)] [[data-theme=light]_&]:fill-blue-500/15 [[data-theme=light]_&]:text-blue-700" />
-      <LockKeyhole className="absolute h-9 w-9 text-[#f2c15b] [[data-theme=light]_&]:text-blue-700" />
+      <div className="absolute inset-0 rounded-full bg-[var(--rp-primary)]/18 blur-2xl" />
+      <ShieldCheck className="relative h-24 w-24 fill-[var(--rp-primary)]/18 text-[var(--rp-primary)] drop-shadow-[0_12px_26px_rgba(242,193,91,0.24)]" />
+      <LockKeyhole className="absolute h-9 w-9 text-[var(--rp-primary)]" />
     </div>
   );
 }
@@ -209,20 +209,20 @@ export function JoinPodMapFirstScreen({
   return (
     <div
       data-theme={themeVariant}
-      className="mx-auto w-full max-w-[430px] overflow-hidden rounded-[30px] border border-[var(--rp-border)] bg-[#020812] text-white shadow-[0_30px_80px_rgba(0,0,0,0.34)] [[data-theme=light]_&]:bg-[#fbfdff] [[data-theme=light]_&]:text-slate-950 min-[560px]:rounded-[34px]"
+      className="mx-auto w-full max-w-[430px] overflow-hidden rounded-[30px] border border-[var(--rp-border)] bg-[var(--rp-shell)] text-[var(--rp-text)] shadow-[0_30px_80px_rgba(0,0,0,0.34)] min-[560px]:rounded-[34px]"
     >
       <header className="grid h-[88px] grid-cols-[56px_1fr_56px] items-center px-5">
         <Link
           href={backHref}
           aria-label="Back to pod"
-          className="grid h-12 w-12 place-items-center rounded-full text-white transition hover:bg-white/8 [[data-theme=light]_&]:text-slate-950 [[data-theme=light]_&]:hover:bg-slate-100"
+          className="grid h-12 w-12 place-items-center rounded-full text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]"
         >
           <ArrowLeft className="h-8 w-8" />
         </Link>
         <div className="flex justify-center">
           <RidePodLogo className="h-10" priority />
         </div>
-        <div className="grid h-12 w-12 place-items-center justify-self-end rounded-full text-white [[data-theme=light]_&]:text-slate-950">
+        <div className="grid h-12 w-12 place-items-center justify-self-end rounded-full text-[var(--rp-text)]">
           <ShieldCheck className="h-8 w-8" />
         </div>
       </header>
@@ -233,23 +233,23 @@ export function JoinPodMapFirstScreen({
         genderMode={genderMode}
       />
 
-      <section className="-mt-5 grid gap-5 rounded-t-[30px] border border-white/10 bg-[#06131f]/96 p-6 shadow-[0_-20px_44px_rgba(0,0,0,0.28)] backdrop-blur-xl [[data-theme=light]_&]:border-[#e0e7f0] [[data-theme=light]_&]:bg-white">
+      <section className="-mt-5 grid gap-5 rounded-t-[30px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-6 shadow-[0_-20px_44px_rgba(0,0,0,0.28)] backdrop-blur-xl">
         <div className="grid grid-cols-[1fr_auto] items-start gap-4">
           <div className="min-w-0">
-            <h1 className="text-[36px] font-black leading-none tracking-[0.02em] text-white [[data-theme=light]_&]:text-slate-950">
+            <h1 className="text-[36px] font-black leading-none tracking-[0.02em] text-[var(--rp-text)]">
               {displayRoute}
             </h1>
-            <p className="mt-4 text-lg font-semibold text-[#b9c7d8] [[data-theme=light]_&]:text-slate-700">
+            <p className="mt-4 text-lg font-semibold text-[var(--rp-muted)]">
               {departureTime}
               <span className="px-4 text-[#6f7f94]">.</span>
               {estimate}
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[34px] font-black leading-none text-white [[data-theme=light]_&]:text-slate-950">
+            <p className="text-[34px] font-black leading-none text-[var(--rp-text)]">
               {riderCount}/{riderCapacity}
             </p>
-            <p className="mt-2 text-lg font-semibold text-[#b9c7d8] [[data-theme=light]_&]:text-slate-700">
+            <p className="mt-2 text-lg font-semibold text-[var(--rp-muted)]">
               Riders
             </p>
           </div>
@@ -264,7 +264,7 @@ export function JoinPodMapFirstScreen({
         <div className="grid gap-3 min-[390px]:grid-cols-2">
           <ProtectionTile
             title="Payment protected"
-            icon={<ShieldCheck className="h-11 w-11 text-emerald-400 [[data-theme=light]_&]:text-emerald-600" />}
+            icon={<ShieldCheck className="h-11 w-11 text-[var(--rp-success)]" />}
           >
             Money is locked.<br />
             You&apos;re never overcharged.
@@ -277,13 +277,13 @@ export function JoinPodMapFirstScreen({
           </ProtectionTile>
         </div>
 
-        <div className="overflow-hidden rounded-[24px] border border-[#f2c15b]/24 bg-[#071728] p-5 shadow-[inset_0_0_60px_rgba(47,132,255,0.08)] [[data-theme=light]_&]:border-blue-200 [[data-theme=light]_&]:bg-[#f8fbff]">
+        <div className="overflow-hidden rounded-[24px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-5 shadow-[inset_0_0_60px_rgba(47,132,255,0.08)]">
           <div className="grid grid-cols-[1fr_auto] items-center gap-4">
             <div className="min-w-0">
-              <p className="text-[28px] font-black leading-tight text-white [[data-theme=light]_&]:text-slate-950">
-                Your max charge: <span className="text-[#f2c15b] [[data-theme=light]_&]:text-blue-700">{formatDollars(maxChargeCents)}</span>
+              <p className="text-[28px] font-black leading-tight text-[var(--rp-text)]">
+                Your max charge: <span className="text-[var(--rp-primary)]">{formatDollars(maxChargeCents)}</span>
               </p>
-              <p className="mt-4 max-w-[280px] text-base font-semibold leading-7 text-[#b9c7d8] [[data-theme=light]_&]:text-slate-700">
+              <p className="mt-4 max-w-[280px] text-base font-semibold leading-7 text-[var(--rp-muted)]">
                 You will never pay more than this unless you approve a higher fare.
               </p>
             </div>
@@ -292,7 +292,7 @@ export function JoinPodMapFirstScreen({
         </div>
 
         {!isEligible ? (
-          <div className="rounded-2xl border border-amber-300/30 bg-amber-500/12 p-4 text-sm font-bold leading-6 text-amber-100 [[data-theme=light]_&]:bg-amber-50 [[data-theme=light]_&]:text-amber-900">
+          <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] p-4 text-sm font-bold leading-6 text-[var(--rp-warning)]">
             {blockingReason ?? "This pod is not available for your profile."}
           </div>
         ) : null}

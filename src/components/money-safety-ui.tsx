@@ -21,6 +21,7 @@ import {
   Venus,
   XCircle,
 } from "lucide-react";
+import { HostReplacementActionsScreen } from "@/components/host-replacement-actions-screen";
 import { RidePodLogo } from "@/components/ridepod-logo";
 import { cn } from "@/components/ui";
 import {
@@ -274,9 +275,9 @@ function QuoteFlowStatusPill({ children, tone }: { children: React.ReactNode; to
     <span
       className={cn(
         "inline-flex items-center rounded-full border px-3 py-1 text-xs font-black",
-        tone === "success" && "border-emerald-300/25 bg-emerald-500/12 text-emerald-300 [[data-theme=light]_&]:bg-emerald-50 [[data-theme=light]_&]:text-emerald-700",
-        tone === "warning" && "border-amber-300/25 bg-amber-500/12 text-amber-200 [[data-theme=light]_&]:bg-amber-50 [[data-theme=light]_&]:text-amber-800",
-        tone === "info" && "border-blue-300/20 bg-blue-500/12 text-blue-200 [[data-theme=light]_&]:bg-blue-50 [[data-theme=light]_&]:text-blue-700",
+        tone === "success" && "border-[var(--rp-border)] bg-[var(--rp-success-bg)] text-[var(--rp-badge-success-text)]",
+        tone === "warning" && "border-[var(--rp-border)] bg-[var(--rp-warning-bg)] text-[var(--rp-warning)]",
+        tone === "info" && "border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)]",
       )}
     >
       {children}
@@ -596,15 +597,15 @@ export function HostReplacementModePanel({ podId }: { podId: string }) {
   const riderCount = Math.max(3, confirmedRiders + 1);
 
   return (
-    <HostReplacementActiveScreen
+    <HostReplacementActionsScreen
       backHref={`/pods/${podId}`}
       routeLabel="USC → LAX"
-      departureTime="Today, 4:30 PM"
+      departureTime="Today • 4:30 PM"
       riderCount={riderCount}
       riderCapacity={pod.maxSeats}
       genderMode="WOMEN_ONLY"
       lifecycleState={pod.lifecycleState}
-      paymentAuthorizationSafe
+      paymentCaptureBlocked
     />
   );
 }

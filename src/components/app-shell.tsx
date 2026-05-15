@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Bell,
   CalendarCheck,
   Home,
   MessageCircle,
@@ -14,6 +15,7 @@ import {
 import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/components/ui";
 import { RidePodLogo } from "@/components/ridepod-logo";
+import { HomeMenuDrawer } from "@/components/home-menu-drawer";
 
 const primaryNav = [
   { href: "/home", label: "Home", icon: Home },
@@ -61,7 +63,7 @@ function NavLink({
 
 function PremiumBottomNav() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_92%,transparent)] px-2 pb-[env(safe-area-inset-bottom)] shadow-[var(--rp-shadow-nav)] backdrop-blur-xl min-[560px]:hidden">
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_92%,transparent)] px-2 pb-[env(safe-area-inset-bottom)] shadow-[var(--rp-shadow-nav)] backdrop-blur-xl lg:hidden">
       <div className="mx-auto grid max-w-md grid-cols-5 items-center">
         <NavLink href="/home" label="Home" icon={Home} compact />
         <NavLink href="/pods" label="My Pods" icon={CalendarCheck} compact />
@@ -73,12 +75,33 @@ function PremiumBottomNav() {
   );
 }
 
+function PremiumTopNav() {
+  return (
+    <header className="sticky top-0 z-40 border-b border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_92%,transparent)] px-4 py-3 shadow-[0_12px_30px_rgba(0,0,0,0.14)] backdrop-blur-xl lg:hidden">
+      <div className="mx-auto grid max-w-3xl grid-cols-[56px_1fr_56px] items-center gap-3">
+        <HomeMenuDrawer />
+        <Link href="/home" className="justify-self-center" aria-label="RidePod home">
+          <RidePodLogo className="h-9 justify-center" priority />
+        </Link>
+        <Link
+          href="/notifications"
+          aria-label="Notifications"
+          className="relative grid h-12 w-12 place-items-center justify-self-end rounded-[20px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] text-[var(--rp-text)] shadow-[var(--rp-shadow-soft)] transition hover:bg-[var(--rp-card-muted)]"
+        >
+          <Bell className="h-5 w-5 stroke-[2.2]" />
+          <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full border border-[var(--rp-shell)] bg-[var(--rp-primary)]" />
+        </Link>
+      </div>
+    </header>
+  );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="premium-app min-h-screen bg-[var(--rp-gradient-app)] text-[var(--rp-text)]">
-      <aside className="fixed inset-y-0 left-0 hidden w-52 border-r border-[var(--rp-border)] bg-[var(--rp-shell)] p-4 text-[var(--rp-text)] min-[560px]:block lg:w-72 lg:p-5">
+      <aside className="fixed inset-y-0 left-0 hidden w-72 border-r border-[var(--rp-border)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] lg:block">
         <Link href="/" className="grid gap-1">
-          <RidePodLogo className="h-8 lg:h-9" priority />
+          <RidePodLogo className="h-9" priority />
           <p className="text-xs font-medium text-[var(--rp-muted)]">Executive ride pods</p>
         </Link>
 
@@ -109,7 +132,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        <div className="absolute bottom-4 left-4 right-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 lg:bottom-5 lg:left-5 lg:right-5 lg:p-4">
+        <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
           <p className="text-sm font-bold">Host workflow</p>
           <p className="mt-1 text-xs leading-5 text-[var(--rp-muted)]">
             Payments are mocked, but every screen assumes hosts never chase members manually.
@@ -117,10 +140,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
+      <PremiumTopNav />
+
       <main
         className={cn(
-          "mx-auto w-full px-4 pb-28 pt-5 sm:px-6 min-[560px]:ml-52 min-[560px]:px-5 min-[560px]:pb-12 min-[560px]:pt-6 lg:ml-72 lg:px-10 lg:pt-8",
-          "max-w-3xl min-[560px]:max-w-none lg:max-w-5xl",
+          "mx-auto w-full px-4 pb-28 pt-5 sm:px-6 lg:ml-72 lg:px-10 lg:pb-12 lg:pt-8",
+          "max-w-3xl lg:max-w-5xl",
         )}
       >
         {children}

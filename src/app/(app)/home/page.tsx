@@ -1,16 +1,12 @@
 import Link from "next/link";
 import {
-  Bell,
   Building2,
   CarFront,
   Landmark,
   UserRound,
 } from "lucide-react";
 import { cn } from "@/components/ui";
-import { HomeMenuDrawer } from "@/components/home-menu-drawer";
 import { RidePodHeroBackground } from "@/components/ridepod-background";
-import { RidePodLogo } from "@/components/ridepod-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 const premiumPods = [
   {
@@ -153,29 +149,6 @@ export default function HomePage() {
   return (
     <div className="relative min-h-[calc(100vh-1.25rem)] overflow-hidden pb-2">
       <RidePodHeroBackground className="h-[270px]" priority />
-
-      <header className="relative grid grid-cols-[64px_1fr_112px] items-center pt-1">
-        <HomeMenuDrawer />
-
-        <Link
-          href="/home"
-          className="justify-self-center"
-        >
-          <RidePodLogo className="h-9" priority />
-        </Link>
-
-        <div className="flex justify-self-end gap-2">
-          <ThemeToggle compact />
-          <Link
-            href="/notifications"
-            aria-label="Notifications"
-            className="relative grid h-11 w-11 place-items-center rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] text-[var(--rp-text)] shadow-[0_14px_34px_rgba(0,0,0,0.12)] backdrop-blur-xl transition hover:bg-[var(--rp-card-muted)]"
-          >
-            <Bell className="h-5 w-5 stroke-[2.2]" />
-            <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full border border-[var(--rp-shell)] bg-[var(--rp-primary)]" />
-          </Link>
-        </div>
-      </header>
 
       <section className="relative mt-8">
         <h1 className="max-w-[330px] text-[42px] font-black leading-[1.08] tracking-[-0.02em] text-[var(--rp-text)] sm:max-w-none sm:text-5xl">

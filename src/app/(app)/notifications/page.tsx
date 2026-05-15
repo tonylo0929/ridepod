@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   ArrowRight,
@@ -9,12 +8,8 @@ import {
   Clock3,
   DollarSign,
   LockKeyhole,
-  Menu,
   MessageCircle,
-  SlidersHorizontal,
 } from "lucide-react";
-import { RidePodLogo } from "@/components/ridepod-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/components/ui";
 
 type NotificationFilter = "all" | "rides" | "payments" | "chat" | "reminders";
@@ -137,29 +132,6 @@ function NotificationsPageShell({ children }: { children: React.ReactNode }) {
 function NotificationsHeader() {
   return (
     <header className="grid gap-5 pt-1">
-      <div className="grid grid-cols-[52px_1fr_96px] items-center border-b border-[var(--rp-border)] pb-4">
-        <button
-          type="button"
-          aria-label="Open menu"
-          className="grid h-11 w-11 place-items-center rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-        <Link href="/home" className="justify-self-center" aria-label="RidePod home">
-          <RidePodLogo className="h-8" priority />
-        </Link>
-        <div className="flex justify-self-end gap-2">
-          <ThemeToggle compact />
-          <button
-            type="button"
-            aria-label="Notification filters"
-            className="grid h-11 w-11 place-items-center rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)]"
-          >
-            <SlidersHorizontal className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
-
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-[34px] font-black leading-tight text-[var(--rp-text)]">Notifications</h1>

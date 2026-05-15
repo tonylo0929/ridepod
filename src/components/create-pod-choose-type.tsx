@@ -999,25 +999,69 @@ function RideOptionSelector({
   );
 }
 
-function InfoNotice({
-  priceSource,
+function HostChoiceConfirmationDialog({
+  checked,
+  onCheckedChange,
+  onCancel,
+  onConfirm,
 }: {
-  priceSource: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  onCancel: () => void;
+  onConfirm: () => void;
 }) {
   return (
-    <div className="mt-6 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-[var(--rp-muted-strong)]">
-      <div className="flex gap-3">
-        <Info className="mt-0.5 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
-        <div className="text-sm font-semibold leading-5">
-          <p>
-            RidePod helps users coordinate planned ride pods. RidePod does not provide drivers. The host books the external ride at or below the approved max fare.
-          </p>
-          <p className="mt-1 text-[var(--rp-muted)]">Best value usually starts at 3+ riders.</p>
-          <p className="mt-2 text-xs font-bold uppercase tracking-[0.08em] text-[var(--rp-primary)]">
-            {priceSource}. Everyone pays their share.
-          </p>
+    <div className="fixed inset-0 z-[70] grid place-items-end bg-black/62 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-8 backdrop-blur-sm sm:place-items-center">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="host-choice-confirm-title"
+        className="w-full max-w-[390px] rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.42)]"
+      >
+        <div className="flex items-start gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+            <Info className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 id="host-choice-confirm-title" className="text-xl font-black leading-tight">
+              Confirm Host&apos;s Choice
+            </h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              RidePod helps users coordinate planned ride pods. RidePod does not provide drivers. The host books the external ride at or below the approved max fare.
+            </p>
+          </div>
         </div>
-      </div>
+
+        <label className="mt-5 flex items-start gap-3 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(event) => onCheckedChange(event.target.checked)}
+            className="mt-1 h-5 w-5 accent-[var(--rp-primary)]"
+          />
+          <span className="text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+            I understand the host chooses and books the external ride under the approved max fare. Everyone pays their share.
+          </span>
+        </label>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="min-h-12 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!checked}
+            onClick={onConfirm}
+            className="min-h-12 rounded-[16px] bg-[var(--rp-gradient-primary)] text-sm font-black text-[var(--rp-primary-text)] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            Confirm
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
@@ -1066,6 +1110,17 @@ function PeopleVehicleStep({
   onContinue: () => void;
 }) {
   const selectedRideOption = rideOptions.find((option) => option.id === peopleVehicle.rideOption);
+  const [showHostChoiceConfirm, setShowHostChoiceConfirm] = useState(false);
+  const [hostChoiceConfirmed, setHostChoiceConfirmed] = useState(false);
+
+  function handleContinue() {
+    if (peopleVehicle.rideOption === "hosts_choice" && !hostChoiceConfirmed) {
+      setShowHostChoiceConfirm(true);
+      return;
+    }
+
+    onContinue();
+  }
 
   return (
     <>
@@ -1101,9 +1156,6 @@ function PeopleVehicleStep({
                 })
               }
             />
-            <InfoNotice
-              priceSource={peopleVehicle.priceSource}
-            />
             <VehicleLightArt />
           </div>
 
@@ -1111,10 +1163,22 @@ function PeopleVehicleStep({
             <p className="mb-3 text-center text-xs font-bold text-[var(--rp-muted)]">
               {selectedRideOption?.title ?? "Host's Choice"} selected. Host books the external ride under approved max fare.
             </p>
-            <PrimaryButton onClick={onContinue}>Continue</PrimaryButton>
+            <PrimaryButton onClick={handleContinue}>Continue</PrimaryButton>
           </div>
         </section>
       </main>
+
+      {showHostChoiceConfirm ? (
+        <HostChoiceConfirmationDialog
+          checked={hostChoiceConfirmed}
+          onCheckedChange={setHostChoiceConfirmed}
+          onCancel={() => setShowHostChoiceConfirm(false)}
+          onConfirm={() => {
+            setShowHostChoiceConfirm(false);
+            onContinue();
+          }}
+        />
+      ) : null}
     </>
   );
 }
