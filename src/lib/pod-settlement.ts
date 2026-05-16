@@ -13,6 +13,7 @@ import {
   type Settlement,
   type SettlementItem,
 } from "./money-safety";
+import { PLATFORM_FEE_RATE_BPS, calculatePlatformFeeCents } from "./money-protection";
 import {
   mockAuditEvents,
   mockHostReimbursements,
@@ -186,7 +187,31 @@ function getMemberChargeCap(member: ProtectedPodMember, pod: ProtectedPod, appro
   if (!pod.higherMaxApprovedCents) return member.maxChargeCents;
 
   const higherMaxShareCents = Math.ceil(approvedFareCents / Math.max(1, pod.maxSeats));
-  return Math.max(member.maxChargeCents, higherMaxShareCents + member.platformFeeCents + extraLiabilityCents);
+  return Math.max(
+    member.maxChargeCents,
+    higherMaxShareCents + calculatePlatformFeeCents(higherMaxShareCents, PLATFORM_FEE_RATE_BPS) + extraLiabilityCents,
+  );
+}
+
+function capFareShareForPlatformFee(fareShareCents: number, chargeCapCents: number, extraLiabilityCents: number) {
+  const availableCents = Math.max(0, chargeCapCents - extraLiabilityCents);
+  let low = 0;
+  let high = Math.max(0, fareShareCents);
+  let cappedFareShareCents = 0;
+
+  while (low <= high) {
+    const candidateFareShareCents = Math.floor((low + high) / 2);
+    const candidatePlatformFeeCents = calculatePlatformFeeCents(candidateFareShareCents, PLATFORM_FEE_RATE_BPS);
+
+    if (candidateFareShareCents + candidatePlatformFeeCents <= availableCents) {
+      cappedFareShareCents = candidateFareShareCents;
+      low = candidateFareShareCents + 1;
+    } else {
+      high = candidateFareShareCents - 1;
+    }
+  }
+
+  return cappedFareShareCents;
 }
 
 function failedSettlement(error: string, pod: ProtectedPod | null = null): SettlementCalculationResult {
@@ -405,9 +430,9 @@ export function calculateSettlement(podId: string): SettlementCalculationResult 
           ? (member.cancellationLiabilityCents ?? 0)
           : 0;
     const chargeCapCents = getMemberChargeCap(member, pod, approvedFareCents, extraLiabilityCents);
-    const cappedFareShareCents = Math.min(fareShareCents, Math.max(0, chargeCapCents - member.platformFeeCents - extraLiabilityCents));
-    const liabilityCents = Math.min(extraLiabilityCents, Math.max(0, chargeCapCents - member.platformFeeCents - cappedFareShareCents));
-    const platformFeeCents = Math.min(member.platformFeeCents, Math.max(0, chargeCapCents - cappedFareShareCents - liabilityCents));
+    const cappedFareShareCents = capFareShareForPlatformFee(fareShareCents, chargeCapCents, extraLiabilityCents);
+    const platformFeeCents = calculatePlatformFeeCents(cappedFareShareCents, PLATFORM_FEE_RATE_BPS);
+    const liabilityCents = Math.min(extraLiabilityCents, Math.max(0, chargeCapCents - cappedFareShareCents - platformFeeCents));
     const finalChargeCents = Math.min(chargeCapCents, cappedFareShareCents + liabilityCents + platformFeeCents);
 
     member.finalChargeCents = finalChargeCents;
@@ -452,7 +477,7 @@ export function calculateSettlement(podId: string): SettlementCalculationResult 
         itemType: "PLATFORM_FEE",
         direction: "PLATFORM_REVENUE",
         amountCents: platformFeeCents,
-        reasonCode: "RIDEPOD_FEE",
+        reasonCode: "RIDEPOD_PLATFORM_FEE",
         createdAt: now,
       });
     }

@@ -75,6 +75,8 @@ const paymentProvider = loadTsModule("src/lib/payment-provider.ts");
 const stripeSetup = loadTsModule("src/lib/stripe-setup.ts");
 const mockData = loadTsModule("src/lib/mock-data.ts");
 const podSchedule = loadTsModule("src/lib/pod-schedule.ts");
+const moneyProtection = loadTsModule("src/lib/money-protection.ts");
+const fareEstimates = loadTsModule("src/lib/fare-estimates.ts");
 
 assert.deepEqual(moneySafety.POD_LIFECYCLE_STATES, [
   "DRAFT",
@@ -155,6 +157,93 @@ assert.equal(moneySafety.getGenderModeLabel("MIXED"), "Mixed pod");
 assert.equal(moneySafety.getGenderModeLabel("WOMEN_ONLY"), "Women-only");
 assert.deepEqual(podSchedule.SCHEDULE_TYPES, ["ONE_TIME", "RECURRING"]);
 assert.deepEqual(podSchedule.RECURRENCE_FREQUENCIES, ["WEEKLY"]);
+assert.deepEqual(podSchedule.RECURRING_PATTERNS, ["ONE_WAY", "BACK_AND_FORTH"]);
+assert.deepEqual(podSchedule.RECURRING_LEG_TYPES, ["OUTBOUND", "RETURN"]);
+assert.deepEqual(fareEstimates.ESTIMATE_SOURCES, [
+  "SYSTEM_TAXI_HK",
+  "HOST_INPUT",
+  "HOST_QUOTE_SCREENSHOT",
+  "PROVIDER_API_FUTURE",
+  "UNKNOWN",
+]);
+assert.deepEqual(fareEstimates.ESTIMATE_CONFIDENCES, ["LOW", "MEDIUM", "HIGH"]);
+const urbanFlagFallEstimate = fareEstimates.calculateHkTaxiFareEstimate({
+  zone: "URBAN",
+  distanceMeters: 2000,
+});
+assert.equal(urbanFlagFallEstimate.totalFareCents, 2900);
+assert.equal(urbanFlagFallEstimate.estimateSource, "SYSTEM_TAXI_HK");
+assert.equal(urbanFlagFallEstimate.estimateConfidence, "HIGH");
+const urbanDistanceEstimate = fareEstimates.calculateHkTaxiFareEstimate({
+  zone: "URBAN",
+  distanceMeters: 6000,
+  baggageCount: 2,
+});
+assert.equal(urbanDistanceEstimate.meteredFareCents, 7100);
+assert.equal(urbanDistanceEstimate.surchargeCents, 1200);
+assert.equal(urbanDistanceEstimate.totalFareCents, 8300);
+assert.equal(fareEstimates.suggestApprovedMaxFare(urbanDistanceEstimate.totalFareCents, "NORMAL"), 10000);
+assert.equal(fareEstimates.suggestApprovedMaxFare(urbanDistanceEstimate.totalFareCents, "AIRPORT_OR_TUNNEL"), 10500);
+assert.equal(fareEstimates.suggestApprovedMaxFare(urbanDistanceEstimate.totalFareCents, "UNKNOWN_OR_PROVIDER_DYNAMIC"), 11000);
+assert.equal(
+  fareEstimates.getHostEstimateWarning({
+    systemEstimatedFareCents: 8300,
+    hostEstimatedFareCents: 11000,
+  }),
+  "This is much higher than RidePod's taxi estimate. Riders may need a higher max approval.",
+);
+assert.equal(
+  fareEstimates.getHostEstimateWarning({
+    systemEstimatedFareCents: 8300,
+    hostEstimatedFareCents: 6500,
+  }),
+  "This may be too low for the route. If the final fare is higher, host reimbursement may be capped by the approved max.",
+);
+assert.equal(moneyProtection.PLATFORM_FEE_RATE_BPS, 1000);
+assert.equal(moneyProtection.calculatePlatformFeeCents(2500, 1000), 250);
+const previewMoneyProtection = moneyProtection.calculateMoneyProtection({
+  estimatedTotalFareCents: 8400,
+  approvedMaxTotalFareCents: 9700,
+  targetSeats: 4,
+  minSeatsToBook: 3,
+  ridepodFeeCents: 500,
+  hostIsRiding: true,
+});
+assert.equal(previewMoneyProtection.expectedRideShareCents, 2100);
+assert.equal(previewMoneyProtection.expectedPlatformFeeCents, 210);
+assert.equal(previewMoneyProtection.expectedTotalPerRiderCents, 2310);
+assert.equal(previewMoneyProtection.expectedTotalChargeCents, 2310);
+assert.equal(previewMoneyProtection.protectedMaxRideShareCents, 2425);
+assert.equal(previewMoneyProtection.maxFareShareCents, 2425);
+assert.equal(previewMoneyProtection.protectedMaxPlatformFeeCents, 243);
+assert.equal(previewMoneyProtection.protectedMaxChargePerRiderCents, 2668);
+assert.equal(previewMoneyProtection.participantMaxChargeCents, 2668);
+assert.equal(previewMoneyProtection.platformFeeRateBps, 1000);
+assert.equal(previewMoneyProtection.estimatedParticipants, 4);
+assert.equal(previewMoneyProtection.minimumParticipantsForMax, 4);
+const hostNotRidingMoneyProtection = moneyProtection.calculateMoneyProtection({
+  estimatedTotalFareCents: 8400,
+  approvedMaxTotalFareCents: 9700,
+  targetSeats: 3,
+  minSeatsToBook: 3,
+  ridepodFeeCents: 500,
+  hostIsRiding: false,
+});
+assert.equal(hostNotRidingMoneyProtection.expectedRideShareCents, 2800);
+assert.equal(hostNotRidingMoneyProtection.expectedTotalPerRiderCents, 3080);
+assert.equal(hostNotRidingMoneyProtection.protectedMaxRideShareCents, 3234);
+assert.equal(hostNotRidingMoneyProtection.protectedMaxChargePerRiderCents, 3558);
+assert.equal(hostNotRidingMoneyProtection.minimumParticipantsForMax, 3);
+const hostOverrideMoneyProtection = moneyProtection.calculateMoneyProtection({
+  estimatedTotalFareCents: 11000,
+  approvedMaxTotalFareCents: 10000,
+  targetSeats: 4,
+  minSeatsToBook: 3,
+  ridepodFeeCents: 500,
+  hostIsRiding: true,
+});
+assert.equal(hostOverrideMoneyProtection.expectedTotalPerRiderCents, 3025);
+assert.equal(hostOverrideMoneyProtection.protectedMaxChargePerRiderCents, 2750);
 const oneTimeOccurrence = podSchedule.createOneTimeOccurrence({
   scheduleType: "ONE_TIME",
   occurrenceDate: "2026-05-19",
@@ -179,8 +268,18 @@ const recurringTemplate = {
   approvedMaxTotalFareCents: 9600,
   ridepodFeeCents: 200,
   recurrenceFrequency: "WEEKLY",
+  recurringPattern: "ONE_WAY",
   weekdays: ["TU"],
   departureTimeLocal: "16:30",
+  recurringLegs: [
+    {
+      dayOfWeek: "TU",
+      legType: "OUTBOUND",
+      departureTime: "16:30",
+      originLabel: "USC",
+      destinationLabel: "LAX",
+    },
+  ],
   startDate: "2026-05-19",
   endDate: null,
   occurrenceLimit: 3,
@@ -204,6 +303,9 @@ assert.ok(tuesdayOccurrences.every((occurrence) => occurrence.bookingState === "
 assert.ok(tuesdayOccurrences.every((occurrence) => occurrence.quoteIds.length === 0));
 assert.ok(tuesdayOccurrences.every((occurrence) => occurrence.receiptIds.length === 0));
 assert.ok(tuesdayOccurrences.every((occurrence) => occurrence.settlementId === null));
+assert.ok(tuesdayOccurrences.every((occurrence) => occurrence.recurringLegType === "OUTBOUND"));
+assert.ok(tuesdayOccurrences.every((occurrence) => occurrence.originLabel === "USC"));
+assert.ok(tuesdayOccurrences.every((occurrence) => occurrence.destinationLabel === "LAX"));
 const multiWeekdayOccurrences = podSchedule.generateRecurringOccurrences({
   ...recurringTemplate,
   id: "template-mwf",
@@ -235,6 +337,59 @@ const defaultLimitedOccurrences = podSchedule.generateRecurringOccurrences({
 assert.equal(defaultLimitedOccurrences.length, 8);
 assert.equal(podSchedule.createRecurringTemplateRRule(recurringTemplate), "FREQ=WEEKLY;BYDAY=TU");
 assert.equal("paymentIntentId" in recurringTemplate, false);
+const backAndForthOccurrences = podSchedule.generateRecurringOccurrences({
+  ...recurringTemplate,
+  id: "template-commute",
+  recurringPattern: "BACK_AND_FORTH",
+  weekdays: ["MO", "TU"],
+  startDate: "2026-05-18",
+  occurrenceLimit: 4,
+  recurringLegs: [
+    {
+      dayOfWeek: "MO",
+      legType: "OUTBOUND",
+      departureTime: "08:00",
+      originLabel: "Home",
+      destinationLabel: "Office",
+    },
+    {
+      dayOfWeek: "MO",
+      legType: "RETURN",
+      departureTime: "18:00",
+      originLabel: "Office",
+      destinationLabel: "Home",
+    },
+    {
+      dayOfWeek: "TU",
+      legType: "OUTBOUND",
+      departureTime: "08:00",
+      originLabel: "Home",
+      destinationLabel: "Office",
+    },
+    {
+      dayOfWeek: "TU",
+      legType: "RETURN",
+      departureTime: "18:00",
+      originLabel: "Office",
+      destinationLabel: "Home",
+    },
+  ],
+});
+assert.deepEqual(
+  backAndForthOccurrences.map((occurrence) => [
+    occurrence.occurrenceDate,
+    occurrence.recurringLegType,
+    occurrence.departureAt,
+    occurrence.originLabel,
+    occurrence.destinationLabel,
+  ]),
+  [
+    ["2026-05-18", "OUTBOUND", "2026-05-18T08:00:00", "Home", "Office"],
+    ["2026-05-18", "RETURN", "2026-05-18T18:00:00", "Office", "Home"],
+    ["2026-05-19", "OUTBOUND", "2026-05-19T08:00:00", "Home", "Office"],
+    ["2026-05-19", "RETURN", "2026-05-19T18:00:00", "Office", "Home"],
+  ],
+);
 assert.deepEqual(moneySafety.ACCESS_MODES, [
   "OPEN",
   "VERIFIED_ONLY",
@@ -508,7 +663,7 @@ function member(userId, overrides = {}) {
     memberState: "CONFIRMED",
     paymentState: "AUTHORIZED",
     seatCount: 1,
-    maxChargeCents: moneySafety.cents(32),
+    maxChargeCents: moneySafety.cents(33),
     estimatedShareCents: moneySafety.cents(20),
     finalChargeCents: null,
     platformFeeCents: moneySafety.cents(2),
@@ -977,7 +1132,7 @@ assert.deepEqual(stripeRequiresCapture.calls[0].input.metadata, {
   chargeType: "seat_authorization",
   approvedMaxTotalFareCents: String(stripeAuthSuccessPod.approvedMaxTotalFareCents),
   maxChargeCents: String(stripeAuthorization.member.maxChargeCents),
-  platformFeeCents: String(stripeAuthSuccessPod.ridepodFeeCents),
+  platformFeeCents: String(stripeAuthorization.member.platformFeeCents),
   environment: "test",
 });
 assert.equal(stripeAuthorization.pod.lifecycleState, "PAYMENT_LOCKING");
@@ -1229,11 +1384,19 @@ const singleLockPod = pod({
 moneySafetyMock.protectedPods.push(singleLockPod);
 
 const joinRequest = podJoin.requestJoinPod("u2", "join-single-lock");
+const singleLockProtection = moneyProtection.calculateMoneyProtection({
+  estimatedTotalFareCents: singleLockPod.estimatedTotalFareCents,
+  approvedMaxTotalFareCents: singleLockPod.approvedMaxTotalFareCents,
+  targetSeats: singleLockPod.targetSeats,
+  minSeatsToBook: singleLockPod.minSeatsToBook,
+  ridepodFeeCents: singleLockPod.ridepodFeeCents,
+});
 assert.equal(joinRequest.ok, true);
 assert.equal(joinRequest.member.memberState, "PAYMENT_REQUIRED");
 assert.equal(joinRequest.member.paymentState, "PAYMENT_METHOD_REQUIRED");
-assert.equal(joinRequest.member.maxChargeCents, Math.ceil(singleLockPod.approvedMaxTotalFareCents / singleLockPod.maxSeats) + singleLockPod.ridepodFeeCents);
-assert.equal(joinRequest.member.platformFeeCents, singleLockPod.ridepodFeeCents);
+assert.equal(joinRequest.member.maxChargeCents, singleLockProtection.protectedMaxChargePerRiderCents);
+assert.equal(joinRequest.member.estimatedShareCents, singleLockProtection.expectedRideShareCents);
+assert.equal(joinRequest.member.platformFeeCents, singleLockProtection.protectedMaxPlatformFeeCents);
 assert.equal(podJoin.isMemberPaymentConfirmed(joinRequest.member), false);
 assert.equal(podJoin.canAccessExactPickup("u2", "join-single-lock"), false);
 assert.equal(podJoin.canAccessPodChat("u2", "join-single-lock"), false);
@@ -1244,8 +1407,9 @@ const authorization = await podJoin.authorizeSeat("u2", "join-single-lock");
 assert.equal(authorization.ok, true);
 assert.equal(authorization.member.memberState, "CONFIRMED");
 assert.equal(authorization.member.paymentState, "AUTHORIZED");
-assert.equal(authorization.member.maxChargeCents, Math.ceil(singleLockPod.approvedMaxTotalFareCents / singleLockPod.maxSeats) + singleLockPod.ridepodFeeCents);
-assert.equal(authorization.member.platformFeeCents, singleLockPod.ridepodFeeCents);
+assert.equal(authorization.member.maxChargeCents, singleLockProtection.protectedMaxChargePerRiderCents);
+assert.equal(authorization.member.estimatedShareCents, singleLockProtection.expectedRideShareCents);
+assert.equal(authorization.member.platformFeeCents, singleLockProtection.protectedMaxPlatformFeeCents);
 assert.ok(authorization.member.lockedAt);
 assert.ok(authorization.mockPaymentIntentId.startsWith("mock_pi_join-single-lock_u2_"));
 assert.equal(authorization.member.mockPaymentIntentId, authorization.mockPaymentIntentId);

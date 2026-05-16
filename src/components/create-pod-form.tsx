@@ -131,13 +131,10 @@ function MoneySafetyFields({
           />
         </Field>
         <Field label="RidePod fee per participant (cents)">
-          <input
-            className={inputClass}
-            type="number"
-            min="0"
-            value={money.ridepodFeeCents}
-            onChange={(event) => updateMoney("ridepodFeeCents", Number(event.target.value))}
-          />
+          <div className={cn(inputClass, "flex items-center font-semibold text-zinc-950")}>
+            {money.ridepodFeeCents}
+          </div>
+          <p className="mt-1 text-xs font-medium text-zinc-500">System fee / demo value.</p>
         </Field>
       </div>
 

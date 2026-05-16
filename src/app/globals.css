@@ -151,12 +151,25 @@ select {
 
 .people-vehicle-layout {
   display: grid;
-  grid-template-columns: minmax(104px, 32%) minmax(0, 1fr);
+  grid-template-columns: minmax(132px, 36%) minmax(0, 1fr);
+}
+
+.review-create-pod-button {
+  background: linear-gradient(180deg, #ffe082 0%, #f6c453 54%, #d99a24 100%);
+  border-color: rgba(255, 213, 106, 0.55);
+  color: #071326;
 }
 
 [data-theme="light"] .people-vehicle-layout {
   display: flex;
   flex-direction: column;
+}
+
+[data-theme="light"] .review-create-pod-button {
+  background: linear-gradient(180deg, #15c8d1 0%, #078c99 100%);
+  border-color: rgba(7, 140, 153, 0.36);
+  box-shadow: 0 14px 28px rgba(7, 140, 153, 0.22);
+  color: #ffffff;
 }
 
 [data-theme="light"] .people-vehicle-content {
@@ -257,7 +270,8 @@ select {
 }
 
 .ridepod-drawer-avatar {
-  background: #078c99;
+  background: linear-gradient(135deg, #f2c15b 0%, #ffd36a 100%);
+  color: #071326;
 }
 
 .ridepod-drawer-profile-subtitle {
@@ -340,6 +354,11 @@ select {
   background: #e6fbf9;
   border-color: #b8ebe7;
   color: #071326;
+}
+
+[data-theme="light"] .ridepod-drawer-avatar {
+  background: #078c99;
+  color: #ffffff;
 }
 
 [data-theme="light"] .ridepod-drawer-profile-subtitle {

@@ -29,10 +29,25 @@ import {
 } from "lucide-react";
 import { cn } from "@/components/ui";
 import {
+  HK_TAXI_FARE_RULES,
+  HK_TAXI_ZONES,
+  ROUTE_RISK_LEVELS,
+  calculateHkTaxiFareEstimate,
+  getHostEstimateWarning,
+  suggestApprovedMaxFare,
+  type EstimateConfidence,
+  type EstimateSource,
+  type HkTaxiZone,
+  type RouteRiskLevel,
+} from "@/lib/fare-estimates";
+import { calculateMoneyProtection } from "@/lib/money-protection";
+import {
   WEEKDAYS,
   createRecurringTemplateRRule,
   generateRecurringOccurrences,
+  type RecurringPattern,
   type RecurringPodTemplate,
+  type RecurringScheduleLeg,
   type ScheduleType,
   type Weekday,
 } from "@/lib/pod-schedule";
@@ -57,6 +72,8 @@ type DateTimeState = {
   time: string;
   flexibility: string;
   recurringWeekdays: Weekday[];
+  recurringPattern: RecurringPattern;
+  recurringLegs: RecurringScheduleLeg[];
   recurringStartDate: string;
   recurringEndMode: "after" | "on_date" | "none";
   recurringOccurrenceLimit: number;
@@ -88,8 +105,8 @@ const podTypes: Array<{
 }> = [
   {
     id: "scheduled",
-    title: "Scheduled pod",
-    sublabel: "One-time trip",
+    title: "Scheduled one-time trip",
+    sublabel: "",
     description: "For a single trip on a specific date and time.",
     icon: "calendar",
   },
@@ -251,8 +268,53 @@ function buildCalendarDays(selectedDate: string): { monthLabel: string; days: Ca
 function formatMoney(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
+    currency: "HKD",
   }).format(value);
+}
+
+function dollarsToCents(value: number) {
+  return Math.round(Math.max(0, Number.isFinite(value) ? value : 0) * 100);
+}
+
+function formatCents(value: number) {
+  const dollars = value / 100;
+  const hasCents = value % 100 !== 0;
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "HKD",
+    minimumFractionDigits: hasCents ? 2 : 0,
+    maximumFractionDigits: hasCents ? 2 : 0,
+  }).format(dollars);
+}
+
+function formatCentsFixed(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "HKD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value / 100);
+}
+
+function centsToDollars(value: number) {
+  return Math.round(Math.max(0, value)) / 100;
+}
+
+function formatEstimateSource(source: EstimateSource) {
+  return source
+    .toLowerCase()
+    .split("_")
+    .map((part) => (part === "hk" ? "HK" : `${part.charAt(0).toUpperCase()}${part.slice(1)}`))
+    .join(" ");
+}
+
+function formatRouteRiskLevel(level: RouteRiskLevel) {
+  return level
+    .toLowerCase()
+    .split("_")
+    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
 }
 
 function parseFlexibilityMinutes(value: string) {
@@ -273,6 +335,141 @@ function displayTimeToLocalTime(value: string) {
         : hour12;
 
   return `${String(hour24).padStart(2, "0")}:${parsed.minute}`;
+}
+
+function formatLocalTimeLabel(value: string) {
+  const match = value.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return value || "Add time";
+
+  const hour24 = Number(match[1]);
+  const hour12 = hour24 % 12 || 12;
+  const period = hour24 >= 12 ? "PM" : "AM";
+
+  return `${hour12}:${match[2]} ${period}`;
+}
+
+function localTimeToMinutes(value: string) {
+  const match = value.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function sortedWeekdays(weekdays: Weekday[]) {
+  return [...new Set(weekdays)].sort((a, b) => WEEKDAYS.indexOf(a) - WEEKDAYS.indexOf(b));
+}
+
+function getWeekdayLabel(weekday: Weekday) {
+  return recurringWeekdayOptions.find((option) => option.id === weekday)?.label ?? weekday;
+}
+
+function getBaseRouteLabel(value: string, fallback: string) {
+  return routePointSummary(value, fallback);
+}
+
+function defaultLegForDay({
+  dayOfWeek,
+  legType,
+  pickupAddress,
+  dropoffAddress,
+  existing,
+}: {
+  dayOfWeek: Weekday;
+  legType: RecurringScheduleLeg["legType"];
+  pickupAddress: string;
+  dropoffAddress: string;
+  existing?: RecurringScheduleLeg;
+}): RecurringScheduleLeg {
+  const baseOrigin = getBaseRouteLabel(pickupAddress, "Home");
+  const baseDestination = getBaseRouteLabel(dropoffAddress, "Office");
+  const isReturn = legType === "RETURN";
+
+  return {
+    dayOfWeek,
+    legType,
+    departureTime: existing?.departureTime ?? (isReturn ? "18:00" : "08:00"),
+    originLabel: existing?.originLabel || (isReturn ? baseDestination : baseOrigin),
+    destinationLabel: existing?.destinationLabel || (isReturn ? baseOrigin : baseDestination),
+  };
+}
+
+function getRecurringLegsForSelection({
+  dateTime,
+  pickupAddress,
+  dropoffAddress,
+}: {
+  dateTime: DateTimeState;
+  pickupAddress: string;
+  dropoffAddress: string;
+}) {
+  const weekdays = sortedWeekdays(dateTime.recurringWeekdays);
+  const legs: RecurringScheduleLeg[] = [];
+
+  weekdays.forEach((dayOfWeek) => {
+    const outbound = dateTime.recurringLegs.find(
+      (leg) => leg.dayOfWeek === dayOfWeek && leg.legType === "OUTBOUND",
+    );
+    legs.push(
+      defaultLegForDay({
+        dayOfWeek,
+        legType: "OUTBOUND",
+        pickupAddress,
+        dropoffAddress,
+        existing: outbound,
+      }),
+    );
+
+    if (dateTime.recurringPattern === "BACK_AND_FORTH") {
+      const returnLeg = dateTime.recurringLegs.find(
+        (leg) => leg.dayOfWeek === dayOfWeek && leg.legType === "RETURN",
+      );
+      legs.push(
+        defaultLegForDay({
+          dayOfWeek,
+          legType: "RETURN",
+          pickupAddress,
+          dropoffAddress,
+          existing: returnLeg,
+        }),
+      );
+    }
+  });
+
+  return legs;
+}
+
+function validateRecurringSchedule(dateTime: DateTimeState, pickupAddress: string, dropoffAddress: string) {
+  if (dateTime.recurringWeekdays.length === 0) return "Select at least one repeat day.";
+
+  const legs = getRecurringLegsForSelection({ dateTime, pickupAddress, dropoffAddress });
+  const seen = new Set<string>();
+
+  for (const weekday of sortedWeekdays(dateTime.recurringWeekdays)) {
+    const outbound = legs.find((leg) => leg.dayOfWeek === weekday && leg.legType === "OUTBOUND");
+    const returnLeg = legs.find((leg) => leg.dayOfWeek === weekday && leg.legType === "RETURN");
+
+    if (!outbound?.departureTime) return "Add an outbound time.";
+    if (!outbound.originLabel.trim() || !outbound.destinationLabel.trim()) return "Route is required.";
+
+    if (dateTime.recurringPattern === "BACK_AND_FORTH") {
+      if (!returnLeg?.departureTime) return "Add a return time.";
+      if (!returnLeg.originLabel.trim() || !returnLeg.destinationLabel.trim()) return "Route is required.";
+
+      const outboundMinutes = localTimeToMinutes(outbound.departureTime);
+      const returnMinutes = localTimeToMinutes(returnLeg.departureTime);
+      if (outboundMinutes !== null && returnMinutes !== null && returnMinutes <= outboundMinutes) {
+        return "Return time should be after outbound time.";
+      }
+    }
+  }
+
+  for (const leg of legs) {
+    const key = `${leg.dayOfWeek}-${leg.departureTime}`;
+    if (seen.has(key)) return "Return time should be after outbound time.";
+    seen.add(key);
+  }
+
+  return null;
 }
 
 function formatDateForPreview(date: string) {
@@ -300,6 +497,18 @@ function getScheduleDateSummary(dateTime: DateTimeState) {
 
 function getScheduleTypeLabel(dateTime: DateTimeState) {
   return dateTime.scheduleType === "RECURRING" ? "Recurring pod" : "Scheduled pod";
+}
+
+function getPodTypeTitle(podType: PodType) {
+  return podType === "recurring" ? "Recurring pod" : "Scheduled one-time trip";
+}
+
+function ScheduleTypeEyebrow({ podType }: { podType: PodType }) {
+  return (
+    <p className="mb-3 text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">
+      {getPodTypeTitle(podType)}
+    </p>
+  );
 }
 
 function routeCode(address: string, fallback: string) {
@@ -436,14 +645,16 @@ function PodTypeCard({
       <TypeIcon type={item.icon} />
       <span className="min-w-0 flex-1">
         <span className="block text-base font-black text-[var(--rp-text)]">{item.title}</span>
-        <span
-          className={cn(
-            "mt-1 block text-sm font-bold",
-            selected ? "text-[var(--rp-primary)]" : "text-[var(--rp-muted)]",
-          )}
-        >
-          {item.sublabel}
-        </span>
+        {item.sublabel ? (
+          <span
+            className={cn(
+              "mt-1 block text-sm font-bold",
+              selected ? "text-[var(--rp-primary)]" : "text-[var(--rp-muted)]",
+            )}
+          >
+            {item.sublabel}
+          </span>
+        ) : null}
         {item.description ? (
           <span className="mt-2 block text-sm leading-5 text-[var(--rp-muted)]">
             {item.description}
@@ -499,33 +710,72 @@ function ThemeAwareHeroStrip() {
   );
 }
 
-function RouteMarker({
-  type,
-  isLast,
+function routePointSummary(value: string, fallback: string) {
+  const clean = value.trim();
+  if (!clean) return fallback;
+
+  return clean.split(",")[0]?.trim() || fallback;
+}
+
+function RouteJourneyPreview({
+  pickupAddress,
+  dropoffAddress,
+  stops,
 }: {
-  type: "pickup" | "stop" | "dropoff";
-  isLast: boolean;
+  pickupAddress: string;
+  dropoffAddress: string;
+  stops: RouteStop[];
 }) {
+  const points = [
+    {
+      id: "pickup",
+      label: "Pickup",
+      value: routePointSummary(pickupAddress, "Pickup location"),
+      type: "pickup",
+    },
+    ...stops.map((stop, index) => ({
+      id: `stop-${stop.id}`,
+      label: `Stop ${index + 1}`,
+      value: routePointSummary(stop.address, "Optional stop"),
+      type: "stop" as const,
+    })),
+    {
+      id: "dropoff",
+      label: stops.length > 0 ? "Final dropoff" : "Dropoff",
+      value: routePointSummary(dropoffAddress, "Destination"),
+      type: "dropoff",
+    },
+  ];
   return (
-    <div className="relative flex min-h-[92px] w-10 justify-center pt-4">
-      {!isLast ? (
-        <span
-          aria-hidden="true"
-          className="absolute bottom-[-26px] top-12 w-[3px] rounded-full bg-[var(--rp-primary)]"
+    <div className="overflow-hidden rounded-[28px] border border-white/10 bg-[rgba(15,27,39,0.88)] p-3 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
+      <div className="relative h-[260px] overflow-hidden rounded-[22px] border border-white/10 bg-[#06111d]">
+        <Image
+          src="/images/ridepod/route-map-dark.png"
+          alt="Route map preview"
+          fill
+          priority
+          quality={100}
+          sizes="(max-width: 430px) calc(100vw - 72px), 382px"
+          className="object-cover"
         />
-      ) : null}
-      <span
-        className={cn(
-          "relative z-10 grid h-9 w-9 place-items-center rounded-full text-[var(--rp-primary-text)] shadow-[0_0_18px_color-mix(in_srgb,var(--rp-primary)_36%,transparent)]",
-          type === "stop" ? "bg-[var(--rp-card)] ring-2 ring-[var(--rp-primary)]" : "bg-[var(--rp-primary)]",
-        )}
-      >
-        {type === "stop" ? (
-          <span className="h-3 w-3 rounded-full bg-[var(--rp-primary)]" />
-        ) : (
-          <MapPin className="h-5 w-5 stroke-[2.4]" />
-        )}
-      </span>
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,9,18,0.04),rgba(2,9,18,0.18))]" />
+      </div>
+
+      <div className="mt-3 grid gap-2">
+        {points.map((point) => (
+          <div
+            key={point.id}
+            className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0b1724]/90 px-3 py-2"
+          >
+            <span className="text-[11px] font-black uppercase tracking-[0.14em] text-[#f6c453]">
+              {point.label}
+            </span>
+            <span className="min-w-0 truncate text-right text-sm font-black text-[#f8fafc]">
+              {point.value}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -551,18 +801,18 @@ function AddressField({
   return (
     <div
       className={cn(
-        "grid min-h-[94px] w-full grid-cols-[48px_1fr] items-center gap-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] px-4 py-3 text-left shadow-[var(--rp-shadow-soft)] transition focus-within:border-[var(--rp-primary)]",
+        "grid min-h-[94px] w-full grid-cols-[48px_1fr] items-center gap-3 rounded-[18px] border border-white/10 bg-[rgba(15,27,39,0.88)] px-4 py-3 text-left shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition focus-within:border-[#f6c453] focus-within:shadow-[0_0_0_1px_rgba(246,196,83,0.45),0_18px_40px_rgba(0,0,0,0.28)]",
         onRemove ? "pr-3" : "",
       )}
     >
-      <span className="grid h-11 w-11 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+      <span className="grid h-11 w-11 place-items-center rounded-full bg-[#1b2936] text-[#ffc94d]">
         <span className="sr-only">{iconLabel}</span>
-        <MapPin className="h-6 w-6 fill-[var(--rp-primary)]/10 stroke-[2.3]" />
+        <MapPin className="h-6 w-6 fill-[#ffc94d]/10 stroke-[2.3]" />
       </span>
       <span className="min-w-0">
         <label
           htmlFor={fieldId}
-          className="block text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]"
+          className="block text-xs font-black uppercase tracking-[0.12em] text-[#f6c453]"
         >
           {label}
         </label>
@@ -574,14 +824,14 @@ function AddressField({
             onChange={(event) => onChange(event.target.value)}
             placeholder={placeholder}
             autoComplete="street-address"
-            className="min-h-8 min-w-0 flex-1 border-0 bg-transparent p-0 text-base font-semibold leading-5 text-[var(--rp-text)] outline-none placeholder:text-[var(--rp-muted)]"
+            className="min-h-8 min-w-0 flex-1 border-0 bg-transparent p-0 text-base font-semibold leading-5 text-[#f8fafc] outline-none placeholder:text-slate-500"
           />
           {onRemove ? (
             <button
               type="button"
               aria-label={`Remove ${label.toLowerCase()}`}
               onClick={onRemove}
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[var(--rp-muted)] transition hover:bg-[var(--rp-card-muted)] hover:text-[var(--rp-text)]"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-slate-400 transition hover:bg-[#1b2936] hover:text-[#f8fafc]"
             >
               <Trash2 className="h-4.5 w-4.5" />
             </button>
@@ -597,9 +847,9 @@ function AddStopButton({ onAddStop }: { onAddStop: () => void }) {
     <button
       type="button"
       onClick={onAddStop}
-      className="flex min-h-[76px] w-full items-center justify-center gap-4 rounded-[16px] border border-dashed border-[var(--rp-primary)] bg-[var(--rp-card-soft)] px-4 text-base font-semibold text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+      className="flex min-h-[76px] w-full items-center justify-center gap-4 rounded-[18px] border border-dashed border-[#f6c453] bg-[#06111d] px-4 text-base font-black text-[#f6c453] shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition hover:bg-[#0b1724]"
     >
-      <Plus className="h-7 w-7 text-[var(--rp-primary)]" />
+      <Plus className="h-7 w-7 text-[#f6c453]" />
       Add stop
     </button>
   );
@@ -630,6 +880,25 @@ function PrimaryButton({
   );
 }
 
+function RouteContinueButton({
+  onClick,
+  disabled,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="relative z-20 flex h-14 w-full items-center justify-center rounded-[18px] border border-[#ffd56a]/55 bg-[linear-gradient(180deg,#ffe082_0%,#f6c453_54%,#d99a24_100%)] text-base font-black text-[#071326] shadow-[0_20px_42px_rgba(246,196,83,0.32)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
+    >
+      Continue
+    </button>
+  );
+}
+
 function SecondaryButton({
   children,
   onClick,
@@ -649,6 +918,7 @@ function SecondaryButton({
 }
 
 function RouteStopsStep({
+  podType,
   pickupAddress,
   dropoffAddress,
   stops,
@@ -660,6 +930,7 @@ function RouteStopsStep({
   onRemoveStop,
   onContinue,
 }: {
+  podType: PodType;
   pickupAddress: string;
   dropoffAddress: string;
   stops: RouteStop[];
@@ -677,51 +948,50 @@ function RouteStopsStep({
     <>
       <CreatePodTopBar currentStep={1} onBack={onBack} />
 
-      <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-40 pt-8 md:pb-5">
+      <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#020912] px-6 pb-40 pt-8 text-[#f8fafc] md:pb-5">
         <section className="text-center">
-          <h1 className="text-[34px] font-black leading-tight tracking-[-0.03em] text-[var(--rp-text)]">
+          <ScheduleTypeEyebrow podType={podType} />
+          <h1 className="text-[34px] font-black leading-tight tracking-[-0.03em] text-[#f8fafc]">
             Route &amp; stops
           </h1>
-          <p className="mt-3 text-lg font-medium text-[var(--rp-muted)]">
+          <p className="mt-3 text-lg font-medium text-[#cbd5e1]">
             Add your pickup and dropoff.
           </p>
         </section>
 
-        <section className="mt-12">
-          <div className="grid gap-6">
-            <div className="grid grid-cols-[40px_1fr] gap-3">
-              <RouteMarker type="pickup" isLast={false} />
-              <AddressField
-                label="Pickup"
-                type="pickup"
-                value={pickupAddress}
-                placeholder="Enter pickup address"
-                onChange={onPickupChange}
-              />
-            </div>
+        <section className="mt-8 grid gap-5">
+          <RouteJourneyPreview
+            pickupAddress={pickupAddress}
+            dropoffAddress={dropoffAddress}
+            stops={stops}
+          />
+
+          <div className="grid gap-4">
+            <AddressField
+              label="Pickup"
+              type="pickup"
+              value={pickupAddress}
+              placeholder="Enter pickup address"
+              onChange={onPickupChange}
+            />
             {stops.map((stop, index) => (
-              <div key={stop.id} className="grid grid-cols-[40px_1fr] gap-3">
-                <RouteMarker type="stop" isLast={false} />
-                <AddressField
-                  label={`Stop ${index + 1}`}
-                  type="stop"
-                  value={stop.address}
-                  placeholder="Enter stop address"
-                  onChange={(value) => onStopChange(stop.id, value)}
-                  onRemove={() => onRemoveStop(stop.id)}
-                />
-              </div>
-            ))}
-            <div className="grid grid-cols-[40px_1fr] gap-3">
-              <RouteMarker type="dropoff" isLast />
               <AddressField
-                label="Dropoff"
-                type="dropoff"
-                value={dropoffAddress}
-                placeholder="Enter dropoff address"
-                onChange={onDropoffChange}
+                key={stop.id}
+                label={`Stop ${index + 1}`}
+                type="stop"
+                value={stop.address}
+                placeholder="Enter stop address"
+                onChange={(value) => onStopChange(stop.id, value)}
+                onRemove={() => onRemoveStop(stop.id)}
               />
-            </div>
+            ))}
+            <AddressField
+              label="Dropoff"
+              type="dropoff"
+              value={dropoffAddress}
+              placeholder="Enter dropoff address"
+              onChange={onDropoffChange}
+            />
           </div>
         </section>
 
@@ -731,10 +1001,8 @@ function RouteStopsStep({
       </main>
 
       <footer className="fixed inset-x-0 bottom-[88px] z-50 mx-auto max-w-[430px] px-6 pb-4 pt-8 md:static md:mx-0 md:max-w-none md:px-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pt-0">
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-28 bg-[linear-gradient(180deg,transparent,var(--rp-bg)_42%)] md:hidden" />
-        <PrimaryButton onClick={onContinue} disabled={!canContinue}>
-          Continue
-        </PrimaryButton>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-28 bg-[linear-gradient(180deg,transparent,#020912_42%)] md:hidden" />
+        <RouteContinueButton onClick={onContinue} disabled={!canContinue} />
       </footer>
     </>
   );
@@ -915,56 +1183,23 @@ function FlexibilityField({
   );
 }
 
-function ScheduleTypeSwitch({
-  value,
-  onChange,
+function buildPreviewTemplate({
+  dateTime,
+  pickupAddress,
+  dropoffAddress,
 }: {
-  value: ScheduleType;
-  onChange: (value: ScheduleType) => void;
-}) {
-  const options: Array<{ value: ScheduleType; label: string; helper: string }> = [
-    { value: "ONE_TIME", label: "One-time", helper: "Single protected ride" },
-    { value: "RECURRING", label: "Recurring", helper: "Weekly ride template" },
-  ];
-
-  return (
-    <section aria-label="Schedule type">
-      <h2 className="text-base font-black text-[var(--rp-text)]">Schedule type</h2>
-      <div className="mt-3 grid grid-cols-2 gap-2 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-1.5">
-        {options.map((option) => {
-          const selected = value === option.value;
-
-          return (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onChange(option.value)}
-              aria-pressed={selected}
-              className={cn(
-                "rounded-[12px] px-3 py-3 text-center transition",
-                selected
-                  ? "bg-[var(--rp-primary)] text-[var(--rp-primary-text)] shadow-[0_10px_22px_color-mix(in_srgb,var(--rp-primary)_28%,transparent)]"
-                  : "text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-muted)]",
-              )}
-            >
-              <span className="block text-sm font-black">{option.label}</span>
-              <span className="mt-1 block text-[11px] font-bold opacity-80">{option.helper}</span>
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function buildPreviewTemplate(dateTime: DateTimeState): RecurringPodTemplate {
+  dateTime: DateTimeState;
+  pickupAddress: string;
+  dropoffAddress: string;
+}): RecurringPodTemplate {
   const now = new Date(0).toISOString();
+  const recurringLegs = getRecurringLegsForSelection({ dateTime, pickupAddress, dropoffAddress });
 
   return {
     id: "create-preview-template",
     hostUserId: "current-user",
-    originGeneral: "Pickup",
-    destinationGeneral: "Dropoff",
+    originGeneral: getBaseRouteLabel(pickupAddress, "Home"),
+    destinationGeneral: getBaseRouteLabel(dropoffAddress, "Office"),
     genderMode: "MIXED",
     accessMode: "VERIFIED_ONLY",
     targetSeats: 4,
@@ -973,8 +1208,10 @@ function buildPreviewTemplate(dateTime: DateTimeState): RecurringPodTemplate {
     approvedMaxTotalFareCents: 9600,
     ridepodFeeCents: 200,
     recurrenceFrequency: "WEEKLY",
+    recurringPattern: dateTime.recurringPattern,
     weekdays: dateTime.recurringWeekdays,
-    departureTimeLocal: displayTimeToLocalTime(dateTime.time),
+    departureTimeLocal: recurringLegs[0]?.departureTime ?? displayTimeToLocalTime(dateTime.time),
+    recurringLegs,
     startDate: dateTime.recurringStartDate,
     endDate: dateTime.recurringEndMode === "on_date" ? dateTime.recurringEndDate : null,
     occurrenceLimit:
@@ -986,57 +1223,130 @@ function buildPreviewTemplate(dateTime: DateTimeState): RecurringPodTemplate {
   };
 }
 
-function RecurringOccurrencePreview({ dateTime }: { dateTime: DateTimeState }) {
-  const template = buildPreviewTemplate(dateTime);
+function RecurringProtectionDialog({
+  dateTime,
+  pickupAddress,
+  dropoffAddress,
+  open,
+  accepted,
+  onAcceptedChange,
+  onClose,
+  onConfirm,
+}: {
+  dateTime: DateTimeState;
+  pickupAddress: string;
+  dropoffAddress: string;
+  open: boolean;
+  accepted: boolean;
+  onAcceptedChange: (accepted: boolean) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const template = buildPreviewTemplate({ dateTime, pickupAddress, dropoffAddress });
   const occurrences = generateRecurringOccurrences(template, {
     defaultOccurrenceLimit: 8,
     generatedAt: new Date(0).toISOString(),
   });
   const preview = occurrences.slice(0, 3);
 
+  if (!open) return null;
+
   return (
-    <section className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-      <div className="flex items-start gap-3">
-        <RefreshCcw className="mt-0.5 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
-        <div>
-          <h3 className="text-sm font-black text-[var(--rp-text)]">Recurring protection</h3>
-          <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-            Recurring pods create separate protected rides for each date. Each ride has its own payment lock, quote, receipt, and settlement.
-          </p>
-          <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-            You will authorize payment per ride, not for the entire recurring schedule.
-          </p>
+    <div className="fixed inset-0 z-[90] grid place-items-end bg-[rgba(3,7,18,0.66)] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur-sm md:absolute md:inset-0 md:px-6">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="recurring-protection-title"
+        className="flex max-h-[calc(100dvh-2rem)] w-full max-w-[390px] flex-col overflow-hidden rounded-[26px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] shadow-[0_24px_80px_rgba(0,0,0,0.42)]"
+      >
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          <div className="flex items-start gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+              <RefreshCcw className="h-6 w-6" />
+            </span>
+            <div>
+              <h2 id="recurring-protection-title" className="text-lg font-black text-[var(--rp-text)]">
+                Recurring protection
+              </h2>
+              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                Recurring pods create separate protected rides for each date. Each ride has its own payment lock, quote, receipt, and settlement.
+              </p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                You will authorize payment per ride, not for the entire recurring schedule.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
+              Next rides
+            </p>
+            {preview.length > 0 ? (
+              <p className="mt-2 text-sm font-black leading-6 text-[var(--rp-text)]">
+                {preview.map((occurrence) => formatDateForPreview(occurrence.occurrenceDate)).join(", ")}
+              </p>
+            ) : (
+              <p className="mt-2 text-sm font-bold text-[var(--rp-muted)]">
+                Pick at least one weekday to preview rides.
+              </p>
+            )}
+            <p className="mt-2 break-words text-xs font-semibold text-[var(--rp-muted)]">
+              {createRecurringTemplateRRule(template)}
+            </p>
+          </div>
+
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <input
+              type="checkbox"
+              checked={accepted}
+              onChange={(event) => onAcceptedChange(event.target.checked)}
+              className="mt-1 h-5 w-5 shrink-0 accent-[var(--rp-primary)]"
+            />
+            <span className="text-sm font-bold leading-6 text-[var(--rp-text)]">
+              I understand each recurring ride has its own payment lock, quote, receipt, and settlement.
+            </span>
+          </label>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 border-t border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_94%,black)] p-5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]"
+          >
+            Back
+          </button>
+          <button
+            type="button"
+            disabled={!accepted}
+            onClick={onConfirm}
+            className="min-h-12 rounded-2xl bg-[var(--rp-gradient-primary)] text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_30%,transparent)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:brightness-100"
+          >
+            Confirm
+          </button>
         </div>
       </div>
-
-      <div className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-        <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
-          Next rides
-        </p>
-        {preview.length > 0 ? (
-          <p className="mt-2 text-sm font-black leading-6 text-[var(--rp-text)]">
-            {preview.map((occurrence) => formatDateForPreview(occurrence.occurrenceDate)).join(", ")}
-          </p>
-        ) : (
-          <p className="mt-2 text-sm font-bold text-[var(--rp-muted)]">
-            Pick at least one weekday to preview rides.
-          </p>
-        )}
-        <p className="mt-2 text-xs font-semibold text-[var(--rp-muted)]">
-          {createRecurringTemplateRRule(template)}
-        </p>
-      </div>
-    </section>
+    </div>
   );
 }
 
 function RecurringScheduleFields({
   dateTime,
   onDateTimeChange,
+  pickupAddress,
+  dropoffAddress,
 }: {
   dateTime: DateTimeState;
   onDateTimeChange: (dateTime: DateTimeState) => void;
+  pickupAddress: string;
+  dropoffAddress: string;
 }) {
+  const visibleLegs = getRecurringLegsForSelection({ dateTime, pickupAddress, dropoffAddress });
+  const selectedWeekdays = sortedWeekdays(dateTime.recurringWeekdays);
+  const validationError = validateRecurringSchedule(dateTime, pickupAddress, dropoffAddress);
+  const syncLegs = (nextDateTime: DateTimeState) =>
+    getRecurringLegsForSelection({ dateTime: nextDateTime, pickupAddress, dropoffAddress });
+
   const toggleWeekday = (weekday: Weekday) => {
     const selected = dateTime.recurringWeekdays.includes(weekday);
     const nextWeekdays = selected
@@ -1044,8 +1354,26 @@ function RecurringScheduleFields({
       : [...dateTime.recurringWeekdays, weekday].sort(
           (a, b) => WEEKDAYS.indexOf(a) - WEEKDAYS.indexOf(b),
         );
+    const nextDateTime = { ...dateTime, recurringWeekdays: nextWeekdays };
 
-    onDateTimeChange({ ...dateTime, recurringWeekdays: nextWeekdays });
+    onDateTimeChange({ ...nextDateTime, recurringLegs: syncLegs(nextDateTime) });
+  };
+
+  const updatePattern = (recurringPattern: RecurringPattern) => {
+    const nextDateTime = { ...dateTime, recurringPattern };
+    onDateTimeChange({ ...nextDateTime, recurringLegs: syncLegs(nextDateTime) });
+  };
+
+  const updateLeg = (
+    dayOfWeek: Weekday,
+    legType: RecurringScheduleLeg["legType"],
+    patch: Partial<RecurringScheduleLeg>,
+  ) => {
+    const nextLegs = visibleLegs.map((leg) =>
+      leg.dayOfWeek === dayOfWeek && leg.legType === legType ? { ...leg, ...patch } : leg,
+    );
+
+    onDateTimeChange({ ...dateTime, recurringLegs: nextLegs });
   };
 
   return (
@@ -1083,10 +1411,126 @@ function RecurringScheduleFields({
         </div>
       </fieldset>
 
-      <TimeField
-        value={dateTime.time}
-        onChange={(time) => onDateTimeChange({ ...dateTime, time })}
-      />
+      <section aria-label="Trip pattern">
+        <h2 className="text-base font-bold text-[var(--rp-muted-strong)]">Trip pattern</h2>
+        <div className="mt-3 grid gap-3 min-[390px]:grid-cols-2">
+          {[
+            {
+              id: "ONE_WAY" as const,
+              title: "One-way",
+              body: "Same direction each selected day.",
+            },
+            {
+              id: "BACK_AND_FORTH" as const,
+              title: "Back-and-forth",
+              body: "Outbound and return rides on selected days.",
+            },
+          ].map((option) => {
+            const selected = dateTime.recurringPattern === option.id;
+
+            return (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => updatePattern(option.id)}
+                aria-pressed={selected}
+                className={cn(
+                  "rounded-[18px] border p-4 text-left transition",
+                  selected
+                    ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)] shadow-[0_12px_26px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
+                    : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-text)] hover:bg-[var(--rp-card-muted)]",
+                )}
+              >
+                <span className="block text-base font-black">{option.title}</span>
+                <span className="mt-2 block text-xs font-bold leading-5 opacity-80">{option.body}</span>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="grid gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-base font-bold text-[var(--rp-muted-strong)]">
+            {dateTime.recurringPattern === "BACK_AND_FORTH"
+              ? "Back-and-forth schedule"
+              : "One-way weekly rides"}
+          </h2>
+          {dateTime.recurringPattern === "ONE_WAY" ? (
+            <button
+              type="button"
+              onClick={() => updatePattern("BACK_AND_FORTH")}
+              className="text-xs font-black text-[var(--rp-primary)]"
+            >
+              Add return ride
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => updatePattern("ONE_WAY")}
+              className="text-xs font-black text-[var(--rp-primary)]"
+            >
+              Remove return ride
+            </button>
+          )}
+        </div>
+
+        {selectedWeekdays.length === 0 ? (
+          <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-sm font-bold text-[var(--rp-muted)]">
+            Select at least one repeat day.
+          </div>
+        ) : (
+          selectedWeekdays.map((weekday) => {
+            const outbound = visibleLegs.find(
+              (leg) => leg.dayOfWeek === weekday && leg.legType === "OUTBOUND",
+            );
+            const returnLeg = visibleLegs.find(
+              (leg) => leg.dayOfWeek === weekday && leg.legType === "RETURN",
+            );
+
+            if (!outbound) return null;
+
+            return (
+              <div
+                key={weekday}
+                className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
+                      {getWeekdayLabel(weekday)}
+                    </p>
+                    <p className="mt-1 text-sm font-black text-[var(--rp-text)]">
+                      {getWeekdayLabel(weekday)} {formatLocalTimeLabel(outbound.departureTime)} -{" "}
+                      {outbound.originLabel} to {outbound.destinationLabel}
+                    </p>
+                  </div>
+                  {dateTime.recurringPattern === "BACK_AND_FORTH" ? (
+                    <span className="rounded-full bg-[var(--rp-card-muted)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]">
+                      Same route reversed
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="mt-4 grid gap-3">
+                  <RecurringLegEditor
+                    title="Outbound ride"
+                    leg={outbound}
+                    onChange={(patch) => updateLeg(weekday, "OUTBOUND", patch)}
+                  />
+                  {dateTime.recurringPattern === "BACK_AND_FORTH" && returnLeg ? (
+                    <RecurringLegEditor
+                      title="Return ride"
+                      leg={returnLeg}
+                      onChange={(patch) => updateLeg(weekday, "RETURN", patch)}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </section>
 
       <label className="grid gap-3 text-base font-bold text-[var(--rp-muted-strong)]">
         Start date
@@ -1167,28 +1611,104 @@ function RecurringScheduleFields({
         onChange={(flexibility) => onDateTimeChange({ ...dateTime, flexibility })}
       />
 
-      <RecurringOccurrencePreview dateTime={dateTime} />
+      {validationError ? (
+        <p className="rounded-2xl border border-[var(--rp-danger)] bg-[var(--rp-danger-bg)] p-3 text-sm font-black text-[var(--rp-danger)]">
+          {validationError}
+        </p>
+      ) : null}
     </section>
   );
 }
 
+function RecurringLegEditor({
+  title,
+  leg,
+  onChange,
+}: {
+  title: string;
+  leg: RecurringScheduleLeg;
+  onChange: (patch: Partial<RecurringScheduleLeg>) => void;
+}) {
+  return (
+    <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-black text-[var(--rp-text)]">{title}</p>
+        <span className="text-xs font-black text-[var(--rp-primary)]">
+          {formatLocalTimeLabel(leg.departureTime)}
+        </span>
+      </div>
+      <div className="mt-3 grid gap-3">
+        <label className="grid gap-2 text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">
+          Departure time
+          <input
+            type="time"
+            value={leg.departureTime}
+            onChange={(event) => onChange({ departureTime: event.target.value })}
+            className="h-11 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-3 text-sm font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+          />
+        </label>
+        <div className="grid gap-3 min-[390px]:grid-cols-2">
+          <label className="grid gap-2 text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">
+            From
+            <input
+              type="text"
+              value={leg.originLabel}
+              onChange={(event) => onChange({ originLabel: event.target.value })}
+              className="h-11 min-w-0 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-3 text-sm font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+            />
+          </label>
+          <label className="grid gap-2 text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">
+            To
+            <input
+              type="text"
+              value={leg.destinationLabel}
+              onChange={(event) => onChange({ destinationLabel: event.target.value })}
+              className="h-11 min-w-0 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-3 text-sm font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+            />
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DateTimeStep({
+  podType,
+  pickupAddress,
+  dropoffAddress,
   dateTime,
   onDateTimeChange,
-  onScheduleTypeChange,
   onBack,
   onContinue,
 }: {
+  podType: PodType;
+  pickupAddress: string;
+  dropoffAddress: string;
   dateTime: DateTimeState;
   onDateTimeChange: (dateTime: DateTimeState) => void;
-  onScheduleTypeChange: (scheduleType: ScheduleType) => void;
   onBack: () => void;
   onContinue: () => void;
 }) {
+  const [showRecurringProtectionDialog, setShowRecurringProtectionDialog] = useState(false);
+  const [recurringProtectionAccepted, setRecurringProtectionAccepted] = useState(false);
+  const activeScheduleType: ScheduleType = podType === "recurring" ? "RECURRING" : "ONE_TIME";
+  const recurringValidationError =
+    activeScheduleType === "RECURRING"
+      ? validateRecurringSchedule(dateTime, pickupAddress, dropoffAddress)
+      : null;
   const canContinue =
-    dateTime.scheduleType === "ONE_TIME" ||
-    (dateTime.recurringWeekdays.length > 0 &&
-      (dateTime.recurringEndMode !== "after" || dateTime.recurringOccurrenceLimit > 0));
+    activeScheduleType === "ONE_TIME"
+      ? dateTime.selectedDate.length > 0 && dateTime.time.length > 0
+      : !recurringValidationError &&
+        (dateTime.recurringEndMode !== "after" || dateTime.recurringOccurrenceLimit > 0);
+  const handleContinue = () => {
+    if (activeScheduleType === "RECURRING" && !recurringProtectionAccepted) {
+      setShowRecurringProtectionDialog(true);
+      return;
+    }
+
+    onContinue();
+  };
 
   return (
     <>
@@ -1196,25 +1716,20 @@ function DateTimeStep({
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-40 pt-8 md:pb-5">
         <section className="text-center">
+          <ScheduleTypeEyebrow podType={podType} />
           <h1 className="text-[28px] font-black leading-tight text-[var(--rp-text)]">
-            When are you leaving?
+            {activeScheduleType === "RECURRING"
+              ? "When does this pod repeat?"
+              : "When are you leaving?"}
           </h1>
           <p className="mt-3 text-base font-medium text-[var(--rp-muted)]">
-            Select your date and departure time.
+            {activeScheduleType === "RECURRING"
+              ? "Create a weekly ride template for your recurring route."
+              : "Select your date and departure time."}
           </p>
         </section>
 
-        <div className="mt-8">
-          <ScheduleTypeSwitch
-            value={dateTime.scheduleType}
-            onChange={(scheduleType) => {
-              onScheduleTypeChange(scheduleType);
-              onDateTimeChange({ ...dateTime, scheduleType });
-            }}
-          />
-        </div>
-
-        {dateTime.scheduleType === "ONE_TIME" ? (
+        {activeScheduleType === "ONE_TIME" ? (
           <>
             <CalendarPicker
               selectedDate={dateTime.selectedDate}
@@ -1244,14 +1759,30 @@ function DateTimeStep({
           <RecurringScheduleFields
             dateTime={dateTime}
             onDateTimeChange={onDateTimeChange}
+            pickupAddress={pickupAddress}
+            dropoffAddress={dropoffAddress}
           />
         )}
       </main>
 
       <footer className="fixed inset-x-0 bottom-[88px] z-50 mx-auto max-w-[430px] px-6 pb-4 pt-8 md:static md:mx-0 md:max-w-none md:px-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pt-0">
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-28 bg-[linear-gradient(180deg,transparent,var(--rp-bg)_42%)] md:hidden" />
-        <PrimaryButton onClick={onContinue} disabled={!canContinue}>Continue</PrimaryButton>
+        <PrimaryButton onClick={handleContinue} disabled={!canContinue}>Continue</PrimaryButton>
       </footer>
+
+      <RecurringProtectionDialog
+        dateTime={dateTime}
+        pickupAddress={pickupAddress}
+        dropoffAddress={dropoffAddress}
+        open={showRecurringProtectionDialog}
+        accepted={recurringProtectionAccepted}
+        onAcceptedChange={setRecurringProtectionAccepted}
+        onClose={() => setShowRecurringProtectionDialog(false)}
+        onConfirm={() => {
+          setShowRecurringProtectionDialog(false);
+          onContinue();
+        }}
+      />
     </>
   );
 }
@@ -1422,19 +1953,27 @@ function HostChoiceConfirmationDialog({
           </span>
         </label>
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
+        <div className="mt-5 grid w-full grid-cols-2 gap-3">
           <button
             type="button"
             onClick={onCancel}
-            className="min-h-12 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)]"
+            className="min-h-12 w-full rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
           >
             Cancel
           </button>
           <button
             type="button"
             disabled={!checked}
-            onClick={onConfirm}
-            className="min-h-12 rounded-[16px] bg-[var(--rp-gradient-primary)] text-sm font-black text-[var(--rp-primary-text)] disabled:cursor-not-allowed disabled:opacity-45"
+            aria-disabled={!checked}
+            onClick={() => {
+              if (checked) onConfirm();
+            }}
+            className={cn(
+              "min-h-12 w-full rounded-[16px] border text-sm font-black transition",
+              checked
+                ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_26%,transparent)] hover:brightness-105"
+                : "cursor-not-allowed border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted)] shadow-none",
+            )}
           >
             Confirm
           </button>
@@ -1448,15 +1987,15 @@ function VehicleDarkPanel() {
   return (
     <aside className="people-vehicle-dark-panel ridepod-theme-image-dark relative min-h-[650px] overflow-hidden border-r border-[var(--rp-border-strong)]">
       <Image
-        src="/ridepod/people-vehicle-dark-background-2x.png"
+        src="/images/ridepod/people-vehicle-dark.png"
         alt=""
         fill
         sizes="(max-width: 768px) 52vw, 360px"
         quality={100}
-        className="object-cover object-center"
+        className="object-cover object-[38%_center]"
         priority
       />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,11,18,0.1),rgba(5,11,18,0.28)_58%,rgba(5,11,18,0.82))]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,11,18,0.2),rgba(5,11,18,0.02)_45%,rgba(5,11,18,0.32)),linear-gradient(180deg,rgba(5,11,18,0.03),rgba(5,11,18,0.18)_58%,rgba(5,11,18,0.7))]" />
     </aside>
   );
 }
@@ -1477,11 +2016,13 @@ function VehicleLightArt() {
 }
 
 function PeopleVehicleStep({
+  podType,
   peopleVehicle,
   onPeopleVehicleChange,
   onBack,
   onContinue,
 }: {
+  podType: PodType;
   peopleVehicle: PeopleVehicleState;
   onPeopleVehicleChange: (peopleVehicle: PeopleVehicleState) => void;
   onBack: () => void;
@@ -1508,6 +2049,7 @@ function PeopleVehicleStep({
         <VehicleDarkPanel />
         <section className="people-vehicle-content flex min-h-0 flex-col px-6 pb-10 pt-8">
           <div className="text-center">
+            <ScheduleTypeEyebrow podType={podType} />
             <h1 className="text-[30px] font-black leading-tight text-[var(--rp-text)]">
               Seats & ride option
             </h1>
@@ -1628,62 +2170,197 @@ function ReviewHeroCard({
   );
 }
 
-function PricingSummaryCard({
-  pricing,
-}: {
-  pricing: PricingState;
-}) {
+function PricingSummaryCard({ money }: { money: MoneyProtectionState }) {
+  const estimatedFareCents = dollarsToCents(money.estimatedTotalFare);
+  const approvedMaxCents = dollarsToCents(money.approvedMaxTotalFare);
+  const feeCents = dollarsToCents(money.ridepodFee);
+  const safeTargetSeats = Math.max(1, Math.floor(money.targetSeats));
+  const safeMinSeats = Math.max(1, Math.floor(money.minSeatsToBook));
+  const protection = calculateMoneyProtection({
+    estimatedTotalFareCents: estimatedFareCents,
+    approvedMaxTotalFareCents: approvedMaxCents,
+    targetSeats: safeTargetSeats,
+    minSeatsToBook: safeMinSeats,
+    ridepodFeeCents: feeCents,
+    hostIsRiding: money.hostIsRiding,
+  });
+
   return (
     <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 text-center shadow-[var(--rp-shadow-soft)]">
       <h2 className="text-lg font-black text-[var(--rp-text)]">Pricing summary</h2>
-      <dl className="mt-5 grid grid-cols-3 divide-x divide-[var(--rp-border)]">
-        <div className="px-2">
+      <dl className="mt-5 grid gap-3 text-left">
+        <div className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3">
           <dt className="text-xs font-semibold text-[var(--rp-muted)]">Est. fare</dt>
-          <dd className="mt-2 text-xl font-black text-[var(--rp-text)]">
-            {formatMoney(pricing.estimatedFare)}
+          <dd className="mt-1 text-2xl font-black text-[var(--rp-text)]">
+            {formatCentsFixed(estimatedFareCents)}
           </dd>
         </div>
-        <div className="px-2">
-          <dt className="text-xs font-black text-[var(--rp-primary)]">Est. share</dt>
-          <dd className="mt-1 text-2xl font-black text-[var(--rp-primary)]">
-            {formatMoney(pricing.estimatedShare)}
-          </dd>
-          <dd className="text-xs font-semibold text-[var(--rp-text)]">per person</dd>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3">
+            <dt className="text-xs font-black text-[var(--rp-primary)]">Expected total</dt>
+            <dd className="mt-1 text-xl font-black text-[var(--rp-primary)]">
+              {formatCentsFixed(protection.expectedTotalPerRiderCents)}
+            </dd>
+            <dd className="text-xs font-semibold text-[var(--rp-muted-strong)]">
+              / rider if {getIdealPodSizeSummary(money)} fill
+            </dd>
+          </div>
+          <div className="rounded-2xl border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,var(--rp-card))] p-3">
+            <dt className="text-xs font-black text-[var(--rp-primary)]">Protected max</dt>
+            <dd className="mt-1 text-xl font-black text-[var(--rp-primary)]">
+              {formatCentsFixed(protection.protectedMaxChargePerRiderCents)}
+            </dd>
+            <dd className="text-xs font-semibold text-[var(--rp-muted-strong)]">
+              / rider if {getMinimumLockedSummary(money)}
+            </dd>
+          </div>
         </div>
-        <div className="px-2">
-          <dt className="text-xs font-semibold text-[var(--rp-muted)]">Max fare</dt>
-          <dd className="mt-2 text-xl font-black text-[var(--rp-text)]">
-            {formatMoney(pricing.maxFare)}
-          </dd>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3">
+            <dt className="text-xs font-semibold text-[var(--rp-muted)]">Approved max fare</dt>
+            <dd className="mt-1 text-lg font-black text-[var(--rp-text)]">
+              {formatCentsFixed(approvedMaxCents)}
+            </dd>
+          </div>
+          <div className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3">
+            <dt className="text-xs font-semibold text-[var(--rp-muted)]">RidePod fee</dt>
+            <dd className="mt-1 text-lg font-black text-[var(--rp-text)]">
+              {formatCentsFixed(feeCents)}
+              <span className="text-xs font-semibold text-[var(--rp-muted-strong)]"> / rider</span>
+            </dd>
+          </div>
         </div>
       </dl>
-      <p className="mx-auto mt-5 max-w-[260px] text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
-        Host books the external ride under approved max fare. Everyone pays their share.
+      <p className="mx-auto mt-5 max-w-[320px] text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
+        Host can book only after the minimum locked riders authorize payment and the quote is within the approved max.
+        Final charge uses the verified receipt and may be lower.
       </p>
     </section>
   );
 }
 
-function MoneySafetyCreateStep({
-  pricing,
-  targetSeats,
-}: {
-  pricing: PricingState;
+type MoneyProtectionState = {
+  estimatedTotalFare: number;
+  approvedMaxTotalFare: number;
   targetSeats: number;
-}) {
-  const [money, setMoney] = useState({
-    estimatedTotalFare: pricing.estimatedFare,
-    approvedMaxTotalFare: pricing.maxFare,
-    targetSeats,
-    minSeatsToBook: Math.min(3, targetSeats),
-    ridepodFee: 2,
-  });
-  const [genderMode, setGenderMode] = useState<GenderMode>("mixed");
-  const [accessMode, setAccessMode] = useState<AccessMode>("verified_only");
+  minSeatsToBook: number;
+  ridepodFee: number;
+  hostIsRiding: boolean;
+  estimateSource: EstimateSource;
+  estimateConfidence: EstimateConfidence;
+  systemEstimatedFare: number;
+  hostEstimatedFare: number;
+  taxiZone: HkTaxiZone;
+  estimatedDistanceKm: number;
+  baggageCount: number;
+  tollEstimate: number;
+  waitingMinutes: number;
+  trafficBufferPercent: number;
+  routeRiskLevel: RouteRiskLevel;
+};
 
-  function updateMoney(key: keyof typeof money, value: number) {
-    setMoney((current) => ({ ...current, [key]: value }));
+type MoneyProtectionNumberKey = Exclude<
+  keyof MoneyProtectionState,
+  "hostIsRiding" | "estimateSource" | "estimateConfidence" | "taxiZone" | "routeRiskLevel"
+>;
+
+function pluralize(count: number, singular: string, plural = `${singular}s`) {
+  return count === 1 ? singular : plural;
+}
+
+function getIdealPodSizeSummary(money: Pick<MoneyProtectionState, "targetSeats" | "hostIsRiding">) {
+  const idealPeople = Math.max(1, Math.floor(money.targetSeats));
+  const guestSeats = money.hostIsRiding ? Math.max(0, idealPeople - 1) : idealPeople;
+  const guestCopy = `${guestSeats} ${pluralize(guestSeats, "guest")}`;
+
+  return money.hostIsRiding ? `${guestCopy} + host` : guestCopy;
+}
+
+function getMinimumLockedSummary(money: Pick<MoneyProtectionState, "minSeatsToBook" | "hostIsRiding">) {
+  const lockedRiders = Math.max(1, Math.floor(money.minSeatsToBook));
+  const personLabel = money.hostIsRiding ? "guest" : "rider";
+
+  return `${lockedRiders} ${pluralize(lockedRiders, personLabel)} lock`;
+}
+
+function getMinimumLockedHelper(money: Pick<MoneyProtectionState, "minSeatsToBook" | "hostIsRiding">) {
+  const lockedRiders = Math.max(1, Math.floor(money.minSeatsToBook));
+  const personLabel = money.hostIsRiding ? "guest" : "rider";
+
+  return `${lockedRiders} ${pluralize(lockedRiders, personLabel)} must authorize before host can book.`;
+}
+
+function getHkTaxiEstimateForMoney(money: MoneyProtectionState) {
+  return calculateHkTaxiFareEstimate({
+    zone: money.taxiZone,
+    distanceMeters: Math.round(Math.max(0, money.estimatedDistanceKm) * 1000),
+    baggageCount: money.baggageCount,
+    tollEstimateCents: dollarsToCents(money.tollEstimate),
+    waitingMinutes: money.waitingMinutes,
+    trafficBufferPercent: money.trafficBufferPercent,
+  });
+}
+
+function syncSystemEstimate(money: MoneyProtectionState): MoneyProtectionState {
+  const taxiEstimate = getHkTaxiEstimateForMoney(money);
+  const systemEstimatedFare = centsToDollars(taxiEstimate.totalFareCents);
+
+  return {
+    ...money,
+    systemEstimatedFare,
+    estimateConfidence: taxiEstimate.estimateConfidence,
+    ...(money.estimateSource === "SYSTEM_TAXI_HK"
+      ? {
+          estimatedTotalFare: systemEstimatedFare,
+          hostEstimatedFare: systemEstimatedFare,
+        }
+      : {}),
+  };
+}
+
+function MoneyProtectionPanel({
+  money,
+  onMoneyChange,
+}: {
+  money: MoneyProtectionState;
+  onMoneyChange: (money: MoneyProtectionState) => void;
+}) {
+  function commitMoney(nextMoney: MoneyProtectionState) {
+    onMoneyChange(syncSystemEstimate(nextMoney));
   }
+
+  function updateMoney(key: MoneyProtectionNumberKey, value: number) {
+    const maxLockedRiders = money.hostIsRiding
+      ? Math.max(1, Math.floor(money.targetSeats) - 1)
+      : Math.max(1, Math.floor(money.targetSeats));
+    const nextValue = Math.max(
+      key === "ridepodFee" || key === "tollEstimate" || key === "waitingMinutes" || key === "trafficBufferPercent" ? 0 : 1,
+      Number.isFinite(value) ? value : 0,
+    );
+    const boundedValue = key === "minSeatsToBook" ? Math.min(nextValue, maxLockedRiders) : nextValue;
+    const nextMoney = {
+      ...money,
+      [key]: boundedValue,
+      ...(key === "estimatedTotalFare"
+        ? { estimateSource: "HOST_INPUT" as EstimateSource, hostEstimatedFare: boundedValue }
+        : {}),
+    };
+
+    commitMoney(nextMoney);
+  }
+
+  const taxiEstimate = getHkTaxiEstimateForMoney(money);
+  const systemEstimateCents = taxiEstimate.totalFareCents;
+  const suggestedApprovedMaxCents = suggestApprovedMaxFare(systemEstimateCents, money.routeRiskLevel);
+  const hostEstimateWarning = getHostEstimateWarning({
+    systemEstimatedFareCents: systemEstimateCents,
+    hostEstimatedFareCents: dollarsToCents(money.estimatedTotalFare),
+  });
+  const approvedMaxBelowEstimate = money.approvedMaxTotalFare < money.estimatedTotalFare;
+  const maxLockedRiders = money.hostIsRiding
+    ? Math.max(1, Math.floor(money.targetSeats) - 1)
+    : Math.max(1, Math.floor(money.targetSeats));
+  const estimateIsAvailable = systemEstimateCents > 0;
 
   return (
     <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
@@ -1693,83 +2370,446 @@ function MoneySafetyCreateStep({
           <h2 className="text-lg font-black text-[var(--rp-text)]">Money Protection</h2>
           <p className="mt-2 text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
             Host may preview fare early, but protected booking unlocks only after required participants authorize payment.
+            Final settlement uses the verified receipt and may be lower.
           </p>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3">
+        <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-black text-[var(--rp-text)]">RidePod estimate</p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                {estimateIsAvailable
+                  ? `${formatCentsFixed(systemEstimateCents)} based on ${HK_TAXI_FARE_RULES[money.taxiZone].label} fare baseline.`
+                  : "Add route distance to preview a HK taxi fare baseline, or keep the manual estimate."}
+              </p>
+            </div>
+            <span className="rounded-full border border-[var(--rp-border)] px-3 py-1 text-xs font-black uppercase text-[var(--rp-primary)]">
+              {money.estimateConfidence}
+            </span>
+          </div>
+
+          <dl className="mt-3 grid gap-2 text-xs font-bold text-[var(--rp-muted-strong)]">
+            <div className="flex items-center justify-between gap-3">
+              <dt>Estimate source</dt>
+              <dd className="text-right text-[var(--rp-text)]">{formatEstimateSource(money.estimateSource)}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <dt>Approved max suggestion</dt>
+              <dd className="text-right text-[var(--rp-primary)]">
+                {estimateIsAvailable ? formatCentsFixed(suggestedApprovedMaxCents) : "Needs distance"}
+              </dd>
+            </div>
+          </dl>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={!estimateIsAvailable}
+              onClick={() => {
+                const nextEstimate = centsToDollars(systemEstimateCents);
+                commitMoney({
+                  ...money,
+                  estimateSource: "SYSTEM_TAXI_HK",
+                  estimatedTotalFare: nextEstimate,
+                  hostEstimatedFare: nextEstimate,
+                });
+              }}
+              className="min-h-10 rounded-xl border border-[var(--rp-primary)] px-3 text-xs font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Use RidePod estimate
+            </button>
+            <button
+              type="button"
+              disabled={!estimateIsAvailable}
+              onClick={() =>
+                commitMoney({
+                  ...money,
+                  approvedMaxTotalFare: centsToDollars(suggestedApprovedMaxCents),
+                })
+              }
+              className="min-h-10 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card)] px-3 text-xs font-black text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Use suggested max
+            </button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 sm:grid-cols-2">
+          <div className="grid gap-1.5 text-sm font-black text-[var(--rp-text)]">
+            <span>Taxi baseline</span>
+            <div className="grid gap-2">
+              {HK_TAXI_ZONES.map((zone) => (
+                <button
+                  key={zone}
+                  type="button"
+                  onClick={() => commitMoney({ ...money, taxiZone: zone })}
+                  className={cn(
+                    "min-h-10 rounded-xl border px-3 text-left text-xs font-black transition",
+                    money.taxiZone === zone
+                      ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                      : "border-[var(--rp-border)] bg-[var(--rp-card)] text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-muted)]",
+                  )}
+                >
+                  {HK_TAXI_FARE_RULES[zone].label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-1.5 text-sm font-black text-[var(--rp-text)]">
+            <span>Route risk</span>
+            <div className="grid gap-2">
+              {ROUTE_RISK_LEVELS.map((level) => (
+                <button
+                  key={level}
+                  type="button"
+                  onClick={() => commitMoney({ ...money, routeRiskLevel: level })}
+                  className={cn(
+                    "min-h-10 rounded-xl border px-3 text-left text-xs font-black transition",
+                    money.routeRiskLevel === level
+                      ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                      : "border-[var(--rp-border)] bg-[var(--rp-card)] text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-muted)]",
+                  )}
+                >
+                  {formatRouteRiskLevel(level)}
+                </button>
+              ))}
+            </div>
+          </div>
+          {([
+            { label: "Estimated distance (km)", key: "estimatedDistanceKm", step: 0.1 },
+            { label: "Baggage count", key: "baggageCount", step: 1 },
+            { label: "Toll / tunnel estimate", key: "tollEstimate", step: 1 },
+            { label: "Waiting / traffic buffer (min)", key: "waitingMinutes", step: 1 },
+          ] satisfies Array<{ label: string; key: MoneyProtectionNumberKey; step: number }>).map((field) => (
+            <label key={field.key} className="grid gap-1.5 text-sm font-black text-[var(--rp-text)]">
+              {field.label}
+              <input
+                type="number"
+                min={0}
+                step={field.step}
+                value={money[field.key]}
+                onChange={(event) => updateMoney(field.key, Number(event.target.value))}
+                className="h-11 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card)] px-3 text-base font-semibold text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+              />
+            </label>
+          ))}
+        </div>
+
+        <div className="grid gap-1.5 text-sm font-black text-[var(--rp-text)]">
+          <span>Ideal pod size</span>
+          <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-muted)] px-3 py-3 text-base font-semibold text-[var(--rp-text)]">
+            {money.targetSeats}
+          </div>
+          <p className="text-xs font-bold text-[var(--rp-muted-strong)]">
+            Ideal pod size: {getIdealPodSizeSummary(money)}.
+          </p>
+        </div>
+
+        <div className="grid gap-2 text-sm font-black text-[var(--rp-text)]">
+          <span>Host is riding</span>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "Yes", value: true },
+              { label: "No", value: false },
+            ].map((option) => (
+              <button
+                key={option.label}
+                type="button"
+                onClick={() => {
+                  const nextMaxLockedRiders = option.value
+                    ? Math.max(1, Math.floor(money.targetSeats) - 1)
+                    : Math.max(1, Math.floor(money.targetSeats));
+
+                  commitMoney({
+                    ...money,
+                    hostIsRiding: option.value,
+                    minSeatsToBook: Math.min(money.minSeatsToBook, nextMaxLockedRiders),
+                  });
+                }}
+                className={cn(
+                  "h-11 rounded-xl border text-sm font-black transition",
+                  money.hostIsRiding === option.value
+                    ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                    : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {[
           ["Estimated total fare", "estimatedTotalFare"],
           ["Approved max total fare", "approvedMaxTotalFare"],
-          ["Target seats", "targetSeats"],
-          ["Min seats to book", "minSeatsToBook"],
-          ["RidePod fee per participant", "ridepodFee"],
+          ["Minimum locked riders", "minSeatsToBook"],
         ].map(([label, key]) => (
           <label key={key} className="grid gap-1.5 text-sm font-black text-[var(--rp-text)]">
             {label}
             <input
               type="number"
-              min={key === "ridepodFee" ? 0 : 1}
-              value={money[key as keyof typeof money]}
-              onChange={(event) => updateMoney(key as keyof typeof money, Number(event.target.value))}
-              className="h-11 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-base font-semibold text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+              min={1}
+              max={key === "minSeatsToBook" ? maxLockedRiders : undefined}
+              value={money[key as MoneyProtectionNumberKey]}
+              onChange={(event) => updateMoney(key as MoneyProtectionNumberKey, Number(event.target.value))}
+              aria-invalid={key === "approvedMaxTotalFare" && approvedMaxBelowEstimate}
+              className={cn(
+                "h-11 rounded-xl border bg-[var(--rp-card-soft)] px-3 text-base font-semibold text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]",
+                key === "approvedMaxTotalFare" && approvedMaxBelowEstimate
+                  ? "border-[var(--rp-primary)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--rp-primary)_55%,transparent)]"
+                  : "border-[var(--rp-border)]",
+              )}
             />
+            {key === "approvedMaxTotalFare" && approvedMaxBelowEstimate ? (
+              <span className="text-xs font-bold text-[var(--rp-primary)]">
+                Approved max must be at least {formatMoney(money.estimatedTotalFare)} before you continue.
+              </span>
+            ) : null}
+            {key === "estimatedTotalFare" && hostEstimateWarning ? (
+              <span className="text-xs font-bold text-[var(--rp-primary)]">{hostEstimateWarning}</span>
+            ) : null}
+            {key === "minSeatsToBook" ? (
+              <span className="text-xs font-bold text-[var(--rp-muted-strong)]">
+                Minimum locked riders: {getMinimumLockedHelper(money)}
+              </span>
+            ) : null}
           </label>
         ))}
+
+        <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
+          <p className="font-black text-[var(--rp-text)]">Host quote</p>
+          <p className="mt-1">Upload quote screenshot before booking. The quote controls booking permission; final settlement uses the verified receipt.</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PreviewMoneyProtectionCard({ money }: { money: MoneyProtectionState }) {
+  const safeTargetSeats = Math.max(1, money.targetSeats);
+  const safeMinSeats = Math.max(1, money.minSeatsToBook);
+  const approvedMaxCents = dollarsToCents(money.approvedMaxTotalFare);
+  const feeCents = dollarsToCents(money.ridepodFee);
+  const protection = calculateMoneyProtection({
+    estimatedTotalFareCents: dollarsToCents(money.estimatedTotalFare),
+    approvedMaxTotalFareCents: approvedMaxCents,
+    targetSeats: safeTargetSeats,
+    minSeatsToBook: safeMinSeats,
+    ridepodFeeCents: feeCents,
+    hostIsRiding: money.hostIsRiding,
+  });
+  const rows = [
+    {
+      label: "Expected total",
+      value: `${formatCents(protection.expectedTotalPerRiderCents)} / rider if ${getIdealPodSizeSummary(money)} fill`,
+    },
+    {
+      label: "Protected max",
+      value: `${formatCents(protection.protectedMaxChargePerRiderCents)} / rider if ${getMinimumLockedSummary(money)}`,
+    },
+    {
+      label: "RidePod fee",
+      value: `${formatCents(feeCents)} included`,
+    },
+    {
+      label: "Final charge",
+      value: "Uses verified receipt and may be lower",
+    },
+  ];
+
+  return (
+    <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+      <div className="flex items-start gap-3">
+        <ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
+        <div>
+          <h2 className="text-lg font-black text-[var(--rp-text)]">Money Protection</h2>
+          <p className="mt-2 text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
+            Riders authorize the protected max before the host books. They may pay less after the final receipt is verified.
+          </p>
+        </div>
       </div>
 
-      <div className="mt-5 border-t border-[var(--rp-border)] pt-4">
-        <h2 className="text-lg font-black text-[var(--rp-text)]">Safety &amp; Trust</h2>
-        <div className="mt-3 grid gap-3">
-          <div>
-            <p className="text-sm font-black text-[var(--rp-text)]">Gender mode</p>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {genderModeOptions.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => setGenderMode(option.id)}
-                  className={cn(
-                    "h-11 rounded-xl border px-3 text-sm font-black",
-                    genderMode === option.id
-                      ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
-                      : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-            {genderMode === "women_only" ? (
-              <p className="mt-3 rounded-xl bg-[var(--rp-card-soft)] p-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                Women-only pods are designed for safer matching. Eligible female users can join. RidePod does not guarantee safety; report concerns immediately.
-              </p>
-            ) : null}
+      <dl className="mt-4 grid gap-2">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-3"
+          >
+            <dt className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-primary)]">
+              {row.label}
+            </dt>
+            <dd className="mt-1 text-sm font-black leading-5 text-[var(--rp-text)]">{row.value}</dd>
           </div>
+        ))}
+      </dl>
 
-          <div>
-            <p className="text-sm font-black text-[var(--rp-text)]">Access mode</p>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              {accessModeOptions.map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => setAccessMode(option.id)}
-                  className={cn(
-                    "min-h-11 rounded-xl border px-3 py-2 text-sm font-black",
-                    accessMode === option.id
-                      ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
-                      : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
-                  )}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
+      <div className="mt-3 grid gap-2 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
+        <p className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+          Host can book only after the minimum locked riders authorize payment and the quote is within the {formatCents(approvedMaxCents)} approved max.
+        </p>
+        <p className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+          Final settlement uses the verified receipt, not the quote.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function SafetyTrustPanel({
+  genderMode,
+  accessMode,
+  onGenderModeChange,
+  onAccessModeChange,
+}: {
+  genderMode: GenderMode;
+  accessMode: AccessMode;
+  onGenderModeChange: (genderMode: GenderMode) => void;
+  onAccessModeChange: (accessMode: AccessMode) => void;
+}) {
+  return (
+    <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+      <div className="flex items-start gap-3">
+        <ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
+        <div>
+          <h2 className="text-lg font-black text-[var(--rp-text)]">Safety &amp; Trust</h2>
+          <p className="mt-2 text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
+            Choose who can join and which trust rules riders see before requesting a seat.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4">
+        <div>
+          <p className="text-sm font-black text-[var(--rp-text)]">Gender mode</p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {genderModeOptions.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => onGenderModeChange(option.id)}
+                className={cn(
+                  "h-11 rounded-xl border px-3 text-sm font-black",
+                  genderMode === option.id
+                    ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                    : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          {genderMode === "women_only" ? (
+            <p className="mt-3 rounded-xl bg-[var(--rp-card-soft)] p-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              Women-only pods are designed for safer matching. Eligible female users can join. RidePod does not guarantee safety; report concerns immediately.
+            </p>
+          ) : null}
+        </div>
+
+        <div>
+          <p className="text-sm font-black text-[var(--rp-text)]">Access mode</p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            {accessModeOptions.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => onAccessModeChange(option.id)}
+                className={cn(
+                  "min-h-11 rounded-xl border px-3 py-2 text-sm font-black",
+                  accessMode === option.id
+                    ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                    : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
     </section>
+  );
+}
+
+function ReviewPanelControls({
+  currentPanel,
+  onPanelChange,
+  onCreate,
+  canProceed,
+  blockedReason,
+}: {
+  currentPanel: number;
+  onPanelChange: (panel: number) => void;
+  onCreate: () => void;
+  canProceed: boolean;
+  blockedReason?: string;
+}) {
+  const panelLabels = ["Money Protection", "Safety & Trust", "Preview your pod"];
+  const isFirst = currentPanel === 0;
+  const isLast = currentPanel === panelLabels.length - 1;
+  const nextBlocked = currentPanel === 0 && !canProceed;
+
+  return (
+    <div className="mt-4">
+      <div className="mb-3 flex items-center justify-center gap-2" aria-label="Review section progress">
+        {panelLabels.map((label, index) => (
+          <button
+            key={label}
+            type="button"
+            aria-label={`Show ${label}`}
+            aria-current={currentPanel === index ? "step" : undefined}
+            onClick={() => {
+              if (!canProceed && index > currentPanel) return;
+              onPanelChange(index);
+            }}
+            className={cn(
+              "h-2.5 w-2.5 rounded-full transition",
+              currentPanel === index ? "w-7 bg-[var(--rp-primary)]" : "bg-[var(--rp-card-muted)]",
+              !canProceed && index > currentPanel ? "cursor-not-allowed opacity-45" : "",
+            )}
+          />
+        ))}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          disabled={isFirst}
+          onClick={() => onPanelChange(Math.max(0, currentPanel - 1))}
+          className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[22px] font-black text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)] disabled:cursor-not-allowed disabled:opacity-35"
+          aria-label="Previous review section"
+        >
+          {"<"}
+        </button>
+        {isLast ? (
+          <button
+            type="button"
+            disabled={!canProceed}
+            onClick={onCreate}
+            className="review-create-pod-button min-h-12 rounded-2xl border px-4 text-sm font-black shadow-[0_14px_28px_rgba(246,196,83,0.34)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            Create Pod
+          </button>
+        ) : (
+          <button
+            type="button"
+            disabled={nextBlocked}
+            onClick={() => onPanelChange(Math.min(panelLabels.length - 1, currentPanel + 1))}
+            className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--rp-primary)] bg-[var(--rp-card)] text-[22px] font-black text-[var(--rp-primary)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_16%,transparent)] transition hover:bg-[var(--rp-card-muted)] disabled:cursor-not-allowed disabled:opacity-45"
+            aria-label="Next review section"
+          >
+            {">"}
+          </button>
+        )}
+      </div>
+      {!canProceed && blockedReason ? (
+        <p className="mt-3 rounded-2xl border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_10%,var(--rp-card))] px-3 py-2 text-center text-xs font-bold leading-5 text-[var(--rp-primary)]">
+          {blockedReason}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -1802,7 +2842,7 @@ function DetailSummaryCard({
     {
       icon: ShieldCheck,
       label: "Fare rule",
-      value: "Host books the external ride under max fare.",
+      value: "Host can book only when required riders are payment-authorized and the quote is within approved max.",
     },
     {
       icon: MapPin,
@@ -1846,6 +2886,7 @@ function DetailSummaryCard({
 }
 
 function ReviewPodStep({
+  podType,
   pickupAddress,
   dropoffAddress,
   dateTime,
@@ -1854,6 +2895,7 @@ function ReviewPodStep({
   onBack,
   onCreate,
 }: {
+  podType: PodType;
   pickupAddress: string;
   dropoffAddress: string;
   dateTime: DateTimeState;
@@ -1864,6 +2906,37 @@ function ReviewPodStep({
 }) {
   const routeFrom = routeCode(pickupAddress, "USC");
   const routeTo = routeCode(dropoffAddress, "LAX");
+  const [reviewPanel, setReviewPanel] = useState(0);
+  const defaultTaxiEstimate = calculateHkTaxiFareEstimate({
+    zone: "URBAN",
+    distanceMeters: 6000,
+    baggageCount: peopleVehicle.bags,
+  });
+  const [moneyProtection, setMoneyProtection] = useState<MoneyProtectionState>({
+    estimatedTotalFare: pricing.estimatedFare,
+    approvedMaxTotalFare: pricing.maxFare,
+    targetSeats: peopleVehicle.seatsAvailable,
+    minSeatsToBook: Math.min(3, peopleVehicle.seatsAvailable),
+    ridepodFee: 5,
+    hostIsRiding: true,
+    estimateSource: "HOST_INPUT",
+    estimateConfidence: defaultTaxiEstimate.estimateConfidence,
+    systemEstimatedFare: centsToDollars(defaultTaxiEstimate.totalFareCents),
+    hostEstimatedFare: pricing.estimatedFare,
+    taxiZone: "URBAN",
+    estimatedDistanceKm: 6,
+    baggageCount: peopleVehicle.bags,
+    tollEstimate: 0,
+    waitingMinutes: 0,
+    trafficBufferPercent: 0,
+    routeRiskLevel: "NORMAL",
+  });
+  const [genderMode, setGenderMode] = useState<GenderMode>("mixed");
+  const [accessMode, setAccessMode] = useState<AccessMode>("verified_only");
+  const moneyProtectionError =
+    moneyProtection.approvedMaxTotalFare < moneyProtection.estimatedTotalFare
+      ? `Approved max must be at least ${formatMoney(moneyProtection.estimatedTotalFare)} before you continue.`
+      : null;
 
   return (
     <>
@@ -1871,6 +2944,7 @@ function ReviewPodStep({
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-7">
         <section className="text-center">
+          <ScheduleTypeEyebrow podType={podType} />
           <h1 className="text-[26px] font-black leading-tight text-[var(--rp-text)]">
             Review your pod
           </h1>
@@ -1880,32 +2954,62 @@ function ReviewPodStep({
         </section>
 
         <div className="mt-5 grid gap-4">
-          <ReviewHeroCard
-            routeFrom={routeFrom}
-            routeTo={routeTo}
-            dateTime={dateTime}
-            peopleVehicle={peopleVehicle}
-          />
-          <PricingSummaryCard pricing={pricing} />
-          <MoneySafetyCreateStep
-            pricing={pricing}
-            targetSeats={peopleVehicle.seatsAvailable}
-          />
-          <DetailSummaryCard
-            routeFrom={routeFrom}
-            routeTo={routeTo}
-            pickupAddress={pickupAddress}
-            dropoffAddress={dropoffAddress}
-            peopleVehicle={peopleVehicle}
-          />
+          {reviewPanel === 0 ? (
+            <>
+              <PricingSummaryCard money={moneyProtection} />
+              <MoneyProtectionPanel
+                money={moneyProtection}
+                onMoneyChange={setMoneyProtection}
+              />
+            </>
+          ) : null}
+
+          {reviewPanel === 1 ? (
+            <SafetyTrustPanel
+              genderMode={genderMode}
+              accessMode={accessMode}
+              onGenderModeChange={setGenderMode}
+              onAccessModeChange={setAccessMode}
+            />
+          ) : null}
+
+          {reviewPanel === 2 ? (
+            <section className="grid gap-4">
+              <div className="text-center">
+                <h2 className="text-xl font-black text-[var(--rp-text)]">Preview your pod</h2>
+                <p className="mt-1 text-sm font-medium text-[var(--rp-muted)]">
+                  This is how riders will see your pod before joining.
+                </p>
+              </div>
+              <ReviewHeroCard
+                routeFrom={routeFrom}
+                routeTo={routeTo}
+                dateTime={dateTime}
+                peopleVehicle={peopleVehicle}
+              />
+              <PreviewMoneyProtectionCard money={moneyProtection} />
+              <DetailSummaryCard
+                routeFrom={routeFrom}
+                routeTo={routeTo}
+                pickupAddress={pickupAddress}
+                dropoffAddress={dropoffAddress}
+                peopleVehicle={peopleVehicle}
+              />
+            </section>
+          ) : null}
         </div>
 
-        <div className="mt-5">
-          <PrimaryButton onClick={onCreate}>Create pod</PrimaryButton>
-          <p className="mt-3 text-center text-sm font-medium text-[var(--rp-muted)]">
-            You can edit details before publishing.
-          </p>
-        </div>
+        <ReviewPanelControls
+          currentPanel={reviewPanel}
+          onPanelChange={setReviewPanel}
+          onCreate={onCreate}
+          canProceed={!moneyProtectionError}
+          blockedReason={moneyProtectionError ?? undefined}
+        />
+
+        <p className="mt-3 text-center text-sm font-medium text-[var(--rp-muted)]">
+          You can move back to edit details before publishing.
+        </p>
       </main>
     </>
   );
@@ -2033,12 +3137,14 @@ function PodCreatedSummaryCard({
 }
 
 function SuccessStep({
+  podType,
   pickupAddress,
   dropoffAddress,
   dateTime,
   peopleVehicle,
   pricing,
 }: {
+  podType: PodType;
   pickupAddress: string;
   dropoffAddress: string;
   dateTime: DateTimeState;
@@ -2052,6 +3158,9 @@ function SuccessStep({
     <>
       <CreatePodTopBar currentStep={5} />
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-8 pt-6">
+        <div className="text-center">
+          <ScheduleTypeEyebrow podType={podType} />
+        </div>
         <SuccessHero />
 
         <div className="mt-7">
@@ -2111,6 +3220,16 @@ export function CreatePodChooseType() {
     time: "7:30 AM",
     flexibility: "\u00b1 15 min",
     recurringWeekdays: ["TU"],
+    recurringPattern: "ONE_WAY",
+    recurringLegs: [
+      {
+        dayOfWeek: "TU",
+        legType: "OUTBOUND",
+        departureTime: "08:00",
+        originLabel: "USC Village",
+        destinationLabel: "LAX Terminal 3",
+      },
+    ],
     recurringStartDate: todayIsoDate,
     recurringEndMode: "after",
     recurringOccurrenceLimit: 8,
@@ -2133,6 +3252,7 @@ export function CreatePodChooseType() {
     <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[430px] flex-col overflow-hidden rounded-[34px] border border-[var(--rp-border)] bg-[var(--rp-bg)] shadow-[var(--rp-shadow-soft)] md:min-h-[760px]">
       {step === 5 ? (
         <SuccessStep
+          podType={podType}
           pickupAddress={pickupAddress}
           dropoffAddress={dropoffAddress}
           dateTime={dateTime}
@@ -2141,6 +3261,7 @@ export function CreatePodChooseType() {
         />
       ) : step === 4 ? (
         <ReviewPodStep
+          podType={podType}
           pickupAddress={pickupAddress}
           dropoffAddress={dropoffAddress}
           dateTime={dateTime}
@@ -2151,6 +3272,7 @@ export function CreatePodChooseType() {
         />
       ) : step === 3 ? (
         <PeopleVehicleStep
+          podType={podType}
           peopleVehicle={peopleVehicle}
           onPeopleVehicleChange={setPeopleVehicle}
           onBack={() => setStep(2)}
@@ -2158,16 +3280,17 @@ export function CreatePodChooseType() {
         />
       ) : step === 2 ? (
         <DateTimeStep
+          podType={podType}
+          pickupAddress={pickupAddress}
+          dropoffAddress={dropoffAddress}
           dateTime={dateTime}
           onDateTimeChange={setDateTime}
-          onScheduleTypeChange={(scheduleType) =>
-            setPodType(scheduleType === "RECURRING" ? "recurring" : "scheduled")
-          }
           onBack={() => setStep(1)}
           onContinue={() => setStep(3)}
         />
       ) : step === 1 ? (
         <RouteStopsStep
+          podType={podType}
           pickupAddress={pickupAddress}
           dropoffAddress={dropoffAddress}
           stops={stops}

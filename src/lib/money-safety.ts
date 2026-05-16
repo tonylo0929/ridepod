@@ -1,3 +1,10 @@
+import type { EstimateConfidence, EstimateSource, HkTaxiZone } from "./fare-estimates";
+import {
+  PLATFORM_FEE_RATE_BPS,
+  calculateMoneyProtection,
+  calculatePlatformFeeCents,
+} from "./money-protection";
+
 export const GENDER_IDENTITIES = [
   "FEMALE",
   "MALE",
@@ -444,10 +451,20 @@ export type ProtectedPod = {
   departureWindowMinutes: number;
   targetSeats: number;
   minSeatsToBook: number;
+  hostIsRiding?: boolean;
   maxSeats: number;
+  estimateSource?: EstimateSource;
+  estimateConfidence?: EstimateConfidence;
+  systemEstimatedFareCents?: MoneyCents | null;
+  hostEstimatedFareCents?: MoneyCents | null;
+  routeDistanceMeters?: number | null;
+  taxiZone?: HkTaxiZone | null;
   estimatedTotalFareCents: MoneyCents;
   approvedMaxTotalFareCents: MoneyCents;
   currency: string;
+  /**
+   * Legacy/demo-only fixed fee. Rider-facing platform fees use PLATFORM_FEE_RATE_BPS.
+   */
   ridepodFeeCents: MoneyCents;
   providerPolicy: string | null;
   cancellationPolicyId: string | null;
@@ -990,6 +1007,14 @@ export function authorizeSeat(pod: ProtectedPod, user: ProtectedUser): Transitio
   }
 
   const existingMember = pod.members.find((member) => member.userId === user.id);
+  const moneyProtection = calculateMoneyProtection({
+    estimatedTotalFareCents: pod.estimatedTotalFareCents,
+    approvedMaxTotalFareCents: pod.approvedMaxTotalFareCents,
+    targetSeats: pod.targetSeats,
+    minSeatsToBook: pod.minSeatsToBook,
+    ridepodFeeCents: pod.ridepodFeeCents,
+    hostIsRiding: pod.hostIsRiding ?? true,
+  });
   const updatedMembers = existingMember
     ? pod.members.map((member) =>
         member.userId === user.id
@@ -997,6 +1022,9 @@ export function authorizeSeat(pod: ProtectedPod, user: ProtectedUser): Transitio
               ...member,
               memberState: "CONFIRMED" as MemberState,
               paymentState: "AUTHORIZED" as PaymentState,
+              maxChargeCents: moneyProtection.protectedMaxChargePerRiderCents,
+              estimatedShareCents: moneyProtection.expectedRideShareCents,
+              platformFeeCents: moneyProtection.protectedMaxPlatformFeeCents,
               eligibilityPassed: true,
               lockedAt: new Date().toISOString(),
               updatedAt: new Date().toISOString(),
@@ -1013,10 +1041,10 @@ export function authorizeSeat(pod: ProtectedPod, user: ProtectedUser): Transitio
           memberState: "CONFIRMED" as MemberState,
           paymentState: "AUTHORIZED" as PaymentState,
           seatCount: 1,
-          maxChargeCents: Math.ceil(pod.approvedMaxTotalFareCents / pod.maxSeats) + pod.ridepodFeeCents,
-          estimatedShareCents: Math.ceil(pod.estimatedTotalFareCents / pod.targetSeats),
+          maxChargeCents: moneyProtection.protectedMaxChargePerRiderCents,
+          estimatedShareCents: moneyProtection.expectedRideShareCents,
           finalChargeCents: null,
-          platformFeeCents: pod.ridepodFeeCents,
+          platformFeeCents: moneyProtection.protectedMaxPlatformFeeCents,
           cancellationLiabilityCents: null,
           noShowLiabilityCents: null,
           joinedAt: new Date().toISOString(),
@@ -1278,7 +1306,9 @@ export function calculateSettlement(pod: ProtectedPod, receipt: Receipt): Settle
     const remainderCents = remainder > 0 ? 1 : 0;
     remainder -= remainderCents;
     const fareShareCents = (baseShare * member.seatCount) + remainderCents;
-    const cappedFareShare = Math.min(fareShareCents, Math.max(0, member.maxChargeCents - member.platformFeeCents));
+    const platformFeeCents = calculatePlatformFeeCents(fareShareCents, PLATFORM_FEE_RATE_BPS);
+    const cappedFareShare = Math.min(fareShareCents, Math.max(0, member.maxChargeCents - platformFeeCents));
+    const cappedPlatformFeeCents = calculatePlatformFeeCents(cappedFareShare, PLATFORM_FEE_RATE_BPS);
     items.push({
       id: `${settlementId}-${member.id}-fare`,
       settlementId,
@@ -1297,8 +1327,8 @@ export function calculateSettlement(pod: ProtectedPod, receipt: Receipt): Settle
       userId: member.userId,
       itemType: "PLATFORM_FEE",
       direction: "PLATFORM_REVENUE",
-      amountCents: member.platformFeeCents,
-      reasonCode: "RIDEPOD_FEE",
+      amountCents: cappedPlatformFeeCents,
+      reasonCode: "RIDEPOD_PLATFORM_FEE",
       createdAt: now,
     });
   });

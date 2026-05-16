@@ -15,6 +15,7 @@ import { checkPodEligibility } from "./pod-eligibility";
 import { mockAuditEvents, mockRiskFlags, protectedPods, protectedUsers } from "./money-safety-mock";
 import { getPaymentProvider, type PaymentProviderAdapter } from "./payment-provider";
 import { createOrGetStripeCustomer } from "./stripe-setup";
+import { calculateMoneyProtection } from "./money-protection";
 
 type JoinServiceResult = {
   ok: boolean;
@@ -87,6 +88,7 @@ function isPodJoinable(pod: ProtectedPod) {
 function getOrCreateMember(pod: ProtectedPod, userId: string, now: string) {
   const existingMember = pod.members.find((member) => member.userId === userId);
   if (existingMember) return existingMember;
+  const moneyProtection = calculatePodMoneyProtection(pod);
 
   const member: ProtectedPodMember = {
     id: `pm-${pod.id}-${userId}`,
@@ -96,10 +98,10 @@ function getOrCreateMember(pod: ProtectedPod, userId: string, now: string) {
     memberState: "REQUESTED",
     paymentState: "NOT_STARTED",
     seatCount: 1,
-    maxChargeCents: Math.ceil(pod.approvedMaxTotalFareCents / pod.maxSeats) + pod.ridepodFeeCents,
-    estimatedShareCents: Math.ceil(pod.estimatedTotalFareCents / Math.max(1, pod.targetSeats)),
+    maxChargeCents: moneyProtection.protectedMaxChargePerRiderCents,
+    estimatedShareCents: moneyProtection.expectedRideShareCents,
     finalChargeCents: null,
-    platformFeeCents: pod.ridepodFeeCents,
+    platformFeeCents: moneyProtection.protectedMaxPlatformFeeCents,
     mockPaymentIntentId: null,
     cancellationLiabilityCents: null,
     noShowLiabilityCents: null,
@@ -116,6 +118,22 @@ function getOrCreateMember(pod: ProtectedPod, userId: string, now: string) {
 
   pod.members.push(member);
   return member;
+}
+
+function calculatePodMoneyProtection(
+  pod: Pick<
+    ProtectedPod,
+    "estimatedTotalFareCents" | "approvedMaxTotalFareCents" | "targetSeats" | "minSeatsToBook" | "ridepodFeeCents" | "hostIsRiding"
+  >,
+) {
+  return calculateMoneyProtection({
+    estimatedTotalFareCents: pod.estimatedTotalFareCents,
+    approvedMaxTotalFareCents: pod.approvedMaxTotalFareCents,
+    targetSeats: pod.targetSeats,
+    minSeatsToBook: pod.minSeatsToBook,
+    ridepodFeeCents: pod.ridepodFeeCents,
+    hostIsRiding: pod.hostIsRiding ?? true,
+  });
 }
 
 function makeMockPaymentIntentId(podId: string, userId: string) {
@@ -168,13 +186,14 @@ export function requestJoinPod(
 
   const now = new Date().toISOString();
   const member = getOrCreateMember(pod, userId, now);
+  const moneyProtection = calculatePodMoneyProtection(pod);
 
   if (!isMemberPaymentConfirmed(member)) {
     member.memberState = "PAYMENT_REQUIRED";
     member.paymentState = "PAYMENT_METHOD_REQUIRED";
-    member.maxChargeCents = Math.ceil(pod.approvedMaxTotalFareCents / pod.maxSeats) + pod.ridepodFeeCents;
-    member.estimatedShareCents = Math.ceil(pod.estimatedTotalFareCents / Math.max(1, pod.targetSeats));
-    member.platformFeeCents = pod.ridepodFeeCents;
+    member.maxChargeCents = moneyProtection.protectedMaxChargePerRiderCents;
+    member.estimatedShareCents = moneyProtection.expectedRideShareCents;
+    member.platformFeeCents = moneyProtection.protectedMaxPlatformFeeCents;
     member.eligibilityPassed = true;
     member.updatedAt = now;
   }
@@ -252,14 +271,15 @@ export async function authorizeSeat(
     stripeCustomerId = customerResult.customerId;
   }
 
-  const maxChargeCents = Math.ceil(pod.approvedMaxTotalFareCents / pod.maxSeats) + pod.ridepodFeeCents;
+  const moneyProtection = calculatePodMoneyProtection(pod);
+  const maxChargeCents = moneyProtection.protectedMaxChargePerRiderCents;
   const paymentIntentResult = await provider.authorizeSeat({
     podId,
     podMemberId: member.id,
     userId,
     amountAuthorizedCents: maxChargeCents,
     maxChargeCents,
-    platformFeeCents: pod.ridepodFeeCents,
+    platformFeeCents: moneyProtection.protectedMaxPlatformFeeCents,
     approvedMaxTotalFareCents: pod.approvedMaxTotalFareCents,
     currency: pod.currency,
     customerId: stripeCustomerId,
@@ -283,8 +303,8 @@ export async function authorizeSeat(
   member.paymentState = "AUTHORIZED";
   member.memberState = "CONFIRMED";
   member.maxChargeCents = maxChargeCents;
-  member.estimatedShareCents = Math.ceil(pod.estimatedTotalFareCents / Math.max(1, pod.targetSeats));
-  member.platformFeeCents = pod.ridepodFeeCents;
+  member.estimatedShareCents = moneyProtection.expectedRideShareCents;
+  member.platformFeeCents = moneyProtection.protectedMaxPlatformFeeCents;
   member.mockPaymentIntentId = provider.provider === "MOCK" ? mockPaymentIntentId : (member.mockPaymentIntentId ?? null);
   member.lockedAt = now;
   member.eligibilityPassed = true;

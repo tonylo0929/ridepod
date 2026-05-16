@@ -90,9 +90,9 @@ export function HomeMenuDrawer() {
           open ? "pointer-events-auto" : "pointer-events-none",
         )}
       >
-        <button
-          aria-label="Close sidebar overlay"
-          onClick={() => setOpen(false)}
+        <div
+          aria-hidden="true"
+          onPointerDown={closeDrawer}
           className={cn(
             "absolute inset-0 bg-[rgba(15,23,42,0.55)] transition-opacity duration-300",
             open ? "opacity-100" : "opacity-0",

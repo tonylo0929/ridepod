@@ -2,6 +2,7 @@
 
 import { currentUserId, type RidePod } from "@/lib/mock-data";
 import { getProtectedPod } from "@/lib/money-safety-mock";
+import { calculateMoneyProtection } from "@/lib/money-protection";
 import { checkPodEligibility } from "@/lib/pod-eligibility";
 import { JoinPodMapFirstScreen } from "@/components/join-pod-map-first-screen";
 
@@ -17,7 +18,14 @@ export function JoinFlow({ pod }: { pod: RidePod }) {
       };
 
   const isSelectedDemoRoute = pod.fromLabel.includes("USC") && pod.toLabel.includes("LAX");
-  const computedMaxChargeCents = Math.round(((pod.maxFare / pod.seatsTotal) + pod.platformFee) * 100);
+  const moneyProtection = calculateMoneyProtection({
+    estimatedTotalFareCents: protectedPod?.estimatedTotalFareCents ?? Math.round(pod.estimatedFare * 100),
+    approvedMaxTotalFareCents: protectedPod?.approvedMaxTotalFareCents ?? Math.round(pod.maxFare * 100),
+    targetSeats: protectedPod?.targetSeats ?? pod.seatsTotal,
+    minSeatsToBook: protectedPod?.minSeatsToBook ?? pod.seatsTotal,
+    ridepodFeeCents: protectedPod?.ridepodFeeCents ?? Math.round(pod.platformFee * 100),
+    hostIsRiding: protectedPod?.hostIsRiding ?? true,
+  });
 
   return (
     <JoinPodMapFirstScreen
@@ -30,7 +38,7 @@ export function JoinFlow({ pod }: { pod: RidePod }) {
       riderCapacity={isSelectedDemoRoute ? 4 : pod.seatsTotal}
       seatsLeft={isSelectedDemoRoute ? 4 : Math.max(0, pod.seatsTotal - pod.seatsFilled)}
       genderMode={pod.genderMode === "mixed" ? "MIXED" : "WOMEN_ONLY"}
-      maxChargeCents={isSelectedDemoRoute ? 1800 : computedMaxChargeCents}
+      maxChargeCents={moneyProtection.protectedMaxChargePerRiderCents}
       isEligible={eligibility.eligible}
       blockingReason={eligibility.blockingReason ?? eligibility.requiredAction}
       backHref={`/pods/${pod.id}`}

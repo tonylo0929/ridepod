@@ -7,8 +7,22 @@ export type RecurrenceFrequency = (typeof RECURRENCE_FREQUENCIES)[number];
 export const WEEKDAYS = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"] as const;
 export type Weekday = (typeof WEEKDAYS)[number];
 
+export const RECURRING_PATTERNS = ["ONE_WAY", "BACK_AND_FORTH"] as const;
+export type RecurringPattern = (typeof RECURRING_PATTERNS)[number];
+
+export const RECURRING_LEG_TYPES = ["OUTBOUND", "RETURN"] as const;
+export type RecurringLegType = (typeof RECURRING_LEG_TYPES)[number];
+
 export const RECURRING_TEMPLATE_STATUSES = ["ACTIVE", "PAUSED", "CANCELED"] as const;
 export type RecurringPodTemplateStatus = (typeof RECURRING_TEMPLATE_STATUSES)[number];
+
+export type RecurringScheduleLeg = {
+  dayOfWeek: Weekday;
+  legType: RecurringLegType;
+  departureTime: string;
+  originLabel: string;
+  destinationLabel: string;
+};
 
 export type RecurringPodTemplate = {
   id: string;
@@ -23,8 +37,10 @@ export type RecurringPodTemplate = {
   approvedMaxTotalFareCents: number;
   ridepodFeeCents: number;
   recurrenceFrequency: RecurrenceFrequency;
+  recurringPattern: RecurringPattern;
   weekdays: Weekday[];
   departureTimeLocal: string;
+  recurringLegs: RecurringScheduleLeg[];
   startDate: string;
   endDate: string | null;
   occurrenceLimit: number | null;
@@ -47,6 +63,9 @@ export type PodOccurrence = {
   quoteIds: string[];
   receiptIds: string[];
   settlementId: string | null;
+  recurringLegType: RecurringLegType | null;
+  originLabel: string | null;
+  destinationLabel: string | null;
 };
 
 export type OneTimePodSchedule = {
@@ -119,6 +138,9 @@ export function createOneTimeOccurrence(schedule: OneTimePodSchedule): PodOccurr
     quoteIds: [],
     receiptIds: [],
     settlementId: null,
+    recurringLegType: null,
+    originLabel: null,
+    destinationLabel: null,
   };
 }
 
@@ -153,6 +175,19 @@ export function generateRecurringOccurrences(
   const occurrences: PodOccurrence[] = [];
   let cursor = start;
   let guard = 0;
+  const configuredLegs = template.recurringLegs ?? [];
+  const templateLegs = weekdays.flatMap((weekday) => {
+    const legsForDay = configuredLegs.filter((leg) => leg.dayOfWeek === weekday);
+    return legsForDay.length > 0
+      ? legsForDay
+      : [{
+          dayOfWeek: weekday,
+          legType: "OUTBOUND" as const,
+          departureTime: template.departureTimeLocal,
+          originLabel: template.originGeneral,
+          destinationLabel: template.destinationGeneral,
+        }];
+  });
 
   while (occurrences.length < limit && guard < 370) {
     const cursorDate = formatDateOnly(cursor);
@@ -162,20 +197,35 @@ export function generateRecurringOccurrences(
     if (!withinEnd) break;
 
     if (weekdays.includes(cursorWeekday)) {
-      occurrences.push({
-        id: `${template.id}-${cursorDate.replaceAll("-", "")}`,
-        recurringTemplateId: template.id,
-        occurrenceDate: cursorDate,
-        departureAt: toLocalDepartureAt(cursorDate, template.departureTimeLocal),
-        departureWindowMinutes: template.flexibilityMinutes,
-        lifecycleState: "FORMING",
-        bookingState: "QUOTE_ALLOWED",
-        generatedFromTemplateAt: generatedAt,
-        isGeneratedFromRecurringTemplate: true,
-        quoteIds: [],
-        receiptIds: [],
-        settlementId: null,
-      });
+      const dayLegs = templateLegs
+        .filter((leg) => leg.dayOfWeek === cursorWeekday)
+        .sort((a, b) => {
+          const timeSort = normalizeTime(a.departureTime).localeCompare(normalizeTime(b.departureTime));
+          if (timeSort !== 0) return timeSort;
+          return a.legType.localeCompare(b.legType);
+        });
+
+      for (const leg of dayLegs) {
+        if (occurrences.length >= limit) break;
+
+        occurrences.push({
+          id: `${template.id}-${cursorDate.replaceAll("-", "")}-${leg.legType.toLowerCase()}`,
+          recurringTemplateId: template.id,
+          occurrenceDate: cursorDate,
+          departureAt: toLocalDepartureAt(cursorDate, leg.departureTime),
+          departureWindowMinutes: template.flexibilityMinutes,
+          lifecycleState: "FORMING",
+          bookingState: "QUOTE_ALLOWED",
+          generatedFromTemplateAt: generatedAt,
+          isGeneratedFromRecurringTemplate: true,
+          quoteIds: [],
+          receiptIds: [],
+          settlementId: null,
+          recurringLegType: leg.legType,
+          originLabel: leg.originLabel,
+          destinationLabel: leg.destinationLabel,
+        });
+      }
     }
 
     cursor = addDays(cursor, 1);
