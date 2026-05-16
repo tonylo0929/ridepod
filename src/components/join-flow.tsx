@@ -2,7 +2,8 @@
 
 import { currentUserId, type RidePod } from "@/lib/mock-data";
 import { getProtectedPod } from "@/lib/money-safety-mock";
-import { calculateMoneyProtection } from "@/lib/money-protection";
+import { calculateHkTaxiBaseline, suggestApprovedMaxFare } from "@/lib/fare-estimates";
+import { calculateJoinPodMaxChargeCents } from "@/lib/join-money";
 import { checkPodEligibility } from "@/lib/pod-eligibility";
 import { JoinPodMapFirstScreen } from "@/components/join-pod-map-first-screen";
 
@@ -18,13 +19,31 @@ export function JoinFlow({ pod }: { pod: RidePod }) {
       };
 
   const isSelectedDemoRoute = pod.fromLabel.includes("USC") && pod.toLabel.includes("LAX");
-  const moneyProtection = calculateMoneyProtection({
-    estimatedTotalFareCents: protectedPod?.estimatedTotalFareCents ?? Math.round(pod.estimatedFare * 100),
-    approvedMaxTotalFareCents: protectedPod?.approvedMaxTotalFareCents ?? Math.round(pod.maxFare * 100),
-    targetSeats: protectedPod?.targetSeats ?? pod.seatsTotal,
-    minSeatsToBook: protectedPod?.minSeatsToBook ?? pod.seatsTotal,
-    ridepodFeeCents: protectedPod?.ridepodFeeCents ?? Math.round(pod.platformFee * 100),
-    hostIsRiding: protectedPod?.hostIsRiding ?? true,
+  const defaultBaseline = calculateHkTaxiBaseline({
+    taxiType: "URBAN",
+    distanceKm: 6,
+    baggageCount: 2,
+    tollTunnelEstimateCents: 0,
+    waitingTrafficBufferMinutes: 0,
+  });
+  const hostIsRiding = protectedPod?.hostIsRiding ?? true;
+  const targetSeats = protectedPod?.targetSeats ?? pod.seatsTotal;
+  const guestSeats = hostIsRiding ? Math.max(1, targetSeats - 1) : Math.max(1, targetSeats);
+  const estimatedFareCents = isSelectedDemoRoute
+    ? defaultBaseline.baselineFareCents
+    : protectedPod?.estimatedTotalFareCents ?? Math.round(pod.estimatedFare * 100);
+  const approvedMaxFareCents = isSelectedDemoRoute
+    ? suggestApprovedMaxFare({
+        baselineFareCents: defaultBaseline.baselineFareCents,
+        routeRisk: "NORMAL",
+      })
+    : protectedPod?.approvedMaxTotalFareCents ?? Math.round(pod.maxFare * 100);
+  const maxChargeCents = calculateJoinPodMaxChargeCents({
+    selectedEstimatedFareCents: estimatedFareCents,
+    approvedMaxTotalFareCents: approvedMaxFareCents,
+    guestSeats,
+    hostIsRiding,
+    minimumLockedRiders: protectedPod?.minSeatsToBook ?? pod.seatsTotal,
   });
 
   return (
@@ -38,7 +57,7 @@ export function JoinFlow({ pod }: { pod: RidePod }) {
       riderCapacity={isSelectedDemoRoute ? 4 : pod.seatsTotal}
       seatsLeft={isSelectedDemoRoute ? 4 : Math.max(0, pod.seatsTotal - pod.seatsFilled)}
       genderMode={pod.genderMode === "mixed" ? "MIXED" : "WOMEN_ONLY"}
-      maxChargeCents={moneyProtection.protectedMaxChargePerRiderCents}
+      maxChargeCents={maxChargeCents}
       isEligible={eligibility.eligible}
       blockingReason={eligibility.blockingReason ?? eligibility.requiredAction}
       backHref={`/pods/${pod.id}`}

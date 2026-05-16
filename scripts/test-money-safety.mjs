@@ -77,6 +77,7 @@ const mockData = loadTsModule("src/lib/mock-data.ts");
 const podSchedule = loadTsModule("src/lib/pod-schedule.ts");
 const moneyProtection = loadTsModule("src/lib/money-protection.ts");
 const fareEstimates = loadTsModule("src/lib/fare-estimates.ts");
+const joinMoney = loadTsModule("src/lib/join-money.ts");
 
 assert.deepEqual(moneySafety.POD_LIFECYCLE_STATES, [
   "DRAFT",
@@ -245,6 +246,17 @@ assert.equal(ridePodGuestCharge.expectedGuestTotalCents, 2283);
 assert.equal(ridePodGuestCharge.protectedFareShareCents, 2500);
 assert.equal(ridePodGuestCharge.protectedPlatformFeeCents, 250);
 assert.equal(ridePodGuestCharge.protectedGuestMaxCents, 2750);
+assert.equal(
+  joinMoney.calculateJoinPodMaxChargeCents({
+    selectedEstimatedFareCents: 8300,
+    approvedMaxTotalFareCents: 10000,
+    guestSeats: 3,
+    hostIsRiding: true,
+    minimumLockedRiders: 3,
+    platformFeeRateBps: 1000,
+  }),
+  2750,
+);
 const previewMoneyProtection = moneyProtection.calculateMoneyProtection({
   estimatedTotalFareCents: 8400,
   approvedMaxTotalFareCents: 9700,
@@ -466,6 +478,8 @@ const moneySafetyUiSource = readFileSync("src/components/money-safety-ui.tsx", "
 const uiSource = readFileSync("src/components/ui.tsx", "utf8");
 const podDetailSource = readFileSync("src/app/(app)/pods/[id]/page.tsx", "utf8");
 const createPodChooseTypeSource = readFileSync("src/components/create-pod-choose-type.tsx", "utf8");
+const joinFlowSource = readFileSync("src/components/join-flow.tsx", "utf8");
+const joinPodMapFirstSource = readFileSync("src/components/join-pod-map-first-screen.tsx", "utf8");
 const legalCopySource = [
   "src/app/layout.tsx",
   "src/app/invite/[id]/page.tsx",
@@ -510,6 +524,11 @@ assert.equal(createPodChooseTypeSource.includes("RidePod fee"), false);
 assert.equal(createPodChooseTypeSource.includes("HK$5 / rider"), false);
 assert.equal(createPodChooseTypeSource.includes("Minimum confirmed riders"), false);
 assert.equal(createPodChooseTypeSource.includes("Target seats"), false);
+assert.ok(joinFlowSource.includes("calculateJoinPodMaxChargeCents"));
+assert.ok(joinPodMapFirstSource.includes("Your max charge is the most you can be charged unless you approve a higher fare. Final charge uses the verified receipt and may be lower."));
+assert.ok(joinPodMapFirstSource.includes("currency: \"HKD\""));
+assert.equal(joinFlowSource.includes("expectedGuestTotalCents"), false);
+assert.equal(joinFlowSource.includes("expectedFareShareCents"), false);
 assert.ok(legalCopySource.includes("RidePod helps users coordinate planned ride pods."));
 assert.ok(legalCopySource.includes("RidePod does not provide drivers."));
 assert.ok(legalCopySource.includes("The host books the external ride."));

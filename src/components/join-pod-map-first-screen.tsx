@@ -41,8 +41,9 @@ export type JoinPodMapFirstScreenProps = {
 function formatDollars(cents: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
+    currency: "HKD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(cents / 100);
 }
 
@@ -284,7 +285,7 @@ export function JoinPodMapFirstScreen({
                 Your max charge: <span className="text-[var(--rp-primary)]">{formatDollars(maxChargeCents)}</span>
               </p>
               <p className="mt-4 max-w-[280px] text-base font-semibold leading-7 text-[var(--rp-muted)]">
-                You will never pay more than this unless you approve a higher fare.
+                Your max charge is the most you can be charged unless you approve a higher fare. Final charge uses the verified receipt and may be lower.
               </p>
             </div>
             <ShieldLockVisual />
