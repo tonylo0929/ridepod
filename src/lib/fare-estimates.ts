@@ -1,4 +1,5 @@
 export const ESTIMATE_SOURCES = [
+  "RIDEPOD_HK_TAXI_BASELINE",
   "SYSTEM_TAXI_HK",
   "HOST_INPUT",
   "HOST_QUOTE_SCREENSHOT",
@@ -54,6 +55,20 @@ export type HkTaxiFareEstimate = {
   surchargeCents: number;
   trafficBufferCents: number;
   totalFareCents: number;
+};
+
+export type HkTaxiBaselineInput = {
+  taxiType: HkTaxiZone;
+  distanceKm?: number | null;
+  baggageCount?: number;
+  tollTunnelEstimateCents?: number;
+  waitingTrafficBufferMinutes?: number;
+};
+
+export type HkTaxiBaselineEstimate = {
+  baselineFareCents: number;
+  estimateSource: Extract<EstimateSource, "RIDEPOD_HK_TAXI_BASELINE">;
+  estimateConfidence: EstimateConfidence;
 };
 
 export const HK_TAXI_FARE_RULES: Record<HkTaxiZone, HkTaxiFareRule> = {
@@ -114,6 +129,10 @@ function safeDistance(value: number | null | undefined) {
   return Math.round(Number(value));
 }
 
+function safeTaxiType(value: HkTaxiZone) {
+  return HK_TAXI_ZONES.includes(value) ? value : "URBAN";
+}
+
 function calculateMeteredFareCents(rule: HkTaxiFareRule, distanceMeters: number | null, waitingMinutes: number) {
   if (!distanceMeters) return 0;
 
@@ -135,7 +154,7 @@ function calculateMeteredFareCents(rule: HkTaxiFareRule, distanceMeters: number 
 }
 
 export function calculateHkTaxiFareEstimate(input: HkTaxiFareEstimateInput): HkTaxiFareEstimate {
-  const zone = HK_TAXI_ZONES.includes(input.zone) ? input.zone : "URBAN";
+  const zone = safeTaxiType(input.zone);
   const rule = HK_TAXI_FARE_RULES[zone];
   const distanceMeters = safeDistance(input.distanceMeters);
   const waitingMinutes = safeCount(input.waitingMinutes);
@@ -161,6 +180,36 @@ export function calculateHkTaxiFareEstimate(input: HkTaxiFareEstimateInput): HkT
     surchargeCents,
     trafficBufferCents,
     totalFareCents,
+  };
+}
+
+export function calculateHkTaxiBaseline(input: HkTaxiBaselineInput): HkTaxiBaselineEstimate {
+  const taxiType = safeTaxiType(input.taxiType);
+  const rule = HK_TAXI_FARE_RULES[taxiType];
+  const distanceMeters = safeDistance(
+    Number.isFinite(input.distanceKm) ? Number(input.distanceKm) * 1000 : null,
+  );
+  const waitingTrafficBufferMinutes = safeCount(input.waitingTrafficBufferMinutes);
+  const baggageCount = safeCount(input.baggageCount);
+  const tollTunnelEstimateCents = safeCents(input.tollTunnelEstimateCents);
+  const meteredFareCents = calculateMeteredFareCents(
+    rule,
+    distanceMeters,
+    waitingTrafficBufferMinutes,
+  );
+  const baselineFareCents =
+    meteredFareCents +
+    baggageCount * rule.baggageFeeCents +
+    tollTunnelEstimateCents;
+
+  return {
+    baselineFareCents,
+    estimateSource: "RIDEPOD_HK_TAXI_BASELINE",
+    estimateConfidence: distanceMeters
+      ? waitingTrafficBufferMinutes > 0 || tollTunnelEstimateCents > 0
+        ? "MEDIUM"
+        : "HIGH"
+      : "LOW",
   };
 }
 

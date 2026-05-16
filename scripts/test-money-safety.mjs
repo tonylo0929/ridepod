@@ -160,6 +160,7 @@ assert.deepEqual(podSchedule.RECURRENCE_FREQUENCIES, ["WEEKLY"]);
 assert.deepEqual(podSchedule.RECURRING_PATTERNS, ["ONE_WAY", "BACK_AND_FORTH"]);
 assert.deepEqual(podSchedule.RECURRING_LEG_TYPES, ["OUTBOUND", "RETURN"]);
 assert.deepEqual(fareEstimates.ESTIMATE_SOURCES, [
+  "RIDEPOD_HK_TAXI_BASELINE",
   "SYSTEM_TAXI_HK",
   "HOST_INPUT",
   "HOST_QUOTE_SCREENSHOT",
@@ -167,6 +168,16 @@ assert.deepEqual(fareEstimates.ESTIMATE_SOURCES, [
   "UNKNOWN",
 ]);
 assert.deepEqual(fareEstimates.ESTIMATE_CONFIDENCES, ["LOW", "MEDIUM", "HIGH"]);
+const urbanBaselineEstimate = fareEstimates.calculateHkTaxiBaseline({
+  taxiType: "URBAN",
+  distanceKm: 6,
+  baggageCount: 2,
+  tollTunnelEstimateCents: 0,
+  waitingTrafficBufferMinutes: 0,
+});
+assert.equal(urbanBaselineEstimate.baselineFareCents, 8300);
+assert.equal(urbanBaselineEstimate.estimateSource, "RIDEPOD_HK_TAXI_BASELINE");
+assert.equal(urbanBaselineEstimate.estimateConfidence, "HIGH");
 const urbanFlagFallEstimate = fareEstimates.calculateHkTaxiFareEstimate({
   zone: "URBAN",
   distanceMeters: 2000,
