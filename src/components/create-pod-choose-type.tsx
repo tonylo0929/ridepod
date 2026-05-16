@@ -2197,21 +2197,21 @@ function PricingSummaryCard({ money }: { money: MoneyProtectionState }) {
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3">
-            <dt className="text-xs font-black text-[var(--rp-primary)]">Expected total</dt>
+            <dt className="text-xs font-black text-[var(--rp-primary)]">Expected guest total</dt>
             <dd className="mt-1 text-xl font-black text-[var(--rp-primary)]">
               {formatCentsFixed(protection.expectedTotalPerRiderCents)}
             </dd>
             <dd className="text-xs font-semibold text-[var(--rp-muted-strong)]">
-              / rider if {getIdealPodSizeSummary(money)} fill
+              includes 10% platform fee
             </dd>
           </div>
           <div className="rounded-2xl border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,var(--rp-card))] p-3">
-            <dt className="text-xs font-black text-[var(--rp-primary)]">Protected max</dt>
+            <dt className="text-xs font-black text-[var(--rp-primary)]">Protected guest max</dt>
             <dd className="mt-1 text-xl font-black text-[var(--rp-primary)]">
               {formatCentsFixed(protection.protectedMaxChargePerRiderCents)}
             </dd>
             <dd className="text-xs font-semibold text-[var(--rp-muted-strong)]">
-              / rider if {getMinimumLockedSummary(money)}
+              if {getMinimumLockedSummary(money)}
             </dd>
           </div>
         </div>
@@ -2223,16 +2223,15 @@ function PricingSummaryCard({ money }: { money: MoneyProtectionState }) {
             </dd>
           </div>
           <div className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3">
-            <dt className="text-xs font-semibold text-[var(--rp-muted)]">RidePod fee</dt>
+            <dt className="text-xs font-semibold text-[var(--rp-muted)]">Platform fee</dt>
             <dd className="mt-1 text-lg font-black text-[var(--rp-text)]">
-              {formatCentsFixed(feeCents)}
-              <span className="text-xs font-semibold text-[var(--rp-muted-strong)]"> / rider</span>
+              10% of fare share
             </dd>
           </div>
         </div>
       </dl>
       <p className="mx-auto mt-5 max-w-[320px] text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
-        Host can book only after the minimum locked riders authorize payment and the quote is within the approved max.
+        RidePod estimates the fare to help set a fair approved max. Host uploads a fresh quote before booking.
         Final charge uses the verified receipt and may be lower.
       </p>
     </section>
@@ -2370,8 +2369,8 @@ function MoneyProtectionPanel({
         <div>
           <h2 className="text-lg font-black text-[var(--rp-text)]">Money Protection</h2>
           <p className="mt-2 text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
-            Host may preview fare early, but protected booking unlocks only after required participants authorize payment.
-            Final settlement uses the verified receipt and may be lower.
+            RidePod estimates the fare to help set a fair approved max. Host uploads a fresh quote before booking.
+            Final charge uses the verified receipt and may be lower.
           </p>
         </div>
       </div>
@@ -2582,7 +2581,7 @@ function MoneyProtectionPanel({
 
         <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
           <p className="font-black text-[var(--rp-text)]">Host quote</p>
-          <p className="mt-1">Upload quote screenshot before booking. The quote controls booking permission; final settlement uses the verified receipt.</p>
+          <p className="mt-1">Quote controls booking permission; final settlement uses the verified receipt.</p>
         </div>
       </div>
     </section>
@@ -2604,16 +2603,16 @@ function PreviewMoneyProtectionCard({ money }: { money: MoneyProtectionState }) 
   });
   const rows = [
     {
-      label: "Expected total",
+      label: "Expected guest total",
       value: `${formatCents(protection.expectedTotalPerRiderCents)} / rider if ${getIdealPodSizeSummary(money)} fill`,
     },
     {
-      label: "Protected max",
+      label: "Protected guest max",
       value: `${formatCents(protection.protectedMaxChargePerRiderCents)} / rider if ${getMinimumLockedSummary(money)}`,
     },
     {
-      label: "RidePod fee",
-      value: `${formatCents(feeCents)} included`,
+      label: "Platform fee",
+      value: "10% of fare share",
     },
     {
       label: "Final charge",
@@ -2652,7 +2651,7 @@ function PreviewMoneyProtectionCard({ money }: { money: MoneyProtectionState }) 
           Host can book only after the minimum locked riders authorize payment and the quote is within the {formatCents(approvedMaxCents)} approved max.
         </p>
         <p className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-          Final settlement uses the verified receipt, not the quote.
+          Quote controls booking permission; final settlement uses the verified receipt.
         </p>
       </div>
     </section>
@@ -2913,9 +2912,10 @@ function ReviewPodStep({
     distanceMeters: 6000,
     baggageCount: peopleVehicle.bags,
   });
+  const defaultApprovedMaxCents = suggestApprovedMaxFare(defaultTaxiEstimate.totalFareCents, "NORMAL");
   const [moneyProtection, setMoneyProtection] = useState<MoneyProtectionState>({
-    estimatedTotalFare: pricing.estimatedFare,
-    approvedMaxTotalFare: pricing.maxFare,
+    estimatedTotalFare: centsToDollars(defaultTaxiEstimate.totalFareCents),
+    approvedMaxTotalFare: centsToDollars(defaultApprovedMaxCents),
     targetSeats: peopleVehicle.seatsAvailable,
     minSeatsToBook: Math.min(3, peopleVehicle.seatsAvailable),
     ridepodFee: 5,

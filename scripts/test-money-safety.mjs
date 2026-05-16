@@ -465,6 +465,7 @@ assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDEPOD_DISPUTE_RESOLVED"));
 const moneySafetyUiSource = readFileSync("src/components/money-safety-ui.tsx", "utf8");
 const uiSource = readFileSync("src/components/ui.tsx", "utf8");
 const podDetailSource = readFileSync("src/app/(app)/pods/[id]/page.tsx", "utf8");
+const createPodChooseTypeSource = readFileSync("src/components/create-pod-choose-type.tsx", "utf8");
 const legalCopySource = [
   "src/app/layout.tsx",
   "src/app/invite/[id]/page.tsx",
@@ -493,6 +494,22 @@ assert.ok(moneySafetyUiSource.includes("Quote approved — host can book"));
 assert.equal(moneySafetyUiSource.includes("??host"), false);
 assert.ok(moneySafetyUiSource.includes("Off-app payments are not protected"));
 assert.ok(podDetailSource.includes("No confirmed riders yet. Seats lock after payment authorization."));
+assert.ok(createPodChooseTypeSource.includes("Expected guest total"));
+assert.ok(createPodChooseTypeSource.includes("Protected guest max"));
+assert.ok(createPodChooseTypeSource.includes("Platform fee"));
+assert.ok(createPodChooseTypeSource.includes("10% of fare share"));
+assert.ok(createPodChooseTypeSource.includes("Minimum locked riders"));
+assert.ok(createPodChooseTypeSource.includes("Ideal pod size"));
+assert.ok(createPodChooseTypeSource.includes("includes 10% platform fee"));
+assert.ok(createPodChooseTypeSource.includes("if {getMinimumLockedSummary(money)}"));
+assert.ok(createPodChooseTypeSource.includes("RidePod estimates the fare to help set a fair approved max. Host uploads a fresh quote before booking."));
+assert.ok(createPodChooseTypeSource.includes("Quote controls booking permission; final settlement uses the verified receipt."));
+assert.equal(createPodChooseTypeSource.includes("Expected total"), false);
+assert.equal(createPodChooseTypeSource.includes("Protected max"), false);
+assert.equal(createPodChooseTypeSource.includes("RidePod fee"), false);
+assert.equal(createPodChooseTypeSource.includes("HK$5 / rider"), false);
+assert.equal(createPodChooseTypeSource.includes("Minimum confirmed riders"), false);
+assert.equal(createPodChooseTypeSource.includes("Target seats"), false);
 assert.ok(legalCopySource.includes("RidePod helps users coordinate planned ride pods."));
 assert.ok(legalCopySource.includes("RidePod does not provide drivers."));
 assert.ok(legalCopySource.includes("The host books the external ride."));
