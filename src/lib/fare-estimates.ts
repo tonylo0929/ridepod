@@ -76,6 +76,12 @@ export type ApprovedMaxFareSuggestionInput = {
   routeRisk?: RouteRiskLevel;
 };
 
+export type HostEstimateWarningInput = {
+  hostEstimatedFareCents: number;
+  systemBaselineFareCents: number;
+  suggestedApprovedMaxFareCents: number;
+};
+
 export const HK_TAXI_FARE_RULES: Record<HkTaxiZone, HkTaxiFareRule> = {
   URBAN: {
     zone: "URBAN",
@@ -233,22 +239,21 @@ export function suggestApprovedMaxFare(
 }
 
 export function getHostEstimateWarning({
-  systemEstimatedFareCents,
   hostEstimatedFareCents,
-}: {
-  systemEstimatedFareCents: number;
-  hostEstimatedFareCents: number;
-}) {
-  const systemEstimate = safeCents(systemEstimatedFareCents);
+  systemBaselineFareCents,
+  suggestedApprovedMaxFareCents,
+}: HostEstimateWarningInput) {
+  const systemEstimate = safeCents(systemBaselineFareCents);
   const hostEstimate = safeCents(hostEstimatedFareCents);
-  if (systemEstimate <= 0 || hostEstimate <= 0) return null;
+  const suggestedApprovedMax = safeCents(suggestedApprovedMaxFareCents);
+  if (hostEstimate <= 0) return null;
 
-  if (hostEstimate >= systemEstimate * 1.25) {
-    return "This is much higher than RidePod's taxi estimate. Riders may need a higher max approval.";
+  if (systemEstimate > 0 && hostEstimate < systemEstimate) {
+    return "Host estimate is lower than RidePod's baseline. RidePod will keep the suggested approved max unless you upload a lower quote.";
   }
 
-  if (hostEstimate <= systemEstimate * 0.85) {
-    return "This may be too low for the route. If the final fare is higher, host reimbursement may be capped by the approved max.";
+  if (suggestedApprovedMax > 0 && hostEstimate > suggestedApprovedMax) {
+    return "This is higher than RidePod's taxi baseline. Riders may need to approve a higher max before protected booking unlocks.";
   }
 
   return null;

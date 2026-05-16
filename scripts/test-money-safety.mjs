@@ -205,17 +205,27 @@ assert.equal(fareEstimates.suggestApprovedMaxFare(urbanDistanceEstimate.totalFar
 assert.equal(fareEstimates.suggestApprovedMaxFare(urbanDistanceEstimate.totalFareCents, "UNKNOWN_OR_PROVIDER_DYNAMIC"), 11000);
 assert.equal(
   fareEstimates.getHostEstimateWarning({
-    systemEstimatedFareCents: 8300,
-    hostEstimatedFareCents: 11000,
+    hostEstimatedFareCents: 6500,
+    systemBaselineFareCents: 8300,
+    suggestedApprovedMaxFareCents: 10000,
   }),
-  "This is much higher than RidePod's taxi estimate. Riders may need a higher max approval.",
+  "Host estimate is lower than RidePod's baseline. RidePod will keep the suggested approved max unless you upload a lower quote.",
 );
 assert.equal(
   fareEstimates.getHostEstimateWarning({
-    systemEstimatedFareCents: 8300,
-    hostEstimatedFareCents: 6500,
+    hostEstimatedFareCents: 11000,
+    systemBaselineFareCents: 8300,
+    suggestedApprovedMaxFareCents: 10000,
   }),
-  "This may be too low for the route. If the final fare is higher, host reimbursement may be capped by the approved max.",
+  "This is higher than RidePod's taxi baseline. Riders may need to approve a higher max before protected booking unlocks.",
+);
+assert.equal(
+  fareEstimates.getHostEstimateWarning({
+    hostEstimatedFareCents: 9000,
+    systemBaselineFareCents: 8300,
+    suggestedApprovedMaxFareCents: 10000,
+  }),
+  null,
 );
 assert.equal(moneyProtection.PLATFORM_FEE_RATE_BPS, 1000);
 assert.equal(moneyProtection.calculatePlatformFeeCents(2500, 1000), 250);

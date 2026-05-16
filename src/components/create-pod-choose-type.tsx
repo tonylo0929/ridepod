@@ -2353,8 +2353,9 @@ function MoneyProtectionPanel({
   const systemEstimateCents = taxiEstimate.totalFareCents;
   const suggestedApprovedMaxCents = suggestApprovedMaxFare(systemEstimateCents, money.routeRiskLevel);
   const hostEstimateWarning = getHostEstimateWarning({
-    systemEstimatedFareCents: systemEstimateCents,
     hostEstimatedFareCents: dollarsToCents(money.estimatedTotalFare),
+    systemBaselineFareCents: systemEstimateCents,
+    suggestedApprovedMaxFareCents: suggestedApprovedMaxCents,
   });
   const approvedMaxBelowEstimate = money.approvedMaxTotalFare < money.estimatedTotalFare;
   const maxLockedRiders = money.hostIsRiding
