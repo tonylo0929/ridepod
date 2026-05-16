@@ -201,6 +201,22 @@ assert.equal(
 );
 assert.equal(moneyProtection.PLATFORM_FEE_RATE_BPS, 1000);
 assert.equal(moneyProtection.calculatePlatformFeeCents(2500, 1000), 250);
+const ridePodGuestCharge = moneyProtection.calculateRidePodGuestCharge({
+  selectedEstimatedFareCents: 8300,
+  approvedMaxTotalFareCents: 10000,
+  guestSeats: 3,
+  hostIsRiding: true,
+  minimumLockedRiders: 3,
+  platformFeeRateBps: 1000,
+});
+assert.equal(ridePodGuestCharge.expectedParticipants, 4);
+assert.equal(ridePodGuestCharge.participantsForProtectedMax, 4);
+assert.equal(ridePodGuestCharge.expectedFareShareCents, 2075);
+assert.equal(ridePodGuestCharge.expectedPlatformFeeCents, 208);
+assert.equal(ridePodGuestCharge.expectedGuestTotalCents, 2283);
+assert.equal(ridePodGuestCharge.protectedFareShareCents, 2500);
+assert.equal(ridePodGuestCharge.protectedPlatformFeeCents, 250);
+assert.equal(ridePodGuestCharge.protectedGuestMaxCents, 2750);
 const previewMoneyProtection = moneyProtection.calculateMoneyProtection({
   estimatedTotalFareCents: 8400,
   approvedMaxTotalFareCents: 9700,
