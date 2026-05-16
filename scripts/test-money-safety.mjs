@@ -178,6 +178,13 @@ const urbanBaselineEstimate = fareEstimates.calculateHkTaxiBaseline({
 assert.equal(urbanBaselineEstimate.baselineFareCents, 8300);
 assert.equal(urbanBaselineEstimate.estimateSource, "RIDEPOD_HK_TAXI_BASELINE");
 assert.equal(urbanBaselineEstimate.estimateConfidence, "HIGH");
+assert.equal(
+  fareEstimates.suggestApprovedMaxFare({
+    baselineFareCents: urbanBaselineEstimate.baselineFareCents,
+    routeRisk: "NORMAL",
+  }),
+  10000,
+);
 const urbanFlagFallEstimate = fareEstimates.calculateHkTaxiFareEstimate({
   zone: "URBAN",
   distanceMeters: 2000,

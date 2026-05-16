@@ -71,6 +71,11 @@ export type HkTaxiBaselineEstimate = {
   estimateConfidence: EstimateConfidence;
 };
 
+export type ApprovedMaxFareSuggestionInput = {
+  baselineFareCents: number;
+  routeRisk?: RouteRiskLevel;
+};
+
 export const HK_TAXI_FARE_RULES: Record<HkTaxiZone, HkTaxiFareRule> = {
   URBAN: {
     zone: "URBAN",
@@ -111,10 +116,12 @@ export const HK_TAXI_FARE_RULES: Record<HkTaxiZone, HkTaxiFareRule> = {
 };
 
 export const APPROVED_MAX_BUFFERS: Record<RouteRiskLevel, number> = {
-  NORMAL: 1.15,
+  NORMAL: 1.2,
   AIRPORT_OR_TUNNEL: 1.25,
   UNKNOWN_OR_PROVIDER_DYNAMIC: 1.3,
 };
+
+export const APPROVED_MAX_ROUNDING_CENTS = 500;
 
 function safeCents(value: number | null | undefined) {
   return Math.max(0, Math.round(Number.isFinite(value) ? Number(value) : 0));
@@ -214,13 +221,15 @@ export function calculateHkTaxiBaseline(input: HkTaxiBaselineInput): HkTaxiBasel
 }
 
 export function suggestApprovedMaxFare(
-  systemEstimatedFareCents: number,
+  input: number | ApprovedMaxFareSuggestionInput,
   routeRiskLevel: RouteRiskLevel = "NORMAL",
 ) {
-  const buffer = APPROVED_MAX_BUFFERS[routeRiskLevel] ?? APPROVED_MAX_BUFFERS.NORMAL;
-  const bufferedCents = safeCents(systemEstimatedFareCents) * buffer;
+  const baselineFareCents = typeof input === "number" ? input : input.baselineFareCents;
+  const routeRisk = typeof input === "number" ? routeRiskLevel : (input.routeRisk ?? "NORMAL");
+  const buffer = APPROVED_MAX_BUFFERS[routeRisk] ?? APPROVED_MAX_BUFFERS.NORMAL;
+  const bufferedCents = safeCents(baselineFareCents) * buffer;
 
-  return Math.ceil(bufferedCents / 500) * 500;
+  return Math.ceil(bufferedCents / APPROVED_MAX_ROUNDING_CENTS) * APPROVED_MAX_ROUNDING_CENTS;
 }
 
 export function getHostEstimateWarning({
