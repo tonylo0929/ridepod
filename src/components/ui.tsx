@@ -78,6 +78,233 @@ function getDefaultMoneyStatus(pod: RidePod): NonNullable<RidePod["moneyStatus"]
   return "dispute_review";
 }
 
+const recurringRideStatusLabels: Record<NonNullable<RidePod["upcomingRideInstances"]>[number]["status"], string> = {
+  waiting_for_guests: "Waiting for guests",
+  guests_locking: "Guests locking",
+  quote_needed: "Quote needed",
+  ready_to_book: "Ready to book",
+  ride_booked: "Ride booked",
+  meter_proof_needed: "Meter proof needed",
+  receipt_pending: "Receipt pending",
+  settlement_ready: "Settlement ready",
+  completed: "Completed",
+};
+
+const recurringRideChipLabels: Record<NonNullable<RidePod["upcomingRideInstances"]>[number]["status"], string> = {
+  waiting_for_guests: "Locking",
+  guests_locking: "Locking",
+  quote_needed: "Quote needed",
+  ready_to_book: "Ready",
+  ride_booked: "Ready",
+  meter_proof_needed: "Receipt pending",
+  receipt_pending: "Receipt pending",
+  settlement_ready: "Settled",
+  completed: "Settled",
+};
+
+function getRecurringRideOptionLabel(pod: RidePod) {
+  return pod.rideOption === "taxi_meter" || pod.vehicleType === "Taxi"
+    ? "Taxi meter"
+    : "Ride app / fixed quote";
+}
+
+function getRecurringProofCopy(pod: RidePod) {
+  const nextRide = pod.upcomingRideInstances?.[0];
+  const isTaxiMeter = getRecurringRideOptionLabel(pod) === "Taxi meter";
+
+  if (isTaxiMeter) {
+    return nextRide?.status === "meter_proof_needed" || nextRide?.status === "receipt_pending"
+      ? "Upload meter proof after ride."
+      : "No upfront quote needed.";
+  }
+
+  if (nextRide?.status === "quote_needed") {
+    return "Upload quote before booking.";
+  }
+
+  if (nextRide?.status === "ready_to_book" || nextRide?.status === "ride_booked") {
+    return "Quote approved. Host can book.";
+  }
+
+  return "Quote needed after guests lock.";
+}
+
+function getRecurringPrimaryAction(pod: RidePod) {
+  const nextRide = pod.upcomingRideInstances?.[0];
+  const isTaxiMeter = getRecurringRideOptionLabel(pod) === "Taxi meter";
+
+  if (!nextRide) {
+    return { label: "Review recurring pod", href: `/pods/${pod.id}` };
+  }
+
+  if (isTaxiMeter && (nextRide.status === "meter_proof_needed" || nextRide.status === "receipt_pending")) {
+    return { label: "Upload meter proof", href: `/pods/${pod.id}/settlement` };
+  }
+
+  if (nextRide.status === "quote_needed") {
+    return { label: "Upload quote", href: `/pods/${pod.id}/settlement` };
+  }
+
+  if (nextRide.status === "ready_to_book") {
+    return { label: "Mark booked", href: `/pods/${pod.id}/settlement` };
+  }
+
+  if (nextRide.status === "receipt_pending" || nextRide.status === "settlement_ready" || nextRide.status === "completed") {
+    return { label: "View settlement", href: `/pods/${pod.id}/settlement` };
+  }
+
+  return { label: "View pod", href: `/pods/${pod.id}` };
+}
+
+function getRecurringRouteTitle(pod: RidePod) {
+  if (pod.title.includes("↔")) return pod.title;
+  return pod.recurringPattern === "back_and_forth"
+    ? `${pod.fromLabel} ↔ ${pod.toLabel}`
+    : `${pod.fromLabel} → ${pod.toLabel}`;
+}
+
+function RecurringPodCard({ pod, compact = false }: { pod: RidePod; compact?: boolean }) {
+  const host = getUser(pod.hostUserId);
+  const progress = (pod.seatsFilled / pod.seatsTotal) * 100;
+  const remaining = pod.seatsTotal - pod.seatsFilled;
+  const nextRide = pod.upcomingRideInstances?.[0] ?? null;
+  const upcomingRides = pod.upcomingRideInstances?.slice(0, 5) ?? [];
+  const primaryAction = getRecurringPrimaryAction(pod);
+  const rideOptionLabel = getRecurringRideOptionLabel(pod);
+  const patternLabel = pod.recurringPattern === "back_and_forth" ? "Back-and-forth" : "One-way";
+
+  return (
+    <article className="overflow-hidden rounded-[26px] border border-[var(--rp-border)] bg-[var(--rp-card)] shadow-[var(--rp-shadow-soft)]">
+      <div className="bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--rp-primary)_20%,transparent),transparent_36%),var(--rp-card)] p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge className="bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border)]">
+                Recurring
+              </Badge>
+              <Badge className="bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-badge-neutral-text)] ring-[var(--rp-border)]">
+                Weekly
+              </Badge>
+              <Badge className="bg-[var(--rp-card-muted)] text-[var(--rp-primary)] ring-[var(--rp-border)]">
+                {patternLabel}
+              </Badge>
+            </div>
+            <h2 className="mt-4 text-2xl font-black leading-tight text-[var(--rp-text)]">
+              {getRecurringRouteTitle(pod)}
+            </h2>
+            <p className="mt-2 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+              {pod.recurringScheduleLine ?? `${pod.recurrenceRule ?? "Weekly"} · ${pod.time}`}
+            </p>
+            <p className="mt-1 text-xs font-bold text-[var(--rp-muted)]">
+              Selected days: {pod.recurringDays?.join(", ") ?? pod.recurrenceRule ?? "Weekly"}
+            </p>
+          </div>
+          <div className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-4 py-3 text-left sm:text-right">
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Next ride</p>
+            <p className="mt-1 text-sm font-black leading-6 text-[var(--rp-text)]">
+              {nextRide
+                ? `${nextRide.displayDate} · ${nextRide.departureTime} · ${nextRide.legType === "return" ? "Return" : "Outbound"}`
+                : "No upcoming rides"}
+            </p>
+            <p className="mt-1 text-xs font-bold text-[var(--rp-muted)]">
+              {nextRide ? recurringRideStatusLabels[nextRide.status] : "Check the recurring schedule or create a new ride date."}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 min-[720px]:grid-cols-3">
+          <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <Repeat2 className="h-5 w-5 text-[var(--rp-primary)]" />
+            <p className="mt-2 text-sm font-black text-[var(--rp-text)]">{rideOptionLabel}</p>
+            <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted)]">{getRecurringProofCopy(pod)}</p>
+          </div>
+          <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <Users className="h-5 w-5 text-[var(--rp-primary)]" />
+            <p className="mt-2 text-sm font-black text-[var(--rp-text)]">
+              {pod.seatsFilled}/{pod.seatsTotal} seats owned
+            </p>
+            <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted)]">
+              {remaining > 0 ? `${remaining} open` : "Full"} for the template.
+            </p>
+          </div>
+          <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <ShieldCheck className="h-5 w-5 text-[var(--rp-primary)]" />
+            <p className="mt-2 text-sm font-black text-[var(--rp-text)]">Protection status</p>
+            <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted)]">
+              {pod.protectionStatus ?? "Each ride settles separately"}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5">
+          <div className="mb-2 flex items-center justify-between text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">
+            <span>Guest lock</span>
+            <span>{Math.round(progress)}%</span>
+          </div>
+          <ProgressBar value={progress} />
+        </div>
+      </div>
+
+      <div className="grid gap-4 p-4 sm:p-5">
+        <div className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-black text-[var(--rp-text)]">Next ride preview</h3>
+            <p className="text-xs font-bold text-[var(--rp-primary)]">Each ride settles separately</p>
+          </div>
+          {upcomingRides.length ? (
+            <div className="mt-3 grid gap-2">
+              {upcomingRides.map((ride) => (
+                <div
+                  key={ride.id}
+                  className="grid gap-2 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 min-[560px]:grid-cols-[1fr_auto] min-[560px]:items-center"
+                >
+                  <div>
+                    <p className="text-sm font-black text-[var(--rp-text)]">
+                      {ride.displayDate} · {ride.departureTime} · {ride.legType === "return" ? "Return" : "Outbound"}
+                    </p>
+                    <p className="mt-1 text-xs font-bold text-[var(--rp-muted)]">
+                      {ride.originLabel} → {ride.destinationLabel}
+                    </p>
+                  </div>
+                  <Badge className="w-fit bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-badge-neutral-text)] ring-[var(--rp-border)]">
+                    {recurringRideChipLabels[ride.status]}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3">
+              <p className="text-sm font-black text-[var(--rp-text)]">No upcoming rides</p>
+              <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted)]">
+                Check the recurring schedule or create a new ride date.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {!compact ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--rp-border)] pt-4">
+            <div className="flex items-center gap-2">
+              <Avatar user={host} size="sm" />
+              <div>
+                <p className="text-xs font-black text-[var(--rp-text)]">{host.name}</p>
+                <p className="text-xs font-bold text-[var(--rp-muted)]">Trust {host.trustScore}</p>
+              </div>
+            </div>
+            <Link
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)] transition hover:brightness-105"
+              href={primaryAction.href}
+              style={{ background: "var(--rp-gradient-primary)" }}
+            >
+              {primaryAction.label} <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        ) : null}
+      </div>
+    </article>
+  );
+}
+
 export function Badge({
   children,
   className,
@@ -302,6 +529,10 @@ export function StatCard({
 }
 
 export function PodCard({ pod, compact = false }: { pod: RidePod; compact?: boolean }) {
+  if (pod.type === "recurring") {
+    return <RecurringPodCard pod={pod} compact={compact} />;
+  }
+
   const host = getUser(pod.hostUserId);
   const progress = (pod.seatsFilled / pod.seatsTotal) * 100;
   const remaining = pod.seatsTotal - pod.seatsFilled;
@@ -317,7 +548,7 @@ export function PodCard({ pod, compact = false }: { pod: RidePod; compact?: bool
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge status={pod.status} />
             <Badge className="bg-zinc-50 text-zinc-700 ring-zinc-200">
-              {pod.type === "recurring" ? "Recurring" : "Scheduled"}
+              Scheduled
             </Badge>
           </div>
           <h2 className="mt-3 text-lg font-bold tracking-tight text-zinc-950">

@@ -47,6 +47,29 @@ export type PodMoneyStatus =
   | "host_replacement_needed"
   | "dispute_review";
 
+export type RecurringRideLegType = "outbound" | "return";
+export type RecurringRideStatus =
+  | "waiting_for_guests"
+  | "guests_locking"
+  | "quote_needed"
+  | "ready_to_book"
+  | "ride_booked"
+  | "meter_proof_needed"
+  | "receipt_pending"
+  | "settlement_ready"
+  | "completed";
+
+export type RecurringRideInstancePreview = {
+  id: string;
+  instanceDate: string;
+  displayDate: string;
+  departureTime: string;
+  legType: RecurringRideLegType;
+  originLabel: string;
+  destinationLabel: string;
+  status: RecurringRideStatus;
+};
+
 export type RidePod = {
   id: string;
   type: "scheduled" | "recurring";
@@ -59,6 +82,13 @@ export type RidePod = {
   time: string;
   timeFlexibility: string;
   recurrenceRule?: string;
+  recurringDays?: string[];
+  recurringPattern?: "one_way" | "back_and_forth";
+  recurringScheduleLine?: string;
+  outboundTime?: string;
+  returnTime?: string;
+  protectionStatus?: string;
+  upcomingRideInstances?: RecurringRideInstancePreview[];
   vehicleType: "UberX" | "UberXL" | "Lyft" | "Taxi" | "Private Car";
   rideOption?: "ride_app_fixed_quote" | "taxi_meter";
   maxFare: number;
@@ -398,16 +428,23 @@ export const ridePods: RidePod[] = [
   {
     id: "campus-commute-442",
     type: "recurring",
-    title: "Northside campus commute",
-    fromLabel: "North Berkeley",
-    toLabel: "UC Berkeley",
-    pickupHub: "Monterey Market",
-    dropoffHub: "Bancroft Gate",
-    date: "Starts May 25, 2026",
-    time: "8:10 AM",
-    timeFlexibility: "+/- 5 min",
-    recurrenceRule: "Mon, Wed, Fri weekly",
-    vehicleType: "Lyft",
+    title: "USC Village ↔ LAX Terminal 3",
+    fromLabel: "USC Village",
+    toLabel: "LAX Terminal 3",
+    pickupHub: "USC Village rideshare zone",
+    dropoffHub: "LAX Terminal 3 departures",
+    date: "Starts May 19, 2026",
+    time: "8:00 AM",
+    timeFlexibility: "+/- 15 min",
+    recurrenceRule: "Tue, Thu weekly",
+    recurringDays: ["Tue", "Thu"],
+    recurringPattern: "back_and_forth",
+    recurringScheduleLine: "Tue, Thu · 8:00 AM outbound · 6:00 PM return",
+    outboundTime: "8:00 AM",
+    returnTime: "6:00 PM",
+    protectionStatus: "Each ride settles separately",
+    rideOption: "ride_app_fixed_quote",
+    vehicleType: "UberXL",
     maxFare: 34,
     estimatedFare: 28,
     estimatedShare: 8,
@@ -453,6 +490,48 @@ export const ridePods: RidePod[] = [
       },
     ],
     waitlist: ["u2"],
+    upcomingRideInstances: [
+      {
+        id: "campus-commute-442-2026-05-19-outbound",
+        instanceDate: "2026-05-19",
+        displayDate: "Tue May 19",
+        departureTime: "8:00 AM",
+        legType: "outbound",
+        originLabel: "USC Village",
+        destinationLabel: "LAX Terminal 3",
+        status: "quote_needed",
+      },
+      {
+        id: "campus-commute-442-2026-05-19-return",
+        instanceDate: "2026-05-19",
+        displayDate: "Tue May 19",
+        departureTime: "6:00 PM",
+        legType: "return",
+        originLabel: "LAX Terminal 3",
+        destinationLabel: "USC Village",
+        status: "ready_to_book",
+      },
+      {
+        id: "campus-commute-442-2026-05-21-outbound",
+        instanceDate: "2026-05-21",
+        displayDate: "Thu May 21",
+        departureTime: "8:00 AM",
+        legType: "outbound",
+        originLabel: "USC Village",
+        destinationLabel: "LAX Terminal 3",
+        status: "guests_locking",
+      },
+      {
+        id: "campus-commute-442-2026-05-21-return",
+        instanceDate: "2026-05-21",
+        displayDate: "Thu May 21",
+        departureTime: "6:00 PM",
+        legType: "return",
+        originLabel: "LAX Terminal 3",
+        destinationLabel: "USC Village",
+        status: "waiting_for_guests",
+      },
+    ],
   },
   {
     id: "concert-oak-118",
@@ -497,6 +576,86 @@ export const ridePods: RidePod[] = [
       },
     ],
     waitlist: [],
+  },
+  {
+    id: "taxi-meter-weekly-demo",
+    type: "recurring",
+    title: "Campus Center → Downtown Station",
+    fromLabel: "Campus Center",
+    toLabel: "Downtown Station",
+    pickupHub: "Campus Center main curb",
+    dropoffHub: "Downtown Station taxi stand",
+    date: "Starts May 20, 2026",
+    time: "7:45 AM",
+    timeFlexibility: "+/- 10 min",
+    recurrenceRule: "Wed weekly",
+    recurringDays: ["Wed"],
+    recurringPattern: "one_way",
+    recurringScheduleLine: "Wed · 7:45 AM outbound",
+    outboundTime: "7:45 AM",
+    protectionStatus: "Each ride settles separately",
+    rideOption: "taxi_meter",
+    vehicleType: "Taxi",
+    maxFare: 52,
+    estimatedFare: 41,
+    estimatedShare: 14,
+    platformFee: 6,
+    seatsTotal: 4,
+    seatsFilled: 3,
+    genderMode: "mixed",
+    accessMode: "verified_only",
+    moneyStatus: "receipt_pending",
+    status: "booked",
+    hostUserId: "u1",
+    backupHostUserId: "u4",
+    lockDeadline: "Weekly by Tuesday 8:00 PM",
+    cancellationDeadline: "Weekly by Tuesday 6:00 PM",
+    members: [
+      {
+        userId: "u1",
+        role: "host",
+        paymentStatus: "authorized",
+        attendanceStatus: "confirmed",
+        joinedAt: "May 12",
+      },
+      {
+        userId: "u4",
+        role: "backup_host",
+        paymentStatus: "authorized",
+        attendanceStatus: "confirmed",
+        joinedAt: "May 12",
+      },
+      {
+        userId: "u6",
+        role: "member",
+        paymentStatus: "authorized",
+        attendanceStatus: "confirmed",
+        joinedAt: "May 13",
+      },
+    ],
+    waitlist: [],
+    upcomingRideInstances: [
+      {
+        id: "taxi-meter-weekly-demo-2026-05-20-outbound",
+        instanceDate: "2026-05-20",
+        displayDate: "Wed May 20",
+        departureTime: "7:45 AM",
+        legType: "outbound",
+        originLabel: "Campus Center",
+        destinationLabel: "Downtown Station",
+        status: "meter_proof_needed",
+      },
+      {
+        id: "taxi-meter-weekly-demo-2026-05-27-outbound",
+        instanceDate: "2026-05-27",
+        displayDate: "Wed May 27",
+        departureTime: "7:45 AM",
+        legType: "outbound",
+        originLabel: "Campus Center",
+        destinationLabel: "Downtown Station",
+        status: "waiting_for_guests",
+      },
+    ],
   },
   {
     id: "host-replacement-demo",

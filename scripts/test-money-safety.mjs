@@ -500,6 +500,7 @@ assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDEPOD_DISPUTE_RESOLVED"));
 const moneySafetyUiSource = readFileSync("src/components/money-safety-ui.tsx", "utf8");
 const settlementPageSource = readFileSync("src/components/settlement-page.tsx", "utf8");
 const uiSource = readFileSync("src/components/ui.tsx", "utf8");
+const mockDataSource = readFileSync("src/lib/mock-data.ts", "utf8");
 const podDetailSource = readFileSync("src/app/(app)/pods/[id]/page.tsx", "utf8");
 const createPodChooseTypeSource = readFileSync("src/components/create-pod-choose-type.tsx", "utf8");
 const joinFlowSource = readFileSync("src/components/join-flow.tsx", "utf8");
@@ -786,6 +787,36 @@ for (const label of [
 ]) {
   assert.ok(uiSource.includes(label) || moneySafetyUiSource.includes(label), `Missing demo copy label: ${label}`);
 }
+for (const recurringCopy of [
+  "Recurring",
+  "Weekly",
+  "Next ride",
+  "Outbound",
+  "Return",
+  "Quote needed",
+  "Meter proof needed",
+  "Each ride settles separately",
+  "Quote needed after guests lock.",
+  "Upload quote before booking.",
+  "Quote approved. Host can book.",
+  "No upfront quote needed.",
+  "Upload meter proof after ride.",
+  "No upcoming rides",
+  "Check the recurring schedule or create a new ride date.",
+  "Review recurring pod",
+  "Upload quote",
+  "Mark booked",
+  "Upload meter proof",
+  "View settlement",
+]) {
+  assert.ok(uiSource.includes(recurringCopy), `Missing My Pods recurring copy: ${recurringCopy}`);
+}
+assert.ok(mockDataSource.includes("upcomingRideInstances"));
+assert.ok(mockDataSource.includes("recurringPattern: \"back_and_forth\""));
+assert.ok(mockDataSource.includes("recurringPattern: \"one_way\""));
+assert.ok(mockDataSource.includes("rideOption: \"ride_app_fixed_quote\""));
+assert.ok(mockDataSource.includes("rideOption: \"taxi_meter\""));
+assert.equal(uiSource.includes("FREQ=WEEKLY"), false);
 assert.equal(`${uiSource}\n${moneySafetyUiSource}`.includes("gal only"), false);
 assert.equal(`${uiSource}\n${moneySafetyUiSource}`.includes("boy and gal"), false);
 
