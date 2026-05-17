@@ -8,6 +8,7 @@ export type MoneyProtectionCalculationInput = {
    */
   ridepodFeeCents?: number;
   platformFeeRateBps?: number;
+  minimumPlatformFeeCents?: number;
   hostIsRiding?: boolean;
 };
 
@@ -44,6 +45,7 @@ export type RidePodGuestChargeCalculationInput = {
   hostIsRiding: boolean;
   minimumLockedRiders: number;
   platformFeeRateBps: number;
+  minimumPlatformFeeCents?: number;
 };
 
 export type RidePodGuestChargeCalculation = {
@@ -56,9 +58,12 @@ export type RidePodGuestChargeCalculation = {
   protectedPlatformFeeCents: number;
   protectedGuestMaxCents: number;
   platformFeeRateBps: number;
+  minimumPlatformFeeCents: number;
 };
 
 export const PLATFORM_FEE_RATE_BPS = 1000;
+export const MINIMUM_PLATFORM_FEE_CENTS = 600;
+export const PLATFORM_FEE_CURRENCY = "HKD";
 
 function safeSeatCount(value: number) {
   return Math.max(1, Math.floor(Number.isFinite(value) ? value : 1));
@@ -75,8 +80,10 @@ function safeBps(value: number) {
 export function calculatePlatformFeeCents(
   fareShareCents: number,
   platformFeeRateBps: number = PLATFORM_FEE_RATE_BPS,
+  minimumPlatformFeeCents: number = MINIMUM_PLATFORM_FEE_CENTS,
 ) {
-  return Math.ceil((safeCents(fareShareCents) * safeBps(platformFeeRateBps)) / 10000);
+  const percentageFeeCents = Math.ceil((safeCents(fareShareCents) * safeBps(platformFeeRateBps)) / 10000);
+  return Math.max(percentageFeeCents, safeCents(minimumPlatformFeeCents));
 }
 
 export function calculateRidePodGuestCharge({
@@ -86,8 +93,10 @@ export function calculateRidePodGuestCharge({
   hostIsRiding,
   minimumLockedRiders,
   platformFeeRateBps,
+  minimumPlatformFeeCents = MINIMUM_PLATFORM_FEE_CENTS,
 }: RidePodGuestChargeCalculationInput): RidePodGuestChargeCalculation {
   const safePlatformFeeRateBps = safeBps(platformFeeRateBps);
+  const safeMinimumPlatformFeeCents = safeCents(minimumPlatformFeeCents);
   const hostCountsAsParticipant = hostIsRiding !== false;
   const safeGuestSeats = safeSeatCount(guestSeats);
   const safeMinimumLockedRiders = safeSeatCount(minimumLockedRiders);
@@ -96,10 +105,18 @@ export function calculateRidePodGuestCharge({
     safeMinimumLockedRiders + (hostCountsAsParticipant ? 1 : 0);
 
   const expectedFareShareCents = Math.ceil(safeCents(selectedEstimatedFareCents) / expectedParticipants);
-  const expectedPlatformFeeCents = calculatePlatformFeeCents(expectedFareShareCents, safePlatformFeeRateBps);
+  const expectedPlatformFeeCents = calculatePlatformFeeCents(
+    expectedFareShareCents,
+    safePlatformFeeRateBps,
+    safeMinimumPlatformFeeCents,
+  );
   const expectedGuestTotalCents = expectedFareShareCents + expectedPlatformFeeCents;
   const protectedFareShareCents = Math.ceil(safeCents(approvedMaxTotalFareCents) / participantsForProtectedMax);
-  const protectedPlatformFeeCents = calculatePlatformFeeCents(protectedFareShareCents, safePlatformFeeRateBps);
+  const protectedPlatformFeeCents = calculatePlatformFeeCents(
+    protectedFareShareCents,
+    safePlatformFeeRateBps,
+    safeMinimumPlatformFeeCents,
+  );
   const protectedGuestMaxCents = protectedFareShareCents + protectedPlatformFeeCents;
 
   return {
@@ -112,6 +129,7 @@ export function calculateRidePodGuestCharge({
     protectedPlatformFeeCents,
     protectedGuestMaxCents,
     platformFeeRateBps: safePlatformFeeRateBps,
+    minimumPlatformFeeCents: safeMinimumPlatformFeeCents,
   };
 }
 
@@ -121,6 +139,7 @@ export function calculateMoneyProtection({
   targetSeats,
   minSeatsToBook,
   platformFeeRateBps = PLATFORM_FEE_RATE_BPS,
+  minimumPlatformFeeCents = MINIMUM_PLATFORM_FEE_CENTS,
   hostIsRiding = true,
 }: MoneyProtectionCalculationInput): MoneyProtectionCalculation {
   const safeTargetSeats = safeSeatCount(targetSeats);
@@ -136,6 +155,7 @@ export function calculateMoneyProtection({
     hostIsRiding: hostCountsAsParticipant,
     minimumLockedRiders: safeMinimumLockedRiders,
     platformFeeRateBps,
+    minimumPlatformFeeCents,
   });
 
   return {

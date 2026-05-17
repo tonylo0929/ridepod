@@ -39,7 +39,7 @@ import {
   getProtectedPodOrFallback,
 } from "@/lib/money-safety-mock";
 
-const quoteApprovedCanBookCopy = "Quote approved — host can book";
+const quoteApprovedCanBookCopy = "Quote approved. You may book the external ride.";
 
 function getDisplayMoneyStatus({
   canBook,
@@ -310,17 +310,19 @@ function QuoteStepHeader({
 export function HostQuoteUploadPanel({ pod }: { pod: RidePod }) {
   const state = getHostQuoteState(pod);
   const disabledReason = state.aboveMax
-    ? "Quote is above approved max. Riders must approve a higher max before protected booking."
-    : state.reasons[0] ?? "Protected booking unlocks after payment authorization and quote approval.";
+    ? "Quote is above the approved max. Guests must approve a higher max before protected booking."
+    : state.confirmed < state.required
+      ? "Waiting for guests to lock. A fresh quote will be required before booking."
+      : state.reasons[0] ?? "Upload a fresh ride app quote before booking.";
   const message = state.canBook
-    ? "All required participants are payment-authorized. Quote is within approved max. You may book."
+    ? "Quote approved. You may book the external ride."
     : state.aboveMax
-      ? "Quote is above approved max. Riders must approve a higher max before protected booking."
+      ? "Quote is above the approved max. Guests must approve a higher max before protected booking."
       : state.quoteUploaded && state.confirmed < state.required
-        ? "Quote saved. Booking unlocks when required participants authorize payment."
+        ? "Waiting for guests to lock. A fresh quote will be required before booking."
           : state.confirmed >= state.required
-            ? "Upload a fresh quote screenshot before booking."
-            : `Waiting for participants: ${state.confirmed}/${state.required} authorized.`;
+            ? "Upload a fresh ride app quote before booking."
+            : "Waiting for guests to lock. A fresh quote will be required before booking.";
   const statusTone = state.canBook ? "success" : state.aboveMax ? "warning" : "info";
   const statusLabel = state.canBook
     ? "Within approved max"
@@ -365,8 +367,10 @@ export function HostQuoteUploadPanel({ pod }: { pod: RidePod }) {
 
       <div className="grid gap-4 p-4">
         <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
-          <QuoteStepHeader icon={<Upload className="h-5 w-5" />} title="1. Quote upload">
-            You can preview fare now, but protected booking unlocks only after required participants authorize payment.
+          <QuoteStepHeader icon={<Upload className="h-5 w-5" />} title="1. Booking fare proof">
+            {state.confirmed < state.required
+              ? "Preview quote only. A fresh quote may be required before booking."
+              : "Upload a fresh quote screenshot before booking."}
           </QuoteStepHeader>
           <div className="mt-4 grid gap-3">
             <button
@@ -413,13 +417,13 @@ export function HostQuoteUploadPanel({ pod }: { pod: RidePod }) {
               type="button"
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)]"
             >
-              Review quote <ArrowRight className="h-4 w-4" />
+              Review quote screenshot <ArrowRight className="h-4 w-4" />
             </button>
           </div>
         </section>
 
         <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
-          <QuoteStepHeader icon={<Sparkles className="h-5 w-5" />} title="2. Quote review & fare extracted">
+          <QuoteStepHeader icon={<Sparkles className="h-5 w-5" />} title="2. Fresh quote review">
             RidePod checks the submitted quote against the approved max. No OCR or provider API is used in this demo.
           </QuoteStepHeader>
           <div className="mt-4 grid gap-3 min-[760px]:grid-cols-[0.85fr_1fr]">
@@ -475,7 +479,7 @@ export function HostQuoteUploadPanel({ pod }: { pod: RidePod }) {
             )}
             <div className="min-w-0 flex-1">
               <p className="text-base font-black text-[var(--rp-text)]">
-                {state.canBook ? "3. Can book ??eligible" : "3. Cannot book ??blocked"}
+                {state.canBook ? "3. Can book eligible" : "3. Cannot book blocked"}
               </p>
               <p className="mt-2 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">{message}</p>
               {!state.canBook ? (
@@ -508,6 +512,14 @@ export function HostQuoteUploadPanel({ pod }: { pod: RidePod }) {
 export function HostBookingProtectionPanel({ podId }: { podId: string }) {
   const { pod, permission, snapshot } = getHostBookingSummary(podId);
   const quote = permission.latestQuote;
+  const quoteAboveMax = Boolean(quote && quote.quotedFareCents > pod.approvedMaxTotalFareCents);
+  const bookingMessage = permission.canBook
+    ? "Quote approved. You may book the external ride."
+    : quoteAboveMax
+      ? "Quote is above the approved max. Guests must approve a higher max before protected booking."
+      : snapshot.confirmedSeats >= pod.minSeatsToBook
+        ? "Upload a fresh ride app quote before booking."
+        : "Waiting for guests to lock. A fresh quote will be required before booking.";
 
   return (
     <section className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
@@ -516,7 +528,7 @@ export function HostBookingProtectionPanel({ podId }: { podId: string }) {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-black text-[var(--rp-text)]">Quote screenshot and protected booking</p>
           <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
-            You can preview fare now, but protected booking unlocks only after required participants authorize payment.
+            Quote controls booking permission. Verified receipt controls final settlement.
           </p>
           <div className="mt-3 grid gap-2 text-xs font-bold text-[var(--rp-muted-strong)]">
             <p>Provider: {quote?.providerName.replaceAll("_", " ") ?? "Upload quote"}</p>
@@ -533,8 +545,8 @@ export function HostBookingProtectionPanel({ podId }: { podId: string }) {
             )}
           >
             {permission.canBook
-              ? "All required participants are payment-authorized. Quote is within approved max. You may book."
-              : permission.reasons[0] ?? "Host cannot book a protected ride yet."}
+              ? "Quote approved. You may book the external ride."
+              : bookingMessage}
           </div>
           {!permission.canBook ? (
             <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
@@ -550,7 +562,7 @@ export function HostBookingProtectionPanel({ podId }: { podId: string }) {
           </button>
           {!permission.canBook ? (
             <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
-              Disabled: {permission.reasons[0] ?? "Protected booking requires payment authorization and an approved fresh quote."}
+              Disabled: {bookingMessage}
             </p>
           ) : null}
         </div>

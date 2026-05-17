@@ -229,7 +229,11 @@ assert.equal(
   null,
 );
 assert.equal(moneyProtection.PLATFORM_FEE_RATE_BPS, 1000);
-assert.equal(moneyProtection.calculatePlatformFeeCents(2500, 1000), 250);
+assert.equal(moneyProtection.MINIMUM_PLATFORM_FEE_CENTS, 600);
+assert.equal(moneyProtection.PLATFORM_FEE_CURRENCY, "HKD");
+assert.equal(moneyProtection.calculatePlatformFeeCents(2500, 1000, 600), 600);
+assert.equal(moneyProtection.calculatePlatformFeeCents(10000, 1000, 600), 1000);
+assert.equal(moneyProtection.calculatePlatformFeeCents(2075, 1000, 600), 600);
 const ridePodGuestCharge = moneyProtection.calculateRidePodGuestCharge({
   selectedEstimatedFareCents: 8300,
   approvedMaxTotalFareCents: 10000,
@@ -241,21 +245,35 @@ const ridePodGuestCharge = moneyProtection.calculateRidePodGuestCharge({
 assert.equal(ridePodGuestCharge.expectedParticipants, 4);
 assert.equal(ridePodGuestCharge.participantsForProtectedMax, 4);
 assert.equal(ridePodGuestCharge.expectedFareShareCents, 2075);
-assert.equal(ridePodGuestCharge.expectedPlatformFeeCents, 208);
-assert.equal(ridePodGuestCharge.expectedGuestTotalCents, 2283);
+assert.equal(ridePodGuestCharge.expectedPlatformFeeCents, 600);
+assert.equal(ridePodGuestCharge.expectedGuestTotalCents, 2675);
 assert.equal(ridePodGuestCharge.protectedFareShareCents, 2500);
-assert.equal(ridePodGuestCharge.protectedPlatformFeeCents, 250);
-assert.equal(ridePodGuestCharge.protectedGuestMaxCents, 2750);
+assert.equal(ridePodGuestCharge.protectedPlatformFeeCents, 600);
+assert.equal(ridePodGuestCharge.protectedGuestMaxCents, 3100);
+const currentRidePodGuestCharge = moneyProtection.calculateRidePodGuestCharge({
+  selectedEstimatedFareCents: 8600,
+  approvedMaxTotalFareCents: 10100,
+  guestSeats: 3,
+  hostIsRiding: true,
+  minimumLockedRiders: 3,
+  platformFeeRateBps: 1000,
+});
+assert.equal(currentRidePodGuestCharge.expectedFareShareCents, 2150);
+assert.equal(currentRidePodGuestCharge.expectedPlatformFeeCents, 600);
+assert.equal(currentRidePodGuestCharge.expectedGuestTotalCents, 2750);
+assert.equal(currentRidePodGuestCharge.protectedFareShareCents, 2525);
+assert.equal(currentRidePodGuestCharge.protectedPlatformFeeCents, 600);
+assert.equal(currentRidePodGuestCharge.protectedGuestMaxCents, 3125);
 assert.equal(
   joinMoney.calculateJoinPodMaxChargeCents({
-    selectedEstimatedFareCents: 8300,
-    approvedMaxTotalFareCents: 10000,
+    selectedEstimatedFareCents: 8600,
+    approvedMaxTotalFareCents: 10100,
     guestSeats: 3,
     hostIsRiding: true,
     minimumLockedRiders: 3,
     platformFeeRateBps: 1000,
   }),
-  2750,
+  3125,
 );
 const previewMoneyProtection = moneyProtection.calculateMoneyProtection({
   estimatedTotalFareCents: 8400,
@@ -266,14 +284,14 @@ const previewMoneyProtection = moneyProtection.calculateMoneyProtection({
   hostIsRiding: true,
 });
 assert.equal(previewMoneyProtection.expectedRideShareCents, 2100);
-assert.equal(previewMoneyProtection.expectedPlatformFeeCents, 210);
-assert.equal(previewMoneyProtection.expectedTotalPerRiderCents, 2310);
-assert.equal(previewMoneyProtection.expectedTotalChargeCents, 2310);
+assert.equal(previewMoneyProtection.expectedPlatformFeeCents, 600);
+assert.equal(previewMoneyProtection.expectedTotalPerRiderCents, 2700);
+assert.equal(previewMoneyProtection.expectedTotalChargeCents, 2700);
 assert.equal(previewMoneyProtection.protectedMaxRideShareCents, 2425);
 assert.equal(previewMoneyProtection.maxFareShareCents, 2425);
-assert.equal(previewMoneyProtection.protectedMaxPlatformFeeCents, 243);
-assert.equal(previewMoneyProtection.protectedMaxChargePerRiderCents, 2668);
-assert.equal(previewMoneyProtection.participantMaxChargeCents, 2668);
+assert.equal(previewMoneyProtection.protectedMaxPlatformFeeCents, 600);
+assert.equal(previewMoneyProtection.protectedMaxChargePerRiderCents, 3025);
+assert.equal(previewMoneyProtection.participantMaxChargeCents, 3025);
 assert.equal(previewMoneyProtection.platformFeeRateBps, 1000);
 assert.equal(previewMoneyProtection.estimatedParticipants, 4);
 assert.equal(previewMoneyProtection.minimumParticipantsForMax, 4);
@@ -286,9 +304,9 @@ const hostNotRidingMoneyProtection = moneyProtection.calculateMoneyProtection({
   hostIsRiding: false,
 });
 assert.equal(hostNotRidingMoneyProtection.expectedRideShareCents, 2800);
-assert.equal(hostNotRidingMoneyProtection.expectedTotalPerRiderCents, 3080);
+assert.equal(hostNotRidingMoneyProtection.expectedTotalPerRiderCents, 3400);
 assert.equal(hostNotRidingMoneyProtection.protectedMaxRideShareCents, 3234);
-assert.equal(hostNotRidingMoneyProtection.protectedMaxChargePerRiderCents, 3558);
+assert.equal(hostNotRidingMoneyProtection.protectedMaxChargePerRiderCents, 3834);
 assert.equal(hostNotRidingMoneyProtection.minimumParticipantsForMax, 3);
 const hostOverrideMoneyProtection = moneyProtection.calculateMoneyProtection({
   estimatedTotalFareCents: 11000,
@@ -298,8 +316,8 @@ const hostOverrideMoneyProtection = moneyProtection.calculateMoneyProtection({
   ridepodFeeCents: 500,
   hostIsRiding: true,
 });
-assert.equal(hostOverrideMoneyProtection.expectedTotalPerRiderCents, 3025);
-assert.equal(hostOverrideMoneyProtection.protectedMaxChargePerRiderCents, 2750);
+assert.equal(hostOverrideMoneyProtection.expectedTotalPerRiderCents, 3350);
+assert.equal(hostOverrideMoneyProtection.protectedMaxChargePerRiderCents, 3100);
 const oneTimeOccurrence = podSchedule.createOneTimeOccurrence({
   scheduleType: "ONE_TIME",
   occurrenceDate: "2026-05-19",
@@ -504,48 +522,98 @@ assert.equal(
   moneySafetyUiSource.includes("Host reimbursement is based on the verified final receipt and approved max fare."),
   false,
 );
-assert.ok(moneySafetyUiSource.includes("Quote approved — host can book"));
+assert.ok(moneySafetyUiSource.includes("Quote approved. You may book the external ride."));
 assert.equal(moneySafetyUiSource.includes("??host"), false);
+assert.ok(moneySafetyUiSource.includes("Waiting for guests to lock. A fresh quote will be required before booking."));
+assert.ok(moneySafetyUiSource.includes("Upload a fresh ride app quote before booking."));
+assert.ok(moneySafetyUiSource.includes("Quote is above the approved max. Guests must approve a higher max before protected booking."));
+assert.ok(moneySafetyUiSource.includes("Preview quote only. A fresh quote may be required before booking."));
+assert.ok(moneySafetyUiSource.includes("Booking fare proof"));
 assert.ok(moneySafetyUiSource.includes("Off-app payments are not protected"));
 assert.ok(podDetailSource.includes("No confirmed riders yet. Seats lock after payment authorization."));
-assert.ok(createPodChooseTypeSource.includes("Expected guest total"));
-assert.ok(createPodChooseTypeSource.includes("Protected guest max"));
-assert.ok(createPodChooseTypeSource.includes("Platform fee"));
-assert.ok(createPodChooseTypeSource.includes("10% of fare share"));
-assert.ok(createPodChooseTypeSource.includes("Minimum locked riders"));
+assert.ok(createPodChooseTypeSource.includes("Current estimate"));
+assert.ok(createPodChooseTypeSource.includes("Expected guest cost"));
+assert.ok(createPodChooseTypeSource.includes("Max charge per guest"));
+assert.ok(createPodChooseTypeSource.includes("Booking fare cap"));
+assert.ok(createPodChooseTypeSource.includes("[\"Pricing summary\", \"Money Protection\", \"Safety & Trust\", \"Preview your pod\"]"));
+assert.ok(createPodChooseTypeSource.includes("const moneyProtectionPanelIndex = 1"));
+assert.ok(createPodChooseTypeSource.includes("reviewPanel === 3"));
+assert.ok(createPodChooseTypeSource.includes("Minimum locked guests"));
 assert.ok(createPodChooseTypeSource.includes("Ideal pod size"));
-assert.ok(createPodChooseTypeSource.includes("fare share + shared platform fee"));
+assert.ok(createPodChooseTypeSource.includes("Total people in the ride, including the host."));
+assert.ok(createPodChooseTypeSource.includes("Minimum locked guests: {getMinimumLockedHelper(hostRidingMoney)}"));
+assert.ok(createPodChooseTypeSource.includes("hostIsRiding: true"));
+assert.ok(createPodChooseTypeSource.includes("RidePod route baseline"));
+assert.ok(createPodChooseTypeSource.includes("Host quote"));
+assert.ok(createPodChooseTypeSource.includes("if {getIdealPodSizeSummary(hostRidingMoney)} ride"));
+assert.ok(createPodChooseTypeSource.includes("unless higher max approved"));
+assert.ok(createPodChooseTypeSource.includes("quote must stay within this"));
+assert.ok(createPodChooseTypeSource.includes("Guests authorize the max charge before the host books. Final settlement uses the verified receipt and may be lower."));
+assert.ok(createPodChooseTypeSource.includes("This is RidePod's best estimate before the ride is booked."));
+assert.ok(createPodChooseTypeSource.includes("This is the estimated amount each guest may pay if the pod fills as planned."));
+assert.ok(createPodChooseTypeSource.includes("platform fee: 10% of fare share, minimum HK$6"));
+assert.ok(createPodChooseTypeSource.includes("Platform fee: {PLATFORM_FEE_RATE_BPS / 100}% of fare share, minimum HK${MINIMUM_PLATFORM_FEE_CENTS / 100}."));
+assert.ok(createPodChooseTypeSource.includes("Platform fee is {PLATFORM_FEE_RATE_BPS / 100}% of each guest&apos;s fare share, with a HK${MINIMUM_PLATFORM_FEE_CENTS / 100} minimum to cover payment processing and platform protection."));
+assert.ok(createPodChooseTypeSource.includes("This is the most a guest can be charged for this pod unless they approve a higher fare."));
+assert.ok(createPodChooseTypeSource.includes("This is the maximum total fare allowed for protected booking."));
+assert.ok(createPodChooseTypeSource.includes("PricingExplanationDialog"));
+assert.ok(createPodChooseTypeSource.includes("activeExplanation"));
+assert.ok(createPodChooseTypeSource.includes("setActiveExplanation(pricingExplanations.currentEstimate)"));
+assert.ok(createPodChooseTypeSource.includes("Back"));
+assert.equal(createPodChooseTypeSource.includes("PricingFieldExplanation"), false);
 assert.ok(createPodChooseTypeSource.includes("RidePod estimate"));
-assert.ok(createPodChooseTypeSource.includes("Estimate source"));
-assert.ok(createPodChooseTypeSource.includes("Approved max suggestion"));
-assert.ok(createPodChooseTypeSource.includes("Use RidePod estimate"));
-assert.ok(createPodChooseTypeSource.includes("Use suggested max"));
+assert.ok(createPodChooseTypeSource.includes("Suggested booking fare cap"));
+assert.ok(createPodChooseTypeSource.includes("Host confirms fare proof before booking. Final settlement uses the verified receipt."));
 assert.ok(createPodChooseTypeSource.includes("How RidePod estimates this"));
+assert.ok(createPodChooseTypeSource.includes("RidePod uses route distance, local taxi fare rules, baggage/toll assumptions, and a safety buffer to suggest a booking fare cap."));
+assert.equal(createPodChooseTypeSource.includes("Estimate source"), false);
+assert.equal(createPodChooseTypeSource.includes("Approved max suggestion"), false);
+assert.equal(createPodChooseTypeSource.includes("Use RidePod estimate"), false);
+assert.equal(createPodChooseTypeSource.includes("Use suggested max"), false);
+assert.equal(createPodChooseTypeSource.includes("money.estimateConfidence"), false);
 assert.ok(createPodChooseTypeSource.includes("Ride app / fixed quote"));
 assert.ok(createPodChooseTypeSource.includes("Host books through an app or provider that shows the fare before booking."));
-assert.ok(createPodChooseTypeSource.includes("Quote required before booking."));
+assert.ok(createPodChooseTypeSource.includes("Fresh quote required before booking."));
 assert.ok(createPodChooseTypeSource.includes("Taxi meter"));
 assert.ok(createPodChooseTypeSource.includes("Host takes a metered taxi. RidePod uses the taxi baseline to set the approved max."));
 assert.ok(createPodChooseTypeSource.includes("Receipt or meter proof required after ride."));
 assert.ok(createPodChooseTypeSource.includes("RidePod protection applies only when the ride stays within the approved max. Final settlement uses the verified receipt."));
+assert.ok(createPodChooseTypeSource.includes("Quote status"));
+assert.ok(createPodChooseTypeSource.includes("Upload later before booking"));
+assert.ok(createPodChooseTypeSource.includes("No upfront quote required"));
+assert.ok(createPodChooseTypeSource.includes("Booking rule"));
+assert.ok(createPodChooseTypeSource.includes("Host can book after the minimum locked guests authorize payment and the quote is within the approved max."));
+assert.ok(createPodChooseTypeSource.includes("RidePod uses the taxi baseline and approved max before booking."));
+assert.ok(createPodChooseTypeSource.includes("Settlement rule"));
 assert.ok(createPodChooseTypeSource.includes("normalizeRideOptionId"));
 assert.ok(createPodChooseTypeSource.includes("rideConfirmationCopy"));
 assert.ok(createPodChooseTypeSource.includes("Confirm External Ride"));
 assert.ok(createPodChooseTypeSource.includes("The host books the ride outside RidePod using an app or provider with an upfront quote."));
-assert.ok(createPodChooseTypeSource.includes("RidePod protection applies only when the quote is within the approved max. Final settlement uses the verified receipt."));
-assert.ok(createPodChooseTypeSource.includes("I understand the quote must be approved before booking, and final settlement uses the verified receipt."));
+assert.ok(createPodChooseTypeSource.includes("RidePod protection applies only when the fresh quote is within the approved max. Final settlement uses the verified receipt."));
+assert.ok(createPodChooseTypeSource.includes("I understand the fresh quote must be approved before booking, and final settlement uses the verified receipt."));
 assert.ok(createPodChooseTypeSource.includes("Confirm Taxi Meter Ride"));
 assert.ok(createPodChooseTypeSource.includes("The host takes a metered taxi outside RidePod."));
 assert.ok(createPodChooseTypeSource.includes("RidePod uses the taxi baseline to set the approved max. Final settlement uses the verified receipt or meter proof."));
 assert.ok(createPodChooseTypeSource.includes("I understand the taxi fare is settled from verified receipt or meter proof, within the approved max rules."));
-assert.ok(createPodChooseTypeSource.includes("if {getMinimumLockedSummary(money)}"));
-assert.ok(createPodChooseTypeSource.includes("RidePod estimates the fare to help set a fair approved max. Host uploads a fresh quote before booking."));
-assert.ok(createPodChooseTypeSource.includes("Quote controls booking permission; final settlement uses the verified receipt."));
+assert.ok(createPodChooseTypeSource.includes("/ rider if ${getMinimumLockedSummary(hostRidingMoney)}"));
+assert.ok(createPodChooseTypeSource.includes("Guests authorize the max charge before the host books. Final settlement uses the verified receipt and may be lower."));
 assert.equal(createPodChooseTypeSource.includes("Expected total"), false);
-assert.equal(createPodChooseTypeSource.includes("Protected max"), false);
+assert.equal(createPodChooseTypeSource.includes("Est. fare"), false);
+assert.equal(createPodChooseTypeSource.includes("Expected guest total"), false);
+assert.equal(createPodChooseTypeSource.includes("Protected guest max"), false);
+assert.equal(createPodChooseTypeSource.includes("Protected max charge"), false);
+assert.equal(createPodChooseTypeSource.includes("Approved max fare"), false);
+assert.equal(createPodChooseTypeSource.includes("fare share + shared platform fee"), false);
+assert.equal(createPodChooseTypeSource.includes("includes platform fee"), false);
+assert.equal(createPodChooseTypeSource.includes("RidePod's 10% platform charge"), false);
 assert.equal(createPodChooseTypeSource.includes("RidePod fee"), false);
 assert.equal(createPodChooseTypeSource.includes("HK$5 / rider"), false);
 assert.equal(createPodChooseTypeSource.includes("Minimum confirmed riders"), false);
+assert.equal(createPodChooseTypeSource.includes("Minimum locked riders"), false);
+assert.equal(createPodChooseTypeSource.includes("Host is riding"), false);
+assert.equal(createPodChooseTypeSource.includes("Estimated total fare"), false);
+assert.equal(createPodChooseTypeSource.includes("Approved max total fare"), false);
+assert.equal(createPodChooseTypeSource.includes("Min seats to book"), false);
 assert.equal(createPodChooseTypeSource.includes("Target seats"), false);
 assert.equal(createPodChooseTypeSource.includes("Host&apos;s Choice"), false);
 assert.equal(createPodChooseTypeSource.includes("Host's Choice"), false);
@@ -556,6 +624,7 @@ assert.equal(createPodChooseTypeSource.includes("Comfort / Premium"), false);
 assert.equal(createPodChooseTypeSource.includes("Confirm Host&apos;s Choice"), false);
 assert.equal(createPodChooseTypeSource.includes("Confirm External Ride Booking"), false);
 assert.equal(createPodChooseTypeSource.includes("Ride app / fixed quote selected"), false);
+assert.equal(createPodChooseTypeSource.includes("Quote required before booking."), false);
 assert.equal(createPodChooseTypeSource.includes("Final receipt or meter proof required after ride."), false);
 assert.equal(createPodChooseTypeSource.includes("Host books with Uber, DiDi, Lyft, taxi app, private van, or another provider that shows the fare before booking."), false);
 assert.equal(createPodChooseTypeSource.includes("I understand the host chooses and books the external ride under the approved max fare. Everyone pays their share."), false);
@@ -4266,7 +4335,7 @@ assert.equal(
   settlement.settlement.items
     .filter((item) => item.itemType === "FARE_SHARE")
     .reduce((sum, item) => sum + item.amountCents, 0),
-  moneySafety.cents(90),
+  moneySafety.cents(81),
 );
 
 const warning = moneySafety.createOffAppWarningEvent("pod-test", "u1", "Venmo me or text 213-555-0101");

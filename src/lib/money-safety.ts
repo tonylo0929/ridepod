@@ -463,7 +463,8 @@ export type ProtectedPod = {
   approvedMaxTotalFareCents: MoneyCents;
   currency: string;
   /**
-   * Legacy/demo-only fixed fee. Rider-facing platform fees use PLATFORM_FEE_RATE_BPS.
+   * Legacy/demo-only fixed fee. Rider-facing platform fees use PLATFORM_FEE_RATE_BPS
+   * with MINIMUM_PLATFORM_FEE_CENTS from money-protection.
    */
   ridepodFeeCents: MoneyCents;
   providerPolicy: string | null;

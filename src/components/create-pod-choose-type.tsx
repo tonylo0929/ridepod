@@ -20,23 +20,28 @@ import {
   MapPin,
   Minus,
   Plus,
+  ReceiptText,
   RefreshCcw,
   ShieldCheck,
   Trash2,
+  Upload,
   UserPlus,
   UsersRound,
 } from "lucide-react";
 import { cn } from "@/components/ui";
 import {
   calculateHkTaxiFareEstimate,
-  getHostEstimateWarning,
   suggestApprovedMaxFare,
   type EstimateConfidence,
   type EstimateSource,
   type HkTaxiZone,
   type RouteRiskLevel,
 } from "@/lib/fare-estimates";
-import { calculateMoneyProtection } from "@/lib/money-protection";
+import {
+  MINIMUM_PLATFORM_FEE_CENTS,
+  PLATFORM_FEE_RATE_BPS,
+  calculateMoneyProtection,
+} from "@/lib/money-protection";
 import {
   WEEKDAYS,
   createRecurringTemplateRRule,
@@ -155,7 +160,7 @@ const rideOptions: Array<{
     id: "ride_app_fixed_quote",
     title: "Ride app / fixed quote",
     description: "Host books through an app or provider that shows the fare before booking.",
-    helper: "Quote required before booking.",
+    helper: "Fresh quote required before booking.",
     icon: ShieldCheck,
   },
   {
@@ -172,10 +177,10 @@ const rideConfirmationCopy: Record<ActiveRideOptionId, { title: string; body: st
     title: "Confirm External Ride",
     body: [
       "The host books the ride outside RidePod using an app or provider with an upfront quote.",
-      "RidePod protection applies only when the quote is within the approved max. Final settlement uses the verified receipt.",
+      "RidePod protection applies only when the fresh quote is within the approved max. Final settlement uses the verified receipt.",
     ],
     checkbox:
-      "I understand the quote must be approved before booking, and final settlement uses the verified receipt.",
+      "I understand the fresh quote must be approved before booking, and final settlement uses the verified receipt.",
   },
   taxi_meter: {
     title: "Confirm Taxi Meter Ride",
@@ -196,6 +201,21 @@ function getRideOption(rideOption: RideOptionId) {
   const normalizedRideOption = normalizeRideOptionId(rideOption);
 
   return rideOptions.find((option) => option.id === normalizedRideOption) ?? rideOptions[0];
+}
+
+function getRideTimingRules(rideOption: RideOptionId) {
+  return normalizeRideOptionId(rideOption) === "taxi_meter"
+    ? {
+        quoteStatus: "No upfront quote required",
+        bookingRule: "RidePod uses the taxi baseline and approved max before booking.",
+        settlementRule: "Receipt or meter proof required after ride.",
+      }
+    : {
+        quoteStatus: "Upload later before booking",
+        bookingRule:
+          "Host can book after the minimum locked guests authorize payment and the quote is within the approved max.",
+        settlementRule: "Final settlement uses the verified receipt.",
+      };
 }
 
 const genderModeOptions: Array<{ id: GenderMode; label: string }> = [
@@ -307,14 +327,6 @@ function formatCentsFixed(value: number) {
 
 function centsToDollars(value: number) {
   return Math.round(Math.max(0, value)) / 100;
-}
-
-function formatEstimateSource(source: EstimateSource) {
-  return source
-    .toLowerCase()
-    .split("_")
-    .map((part) => (part === "hk" ? "HK" : `${part.charAt(0).toUpperCase()}${part.slice(1)}`))
-    .join(" ");
 }
 
 function parseFlexibilityMinutes(value: string) {
@@ -2186,7 +2198,78 @@ function ReviewHeroCard({
   );
 }
 
+function getCurrentEstimateHelper(money: MoneyProtectionState) {
+  return money.estimateSource === "HOST_QUOTE_SCREENSHOT" ? "Host quote" : "RidePod route baseline";
+}
+
+type PricingExplanation = {
+  title: string;
+  body: string;
+};
+
+const pricingExplanations: Record<string, PricingExplanation> = {
+  currentEstimate: {
+    title: "Current estimate",
+    body: "This is RidePod's best estimate before the ride is booked. It may come from RidePod's route baseline, the host's estimate, or the host's uploaded quote. It is not the final charge. Final settlement uses the verified receipt after the ride.",
+  },
+  expectedGuestCost: {
+    title: "Expected guest cost",
+    body: "This is the estimated amount each guest may pay if the pod fills as planned. It includes the estimated fare share plus RidePod's platform fee: 10% of fare share, minimum HK$6. The final amount may be lower or higher, but it cannot exceed the max charge unless guests approve an increase.",
+  },
+  maxChargePerGuest: {
+    title: "Max charge per guest",
+    body: "This is the most a guest can be charged for this pod unless they approve a higher fare. It is calculated from the booking fare cap, the minimum locked guests, the host riding with the group, and RidePod's platform fee: 10% of fare share, minimum HK$6.",
+  },
+  bookingFareCap: {
+    title: "Booking fare cap",
+    body: "This is the maximum total fare allowed for protected booking. The host must upload a quote within this cap before booking. If the quote is higher, guests must approve a higher max before the ride can be RidePod-protected.",
+  },
+};
+
+function PricingExplanationDialog({
+  explanation,
+  onBack,
+}: {
+  explanation: PricingExplanation;
+  onBack: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[70] grid place-items-end bg-black/62 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-8 backdrop-blur-sm sm:place-items-center">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pricing-explanation-title"
+        className="w-full max-w-[390px] rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.42)]"
+      >
+        <div className="flex items-start gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+            <Info className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 id="pricing-explanation-title" className="text-xl font-black leading-tight">
+              {explanation.title}
+            </h2>
+            <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              {explanation.body}
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-5 min-h-12 w-full rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+        >
+          Back
+        </button>
+      </section>
+    </div>
+  );
+}
+
 function PricingSummaryCard({ money }: { money: MoneyProtectionState }) {
+  const hostRidingMoney = { ...money, hostIsRiding: true };
+  const [activeExplanation, setActiveExplanation] = useState<PricingExplanation | null>(null);
   const estimatedFareCents = dollarsToCents(money.estimatedTotalFare);
   const approvedMaxCents = dollarsToCents(money.approvedMaxTotalFare);
   const safeTargetSeats = Math.max(1, Math.floor(money.targetSeats));
@@ -2196,56 +2279,81 @@ function PricingSummaryCard({ money }: { money: MoneyProtectionState }) {
     approvedMaxTotalFareCents: approvedMaxCents,
     targetSeats: safeTargetSeats,
     minSeatsToBook: safeMinSeats,
-    hostIsRiding: money.hostIsRiding,
+    hostIsRiding: true,
   });
 
   return (
     <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 text-center shadow-[var(--rp-shadow-soft)]">
       <h2 className="text-lg font-black text-[var(--rp-text)]">Pricing summary</h2>
       <dl className="mt-5 grid gap-3 text-left">
-        <div className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3">
-          <dt className="text-xs font-semibold text-[var(--rp-muted)]">Est. fare</dt>
+        <button
+          type="button"
+          onClick={() => setActiveExplanation(pricingExplanations.currentEstimate)}
+          className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3 text-left transition hover:border-[var(--rp-border-strong)]"
+        >
+          <dt className="text-xs font-semibold text-[var(--rp-muted)]">Current estimate</dt>
           <dd className="mt-1 text-2xl font-black text-[var(--rp-text)]">
             {formatCentsFixed(estimatedFareCents)}
           </dd>
-        </div>
+          <dd className="text-xs font-semibold text-[var(--rp-muted-strong)]">
+            {getCurrentEstimateHelper(money)}
+          </dd>
+        </button>
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3">
-            <dt className="text-xs font-black text-[var(--rp-primary)]">Expected guest total</dt>
+          <button
+            type="button"
+            onClick={() => setActiveExplanation(pricingExplanations.expectedGuestCost)}
+            className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3 text-left transition hover:border-[var(--rp-border-strong)]"
+          >
+            <dt className="text-xs font-black text-[var(--rp-primary)]">Expected guest cost</dt>
             <dd className="mt-1 text-xl font-black text-[var(--rp-primary)]">
               {formatCentsFixed(protection.expectedTotalPerRiderCents)}
             </dd>
             <dd className="text-xs font-semibold text-[var(--rp-muted-strong)]">
-              fare share + shared platform fee
+              if {getIdealPodSizeSummary(hostRidingMoney)} ride
             </dd>
-          </div>
-          <div className="rounded-2xl border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,var(--rp-card))] p-3">
-            <dt className="text-xs font-black text-[var(--rp-primary)]">Protected guest max</dt>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveExplanation(pricingExplanations.maxChargePerGuest)}
+            className="rounded-2xl border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,var(--rp-card))] p-3 text-left transition hover:brightness-105"
+          >
+            <dt className="text-xs font-black text-[var(--rp-primary)]">Max charge per guest</dt>
             <dd className="mt-1 text-xl font-black text-[var(--rp-primary)]">
               {formatCentsFixed(protection.protectedMaxChargePerRiderCents)}
             </dd>
             <dd className="text-xs font-semibold text-[var(--rp-muted-strong)]">
-              if {getMinimumLockedSummary(money)}
+              unless higher max approved
             </dd>
-          </div>
+          </button>
         </div>
-        <div className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3">
-          <dt className="text-xs font-semibold text-[var(--rp-muted)]">Approved max fare</dt>
+        <button
+          type="button"
+          onClick={() => setActiveExplanation(pricingExplanations.bookingFareCap)}
+          className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3 text-left transition hover:border-[var(--rp-border-strong)]"
+        >
+          <dt className="text-xs font-semibold text-[var(--rp-muted)]">Booking fare cap</dt>
           <dd className="mt-1 text-lg font-black text-[var(--rp-text)]">
             {formatCentsFixed(approvedMaxCents)}
           </dd>
-        </div>
-        <div className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3">
-          <dt className="text-xs font-semibold text-[var(--rp-muted)]">Platform fee</dt>
-          <dd className="mt-1 text-lg font-black text-[var(--rp-text)]">
-            10% of fare share
+          <dd className="text-xs font-semibold text-[var(--rp-muted-strong)]">
+            quote must stay within this
           </dd>
-        </div>
+        </button>
       </dl>
-      <p className="mx-auto mt-5 max-w-[320px] text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
-        RidePod estimates the fare to help set a fair approved max. Host uploads a fresh quote before booking.
-        Final charge uses the verified receipt and may be lower.
+      <p className="mx-auto mt-4 max-w-[320px] rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+        Platform fee: {PLATFORM_FEE_RATE_BPS / 100}% of fare share, minimum HK${MINIMUM_PLATFORM_FEE_CENTS / 100}.{" "}
+        Platform fee is {PLATFORM_FEE_RATE_BPS / 100}% of each guest&apos;s fare share, with a HK${MINIMUM_PLATFORM_FEE_CENTS / 100} minimum to cover payment processing and platform protection.
       </p>
+      <p className="mx-auto mt-5 max-w-[320px] text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
+        Guests authorize the max charge before the host books. Final settlement uses the verified receipt and may be lower.
+      </p>
+      {activeExplanation ? (
+        <PricingExplanationDialog
+          explanation={activeExplanation}
+          onBack={() => setActiveExplanation(null)}
+        />
+      ) : null}
     </section>
   );
 }
@@ -2288,17 +2396,17 @@ function getIdealPodSizeSummary(money: Pick<MoneyProtectionState, "targetSeats" 
 }
 
 function getMinimumLockedSummary(money: Pick<MoneyProtectionState, "minSeatsToBook" | "hostIsRiding">) {
-  const lockedRiders = Math.max(1, Math.floor(money.minSeatsToBook));
+  const lockedGuests = Math.max(1, Math.floor(money.minSeatsToBook));
   const personLabel = money.hostIsRiding ? "guest" : "rider";
 
-  return `${lockedRiders} ${pluralize(lockedRiders, personLabel)} lock`;
+  return `${lockedGuests} ${pluralize(lockedGuests, personLabel)} lock`;
 }
 
 function getMinimumLockedHelper(money: Pick<MoneyProtectionState, "minSeatsToBook" | "hostIsRiding">) {
-  const lockedRiders = Math.max(1, Math.floor(money.minSeatsToBook));
+  const lockedGuests = Math.max(1, Math.floor(money.minSeatsToBook));
   const personLabel = money.hostIsRiding ? "guest" : "rider";
 
-  return `${lockedRiders} ${pluralize(lockedRiders, personLabel)} must authorize before host can book.`;
+  return `${lockedGuests} ${pluralize(lockedGuests, personLabel)} must authorize before host can book.`;
 }
 
 function getHkTaxiEstimateForMoney(money: MoneyProtectionState) {
@@ -2331,26 +2439,27 @@ function syncSystemEstimate(money: MoneyProtectionState): MoneyProtectionState {
 
 function MoneyProtectionPanel({
   money,
+  peopleVehicle,
   onMoneyChange,
 }: {
   money: MoneyProtectionState;
+  peopleVehicle: PeopleVehicleState;
   onMoneyChange: (money: MoneyProtectionState) => void;
 }) {
   function commitMoney(nextMoney: MoneyProtectionState) {
-    onMoneyChange(syncSystemEstimate(nextMoney));
+    onMoneyChange(syncSystemEstimate({ ...nextMoney, hostIsRiding: true }));
   }
 
   function updateMoney(key: MoneyProtectionNumberKey, value: number) {
-    const maxLockedRiders = money.hostIsRiding
-      ? Math.max(1, Math.floor(money.targetSeats) - 1)
-      : Math.max(1, Math.floor(money.targetSeats));
+    const maxLockedGuests = Math.max(1, Math.floor(money.targetSeats) - 1);
     const nextValue = Math.max(
       key === "ridepodFee" || key === "tollEstimate" || key === "waitingMinutes" || key === "trafficBufferPercent" ? 0 : 1,
       Number.isFinite(value) ? value : 0,
     );
-    const boundedValue = key === "minSeatsToBook" ? Math.min(nextValue, maxLockedRiders) : nextValue;
+    const boundedValue = key === "minSeatsToBook" ? Math.min(nextValue, maxLockedGuests) : nextValue;
     const nextMoney = {
       ...money,
+      hostIsRiding: true,
       [key]: boundedValue,
       ...(key === "estimatedTotalFare"
         ? { estimateSource: "HOST_INPUT" as EstimateSource, hostEstimatedFare: boundedValue }
@@ -2363,16 +2472,10 @@ function MoneyProtectionPanel({
   const taxiEstimate = getHkTaxiEstimateForMoney(money);
   const systemEstimateCents = taxiEstimate.totalFareCents;
   const suggestedApprovedMaxCents = suggestApprovedMaxFare(systemEstimateCents, money.routeRiskLevel);
-  const hostEstimateWarning = getHostEstimateWarning({
-    hostEstimatedFareCents: dollarsToCents(money.estimatedTotalFare),
-    systemBaselineFareCents: systemEstimateCents,
-    suggestedApprovedMaxFareCents: suggestedApprovedMaxCents,
-  });
-  const approvedMaxBelowEstimate = money.approvedMaxTotalFare < money.estimatedTotalFare;
-  const maxLockedRiders = money.hostIsRiding
-    ? Math.max(1, Math.floor(money.targetSeats) - 1)
-    : Math.max(1, Math.floor(money.targetSeats));
+  const hostRidingMoney = { ...money, hostIsRiding: true };
+  const maxLockedGuests = Math.max(1, Math.floor(money.targetSeats) - 1);
   const estimateIsAvailable = systemEstimateCents > 0;
+  const rideTimingRules = getRideTimingRules(peopleVehicle.rideOption);
 
   return (
     <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
@@ -2381,7 +2484,7 @@ function MoneyProtectionPanel({
         <div>
           <h2 className="text-lg font-black text-[var(--rp-text)]">Money Protection</h2>
           <p className="mt-2 text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
-            RidePod estimates the fare to help set a fair approved max. Host uploads a fresh quote before booking.
+            RidePod estimates the fare to help set a fair approved max. Host confirms booking fare proof before booking.
             Final charge uses the verified receipt and may be lower.
           </p>
         </div>
@@ -2389,71 +2492,31 @@ function MoneyProtectionPanel({
 
       <div className="mt-4 grid gap-3">
         <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-black text-[var(--rp-text)]">RidePod estimate</p>
-              <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                {estimateIsAvailable
-                  ? `${formatCentsFixed(systemEstimateCents)} based on RidePod route baseline.`
-                  : "RidePod will calculate the system baseline internally."}
-              </p>
-            </div>
-            <span className="rounded-full border border-[var(--rp-border)] px-3 py-1 text-xs font-black uppercase text-[var(--rp-primary)]">
-              {money.estimateConfidence}
-            </span>
-          </div>
+          <p className="text-sm font-black text-[var(--rp-text)]">RidePod estimate</p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+            {estimateIsAvailable
+              ? `${formatCentsFixed(systemEstimateCents)} based on RidePod route baseline.`
+              : "RidePod will calculate the system baseline internally."}
+          </p>
 
           <dl className="mt-3 grid gap-2 text-xs font-bold text-[var(--rp-muted-strong)]">
             <div className="flex items-center justify-between gap-3">
-              <dt>Estimate source</dt>
-              <dd className="text-right text-[var(--rp-text)]">{formatEstimateSource(taxiEstimate.estimateSource)}</dd>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <dt>Approved max suggestion</dt>
+              <dt>Suggested booking fare cap</dt>
               <dd className="text-right text-[var(--rp-primary)]">
                 {estimateIsAvailable ? formatCentsFixed(suggestedApprovedMaxCents) : "Needs distance"}
               </dd>
             </div>
           </dl>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              disabled={!estimateIsAvailable}
-              onClick={() => {
-                const nextEstimate = centsToDollars(systemEstimateCents);
-                commitMoney({
-                  ...money,
-                  estimateSource: "SYSTEM_TAXI_HK",
-                  estimatedTotalFare: nextEstimate,
-                  hostEstimatedFare: nextEstimate,
-                });
-              }}
-              className="min-h-10 rounded-xl border border-[var(--rp-primary)] px-3 text-xs font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)] disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              Use RidePod estimate
-            </button>
-            <button
-              type="button"
-              disabled={!estimateIsAvailable}
-              onClick={() =>
-                commitMoney({
-                  ...money,
-                  approvedMaxTotalFare: centsToDollars(suggestedApprovedMaxCents),
-                })
-              }
-              className="min-h-10 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card)] px-3 text-xs font-black text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)] disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              Use suggested max
-            </button>
-          </div>
+          <p className="mt-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+            Host confirms fare proof before booking. Final settlement uses the verified receipt.
+          </p>
         </div>
 
         <details className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
           <summary className="cursor-pointer font-black text-[var(--rp-text)]">How RidePod estimates this</summary>
           <p className="mt-2">
-            RidePod uses route baseline, taxi fare logic, and a safety buffer to suggest an approved max.
-            The host still uploads a quote before booking, and final settlement uses the verified receipt.
+            RidePod uses route distance, local taxi fare rules, baggage/toll assumptions, and a safety buffer to suggest a booking fare cap.
           </p>
         </details>
 
@@ -2463,91 +2526,46 @@ function MoneyProtectionPanel({
             {money.targetSeats}
           </div>
           <p className="text-xs font-bold text-[var(--rp-muted-strong)]">
-            Ideal pod size: {getIdealPodSizeSummary(money)}.
+            Total people in the ride, including the host.
           </p>
         </div>
 
-        <div className="grid gap-2 text-sm font-black text-[var(--rp-text)]">
-          <span>Host is riding</span>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: "Yes", value: true },
-              { label: "No", value: false },
-            ].map((option) => (
-              <button
-                key={option.label}
-                type="button"
-                onClick={() => {
-                  const nextMaxLockedRiders = option.value
-                    ? Math.max(1, Math.floor(money.targetSeats) - 1)
-                    : Math.max(1, Math.floor(money.targetSeats));
-
-                  commitMoney({
-                    ...money,
-                    hostIsRiding: option.value,
-                    minSeatsToBook: Math.min(money.minSeatsToBook, nextMaxLockedRiders),
-                  });
-                }}
-                className={cn(
-                  "h-11 rounded-xl border text-sm font-black transition",
-                  money.hostIsRiding === option.value
-                    ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
-                    : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {[
-          ["Estimated total fare", "estimatedTotalFare"],
-          ["Approved max total fare", "approvedMaxTotalFare"],
-          ["Minimum locked riders", "minSeatsToBook"],
+          ["Minimum locked guests", "minSeatsToBook"],
         ].map(([label, key]) => (
           <label key={key} className="grid gap-1.5 text-sm font-black text-[var(--rp-text)]">
             {label}
             <input
               type="number"
               min={1}
-              max={key === "minSeatsToBook" ? maxLockedRiders : undefined}
+              max={maxLockedGuests}
               value={money[key as MoneyProtectionNumberKey]}
               onChange={(event) => updateMoney(key as MoneyProtectionNumberKey, Number(event.target.value))}
-              aria-invalid={key === "approvedMaxTotalFare" && approvedMaxBelowEstimate}
-              className={cn(
-                "h-11 rounded-xl border bg-[var(--rp-card-soft)] px-3 text-base font-semibold text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]",
-                key === "approvedMaxTotalFare" && approvedMaxBelowEstimate
-                  ? "border-[var(--rp-primary)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--rp-primary)_55%,transparent)]"
-                  : "border-[var(--rp-border)]",
-              )}
+              className="h-11 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-base font-semibold text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
             />
-            {key === "approvedMaxTotalFare" && approvedMaxBelowEstimate ? (
-              <span className="text-xs font-bold text-[var(--rp-primary)]">
-                Approved max must be at least {formatMoney(money.estimatedTotalFare)} before you continue.
-              </span>
-            ) : null}
-            {key === "estimatedTotalFare" && hostEstimateWarning ? (
-              <span className="text-xs font-bold text-[var(--rp-primary)]">{hostEstimateWarning}</span>
-            ) : null}
-            {key === "minSeatsToBook" ? (
-              <span className="text-xs font-bold text-[var(--rp-muted-strong)]">
-                Minimum locked riders: {getMinimumLockedHelper(money)}
-              </span>
-            ) : null}
+            <span className="text-xs font-bold text-[var(--rp-muted-strong)]">
+              Minimum locked guests: {getMinimumLockedHelper(hostRidingMoney)}
+            </span>
           </label>
         ))}
 
         <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
-          <p className="font-black text-[var(--rp-text)]">Host quote</p>
-          <p className="mt-1">Quote controls booking permission; final settlement uses the verified receipt.</p>
+          <p className="font-black text-[var(--rp-text)]">Booking fare proof</p>
+          <p className="mt-1">{rideTimingRules.quoteStatus}. {rideTimingRules.settlementRule}</p>
         </div>
       </div>
     </section>
   );
 }
 
-function PreviewMoneyProtectionCard({ money }: { money: MoneyProtectionState }) {
+function PreviewMoneyProtectionCard({
+  money,
+  peopleVehicle,
+}: {
+  money: MoneyProtectionState;
+  peopleVehicle: PeopleVehicleState;
+}) {
+  const hostRidingMoney = { ...money, hostIsRiding: true };
   const safeTargetSeats = Math.max(1, money.targetSeats);
   const safeMinSeats = Math.max(1, money.minSeatsToBook);
   const approvedMaxCents = dollarsToCents(money.approvedMaxTotalFare);
@@ -2556,20 +2574,17 @@ function PreviewMoneyProtectionCard({ money }: { money: MoneyProtectionState }) 
     approvedMaxTotalFareCents: approvedMaxCents,
     targetSeats: safeTargetSeats,
     minSeatsToBook: safeMinSeats,
-    hostIsRiding: money.hostIsRiding,
+    hostIsRiding: true,
   });
+  const rules = getRideTimingRules(peopleVehicle.rideOption);
   const rows = [
     {
-      label: "Expected guest total",
-      value: `${formatCents(protection.expectedTotalPerRiderCents)} / rider if ${getIdealPodSizeSummary(money)} fill`,
+      label: "Expected guest cost",
+      value: `${formatCents(protection.expectedTotalPerRiderCents)} / rider if ${getIdealPodSizeSummary(hostRidingMoney)} fill`,
     },
     {
-      label: "Protected guest max",
-      value: `${formatCents(protection.protectedMaxChargePerRiderCents)} / rider if ${getMinimumLockedSummary(money)}`,
-    },
-    {
-      label: "Platform fee",
-      value: "10% of fare share",
+      label: "Max charge per guest",
+      value: `${formatCents(protection.protectedMaxChargePerRiderCents)} / rider if ${getMinimumLockedSummary(hostRidingMoney)}`,
     },
     {
       label: "Final charge",
@@ -2605,12 +2620,54 @@ function PreviewMoneyProtectionCard({ money }: { money: MoneyProtectionState }) 
 
       <div className="mt-3 grid gap-2 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
         <p className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-          Host can book only after the minimum locked riders authorize payment and the quote is within the {formatCents(approvedMaxCents)} approved max.
+          {rules.bookingRule}
         </p>
         <p className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-          Quote controls booking permission; final settlement uses the verified receipt.
+          {rules.settlementRule}
         </p>
       </div>
+    </section>
+  );
+}
+
+function PreviewBookingRulesCard({ peopleVehicle }: { peopleVehicle: PeopleVehicleState }) {
+  const rideOption = getRideOption(peopleVehicle.rideOption);
+  const rules = getRideTimingRules(peopleVehicle.rideOption);
+  const rows = [
+    {
+      label: "Ride option",
+      value: rideOption.title,
+    },
+    {
+      label: "Quote status",
+      value: rules.quoteStatus,
+    },
+    {
+      label: "Booking rule",
+      value: rules.bookingRule,
+    },
+    {
+      label: "Settlement rule",
+      value: rules.settlementRule,
+    },
+  ];
+
+  return (
+    <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+      <h2 className="text-lg font-black text-[var(--rp-text)]">Booking fare proof</h2>
+      <dl className="mt-3 grid gap-2">
+        {rows.map((row) => (
+          <div
+            key={row.label}
+            className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-3"
+          >
+            <dt className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-primary)]">
+              {row.label}
+            </dt>
+            <dd className="mt-1 text-sm font-black leading-5 text-[var(--rp-text)]">{row.value}</dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }
@@ -2703,10 +2760,11 @@ function ReviewPanelControls({
   canProceed: boolean;
   blockedReason?: string;
 }) {
-  const panelLabels = ["Money Protection", "Safety & Trust", "Preview your pod"];
+  const panelLabels = ["Pricing summary", "Money Protection", "Safety & Trust", "Preview your pod"];
   const isFirst = currentPanel === 0;
   const isLast = currentPanel === panelLabels.length - 1;
-  const nextBlocked = currentPanel === 0 && !canProceed;
+  const moneyProtectionPanelIndex = 1;
+  const nextBlocked = currentPanel === moneyProtectionPanelIndex && !canProceed;
 
   return (
     <div className="mt-4">
@@ -2718,13 +2776,13 @@ function ReviewPanelControls({
             aria-label={`Show ${label}`}
             aria-current={currentPanel === index ? "step" : undefined}
             onClick={() => {
-              if (!canProceed && index > currentPanel) return;
+              if (!canProceed && index > moneyProtectionPanelIndex) return;
               onPanelChange(index);
             }}
             className={cn(
               "h-2.5 w-2.5 rounded-full transition",
               currentPanel === index ? "w-7 bg-[var(--rp-primary)]" : "bg-[var(--rp-card-muted)]",
-              !canProceed && index > currentPanel ? "cursor-not-allowed opacity-45" : "",
+              !canProceed && index > moneyProtectionPanelIndex ? "cursor-not-allowed opacity-45" : "",
             )}
           />
         ))}
@@ -2785,6 +2843,8 @@ function DetailSummaryCard({
 }) {
   const pickup = pickupAddress.replace(",", "");
   const dropoff = dropoffAddress.replace(",", "");
+  const rideOption = getRideOption(peopleVehicle.rideOption);
+  const rideTimingRules = getRideTimingRules(peopleVehicle.rideOption);
   const rows = [
     {
       icon: UsersRound,
@@ -2794,12 +2854,22 @@ function DetailSummaryCard({
     {
       icon: CarFront,
       label: "Ride option",
-      value: `${peopleVehicle.vehicleType} / ${peopleVehicle.bags} bags`,
+      value: `${rideOption.title} / ${peopleVehicle.bags} bags`,
+    },
+    {
+      icon: Upload,
+      label: "Quote status",
+      value: rideTimingRules.quoteStatus,
     },
     {
       icon: ShieldCheck,
-      label: "Fare rule",
-      value: "Host can book only when required riders are payment-authorized and the quote is within approved max.",
+      label: "Booking rule",
+      value: rideTimingRules.bookingRule,
+    },
+    {
+      icon: ReceiptText,
+      label: "Settlement rule",
+      value: rideTimingRules.settlementRule,
     },
     {
       icon: MapPin,
@@ -2913,16 +2983,18 @@ function ReviewPodStep({
 
         <div className="mt-5 grid gap-4">
           {reviewPanel === 0 ? (
-            <>
-              <PricingSummaryCard money={moneyProtection} />
-              <MoneyProtectionPanel
-                money={moneyProtection}
-                onMoneyChange={setMoneyProtection}
-              />
-            </>
+            <PricingSummaryCard money={moneyProtection} />
           ) : null}
 
           {reviewPanel === 1 ? (
+            <MoneyProtectionPanel
+              money={moneyProtection}
+              peopleVehicle={peopleVehicle}
+              onMoneyChange={setMoneyProtection}
+            />
+          ) : null}
+
+          {reviewPanel === 2 ? (
             <SafetyTrustPanel
               genderMode={genderMode}
               accessMode={accessMode}
@@ -2931,7 +3003,7 @@ function ReviewPodStep({
             />
           ) : null}
 
-          {reviewPanel === 2 ? (
+          {reviewPanel === 3 ? (
             <section className="grid gap-4">
               <div className="text-center">
                 <h2 className="text-xl font-black text-[var(--rp-text)]">Preview your pod</h2>
@@ -2945,7 +3017,8 @@ function ReviewPodStep({
                 dateTime={dateTime}
                 peopleVehicle={peopleVehicle}
               />
-              <PreviewMoneyProtectionCard money={moneyProtection} />
+              <PreviewMoneyProtectionCard money={moneyProtection} peopleVehicle={peopleVehicle} />
+              <PreviewBookingRulesCard peopleVehicle={peopleVehicle} />
               <DetailSummaryCard
                 routeFrom={routeFrom}
                 routeTo={routeTo}

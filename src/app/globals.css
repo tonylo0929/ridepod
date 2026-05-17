@@ -106,6 +106,31 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
+body p {
+  text-wrap: pretty;
+}
+
+body p:not(.text-left):not(.text-center):not(.text-right):not([class*="uppercase"]):not([class*="tracking"]) {
+  text-align: justify;
+  text-align-last: start;
+  text-justify: inter-word;
+}
+
+.text-left p,
+body p.text-left {
+  text-align: left;
+}
+
+.text-center p,
+body p.text-center {
+  text-align: center;
+}
+
+.text-right p,
+body p.text-right {
+  text-align: right;
+}
+
 * {
   box-sizing: border-box;
 }
