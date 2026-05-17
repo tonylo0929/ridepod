@@ -490,6 +490,11 @@ assert.ok(moneySafety.RISK_TYPES.includes("QUOTE_RECEIPT_MISMATCH"));
 assert.ok(moneySafety.RISK_TYPES.includes("MISLEADING_PROOF"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("QUOTE_PROOF_CERTIFIED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RECEIPT_PROOF_CERTIFIED"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDE_INSTANCE_QUOTE_SUBMITTED"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDE_INSTANCE_QUOTE_APPROVED"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDE_INSTANCE_QUOTE_ABOVE_CAP"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDE_INSTANCE_METER_PROOF_SUBMITTED"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDE_INSTANCE_PROOF_CERTIFIED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("STRIPE_CONNECT_ACCOUNT_CREATED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("STRIPE_CONNECT_ONBOARDING_LINK_CREATED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("HOST_REIMBURSEMENT_SCHEDULED"));
@@ -501,6 +506,7 @@ const moneySafetyUiSource = readFileSync("src/components/money-safety-ui.tsx", "
 const settlementPageSource = readFileSync("src/components/settlement-page.tsx", "utf8");
 const uiSource = readFileSync("src/components/ui.tsx", "utf8");
 const mockDataSource = readFileSync("src/lib/mock-data.ts", "utf8");
+const recurringInstanceProofFlowSource = readFileSync("src/components/recurring-instance-proof-flow.tsx", "utf8");
 const podDetailSource = readFileSync("src/app/(app)/pods/[id]/page.tsx", "utf8");
 const createPodChooseTypeSource = readFileSync("src/components/create-pod-choose-type.tsx", "utf8");
 const joinFlowSource = readFileSync("src/components/join-flow.tsx", "utf8");
@@ -816,7 +822,41 @@ assert.ok(mockDataSource.includes("recurringPattern: \"back_and_forth\""));
 assert.ok(mockDataSource.includes("recurringPattern: \"one_way\""));
 assert.ok(mockDataSource.includes("rideOption: \"ride_app_fixed_quote\""));
 assert.ok(mockDataSource.includes("rideOption: \"taxi_meter\""));
+assert.ok(mockDataSource.includes("recurringTemplateId"));
+assert.ok(mockDataSource.includes("proofType: \"QUOTE_SCREENSHOT\""));
+assert.ok(mockDataSource.includes("proofType: \"METER_PROOF\""));
+assert.ok(mockDataSource.includes("proofStatus: \"APPROVED\""));
+assert.ok(mockDataSource.includes("bookingFareCapCents"));
+assert.ok(mockDataSource.includes("certificationTextVersion: \"ride-instance-proof-v1\""));
+assert.ok(uiSource.includes("/host?rideInstanceId="));
+assert.ok(uiSource.includes("guests locked"));
 assert.equal(uiSource.includes("FREQ=WEEKLY"), false);
+for (const recurringInstanceCopy of [
+  "Ride instance",
+  "Upload fresh quote",
+  "Upload a quote or fare screenshot for this ride before booking.",
+  "Provider / app name",
+  "Quote amount, cap",
+  "I confirm this quote screenshot is real, accurate, unaltered, and belongs to this ride.",
+  "False or misleading proof may lead to booking denial, reimbursement denial, account suspension, and manual review.",
+  "Submit quote",
+  "Quote approved",
+  "The quote is within the booking fare cap. You may book the external ride.",
+  "Quote above booking fare cap",
+  "Guests must approve a higher max before this ride can be RidePod-protected.",
+  "Request higher max approval",
+  "Fresh quote required before booking this ride.",
+  "This ride instance has its own proof, booking, final receipt, and settlement.",
+  "Ready for taxi meter ride",
+  "Meet the guests and take a metered taxi. Upload meter proof or taxi receipt after the ride.",
+  "Upload a clear meter photo or taxi receipt showing the final fare.",
+  "I confirm this meter proof or receipt is real, accurate, unaltered, and belongs to this ride.",
+]) {
+  assert.ok(
+    recurringInstanceProofFlowSource.includes(recurringInstanceCopy),
+    `Missing recurring ride instance proof copy: ${recurringInstanceCopy}`,
+  );
+}
 assert.equal(`${uiSource}\n${moneySafetyUiSource}`.includes("gal only"), false);
 assert.equal(`${uiSource}\n${moneySafetyUiSource}`.includes("boy and gal"), false);
 

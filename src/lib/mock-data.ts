@@ -52,15 +52,27 @@ export type RecurringRideStatus =
   | "waiting_for_guests"
   | "guests_locking"
   | "quote_needed"
+  | "quote_under_review"
   | "ready_to_book"
   | "ride_booked"
+  | "ready_for_taxi_meter"
   | "meter_proof_needed"
   | "receipt_pending"
   | "settlement_ready"
   | "completed";
 
+export type RideInstanceProofType = "QUOTE_SCREENSHOT" | "METER_PROOF" | "FINAL_RECEIPT";
+export type RideInstanceProofStatus =
+  | "NOT_REQUIRED"
+  | "NEEDED"
+  | "SUBMITTED"
+  | "APPROVED"
+  | "REJECTED"
+  | "NEEDS_MORE_INFO";
+
 export type RecurringRideInstancePreview = {
   id: string;
+  recurringTemplateId?: string;
   instanceDate: string;
   displayDate: string;
   departureTime: string;
@@ -68,6 +80,13 @@ export type RecurringRideInstancePreview = {
   originLabel: string;
   destinationLabel: string;
   status: RecurringRideStatus;
+  proofType?: RideInstanceProofType;
+  proofStatus?: RideInstanceProofStatus;
+  quotedFareCents?: number;
+  bookingFareCapCents?: number;
+  receiptFareCents?: number;
+  proofCertified?: boolean;
+  certificationTextVersion?: string;
 };
 
 export type RidePod = {
@@ -493,6 +512,7 @@ export const ridePods: RidePod[] = [
     upcomingRideInstances: [
       {
         id: "campus-commute-442-2026-05-19-outbound",
+        recurringTemplateId: "campus-commute-442",
         instanceDate: "2026-05-19",
         displayDate: "Tue May 19",
         departureTime: "8:00 AM",
@@ -500,9 +520,15 @@ export const ridePods: RidePod[] = [
         originLabel: "USC Village",
         destinationLabel: "LAX Terminal 3",
         status: "quote_needed",
+        proofType: "QUOTE_SCREENSHOT",
+        proofStatus: "NEEDED",
+        bookingFareCapCents: 3400,
+        proofCertified: false,
+        certificationTextVersion: "ride-instance-proof-v1",
       },
       {
         id: "campus-commute-442-2026-05-19-return",
+        recurringTemplateId: "campus-commute-442",
         instanceDate: "2026-05-19",
         displayDate: "Tue May 19",
         departureTime: "6:00 PM",
@@ -510,9 +536,16 @@ export const ridePods: RidePod[] = [
         originLabel: "LAX Terminal 3",
         destinationLabel: "USC Village",
         status: "ready_to_book",
+        proofType: "QUOTE_SCREENSHOT",
+        proofStatus: "APPROVED",
+        quotedFareCents: 3200,
+        bookingFareCapCents: 3400,
+        proofCertified: true,
+        certificationTextVersion: "ride-instance-proof-v1",
       },
       {
         id: "campus-commute-442-2026-05-21-outbound",
+        recurringTemplateId: "campus-commute-442",
         instanceDate: "2026-05-21",
         displayDate: "Thu May 21",
         departureTime: "8:00 AM",
@@ -520,9 +553,15 @@ export const ridePods: RidePod[] = [
         originLabel: "USC Village",
         destinationLabel: "LAX Terminal 3",
         status: "guests_locking",
+        proofType: "QUOTE_SCREENSHOT",
+        proofStatus: "NEEDED",
+        bookingFareCapCents: 3400,
+        proofCertified: false,
+        certificationTextVersion: "ride-instance-proof-v1",
       },
       {
         id: "campus-commute-442-2026-05-21-return",
+        recurringTemplateId: "campus-commute-442",
         instanceDate: "2026-05-21",
         displayDate: "Thu May 21",
         departureTime: "6:00 PM",
@@ -530,6 +569,11 @@ export const ridePods: RidePod[] = [
         originLabel: "LAX Terminal 3",
         destinationLabel: "USC Village",
         status: "waiting_for_guests",
+        proofType: "QUOTE_SCREENSHOT",
+        proofStatus: "NEEDED",
+        bookingFareCapCents: 3400,
+        proofCertified: false,
+        certificationTextVersion: "ride-instance-proof-v1",
       },
     ],
   },
@@ -637,6 +681,7 @@ export const ridePods: RidePod[] = [
     upcomingRideInstances: [
       {
         id: "taxi-meter-weekly-demo-2026-05-20-outbound",
+        recurringTemplateId: "taxi-meter-weekly-demo",
         instanceDate: "2026-05-20",
         displayDate: "Wed May 20",
         departureTime: "7:45 AM",
@@ -644,16 +689,27 @@ export const ridePods: RidePod[] = [
         originLabel: "Campus Center",
         destinationLabel: "Downtown Station",
         status: "meter_proof_needed",
+        proofType: "METER_PROOF",
+        proofStatus: "NEEDED",
+        bookingFareCapCents: 5200,
+        proofCertified: false,
+        certificationTextVersion: "ride-instance-proof-v1",
       },
       {
         id: "taxi-meter-weekly-demo-2026-05-27-outbound",
+        recurringTemplateId: "taxi-meter-weekly-demo",
         instanceDate: "2026-05-27",
         displayDate: "Wed May 27",
         departureTime: "7:45 AM",
         legType: "outbound",
         originLabel: "Campus Center",
         destinationLabel: "Downtown Station",
-        status: "waiting_for_guests",
+        status: "ready_for_taxi_meter",
+        proofType: "METER_PROOF",
+        proofStatus: "NOT_REQUIRED",
+        bookingFareCapCents: 5200,
+        proofCertified: false,
+        certificationTextVersion: "ride-instance-proof-v1",
       },
     ],
   },
@@ -855,6 +911,15 @@ export function getHostedPods(userId = currentUserId) {
   return ridePods.filter(
     (pod) => pod.hostUserId === userId || pod.backupHostUserId === userId,
   );
+}
+
+export function getRecurringRideInstance(rideInstanceId: string) {
+  for (const pod of ridePods) {
+    const rideInstance = pod.upcomingRideInstances?.find((instance) => instance.id === rideInstanceId);
+    if (rideInstance) return { pod, rideInstance };
+  }
+
+  return null;
 }
 
 export function formatMoney(value: number) {

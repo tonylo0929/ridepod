@@ -10,7 +10,8 @@ import {
   UsersRound,
 } from "lucide-react";
 import { Avatar, Badge, ProgressBar, StatusBadge, cn } from "@/components/ui";
-import { formatMoney, getHostedPods, getUser, type RidePod } from "@/lib/mock-data";
+import { RecurringInstanceProofFlow } from "@/components/recurring-instance-proof-flow";
+import { formatMoney, getHostedPods, getRecurringRideInstance, getUser, type RidePod } from "@/lib/mock-data";
 import { HostQuoteUploadPanel } from "@/components/money-safety-ui";
 
 function getReadyMembers(pod: RidePod) {
@@ -184,8 +185,16 @@ function HostPodCard({ pod }: { pod: RidePod }) {
   );
 }
 
-export default function HostDashboardPage() {
+export default async function HostDashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ rideInstanceId?: string }>;
+}) {
+  const params = searchParams ? await searchParams : {};
   const pods = getHostedPods();
+  const selectedRideInstance = params.rideInstanceId
+    ? getRecurringRideInstance(params.rideInstanceId)
+    : null;
   const readyToBookCount = pods.filter(
     (pod) => pod.moneyStatus === "host_can_book" || pod.status === "host_booking",
   ).length;
@@ -224,6 +233,13 @@ export default function HostDashboardPage() {
         <HostMetric label="Ready to book" value={String(readyToBookCount)} icon={CheckCircle2} />
         <HostMetric label="Receipts due" value={String(receiptCount)} icon={CalendarClock} />
       </section>
+
+      {selectedRideInstance ? (
+        <RecurringInstanceProofFlow
+          pod={selectedRideInstance.pod}
+          rideInstance={selectedRideInstance.rideInstance}
+        />
+      ) : null}
 
       <section className="grid gap-4">
         {pods.map((pod) => (

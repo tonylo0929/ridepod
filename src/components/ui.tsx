@@ -82,8 +82,10 @@ const recurringRideStatusLabels: Record<NonNullable<RidePod["upcomingRideInstanc
   waiting_for_guests: "Waiting for guests",
   guests_locking: "Guests locking",
   quote_needed: "Quote needed",
+  quote_under_review: "Quote under review",
   ready_to_book: "Ready to book",
   ride_booked: "Ride booked",
+  ready_for_taxi_meter: "Ready for taxi meter",
   meter_proof_needed: "Meter proof needed",
   receipt_pending: "Receipt pending",
   settlement_ready: "Settlement ready",
@@ -94,8 +96,10 @@ const recurringRideChipLabels: Record<NonNullable<RidePod["upcomingRideInstances
   waiting_for_guests: "Locking",
   guests_locking: "Locking",
   quote_needed: "Quote needed",
-  ready_to_book: "Ready",
-  ride_booked: "Ready",
+  quote_under_review: "Under review",
+  ready_to_book: "Ready to book",
+  ride_booked: "Ride booked",
+  ready_for_taxi_meter: "Taxi ready",
   meter_proof_needed: "Receipt pending",
   receipt_pending: "Receipt pending",
   settlement_ready: "Settled",
@@ -137,20 +141,22 @@ function getRecurringPrimaryAction(pod: RidePod) {
     return { label: "Review recurring pod", href: `/pods/${pod.id}` };
   }
 
+  const instanceHref = `/host?rideInstanceId=${encodeURIComponent(nextRide.id)}`;
+
   if (isTaxiMeter && (nextRide.status === "meter_proof_needed" || nextRide.status === "receipt_pending")) {
-    return { label: "Upload meter proof", href: `/pods/${pod.id}/settlement` };
+    return { label: "Upload meter proof", href: instanceHref };
   }
 
   if (nextRide.status === "quote_needed") {
-    return { label: "Upload quote", href: `/pods/${pod.id}/settlement` };
+    return { label: "Upload quote", href: instanceHref };
   }
 
   if (nextRide.status === "ready_to_book") {
-    return { label: "Mark booked", href: `/pods/${pod.id}/settlement` };
+    return { label: "Mark booked", href: instanceHref };
   }
 
   if (nextRide.status === "receipt_pending" || nextRide.status === "settlement_ready" || nextRide.status === "completed") {
-    return { label: "View settlement", href: `/pods/${pod.id}/settlement` };
+    return { label: "View settlement", href: instanceHref };
   }
 
   return { label: "View pod", href: `/pods/${pod.id}` };
@@ -221,7 +227,7 @@ function RecurringPodCard({ pod, compact = false }: { pod: RidePod; compact?: bo
           <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
             <Users className="h-5 w-5 text-[var(--rp-primary)]" />
             <p className="mt-2 text-sm font-black text-[var(--rp-text)]">
-              {pod.seatsFilled}/{pod.seatsTotal} seats owned
+              {pod.seatsFilled}/{pod.seatsTotal} guests locked
             </p>
             <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted)]">
               {remaining > 0 ? `${remaining} open` : "Full"} for the template.
