@@ -226,6 +226,8 @@ function failedSettlement(error: string, pod: ProtectedPod | null = null): Settl
   };
 }
 
+const receiptProofCertificationTextVersion = "receipt-proof-certification-v1";
+
 export function uploadFinalReceipt(
   hostUserId: string,
   podId: string,
@@ -273,9 +275,24 @@ export function uploadFinalReceipt(
   pod.updatedAt = now;
 
   const auditEvents = recordAudit([
+    makeAuditEvent("RECEIPT_PROOF_CERTIFIED", {
+      podId,
+      userId: hostUserId,
+      createdAt: now,
+      eventPayload: {
+        podId,
+        userId: hostUserId,
+        proofType: "FINAL_RECEIPT_OR_METER_PROOF",
+        certificationTextVersion: receiptProofCertificationTextVersion,
+        submittedAt: now,
+        receiptFileId: input.receiptFileId ?? null,
+        receiptFileUrl: input.receiptFileUrl ?? null,
+      },
+    }),
     makeAuditEvent("RECEIPT_UPLOADED", {
       podId,
       userId: hostUserId,
+      createdAt: now,
       eventPayload: {
         providerName: input.providerName,
         fareTotalCents: input.fareTotalCents,

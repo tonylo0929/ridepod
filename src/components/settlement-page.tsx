@@ -323,6 +323,8 @@ export function ReceiptUploadCard({
   setSelectedReceiptFile: (fileName: string | null) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [showReceiptCertification, setShowReceiptCertification] = useState(false);
+  const [receiptCertified, setReceiptCertified] = useState(false);
   const displayName = fileName ?? mockFileName;
 
   return (
@@ -350,7 +352,10 @@ export function ReceiptUploadCard({
 
       <button
         type="button"
-        onClick={() => inputRef.current?.click()}
+        onClick={() => {
+          setReceiptCertified(false);
+          setShowReceiptCertification(true);
+        }}
         className="mt-4 flex w-full items-center gap-4 rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-left transition hover:bg-[var(--rp-card-muted)]"
       >
         <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
@@ -386,6 +391,69 @@ export function ReceiptUploadCard({
               {status}
             </button>
           ))}
+        </div>
+      ) : null}
+      {showReceiptCertification ? (
+        <div
+          className="fixed inset-0 z-[90] grid place-items-center bg-[rgba(3,7,18,0.68)] px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="receipt-certification-title"
+        >
+          <section className="w-full max-w-[390px] rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
+            <div className="flex items-start gap-4">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+                <ReceiptText className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 id="receipt-certification-title" className="text-2xl font-black leading-tight">
+                  Confirm final receipt
+                </h2>
+                <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                  This receipt will be used to calculate the final split and host reimbursement.
+                </p>
+              </div>
+            </div>
+
+            <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-sm font-black leading-6 text-[var(--rp-muted-strong)]">
+              <input
+                type="checkbox"
+                checked={receiptCertified}
+                onChange={(event) => setReceiptCertified(event.target.checked)}
+                className="mt-1 h-4 w-4 accent-[var(--rp-primary)]"
+              />
+              <span>I confirm this receipt or meter proof is real, accurate, unaltered, and belongs to this completed ride.</span>
+            </label>
+
+            <p className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] px-3 py-2 text-xs font-bold leading-5 text-[var(--rp-warning)]">
+              False or misleading proof may lead to reimbursement denial, account suspension, dispute review, and further action where required.
+            </p>
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setReceiptCertified(false);
+                  setShowReceiptCertification(false);
+                }}
+                className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!receiptCertified}
+                onClick={() => {
+                  if (!receiptCertified) return;
+                  setShowReceiptCertification(false);
+                  inputRef.current?.click();
+                }}
+                className="min-h-12 rounded-2xl bg-[var(--rp-gradient-primary)] text-sm font-black text-[var(--rp-primary-text)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Submit receipt
+              </button>
+            </div>
+          </section>
         </div>
       ) : null}
     </section>

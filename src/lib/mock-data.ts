@@ -60,6 +60,7 @@ export type RidePod = {
   timeFlexibility: string;
   recurrenceRule?: string;
   vehicleType: "UberX" | "UberXL" | "Lyft" | "Taxi" | "Private Car";
+  rideOption?: "ride_app_fixed_quote" | "taxi_meter";
   maxFare: number;
   estimatedFare: number;
   estimatedShare: number;

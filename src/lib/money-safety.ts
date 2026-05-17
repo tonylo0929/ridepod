@@ -244,6 +244,7 @@ export const RISK_TYPES = [
   "HOST_BOOKED_BEFORE_AUTH",
   "HOST_CANCELED_AFTER_BOOKING",
   "QUOTE_RECEIPT_MISMATCH",
+  "MISLEADING_PROOF",
   "STRIPE_PAYMENT_DISPUTE",
 ] as const;
 
@@ -300,6 +301,7 @@ export const AUDIT_EVENT_TYPES = [
   "QUOTE_UPLOADED",
   "QUOTE_APPROVED",
   "QUOTE_ABOVE_MAX",
+  "QUOTE_PROOF_CERTIFIED",
   "HOST_CAN_BOOK",
   "HOST_BOOKED_EXTERNAL_RIDE",
   "HOST_CANCELED_BEFORE_BOOKING",
@@ -309,6 +311,7 @@ export const AUDIT_EVENT_TYPES = [
   "PARTICIPANT_CANCELED",
   "PARTICIPANT_NO_SHOW",
   "RECEIPT_UPLOADED",
+  "RECEIPT_PROOF_CERTIFIED",
   "RECEIPT_VERIFIED",
   "SETTLEMENT_CREATED",
   "SETTLEMENT_FINALIZED",
@@ -432,6 +435,7 @@ export type ProtectedPod = {
   id: string;
   hostUserId: string;
   scheduleType?: "ONE_TIME" | "RECURRING";
+  rideOption?: "RIDE_APP_FIXED_QUOTE" | "TAXI_METER";
   recurringTemplateId?: string | null;
   occurrenceDate?: string | null;
   isRecurringOccurrence?: boolean;
@@ -871,6 +875,7 @@ export function canHostBook(
   const reasons: string[] = [];
   const currentHostId = pod.replacementHostUserId ?? pod.hostUserId;
   const latestQuote = getLatestFreshQuote(pod);
+  const quoteRequired = pod.rideOption !== "TAXI_METER";
   const confirmedCount = getConfirmedMembers(pod).reduce((sum, member) => sum + member.seatCount, 0);
   const activeMembers = getActiveMembers(pod);
 
@@ -883,13 +888,13 @@ export function canHostBook(
   if (activeMembers.some((member) => !isPaymentAuthorized(member))) {
     reasons.push("All active participants must be payment-authorized.");
   }
-  if (!latestQuote) reasons.push("Upload a fresh quote screenshot before booking.");
-  if (latestQuote && !["AUTO_APPROVED", "QUOTE_APPROVED"].includes(latestQuote.reviewState)) {
+  if (quoteRequired && !latestQuote) reasons.push("Upload a fresh quote screenshot before booking.");
+  if (quoteRequired && latestQuote && !["AUTO_APPROVED", "QUOTE_APPROVED"].includes(latestQuote.reviewState)) {
     reasons.push("Quote needs approval before protected booking.");
   }
 
   const approvedMax = pod.higherMaxApprovedCents ?? pod.approvedMaxTotalFareCents;
-  if (latestQuote && latestQuote.quotedFareCents > approvedMax) {
+  if (quoteRequired && latestQuote && latestQuote.quotedFareCents > approvedMax) {
     reasons.push("Quote is above approved max. Riders must approve a higher max.");
   }
 
@@ -975,14 +980,30 @@ export function uploadQuoteScreenshot(
   };
   const recomputed = recomputePodLockState(withQuote);
   const auditEvents = [
+    makeAuditEvent("QUOTE_PROOF_CERTIFIED", {
+      podId: pod.id,
+      userId: input.hostUserId,
+      createdAt: submittedAt,
+      eventPayload: {
+        podId: pod.id,
+        userId: input.hostUserId,
+        proofType: "QUOTE_SCREENSHOT",
+        certificationTextVersion: "quote-proof-certification-v1",
+        submittedAt,
+        screenshotFileId: input.screenshotFileId ?? null,
+        screenshotFileUrl: input.screenshotFileUrl ?? null,
+      },
+    }),
     makeAuditEvent("QUOTE_UPLOADED", {
       podId: pod.id,
       userId: input.hostUserId,
+      createdAt: submittedAt,
       eventPayload: { providerName: input.providerName, quotedFareCents: input.quotedFareCents },
     }),
     makeAuditEvent(reviewState === "AUTO_APPROVED" ? "QUOTE_APPROVED" : "QUOTE_ABOVE_MAX", {
       podId: pod.id,
       userId: input.hostUserId,
+      createdAt: submittedAt,
       eventPayload: { approvedMaxTotalFareCents: pod.approvedMaxTotalFareCents },
     }),
     ...recomputed.auditEvents,

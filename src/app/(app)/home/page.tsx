@@ -54,6 +54,7 @@ function SearchFilterBar() {
   const fields = [
     ["From", "From"],
     ["To", "To"],
+    ["Type", "One-off / Recurring"],
     ["Date", "May 14"],
     ["Time", "Anytime"],
   ];
@@ -61,13 +62,14 @@ function SearchFilterBar() {
   return (
     <div className="relative mt-7 overflow-hidden rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] shadow-[var(--rp-shadow-soft)] backdrop-blur-xl">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.10),transparent_46%)]" />
-      <div className="relative grid grid-cols-4">
+      <div className="relative grid grid-cols-2 sm:grid-cols-5">
         {fields.map(([label, value], index) => (
           <div
             key={label}
             className={cn(
               "min-w-0 px-3 py-4 sm:px-4",
-              index > 0 && "border-l border-[var(--rp-border)]",
+              index > 0 && "sm:border-l sm:border-[var(--rp-border)]",
+              index > 1 && "border-t border-[var(--rp-border)] sm:border-t-0",
             )}
           >
             <p className="truncate text-xs font-medium text-[var(--rp-muted)]">{label}</p>

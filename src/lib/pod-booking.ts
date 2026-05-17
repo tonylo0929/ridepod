@@ -42,6 +42,7 @@ export type ExternalBookingResult = {
 
 const protectedBookingWarning =
   "You can book at your own risk, but this ride is not RidePod-protected until participants are payment-authorized. RidePod cannot guarantee reimbursement for unconfirmed seats.";
+const quoteProofCertificationTextVersion = "quote-proof-certification-v1";
 
 const quoteUploadAllowedStates: PodLifecycleState[] = [
   "FORMING",
@@ -96,6 +97,7 @@ function buildBookingPermission(
   const now = options.now ?? new Date().toISOString();
   const reasons: string[] = [];
   const latestQuote = getLatestFreshQuote(pod, now);
+  const quoteRequired = pod.rideOption !== "TAXI_METER";
   const confirmedCount = getConfirmedSeatCount(pod);
   const activeMembers = getActiveMembers(pod);
   const currentHostId = getCurrentHostId(pod);
@@ -118,9 +120,9 @@ function buildBookingPermission(
   if (activeMembers.some((member) => !isMemberPaymentConfirmed(member))) {
     reasons.push("All active participants must be payment-authorized.");
   }
-  if (!latestQuote) {
+  if (quoteRequired && !latestQuote) {
     reasons.push("Upload a fresh quote screenshot before protected booking.");
-  } else {
+  } else if (quoteRequired && latestQuote) {
     if (!["AUTO_APPROVED", "QUOTE_APPROVED"].includes(latestQuote.reviewState)) {
       reasons.push("Quote needs approval before protected booking.");
     }
@@ -207,9 +209,24 @@ export function uploadQuoteScreenshot(
   pod.updatedAt = now;
 
   const auditEvents = recordAudit([
+    makeAuditEvent("QUOTE_PROOF_CERTIFIED", {
+      podId,
+      userId: hostUserId,
+      createdAt: now,
+      eventPayload: {
+        podId,
+        userId: hostUserId,
+        proofType: "QUOTE_SCREENSHOT",
+        certificationTextVersion: quoteProofCertificationTextVersion,
+        submittedAt: now,
+        screenshotFileId: input.screenshotFileId ?? null,
+        screenshotFileUrl: input.screenshotFileUrl ?? null,
+      },
+    }),
     makeAuditEvent("QUOTE_UPLOADED", {
       podId,
       userId: hostUserId,
+      createdAt: now,
       eventPayload: {
         providerName: input.providerName,
         quotedFareCents: input.quotedFareCents,
@@ -219,6 +236,7 @@ export function uploadQuoteScreenshot(
     makeAuditEvent(reviewState === "AUTO_APPROVED" ? "QUOTE_APPROVED" : "QUOTE_ABOVE_MAX", {
       podId,
       userId: hostUserId,
+      createdAt: now,
       eventPayload: {
         quotedFareCents: input.quotedFareCents,
         approvedMaxTotalFareCents: pod.approvedMaxTotalFareCents,

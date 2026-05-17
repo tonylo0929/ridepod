@@ -20,11 +20,9 @@ import {
   MapPin,
   Minus,
   Plus,
-  ReceiptText,
   RefreshCcw,
   ShieldCheck,
   Trash2,
-  Upload,
   UserPlus,
   UsersRound,
 } from "lucide-react";
@@ -38,13 +36,10 @@ import {
   type RouteRiskLevel,
 } from "@/lib/fare-estimates";
 import {
-  MINIMUM_PLATFORM_FEE_CENTS,
-  PLATFORM_FEE_RATE_BPS,
   calculateMoneyProtection,
 } from "@/lib/money-protection";
 import {
   WEEKDAYS,
-  createRecurringTemplateRRule,
   generateRecurringOccurrences,
   type RecurringPattern,
   type RecurringPodTemplate,
@@ -55,6 +50,7 @@ import {
 
 type PodType = "scheduled" | "recurring";
 type CreateStep = 0 | 1 | 2 | 3 | 4 | 5;
+type RecurringSchedulePage = "rides" | "settings";
 type RouteStop = {
   id: number;
   address: string;
@@ -154,6 +150,7 @@ const rideOptions: Array<{
   title: string;
   description: string;
   helper: string;
+  recurringHelper: string;
   icon: typeof CarFront;
 }> = [
   {
@@ -161,13 +158,15 @@ const rideOptions: Array<{
     title: "Ride app / fixed quote",
     description: "Host books through an app or provider that shows the fare before booking.",
     helper: "Fresh quote required before booking.",
+    recurringHelper: "Fresh quote required before each ride booking.",
     icon: ShieldCheck,
   },
   {
     id: "taxi_meter",
     title: "Taxi meter",
-    description: "Host takes a metered taxi. RidePod uses the taxi baseline to set the approved max.",
-    helper: "Receipt or meter proof required after ride.",
+    description: "Host takes a street taxi with a meter. RidePod uses the taxi baseline to set the booking fare cap.",
+    helper: "Meter photo or receipt required after ride.",
+    recurringHelper: "Meter proof or taxi receipt required after each ride.",
     icon: CarFront,
   },
 ];
@@ -186,10 +185,10 @@ const rideConfirmationCopy: Record<ActiveRideOptionId, { title: string; body: st
     title: "Confirm Taxi Meter Ride",
     body: [
       "The host takes a metered taxi outside RidePod.",
-      "RidePod uses the taxi baseline to set the approved max. Final settlement uses the verified receipt or meter proof.",
+      "RidePod uses the taxi baseline to set the booking fare cap. Final settlement uses verified meter proof or receipt.",
     ],
     checkbox:
-      "I understand the taxi fare is settled from verified receipt or meter proof, within the approved max rules.",
+      "I understand the taxi fare is settled from verified meter proof or receipt, within the approved max rules.",
   },
 };
 
@@ -203,18 +202,34 @@ function getRideOption(rideOption: RideOptionId) {
   return rideOptions.find((option) => option.id === normalizedRideOption) ?? rideOptions[0];
 }
 
-function getRideTimingRules(rideOption: RideOptionId) {
+function getRideProofCopy(rideOption: RideOptionId) {
   return normalizeRideOptionId(rideOption) === "taxi_meter"
     ? {
-        quoteStatus: "No upfront quote required",
-        bookingRule: "RidePod uses the taxi baseline and approved max before booking.",
-        settlementRule: "Receipt or meter proof required after ride.",
+        moneyIntro:
+          "RidePod uses the taxi baseline to set a fare cap. Guests authorize the max before the ride. Final charge uses verified meter proof or receipt.",
+        fareCapHelper: "RidePod taxi baseline sets this booking fare cap.",
+        bookingProofStatus: "No upfront quote required",
+        bookingProofHelper: "Meter photo or taxi receipt required after ride.",
+        reviewRows: [
+          { label: "Ride option", value: "Taxi meter" },
+          { label: "Booking proof", value: "No upfront quote required" },
+          {
+            label: "Booking rule",
+            value: "Guests authorize the max charge before the ride. RidePod uses the taxi baseline as the booking fare cap.",
+          },
+          { label: "Settlement rule", value: "Final settlement uses verified meter proof or receipt." },
+        ],
       }
     : {
-        quoteStatus: "Upload later before booking",
-        bookingRule:
-          "Host can book after the minimum locked guests authorize payment and the quote is within the approved max.",
-        settlementRule: "Final settlement uses the verified receipt.",
+        moneyIntro:
+          "RidePod sets a fare cap. Host uploads proof before booking. Final charge uses the verified receipt.",
+        fareCapHelper: "Quote must stay within this before host books.",
+        bookingProofStatus: "Required screenshot later",
+        bookingProofHelper: "Fresh quote after guests lock.",
+        reviewRows: [
+          { label: "Booking proof", value: "Required screenshot later" },
+          { label: "Final charge", value: "Uses verified receipt and may be lower" },
+        ],
       };
 }
 
@@ -371,10 +386,6 @@ function sortedWeekdays(weekdays: Weekday[]) {
   return [...new Set(weekdays)].sort((a, b) => WEEKDAYS.indexOf(a) - WEEKDAYS.indexOf(b));
 }
 
-function getWeekdayLabel(weekday: Weekday) {
-  return recurringWeekdayOptions.find((option) => option.id === weekday)?.label ?? weekday;
-}
-
 function getBaseRouteLabel(value: string, fallback: string) {
   return routePointSummary(value, fallback);
 }
@@ -420,7 +431,7 @@ function getRecurringLegsForSelection({
   weekdays.forEach((dayOfWeek) => {
     const outbound = dateTime.recurringLegs.find(
       (leg) => leg.dayOfWeek === dayOfWeek && leg.legType === "OUTBOUND",
-    );
+    ) ?? dateTime.recurringLegs.find((leg) => leg.legType === "OUTBOUND");
     legs.push(
       defaultLegForDay({
         dayOfWeek,
@@ -434,7 +445,7 @@ function getRecurringLegsForSelection({
     if (dateTime.recurringPattern === "BACK_AND_FORTH") {
       const returnLeg = dateTime.recurringLegs.find(
         (leg) => leg.dayOfWeek === dayOfWeek && leg.legType === "RETURN",
-      );
+      ) ?? dateTime.recurringLegs.find((leg) => leg.legType === "RETURN");
       legs.push(
         defaultLegForDay({
           dayOfWeek,
@@ -450,7 +461,7 @@ function getRecurringLegsForSelection({
   return legs;
 }
 
-function validateRecurringSchedule(dateTime: DateTimeState, pickupAddress: string, dropoffAddress: string) {
+function validateRecurringRideSchedule(dateTime: DateTimeState, pickupAddress: string, dropoffAddress: string) {
   if (dateTime.recurringWeekdays.length === 0) return "Select at least one repeat day.";
 
   const legs = getRecurringLegsForSelection({ dateTime, pickupAddress, dropoffAddress });
@@ -479,6 +490,18 @@ function validateRecurringSchedule(dateTime: DateTimeState, pickupAddress: strin
     const key = `${leg.dayOfWeek}-${leg.departureTime}`;
     if (seen.has(key)) return "Return time should be after outbound time.";
     seen.add(key);
+  }
+
+  return null;
+}
+
+function validateRecurringDateSettings(dateTime: DateTimeState) {
+  if (!dateTime.recurringStartDate.trim()) return "Start date is required.";
+  if (dateTime.recurringEndMode === "after" && dateTime.recurringOccurrenceLimit <= 0) {
+    return "Number of rides is required.";
+  }
+  if (dateTime.recurringEndMode === "on_date" && !dateTime.recurringEndDate.trim()) {
+    return "End date is required.";
   }
 
   return null;
@@ -934,24 +957,28 @@ function RouteStopsStep({
   pickupAddress,
   dropoffAddress,
   stops,
+  recurringPattern,
   onBack,
   onPickupChange,
   onDropoffChange,
   onAddStop,
   onStopChange,
   onRemoveStop,
+  onRecurringPatternChange,
   onContinue,
 }: {
   podType: PodType;
   pickupAddress: string;
   dropoffAddress: string;
   stops: RouteStop[];
+  recurringPattern: RecurringPattern;
   onBack: () => void;
   onPickupChange: (value: string) => void;
   onDropoffChange: (value: string) => void;
   onAddStop: () => void;
   onStopChange: (id: number, value: string) => void;
   onRemoveStop: (id: number) => void;
+  onRecurringPatternChange: (recurringPattern: RecurringPattern) => void;
   onContinue: () => void;
 }) {
   const canContinue = pickupAddress.trim().length > 0 && dropoffAddress.trim().length > 0;
@@ -1010,6 +1037,37 @@ function RouteStopsStep({
         <div className="mt-8">
           <AddStopButton onAddStop={onAddStop} />
         </div>
+
+        {podType === "recurring" ? (
+          <section className="mt-5 rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+            <p className="text-sm font-black text-[var(--rp-text)]">Return trip</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {[
+                { id: "ONE_WAY" as const, label: "One-way" },
+                { id: "BACK_AND_FORTH" as const, label: "Return Trip" },
+              ].map((option) => {
+                const selected = recurringPattern === option.id;
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => onRecurringPatternChange(option.id)}
+                    aria-pressed={selected}
+                    className={cn(
+                      "min-h-12 rounded-xl border px-3 text-sm font-black transition",
+                      selected
+                        ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                        : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-muted)]",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
       </main>
 
       <footer className="fixed inset-x-0 bottom-[88px] z-50 mx-auto max-w-[430px] px-6 pb-4 pt-8 md:static md:mx-0 md:max-w-none md:px-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pt-0">
@@ -1169,9 +1227,11 @@ function parseDisplayTime(value: string) {
 function FlexibilityField({
   value,
   onChange,
+  helper,
 }: {
   value: string;
   onChange: (value: string) => void;
+  helper?: string;
 }) {
   return (
     <label className="block">
@@ -1191,6 +1251,11 @@ function FlexibilityField({
           <ChevronDown className="h-6 w-6" />
         </span>
       </span>
+      {helper ? (
+        <span className="mt-2 block text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+          {helper}
+        </span>
+      ) : null}
     </label>
   );
 }
@@ -1264,7 +1329,7 @@ function RecurringProtectionDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[90] grid place-items-end bg-[rgba(3,7,18,0.66)] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4 backdrop-blur-sm md:absolute md:inset-0 md:px-6">
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-[rgba(3,7,18,0.66)] px-4 py-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-sm md:absolute md:inset-0 md:px-6">
       <div
         role="dialog"
         aria-modal="true"
@@ -1281,10 +1346,10 @@ function RecurringProtectionDialog({
                 Recurring protection
               </h2>
               <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                Recurring pods create separate protected rides for each date. Each ride has its own payment lock, quote, receipt, and settlement.
+                Each date is protected separately.
               </p>
               <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                You will authorize payment per ride, not for the entire recurring schedule.
+                Every ride has its own seat lock, proof, receipt, and settlement.
               </p>
             </div>
           </div>
@@ -1299,13 +1364,19 @@ function RecurringProtectionDialog({
               </p>
             ) : (
               <p className="mt-2 text-sm font-bold text-[var(--rp-muted)]">
-                Pick at least one weekday to preview rides.
+                Pick weekdays to preview upcoming rides.
               </p>
             )}
-            <p className="mt-2 break-words text-xs font-semibold text-[var(--rp-muted)]">
-              {createRecurringTemplateRRule(template)}
-            </p>
           </div>
+
+          <section className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <h3 className="text-sm font-black text-[var(--rp-text)]">Change rules</h3>
+            <p className="mt-2 whitespace-pre-line text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              Before lock: flexible.
+              {"\n"}After lock: may need guest approval.
+              {"\n"}After proof/booking: update in RidePod first.
+            </p>
+          </section>
 
           <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
             <input
@@ -1315,7 +1386,7 @@ function RecurringProtectionDialog({
               className="mt-1 h-5 w-5 shrink-0 accent-[var(--rp-primary)]"
             />
             <span className="text-sm font-bold leading-6 text-[var(--rp-text)]">
-              I understand each recurring ride has its own payment lock, quote, receipt, and settlement.
+              I understand each ride settles separately.
             </span>
           </label>
         </div>
@@ -1332,7 +1403,7 @@ function RecurringProtectionDialog({
             type="button"
             disabled={!accepted}
             onClick={onConfirm}
-            className="min-h-12 rounded-2xl bg-[var(--rp-gradient-primary)] text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_30%,transparent)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:brightness-100"
+            className="min-h-12 rounded-2xl border border-[#f6c453] bg-[#f6c453] text-sm font-black text-[#071326] shadow-[0_14px_28px_rgba(246,196,83,0.28)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:border-[#8f7a3e] disabled:bg-[#6f6135] disabled:text-[#c9c3b6] disabled:shadow-none disabled:hover:brightness-100"
           >
             Confirm
           </button>
@@ -1343,11 +1414,13 @@ function RecurringProtectionDialog({
 }
 
 function RecurringScheduleFields({
+  page,
   dateTime,
   onDateTimeChange,
   pickupAddress,
   dropoffAddress,
 }: {
+  page: RecurringSchedulePage;
   dateTime: DateTimeState;
   onDateTimeChange: (dateTime: DateTimeState) => void;
   pickupAddress: string;
@@ -1355,7 +1428,10 @@ function RecurringScheduleFields({
 }) {
   const visibleLegs = getRecurringLegsForSelection({ dateTime, pickupAddress, dropoffAddress });
   const selectedWeekdays = sortedWeekdays(dateTime.recurringWeekdays);
-  const validationError = validateRecurringSchedule(dateTime, pickupAddress, dropoffAddress);
+  const validationError =
+    page === "rides"
+      ? validateRecurringRideSchedule(dateTime, pickupAddress, dropoffAddress)
+      : validateRecurringDateSettings(dateTime);
   const syncLegs = (nextDateTime: DateTimeState) =>
     getRecurringLegsForSelection({ dateTime: nextDateTime, pickupAddress, dropoffAddress });
 
@@ -1376,252 +1452,192 @@ function RecurringScheduleFields({
     onDateTimeChange({ ...nextDateTime, recurringLegs: syncLegs(nextDateTime) });
   };
 
-  const updateLeg = (
-    dayOfWeek: Weekday,
-    legType: RecurringScheduleLeg["legType"],
-    patch: Partial<RecurringScheduleLeg>,
-  ) => {
+  const updateSharedLeg = (legType: RecurringScheduleLeg["legType"], patch: Partial<RecurringScheduleLeg>) => {
     const nextLegs = visibleLegs.map((leg) =>
-      leg.dayOfWeek === dayOfWeek && leg.legType === legType ? { ...leg, ...patch } : leg,
+      leg.legType === legType ? { ...leg, ...patch } : leg,
     );
 
     onDateTimeChange({ ...dateTime, recurringLegs: nextLegs });
   };
 
+  const sharedOutbound = visibleLegs.find((leg) => leg.legType === "OUTBOUND");
+  const sharedReturn = visibleLegs.find((leg) => leg.legType === "RETURN");
+
   return (
     <section className="mt-7 grid gap-6 border-t border-[var(--rp-border)] pt-7">
-      <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
-        <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
-          Repeats
-        </p>
-        <p className="mt-1 text-lg font-black text-[var(--rp-text)]">Weekly</p>
-      </div>
-
-      <fieldset>
-        <legend className="text-base font-bold text-[var(--rp-muted-strong)]">Repeat on</legend>
-        <div className="mt-3 grid grid-cols-4 gap-2 min-[390px]:grid-cols-7">
-          {recurringWeekdayOptions.map((option) => {
-            const selected = dateTime.recurringWeekdays.includes(option.id);
-
-            return (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => toggleWeekday(option.id)}
-                aria-pressed={selected}
-                className={cn(
-                  "h-11 rounded-xl border text-sm font-black transition",
-                  selected
-                    ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
-                    : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-muted)]",
-                )}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
-
-      <section aria-label="Trip pattern">
-        <h2 className="text-base font-bold text-[var(--rp-muted-strong)]">Trip pattern</h2>
-        <div className="mt-3 grid gap-3 min-[390px]:grid-cols-2">
-          {[
-            {
-              id: "ONE_WAY" as const,
-              title: "One-way",
-              body: "Same direction each selected day.",
-            },
-            {
-              id: "BACK_AND_FORTH" as const,
-              title: "Back-and-forth",
-              body: "Outbound and return rides on selected days.",
-            },
-          ].map((option) => {
-            const selected = dateTime.recurringPattern === option.id;
-
-            return (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => updatePattern(option.id)}
-                aria-pressed={selected}
-                className={cn(
-                  "rounded-[18px] border p-4 text-left transition",
-                  selected
-                    ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)] shadow-[0_12px_26px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
-                    : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-text)] hover:bg-[var(--rp-card-muted)]",
-                )}
-              >
-                <span className="block text-base font-black">{option.title}</span>
-                <span className="mt-2 block text-xs font-bold leading-5 opacity-80">{option.body}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="grid gap-3">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base font-bold text-[var(--rp-muted-strong)]">
-            {dateTime.recurringPattern === "BACK_AND_FORTH"
-              ? "Back-and-forth schedule"
-              : "One-way weekly rides"}
-          </h2>
-          {dateTime.recurringPattern === "ONE_WAY" ? (
-            <button
-              type="button"
-              onClick={() => updatePattern("BACK_AND_FORTH")}
-              className="text-xs font-black text-[var(--rp-primary)]"
-            >
-              Add return ride
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => updatePattern("ONE_WAY")}
-              className="text-xs font-black text-[var(--rp-primary)]"
-            >
-              Remove return ride
-            </button>
-          )}
-        </div>
-
-        {selectedWeekdays.length === 0 ? (
-          <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-sm font-bold text-[var(--rp-muted)]">
-            Select at least one repeat day.
+      {page === "rides" ? (
+        <>
+          <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
+              Repeats
+            </p>
+            <p className="mt-1 text-lg font-black text-[var(--rp-text)]">Weekly</p>
           </div>
-        ) : (
-          selectedWeekdays.map((weekday) => {
-            const outbound = visibleLegs.find(
-              (leg) => leg.dayOfWeek === weekday && leg.legType === "OUTBOUND",
-            );
-            const returnLeg = visibleLegs.find(
-              (leg) => leg.dayOfWeek === weekday && leg.legType === "RETURN",
-            );
 
-            if (!outbound) return null;
+          <fieldset>
+            <legend className="text-base font-bold text-[var(--rp-muted-strong)]">Repeat on</legend>
+            <div className="mt-3 grid grid-cols-4 gap-2 min-[390px]:grid-cols-7">
+              {recurringWeekdayOptions.map((option) => {
+                const selected = dateTime.recurringWeekdays.includes(option.id);
 
-            return (
-              <div
-                key={weekday}
-                className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
-                      {getWeekdayLabel(weekday)}
-                    </p>
-                    <p className="mt-1 text-sm font-black text-[var(--rp-text)]">
-                      {getWeekdayLabel(weekday)} {formatLocalTimeLabel(outbound.departureTime)} -{" "}
-                      {outbound.originLabel} to {outbound.destinationLabel}
-                    </p>
-                  </div>
-                  {dateTime.recurringPattern === "BACK_AND_FORTH" ? (
-                    <span className="rounded-full bg-[var(--rp-card-muted)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]">
-                      Same route reversed
-                    </span>
-                  ) : null}
-                </div>
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => toggleWeekday(option.id)}
+                    aria-pressed={selected}
+                    className={cn(
+                      "h-11 rounded-xl border text-sm font-black transition",
+                      selected
+                        ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                        : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-muted)]",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
 
+          <section className="grid gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-bold text-[var(--rp-muted-strong)]">
+                {dateTime.recurringPattern === "BACK_AND_FORTH"
+                  ? "Weekly ride times"
+                  : "Weekly ride time"}
+              </h2>
+              {dateTime.recurringPattern === "ONE_WAY" ? (
+                <button
+                  type="button"
+                  onClick={() => updatePattern("BACK_AND_FORTH")}
+                  className="min-h-9 rounded-xl border border-[var(--rp-primary)] bg-[var(--rp-card)] px-3 text-xs font-black text-[var(--rp-primary)] shadow-[0_10px_22px_color-mix(in_srgb,var(--rp-primary)_14%,transparent)] transition hover:bg-[var(--rp-card-muted)]"
+                >
+                  Add return ride
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => updatePattern("ONE_WAY")}
+                  className="min-h-9 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-xs font-black text-[var(--rp-primary)] transition hover:border-[var(--rp-primary)] hover:bg-[var(--rp-card-muted)]"
+                >
+                  Remove return ride
+                </button>
+              )}
+            </div>
+
+            {selectedWeekdays.length === 0 ? (
+              <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-sm font-bold text-[var(--rp-muted)]">
+                Select at least one repeat day.
+              </div>
+            ) : sharedOutbound ? (
+              <div className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+                <p className="text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
+                  Same start time for every selected day.
+                </p>
                 <div className="mt-4 grid gap-3">
                   <RecurringLegEditor
                     title="Outbound ride"
-                    leg={outbound}
-                    onChange={(patch) => updateLeg(weekday, "OUTBOUND", patch)}
+                    leg={sharedOutbound}
+                    onChange={(patch) => updateSharedLeg("OUTBOUND", patch)}
                   />
-                  {dateTime.recurringPattern === "BACK_AND_FORTH" && returnLeg ? (
+                  {dateTime.recurringPattern === "BACK_AND_FORTH" && sharedReturn ? (
                     <RecurringLegEditor
                       title="Return ride"
-                      leg={returnLeg}
-                      onChange={(patch) => updateLeg(weekday, "RETURN", patch)}
+                      leg={sharedReturn}
+                      onChange={(patch) => updateSharedLeg("RETURN", patch)}
                     />
                   ) : null}
                 </div>
               </div>
-            );
-          })
-        )}
-      </section>
+            ) : null}
+          </section>
+        </>
+      ) : null}
 
-      <label className="grid gap-3 text-base font-bold text-[var(--rp-muted-strong)]">
-        Start date
-        <input
-          type="date"
-          min={getTodayIsoDate()}
-          value={dateTime.recurringStartDate}
-          onChange={(event) => onDateTimeChange({ ...dateTime, recurringStartDate: event.target.value })}
-          className="h-14 rounded-[12px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
-        />
-      </label>
-
-      <fieldset className="grid gap-3">
-        <legend className="text-base font-bold text-[var(--rp-muted-strong)]">End</legend>
-        <div className="grid gap-2">
-          {[
-            { id: "after", label: "After N rides" },
-            { id: "on_date", label: "On date" },
-            { id: "none", label: "No end date" },
-          ].map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() =>
-                onDateTimeChange({
-                  ...dateTime,
-                  recurringEndMode: option.id as DateTimeState["recurringEndMode"],
-                })
-              }
-              className={cn(
-                "flex min-h-12 items-center justify-between rounded-xl border px-4 text-sm font-black",
-                dateTime.recurringEndMode === option.id
-                  ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
-                  : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
-              )}
-            >
-              {option.label}
-              {dateTime.recurringEndMode === option.id ? <Check className="h-4 w-4" /> : null}
-            </button>
-          ))}
-        </div>
-
-        {dateTime.recurringEndMode === "after" ? (
-          <label className="grid gap-2 text-sm font-black text-[var(--rp-text)]">
-            Number of rides
-            <input
-              type="number"
-              min={1}
-              max={12}
-              value={dateTime.recurringOccurrenceLimit}
-              onChange={(event) =>
-                onDateTimeChange({
-                  ...dateTime,
-                  recurringOccurrenceLimit: Number(event.target.value),
-                })
-              }
-              className="h-12 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
-            />
-          </label>
-        ) : null}
-
-        {dateTime.recurringEndMode === "on_date" ? (
-          <label className="grid gap-2 text-sm font-black text-[var(--rp-text)]">
-            End date
+      {page === "settings" ? (
+        <>
+          <label className="grid gap-3 text-base font-bold text-[var(--rp-muted-strong)]">
+            Start date
             <input
               type="date"
-              min={dateTime.recurringStartDate || getTodayIsoDate()}
-              value={dateTime.recurringEndDate}
-              onChange={(event) => onDateTimeChange({ ...dateTime, recurringEndDate: event.target.value })}
-              className="h-12 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+              min={getTodayIsoDate()}
+              value={dateTime.recurringStartDate}
+              onChange={(event) => onDateTimeChange({ ...dateTime, recurringStartDate: event.target.value })}
+              className="h-14 rounded-[12px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
             />
           </label>
-        ) : null}
-      </fieldset>
 
-      <FlexibilityField
-        value={dateTime.flexibility}
-        onChange={(flexibility) => onDateTimeChange({ ...dateTime, flexibility })}
-      />
+          <fieldset className="grid gap-3">
+            <legend className="text-base font-bold text-[var(--rp-muted-strong)]">End</legend>
+            <div className="grid gap-2">
+              {[
+                { id: "after", label: "After N rides" },
+                { id: "on_date", label: "On date" },
+                { id: "none", label: "No end date" },
+              ].map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() =>
+                    onDateTimeChange({
+                      ...dateTime,
+                      recurringEndMode: option.id as DateTimeState["recurringEndMode"],
+                    })
+                  }
+                  className={cn(
+                    "flex min-h-12 items-center justify-between rounded-xl border px-4 text-sm font-black",
+                    dateTime.recurringEndMode === option.id
+                      ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                      : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
+                  )}
+                >
+                  {option.label}
+                  {dateTime.recurringEndMode === option.id ? <Check className="h-4 w-4" /> : null}
+                </button>
+              ))}
+            </div>
+
+            {dateTime.recurringEndMode === "after" ? (
+              <label className="grid gap-2 text-sm font-black text-[var(--rp-text)]">
+                Number of rides
+                <input
+                  type="number"
+                  min={1}
+                  max={12}
+                  value={dateTime.recurringOccurrenceLimit}
+                  onChange={(event) =>
+                    onDateTimeChange({
+                      ...dateTime,
+                      recurringOccurrenceLimit: Number(event.target.value),
+                    })
+                  }
+                  className="h-12 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+                />
+              </label>
+            ) : null}
+
+            {dateTime.recurringEndMode === "on_date" ? (
+              <label className="grid gap-2 text-sm font-black text-[var(--rp-text)]">
+                End date
+                <input
+                  type="date"
+                  min={dateTime.recurringStartDate || getTodayIsoDate()}
+                  value={dateTime.recurringEndDate}
+                  onChange={(event) => onDateTimeChange({ ...dateTime, recurringEndDate: event.target.value })}
+                  className="h-12 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+                />
+              </label>
+            ) : null}
+          </fieldset>
+
+          <FlexibilityField
+            value={dateTime.flexibility}
+            onChange={(flexibility) => onDateTimeChange({ ...dateTime, flexibility })}
+            helper="Guests see this pickup time window before locking their seat."
+          />
+        </>
+      ) : null}
 
       {validationError ? (
         <p className="rounded-2xl border border-[var(--rp-danger)] bg-[var(--rp-danger-bg)] p-3 text-sm font-black text-[var(--rp-danger)]">
@@ -1703,17 +1719,38 @@ function DateTimeStep({
 }) {
   const [showRecurringProtectionDialog, setShowRecurringProtectionDialog] = useState(false);
   const [recurringProtectionAccepted, setRecurringProtectionAccepted] = useState(false);
+  const [recurringSchedulePage, setRecurringSchedulePage] = useState<RecurringSchedulePage>("rides");
   const activeScheduleType: ScheduleType = podType === "recurring" ? "RECURRING" : "ONE_TIME";
-  const recurringValidationError =
+  const recurringRideValidationError =
     activeScheduleType === "RECURRING"
-      ? validateRecurringSchedule(dateTime, pickupAddress, dropoffAddress)
+      ? validateRecurringRideSchedule(dateTime, pickupAddress, dropoffAddress)
       : null;
+  const recurringSettingsValidationError =
+    activeScheduleType === "RECURRING"
+      ? validateRecurringDateSettings(dateTime)
+      : null;
+  const activeRecurringValidationError =
+    recurringSchedulePage === "rides"
+      ? recurringRideValidationError
+      : recurringRideValidationError ?? recurringSettingsValidationError;
   const canContinue =
     activeScheduleType === "ONE_TIME"
       ? dateTime.selectedDate.length > 0 && dateTime.time.length > 0
-      : !recurringValidationError &&
-        (dateTime.recurringEndMode !== "after" || dateTime.recurringOccurrenceLimit > 0);
+      : !activeRecurringValidationError;
+  const handleBack = () => {
+    if (activeScheduleType === "RECURRING" && recurringSchedulePage === "settings") {
+      setRecurringSchedulePage("rides");
+      return;
+    }
+
+    onBack();
+  };
   const handleContinue = () => {
+    if (activeScheduleType === "RECURRING" && recurringSchedulePage === "rides") {
+      setRecurringSchedulePage("settings");
+      return;
+    }
+
     if (activeScheduleType === "RECURRING" && !recurringProtectionAccepted) {
       setShowRecurringProtectionDialog(true);
       return;
@@ -1724,19 +1761,23 @@ function DateTimeStep({
 
   return (
     <>
-      <CreatePodTopBar currentStep={2} onBack={onBack} />
+      <CreatePodTopBar currentStep={2} onBack={handleBack} />
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-40 pt-8 md:pb-5">
         <section className="text-center">
           <ScheduleTypeEyebrow podType={podType} />
           <h1 className="text-[28px] font-black leading-tight text-[var(--rp-text)]">
             {activeScheduleType === "RECURRING"
-              ? "When does this pod repeat?"
+              ? recurringSchedulePage === "settings"
+                ? "Set start and end"
+                : "When does this pod repeat?"
               : "When are you leaving?"}
           </h1>
           <p className="mt-3 text-base font-medium text-[var(--rp-muted)]">
             {activeScheduleType === "RECURRING"
-              ? "Create a weekly ride template for your recurring route."
+              ? recurringSchedulePage === "settings"
+                ? "Choose when this weekly template starts and ends."
+                : "Create a weekly ride template for your recurring route."
               : "Select your date and departure time."}
           </p>
         </section>
@@ -1769,6 +1810,7 @@ function DateTimeStep({
           </>
         ) : (
           <RecurringScheduleFields
+            page={recurringSchedulePage}
             dateTime={dateTime}
             onDateTimeChange={onDateTimeChange}
             pickupAddress={pickupAddress}
@@ -1847,10 +1889,12 @@ function SeatCounter({
 function RideOptionCard({
   option,
   selected,
+  helper,
   onSelect,
 }: {
   option: (typeof rideOptions)[number];
   selected: boolean;
+  helper: string;
   onSelect: () => void;
 }) {
   const Icon = option.icon;
@@ -1877,7 +1921,7 @@ function RideOptionCard({
           {option.description}
         </span>
         <span className="mt-1 block text-[11px] font-black leading-4 text-[var(--rp-primary)]">
-          {option.helper}
+          {helper}
         </span>
       </span>
       <span
@@ -1897,9 +1941,11 @@ function RideOptionCard({
 }
 
 function RideOptionSelector({
+  podType,
   value,
   onChange,
 }: {
+  podType: PodType;
   value: RideOptionId;
   onChange: (value: RideOptionId) => void;
 }) {
@@ -1912,6 +1958,7 @@ function RideOptionSelector({
             key={option.id}
             option={option}
             selected={normalizeRideOptionId(value) === option.id}
+            helper={podType === "recurring" ? option.recurringHelper : option.helper}
             onSelect={() => onChange(option.id)}
           />
         ))}
@@ -2089,6 +2136,7 @@ function PeopleVehicleStep({
               }
             />
             <RideOptionSelector
+              podType={podType}
               value={peopleVehicle.rideOption}
               onChange={(rideOption) =>
                 {
@@ -2210,15 +2258,15 @@ type PricingExplanation = {
 const pricingExplanations: Record<string, PricingExplanation> = {
   currentEstimate: {
     title: "Current estimate",
-    body: "This is RidePod's best estimate before the ride is booked. It may come from RidePod's route baseline, the host's estimate, or the host's uploaded quote. It is not the final charge. Final settlement uses the verified receipt after the ride.",
+    body: "This is RidePod's best estimate before the ride is booked. It may come from RidePod's route baseline, the host's estimate, or the host's uploaded quote. It is not the final charge. Platform fee is 10% of each guest's fare share, with a HK$6 minimum to cover payment processing and platform protection. Final settlement uses the verified receipt after the ride.",
   },
   expectedGuestCost: {
     title: "Expected guest cost",
-    body: "This is the estimated amount each guest may pay if the pod fills as planned. It includes the estimated fare share plus RidePod's platform fee: 10% of fare share, minimum HK$6. The final amount may be lower or higher, but it cannot exceed the max charge unless guests approve an increase.",
+    body: "This is the estimated amount each guest may pay if the pod fills as planned. It includes the estimated fare share and system-controlled fees. The final amount may be lower or higher, but it cannot exceed the max charge unless guests approve an increase.",
   },
   maxChargePerGuest: {
     title: "Max charge per guest",
-    body: "This is the most a guest can be charged for this pod unless they approve a higher fare. It is calculated from the booking fare cap, the minimum locked guests, the host riding with the group, and RidePod's platform fee: 10% of fare share, minimum HK$6.",
+    body: "This is the most a guest can be charged for this pod unless they approve a higher fare. It is calculated from the booking fare cap, the minimum locked guests, the host riding with the group, and system-controlled fees.",
   },
   bookingFareCap: {
     title: "Booking fare cap",
@@ -2267,9 +2315,10 @@ function PricingExplanationDialog({
   );
 }
 
-function PricingSummaryCard({ money }: { money: MoneyProtectionState }) {
+function PricingSummaryCard({ money, rideOption }: { money: MoneyProtectionState; rideOption: RideOptionId }) {
   const hostRidingMoney = { ...money, hostIsRiding: true };
   const [activeExplanation, setActiveExplanation] = useState<PricingExplanation | null>(null);
+  const rideProofCopy = getRideProofCopy(rideOption);
   const estimatedFareCents = dollarsToCents(money.estimatedTotalFare);
   const approvedMaxCents = dollarsToCents(money.approvedMaxTotalFare);
   const safeTargetSeats = Math.max(1, Math.floor(money.targetSeats));
@@ -2285,11 +2334,11 @@ function PricingSummaryCard({ money }: { money: MoneyProtectionState }) {
   return (
     <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 text-center shadow-[var(--rp-shadow-soft)]">
       <h2 className="text-lg font-black text-[var(--rp-text)]">Pricing summary</h2>
-      <dl className="mt-5 grid gap-3 text-left">
+      <dl className="mt-5 grid gap-3 text-center">
         <button
           type="button"
           onClick={() => setActiveExplanation(pricingExplanations.currentEstimate)}
-          className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3 text-left transition hover:border-[var(--rp-border-strong)]"
+          className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3 text-center transition hover:border-[var(--rp-border-strong)]"
         >
           <dt className="text-xs font-semibold text-[var(--rp-muted)]">Current estimate</dt>
           <dd className="mt-1 text-2xl font-black text-[var(--rp-text)]">
@@ -2303,7 +2352,7 @@ function PricingSummaryCard({ money }: { money: MoneyProtectionState }) {
           <button
             type="button"
             onClick={() => setActiveExplanation(pricingExplanations.expectedGuestCost)}
-            className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3 text-left transition hover:border-[var(--rp-border-strong)]"
+            className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3 text-center transition hover:border-[var(--rp-border-strong)]"
           >
             <dt className="text-xs font-black text-[var(--rp-primary)]">Expected guest cost</dt>
             <dd className="mt-1 text-xl font-black text-[var(--rp-primary)]">
@@ -2316,7 +2365,7 @@ function PricingSummaryCard({ money }: { money: MoneyProtectionState }) {
           <button
             type="button"
             onClick={() => setActiveExplanation(pricingExplanations.maxChargePerGuest)}
-            className="rounded-2xl border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,var(--rp-card))] p-3 text-left transition hover:brightness-105"
+            className="rounded-2xl border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,var(--rp-card))] p-3 text-center transition hover:brightness-105"
           >
             <dt className="text-xs font-black text-[var(--rp-primary)]">Max charge per guest</dt>
             <dd className="mt-1 text-xl font-black text-[var(--rp-primary)]">
@@ -2330,21 +2379,17 @@ function PricingSummaryCard({ money }: { money: MoneyProtectionState }) {
         <button
           type="button"
           onClick={() => setActiveExplanation(pricingExplanations.bookingFareCap)}
-          className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3 text-left transition hover:border-[var(--rp-border-strong)]"
+          className="rounded-2xl border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card)_88%,var(--rp-background))] p-3 text-center transition hover:border-[var(--rp-border-strong)]"
         >
           <dt className="text-xs font-semibold text-[var(--rp-muted)]">Booking fare cap</dt>
           <dd className="mt-1 text-lg font-black text-[var(--rp-text)]">
             {formatCentsFixed(approvedMaxCents)}
           </dd>
           <dd className="text-xs font-semibold text-[var(--rp-muted-strong)]">
-            quote must stay within this
+            {rideProofCopy.fareCapHelper}
           </dd>
         </button>
       </dl>
-      <p className="mx-auto mt-4 max-w-[320px] rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-        Platform fee: {PLATFORM_FEE_RATE_BPS / 100}% of fare share, minimum HK${MINIMUM_PLATFORM_FEE_CENTS / 100}.{" "}
-        Platform fee is {PLATFORM_FEE_RATE_BPS / 100}% of each guest&apos;s fare share, with a HK${MINIMUM_PLATFORM_FEE_CENTS / 100} minimum to cover payment processing and platform protection.
-      </p>
       <p className="mx-auto mt-5 max-w-[320px] text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
         Guests authorize the max charge before the host books. Final settlement uses the verified receipt and may be lower.
       </p>
@@ -2400,13 +2445,6 @@ function getMinimumLockedSummary(money: Pick<MoneyProtectionState, "minSeatsToBo
   const personLabel = money.hostIsRiding ? "guest" : "rider";
 
   return `${lockedGuests} ${pluralize(lockedGuests, personLabel)} lock`;
-}
-
-function getMinimumLockedHelper(money: Pick<MoneyProtectionState, "minSeatsToBook" | "hostIsRiding">) {
-  const lockedGuests = Math.max(1, Math.floor(money.minSeatsToBook));
-  const personLabel = money.hostIsRiding ? "guest" : "rider";
-
-  return `${lockedGuests} ${pluralize(lockedGuests, personLabel)} must authorize before host can book.`;
 }
 
 function getHkTaxiEstimateForMoney(money: MoneyProtectionState) {
@@ -2472,10 +2510,8 @@ function MoneyProtectionPanel({
   const taxiEstimate = getHkTaxiEstimateForMoney(money);
   const systemEstimateCents = taxiEstimate.totalFareCents;
   const suggestedApprovedMaxCents = suggestApprovedMaxFare(systemEstimateCents, money.routeRiskLevel);
-  const hostRidingMoney = { ...money, hostIsRiding: true };
   const maxLockedGuests = Math.max(1, Math.floor(money.targetSeats) - 1);
-  const estimateIsAvailable = systemEstimateCents > 0;
-  const rideTimingRules = getRideTimingRules(peopleVehicle.rideOption);
+  const rideProofCopy = getRideProofCopy(peopleVehicle.rideOption);
 
   return (
     <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
@@ -2484,49 +2520,29 @@ function MoneyProtectionPanel({
         <div>
           <h2 className="text-lg font-black text-[var(--rp-text)]">Money Protection</h2>
           <p className="mt-2 text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
-            RidePod estimates the fare to help set a fair approved max. Host confirms booking fare proof before booking.
-            Final charge uses the verified receipt and may be lower.
+            {rideProofCopy.moneyIntro}
           </p>
         </div>
       </div>
 
       <div className="mt-4 grid gap-3">
-        <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-          <p className="text-sm font-black text-[var(--rp-text)]">RidePod estimate</p>
-          <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-            {estimateIsAvailable
-              ? `${formatCentsFixed(systemEstimateCents)} based on RidePod route baseline.`
-              : "RidePod will calculate the system baseline internally."}
+        <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-center">
+          <p className="text-sm font-black text-[var(--rp-text)]">Booking fare cap</p>
+          <p className="mt-1 text-2xl font-black text-[var(--rp-primary)]">
+            {formatCentsFixed(suggestedApprovedMaxCents)}
           </p>
-
-          <dl className="mt-3 grid gap-2 text-xs font-bold text-[var(--rp-muted-strong)]">
-            <div className="flex items-center justify-between gap-3">
-              <dt>Suggested booking fare cap</dt>
-              <dd className="text-right text-[var(--rp-primary)]">
-                {estimateIsAvailable ? formatCentsFixed(suggestedApprovedMaxCents) : "Needs distance"}
-              </dd>
-            </div>
-          </dl>
-
-          <p className="mt-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-            Host confirms fare proof before booking. Final settlement uses the verified receipt.
+          <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+            {rideProofCopy.fareCapHelper}
           </p>
         </div>
 
-        <details className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
-          <summary className="cursor-pointer font-black text-[var(--rp-text)]">How RidePod estimates this</summary>
-          <p className="mt-2">
-            RidePod uses route distance, local taxi fare rules, baggage/toll assumptions, and a safety buffer to suggest a booking fare cap.
-          </p>
-        </details>
-
-        <div className="grid gap-1.5 text-sm font-black text-[var(--rp-text)]">
+        <div className="grid gap-1.5 text-center text-sm font-black text-[var(--rp-text)]">
           <span>Ideal pod size</span>
-          <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-muted)] px-3 py-3 text-base font-semibold text-[var(--rp-text)]">
+          <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-muted)] px-3 py-3 text-center text-base font-semibold text-[var(--rp-text)]">
             {money.targetSeats}
           </div>
           <p className="text-xs font-bold text-[var(--rp-muted-strong)]">
-            Total people in the ride, including the host.
+            Total people, including the host.
           </p>
         </div>
 
@@ -2541,17 +2557,20 @@ function MoneyProtectionPanel({
               max={maxLockedGuests}
               value={money[key as MoneyProtectionNumberKey]}
               onChange={(event) => updateMoney(key as MoneyProtectionNumberKey, Number(event.target.value))}
-              className="h-11 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-base font-semibold text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+              className="h-11 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-center text-base font-semibold text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
             />
             <span className="text-xs font-bold text-[var(--rp-muted-strong)]">
-              Minimum locked guests: {getMinimumLockedHelper(hostRidingMoney)}
+              Guests needed before host can book.
             </span>
           </label>
         ))}
 
         <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
-          <p className="font-black text-[var(--rp-text)]">Booking fare proof</p>
-          <p className="mt-1">{rideTimingRules.quoteStatus}. {rideTimingRules.settlementRule}</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="font-black text-[var(--rp-text)]">Booking proof</p>
+            <p className="text-right text-[var(--rp-primary)]">{rideProofCopy.bookingProofStatus}</p>
+          </div>
+          <p className="mt-1">{rideProofCopy.bookingProofHelper}</p>
         </div>
       </div>
     </section>
@@ -2566,6 +2585,7 @@ function PreviewMoneyProtectionCard({
   peopleVehicle: PeopleVehicleState;
 }) {
   const hostRidingMoney = { ...money, hostIsRiding: true };
+  const rideProofCopy = getRideProofCopy(peopleVehicle.rideOption);
   const safeTargetSeats = Math.max(1, money.targetSeats);
   const safeMinSeats = Math.max(1, money.minSeatsToBook);
   const approvedMaxCents = dollarsToCents(money.approvedMaxTotalFare);
@@ -2576,7 +2596,6 @@ function PreviewMoneyProtectionCard({
     minSeatsToBook: safeMinSeats,
     hostIsRiding: true,
   });
-  const rules = getRideTimingRules(peopleVehicle.rideOption);
   const rows = [
     {
       label: "Expected guest cost",
@@ -2586,10 +2605,7 @@ function PreviewMoneyProtectionCard({
       label: "Max charge per guest",
       value: `${formatCents(protection.protectedMaxChargePerRiderCents)} / rider if ${getMinimumLockedSummary(hostRidingMoney)}`,
     },
-    {
-      label: "Final charge",
-      value: "Uses verified receipt and may be lower",
-    },
+    ...rideProofCopy.reviewRows,
   ];
 
   return (
@@ -2605,57 +2621,6 @@ function PreviewMoneyProtectionCard({
       </div>
 
       <dl className="mt-4 grid gap-2">
-        {rows.map((row) => (
-          <div
-            key={row.label}
-            className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-3"
-          >
-            <dt className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-primary)]">
-              {row.label}
-            </dt>
-            <dd className="mt-1 text-sm font-black leading-5 text-[var(--rp-text)]">{row.value}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <div className="mt-3 grid gap-2 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
-        <p className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-          {rules.bookingRule}
-        </p>
-        <p className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-          {rules.settlementRule}
-        </p>
-      </div>
-    </section>
-  );
-}
-
-function PreviewBookingRulesCard({ peopleVehicle }: { peopleVehicle: PeopleVehicleState }) {
-  const rideOption = getRideOption(peopleVehicle.rideOption);
-  const rules = getRideTimingRules(peopleVehicle.rideOption);
-  const rows = [
-    {
-      label: "Ride option",
-      value: rideOption.title,
-    },
-    {
-      label: "Quote status",
-      value: rules.quoteStatus,
-    },
-    {
-      label: "Booking rule",
-      value: rules.bookingRule,
-    },
-    {
-      label: "Settlement rule",
-      value: rules.settlementRule,
-    },
-  ];
-
-  return (
-    <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-      <h2 className="text-lg font-black text-[var(--rp-text)]">Booking fare proof</h2>
-      <dl className="mt-3 grid gap-2">
         {rows.map((row) => (
           <div
             key={row.label}
@@ -2828,6 +2793,102 @@ function ReviewPanelControls({
   );
 }
 
+function CreatePodConfirmationDialog({
+  rideOption,
+  checked,
+  onCheckedChange,
+  onCancel,
+  onCreate,
+}: {
+  rideOption: RideOptionId;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  onCancel: () => void;
+  onCreate: () => void;
+}) {
+  const copy =
+    normalizeRideOptionId(rideOption) === "taxi_meter"
+      ? {
+          title: "Create this taxi meter pod?",
+          body: [
+            "Guests can join and lock their seats after the pod is created.",
+            "No upfront quote is required for taxi meter rides. After the ride, upload a clear meter photo or taxi receipt for settlement.",
+          ],
+          checkbox: "I understand meter proof or receipt is required after the ride.",
+          submitLabel: "Create Pod",
+        }
+      : {
+          title: "Create this pod?",
+          body: [
+            "Guests can join and lock their seats after the pod is created.",
+            "Before you book the external ride, RidePod will ask you to upload a fresh quote or fare screenshot. You do not need to upload it now.",
+            "After the ride, final settlement uses the verified receipt.",
+          ],
+          checkbox: "I understand quote proof is required before booking and receipt proof is required after the ride.",
+          submitLabel: "Confirm",
+        };
+
+  return (
+    <div
+      className="fixed inset-0 z-[90] grid place-items-center bg-[rgba(3,7,18,0.68)] px-4 py-6 backdrop-blur-sm md:absolute"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-pod-confirm-title"
+    >
+      <section className="w-full max-w-[390px] rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
+        <div className="flex items-start gap-4">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+            <Info className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 id="create-pod-confirm-title" className="text-2xl font-black leading-tight">
+              {copy.title}
+            </h2>
+            <div className="mt-4 grid gap-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              {copy.body.map((paragraph) => (
+                <p key={paragraph} className="text-left">{paragraph}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-sm font-black leading-6 text-[var(--rp-muted-strong)]">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(event) => onCheckedChange(event.target.checked)}
+            className="mt-1 h-4 w-4 accent-[var(--rp-primary)]"
+          />
+          <span>{copy.checkbox}</span>
+        </label>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!checked}
+            onClick={onCreate}
+            className={cn(
+              "min-h-12 rounded-2xl border text-sm font-black transition hover:brightness-105 disabled:cursor-not-allowed",
+              checked
+                ? "border-[#f6c453] bg-[#f6c453] text-[#071326] shadow-[0_16px_34px_rgba(246,196,83,0.28)]"
+                : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
+            )}
+          >
+            {copy.submitLabel}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function DetailSummaryCard({
   routeFrom,
   routeTo,
@@ -2844,7 +2905,6 @@ function DetailSummaryCard({
   const pickup = pickupAddress.replace(",", "");
   const dropoff = dropoffAddress.replace(",", "");
   const rideOption = getRideOption(peopleVehicle.rideOption);
-  const rideTimingRules = getRideTimingRules(peopleVehicle.rideOption);
   const rows = [
     {
       icon: UsersRound,
@@ -2855,21 +2915,6 @@ function DetailSummaryCard({
       icon: CarFront,
       label: "Ride option",
       value: `${rideOption.title} / ${peopleVehicle.bags} bags`,
-    },
-    {
-      icon: Upload,
-      label: "Quote status",
-      value: rideTimingRules.quoteStatus,
-    },
-    {
-      icon: ShieldCheck,
-      label: "Booking rule",
-      value: rideTimingRules.bookingRule,
-    },
-    {
-      icon: ReceiptText,
-      label: "Settlement rule",
-      value: rideTimingRules.settlementRule,
     },
     {
       icon: MapPin,
@@ -2912,6 +2957,200 @@ function DetailSummaryCard({
   );
 }
 
+function formatReviewDate(date: string) {
+  const parsed = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return date;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(parsed);
+}
+
+function getRecurringWeekdaySummary(dateTime: DateTimeState) {
+  const weekdays = sortedWeekdays(dateTime.recurringWeekdays)
+    .map((weekday) => recurringWeekdayOptions.find((option) => option.id === weekday)?.label ?? weekday);
+
+  return weekdays.length > 0 ? `Weekly on ${weekdays.join(", ")}` : "Weekly";
+}
+
+function getRecurringEndRuleSummary(dateTime: DateTimeState) {
+  if (dateTime.recurringEndMode === "after") {
+    return `Ends after ${Math.max(1, dateTime.recurringOccurrenceLimit)} rides`;
+  }
+
+  if (dateTime.recurringEndMode === "on_date") {
+    return `Ends on ${formatReviewDate(dateTime.recurringEndDate)}`;
+  }
+
+  return "No end date";
+}
+
+function getRecurringRideLine(leg?: RecurringScheduleLeg) {
+  if (!leg) return "Set ride time and route";
+
+  return `${formatLocalTimeLabel(leg.departureTime)} \u2014 ${leg.originLabel} \u2192 ${leg.destinationLabel}`;
+}
+
+function RecurringReviewCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+      <h2 className="text-lg font-black text-[var(--rp-text)]">{title}</h2>
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
+
+function RecurringPodReview({
+  dateTime,
+  pickupAddress,
+  dropoffAddress,
+  peopleVehicle,
+}: {
+  dateTime: DateTimeState;
+  pickupAddress: string;
+  dropoffAddress: string;
+  peopleVehicle: PeopleVehicleState;
+}) {
+  const recurringLegs = getRecurringLegsForSelection({ dateTime, pickupAddress, dropoffAddress });
+  const outboundLeg = recurringLegs.find((leg) => leg.legType === "OUTBOUND");
+  const returnLeg = recurringLegs.find((leg) => leg.legType === "RETURN");
+  const rideOption = getRideOption(peopleVehicle.rideOption);
+
+  return (
+    <section className="grid gap-4">
+      <RecurringReviewCard title="Template summary">
+        <div className="grid gap-2 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
+          <p className="text-[var(--rp-primary)]">Recurring pod</p>
+          <p>{getRecurringWeekdaySummary(dateTime)}</p>
+          <p>Starts {formatReviewDate(dateTime.recurringStartDate)}</p>
+          <p>{getRecurringEndRuleSummary(dateTime)}</p>
+          <p>Flexibility: {dateTime.flexibility}</p>
+        </div>
+      </RecurringReviewCard>
+
+      <RecurringReviewCard title="Trip pattern">
+        <div className="grid gap-3 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
+          {dateTime.recurringPattern === "BACK_AND_FORTH" ? (
+            <>
+              <p className="text-[var(--rp-primary)]">Back-and-forth</p>
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-primary)]">Outbound</p>
+                <p className="mt-1 text-[var(--rp-text)]">{getRecurringRideLine(outboundLeg)}</p>
+              </div>
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-primary)]">Return</p>
+                <p className="mt-1 text-[var(--rp-text)]">{getRecurringRideLine(returnLeg)}</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="text-[var(--rp-primary)]">One-way</p>
+              <p className="text-[var(--rp-text)]">{getRecurringRideLine(outboundLeg)}</p>
+            </>
+          )}
+        </div>
+      </RecurringReviewCard>
+
+      <RecurringReviewCard title="Ride option">
+        <div className="grid gap-2 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
+          <p className="text-[var(--rp-text)]">{rideOption.title}</p>
+          <p>{rideOption.recurringHelper}</p>
+        </div>
+      </RecurringReviewCard>
+
+      <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
+          <div>
+            <h2 className="text-lg font-black text-[var(--rp-text)]">Protected separately</h2>
+            <p className="mt-2 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
+              Each ride has its own guest lock, proof, receipt, and settlement.
+            </p>
+          </div>
+        </div>
+      </section>
+    </section>
+  );
+}
+
+function CreateRecurringPodConfirmationDialog({
+  checked,
+  onCheckedChange,
+  onCancel,
+  onCreate,
+}: {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+  onCancel: () => void;
+  onCreate: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[90] grid place-items-center bg-[rgba(3,7,18,0.68)] px-4 py-6 backdrop-blur-sm md:absolute"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-recurring-pod-confirm-title"
+    >
+      <section className="w-full max-w-[390px] rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
+        <div className="flex items-start gap-4">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+            <Info className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 id="create-recurring-pod-confirm-title" className="text-2xl font-black leading-tight">
+              Create recurring pod?
+            </h2>
+            <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              This creates a weekly template. Each ride date will lock guests, collect proof, and settle separately.
+            </p>
+          </div>
+        </div>
+
+        <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-sm font-black leading-6 text-[var(--rp-muted-strong)]">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(event) => onCheckedChange(event.target.checked)}
+            className="mt-1 h-4 w-4 accent-[var(--rp-primary)]"
+          />
+          <span>I understand each ride settles separately.</span>
+        </label>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!checked}
+            onClick={onCreate}
+            className={cn(
+              "min-h-12 rounded-2xl border text-sm font-black transition hover:brightness-105 disabled:cursor-not-allowed",
+              checked
+                ? "border-[#f6c453] bg-[#f6c453] text-[#071326] shadow-[0_16px_34px_rgba(246,196,83,0.28)]"
+                : "border-[#8f7a3e] bg-[#6f6135] text-[#c9c3b6]",
+            )}
+          >
+            Create Pod
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function ReviewPodStep({
   podType,
   pickupAddress,
@@ -2934,6 +3173,8 @@ function ReviewPodStep({
   const routeFrom = routeCode(pickupAddress, "USC");
   const routeTo = routeCode(dropoffAddress, "LAX");
   const [reviewPanel, setReviewPanel] = useState(0);
+  const [showCreateConfirm, setShowCreateConfirm] = useState(false);
+  const [createConfirmChecked, setCreateConfirmChecked] = useState(false);
   const defaultTaxiEstimate = calculateHkTaxiFareEstimate({
     zone: "URBAN",
     distanceMeters: 6000,
@@ -2966,24 +3207,85 @@ function ReviewPodStep({
       ? `Approved max must be at least ${formatMoney(moneyProtection.estimatedTotalFare)} before you continue.`
       : null;
 
+  if (podType === "recurring") {
+    return (
+      <>
+        <CreatePodTopBar currentStep={4} onBack={onBack} />
+
+        <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-7">
+          <section className="text-center">
+            <ScheduleTypeEyebrow podType={podType} />
+            <h1 className="text-[26px] font-black leading-tight text-[var(--rp-text)]">
+              Review recurring pod
+            </h1>
+            <p className="mt-2 text-sm font-medium text-[var(--rp-muted)]">
+              Check the weekly template before creating your pod.
+            </p>
+          </section>
+
+          <div className="mt-5">
+            <RecurringPodReview
+              dateTime={dateTime}
+              pickupAddress={pickupAddress}
+              dropoffAddress={dropoffAddress}
+              peopleVehicle={peopleVehicle}
+            />
+          </div>
+
+          <div className="mt-5 grid gap-3">
+            <PrimaryButton
+              onClick={() => {
+                setCreateConfirmChecked(false);
+                setShowCreateConfirm(true);
+              }}
+            >
+              Create Recurring Pod
+            </PrimaryButton>
+            <p className="text-center text-sm font-medium text-[var(--rp-muted)]">
+              You can move back to edit details before publishing.
+            </p>
+          </div>
+        </main>
+
+        {showCreateConfirm ? (
+          <CreateRecurringPodConfirmationDialog
+            checked={createConfirmChecked}
+            onCheckedChange={setCreateConfirmChecked}
+            onCancel={() => {
+              setCreateConfirmChecked(false);
+              setShowCreateConfirm(false);
+            }}
+            onCreate={() => {
+              if (!createConfirmChecked) return;
+              setShowCreateConfirm(false);
+              onCreate();
+            }}
+          />
+        ) : null}
+      </>
+    );
+  }
+
   return (
     <>
       <CreatePodTopBar currentStep={4} onBack={onBack} />
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-7">
-        <section className="text-center">
-          <ScheduleTypeEyebrow podType={podType} />
-          <h1 className="text-[26px] font-black leading-tight text-[var(--rp-text)]">
-            Review your pod
-          </h1>
-          <p className="mt-2 text-sm font-medium text-[var(--rp-muted)]">
-            Review your selections before creating your pod.
-          </p>
-        </section>
+        {reviewPanel === 3 ? null : (
+          <section className="text-center">
+            <ScheduleTypeEyebrow podType={podType} />
+            <h1 className="text-[26px] font-black leading-tight text-[var(--rp-text)]">
+              Final check
+            </h1>
+            <p className="mt-2 text-sm font-medium text-[var(--rp-muted)]">
+              Confirm the details before creating your pod.
+            </p>
+          </section>
+        )}
 
-        <div className="mt-5 grid gap-4">
+        <div className={cn("grid gap-4", reviewPanel === 3 ? "mt-0" : "mt-5")}>
           {reviewPanel === 0 ? (
-            <PricingSummaryCard money={moneyProtection} />
+            <PricingSummaryCard money={moneyProtection} rideOption={peopleVehicle.rideOption} />
           ) : null}
 
           {reviewPanel === 1 ? (
@@ -3018,7 +3320,6 @@ function ReviewPodStep({
                 peopleVehicle={peopleVehicle}
               />
               <PreviewMoneyProtectionCard money={moneyProtection} peopleVehicle={peopleVehicle} />
-              <PreviewBookingRulesCard peopleVehicle={peopleVehicle} />
               <DetailSummaryCard
                 routeFrom={routeFrom}
                 routeTo={routeTo}
@@ -3033,7 +3334,10 @@ function ReviewPodStep({
         <ReviewPanelControls
           currentPanel={reviewPanel}
           onPanelChange={setReviewPanel}
-          onCreate={onCreate}
+          onCreate={() => {
+            setCreateConfirmChecked(false);
+            setShowCreateConfirm(true);
+          }}
           canProceed={!moneyProtectionError}
           blockedReason={moneyProtectionError ?? undefined}
         />
@@ -3042,6 +3346,23 @@ function ReviewPodStep({
           You can move back to edit details before publishing.
         </p>
       </main>
+
+      {showCreateConfirm ? (
+        <CreatePodConfirmationDialog
+          rideOption={peopleVehicle.rideOption}
+          checked={createConfirmChecked}
+          onCheckedChange={setCreateConfirmChecked}
+          onCancel={() => {
+            setCreateConfirmChecked(false);
+            setShowCreateConfirm(false);
+          }}
+          onCreate={() => {
+            if (!createConfirmChecked) return;
+            setShowCreateConfirm(false);
+            onCreate();
+          }}
+        />
+      ) : null}
     </>
   );
 }
@@ -3325,6 +3646,7 @@ export function CreatePodChooseType() {
           pickupAddress={pickupAddress}
           dropoffAddress={dropoffAddress}
           stops={stops}
+          recurringPattern={dateTime.recurringPattern}
           onBack={() => setStep(0)}
           onPickupChange={setPickupAddress}
           onDropoffChange={setDropoffAddress}
@@ -3340,6 +3662,9 @@ export function CreatePodChooseType() {
           onRemoveStop={(id) => {
             setStops((currentStops) => currentStops.filter((stop) => stop.id !== id));
           }}
+          onRecurringPatternChange={(recurringPattern) =>
+            setDateTime((current) => ({ ...current, recurringPattern }))
+          }
           onContinue={() => setStep(2)}
         />
       ) : (

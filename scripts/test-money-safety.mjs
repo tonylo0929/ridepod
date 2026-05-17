@@ -485,6 +485,11 @@ assert.ok(moneySafety.HOST_PAYOUT_STATES.includes("HELD_FOR_REVIEW"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("SAFETY_MODE_SET"));
 assert.ok(moneySafety.RISK_TYPES.includes("SAFETY_MODE_VIOLATION"));
 assert.ok(moneySafety.RISK_TYPES.includes("HOST_CANCELED_AFTER_BOOKING"));
+assert.ok(moneySafety.RISK_TYPES.includes("FAKE_RECEIPT_SUSPECTED"));
+assert.ok(moneySafety.RISK_TYPES.includes("QUOTE_RECEIPT_MISMATCH"));
+assert.ok(moneySafety.RISK_TYPES.includes("MISLEADING_PROOF"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("QUOTE_PROOF_CERTIFIED"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RECEIPT_PROOF_CERTIFIED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("STRIPE_CONNECT_ACCOUNT_CREATED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("STRIPE_CONNECT_ONBOARDING_LINK_CREATED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("HOST_REIMBURSEMENT_SCHEDULED"));
@@ -493,6 +498,7 @@ assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("PAYMENT_AUTHORIZATION_RELEASED
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDEPOD_DISPUTE_OPENED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDEPOD_DISPUTE_RESOLVED"));
 const moneySafetyUiSource = readFileSync("src/components/money-safety-ui.tsx", "utf8");
+const settlementPageSource = readFileSync("src/components/settlement-page.tsx", "utf8");
 const uiSource = readFileSync("src/components/ui.tsx", "utf8");
 const podDetailSource = readFileSync("src/app/(app)/pods/[id]/page.tsx", "utf8");
 const createPodChooseTypeSource = readFileSync("src/components/create-pod-choose-type.tsx", "utf8");
@@ -509,6 +515,7 @@ const legalCopySource = [
   "src/components/money-safety-ui.tsx",
   "src/components/premium-join-pod-flow.tsx",
   "src/components/premium-pod-detail.tsx",
+  "src/components/ridepod-info-pages.tsx",
   "src/components/settlement-page.tsx",
   "src/lib/design-variants.ts",
   "src/lib/money-safety.ts",
@@ -524,11 +531,36 @@ assert.equal(
 );
 assert.ok(moneySafetyUiSource.includes("Quote approved. You may book the external ride."));
 assert.equal(moneySafetyUiSource.includes("??host"), false);
-assert.ok(moneySafetyUiSource.includes("Waiting for guests to lock. A fresh quote will be required before booking."));
-assert.ok(moneySafetyUiSource.includes("Upload a fresh ride app quote before booking."));
-assert.ok(moneySafetyUiSource.includes("Quote is above the approved max. Guests must approve a higher max before protected booking."));
-assert.ok(moneySafetyUiSource.includes("Preview quote only. A fresh quote may be required before booking."));
-assert.ok(moneySafetyUiSource.includes("Booking fare proof"));
+assert.ok(moneySafetyUiSource.includes("Waiting for guests to lock"));
+assert.ok(moneySafetyUiSource.includes("guests locked. You’ll upload a fresh quote once the minimum guests are locked."));
+assert.ok(moneySafetyUiSource.includes("Action needed: upload quote"));
+assert.ok(moneySafetyUiSource.includes("Upload a fresh ride app quote before booking the external ride."));
+assert.ok(moneySafetyUiSource.includes("Quote approved"));
+assert.ok(moneySafetyUiSource.includes("The quote is within the booking fare cap. You may book the external ride."));
+assert.ok(moneySafetyUiSource.includes("Mark ride as booked"));
+assert.ok(moneySafetyUiSource.includes("Quote above booking fare cap"));
+assert.ok(moneySafetyUiSource.includes("Guests must approve a higher max before this ride can be RidePod-protected."));
+assert.ok(moneySafetyUiSource.includes("Request higher max approval"));
+assert.ok(moneySafetyUiSource.includes("Quote not needed yet"));
+assert.ok(moneySafetyUiSource.includes("Booking proof"));
+assert.ok(moneySafetyUiSource.includes("No upfront quote is required for taxi meter rides."));
+assert.ok(moneySafetyUiSource.includes("Ready for taxi meter ride"));
+assert.ok(moneySafetyUiSource.includes("Meet the guests and take a metered taxi. Upload meter proof or receipt after the ride."));
+assert.ok(moneySafetyUiSource.includes("Meter proof after ride"));
+assert.ok(moneySafetyUiSource.includes("Upload a clear meter photo or taxi receipt showing the final fare."));
+assert.ok(moneySafetyUiSource.includes("Verified meter proof or receipt controls final settlement."));
+assert.ok(moneySafetyUiSource.includes("Confirm quote proof"));
+assert.ok(moneySafetyUiSource.includes("This quote will be used to decide whether the host can book a RidePod-protected ride."));
+assert.ok(moneySafetyUiSource.includes("I confirm this quote screenshot is real, accurate, unaltered, and belongs to this ride."));
+assert.ok(moneySafetyUiSource.includes("False or misleading proof may lead to booking denial, reimbursement denial, account suspension, and manual review."));
+assert.ok(moneySafetyUiSource.includes("Submit quote"));
+assert.equal(moneySafetyUiSource.includes("Preview quote only. A fresh quote may be required before booking."), false);
+assert.equal(moneySafetyUiSource.includes("Booking fare proof"), false);
+assert.ok(settlementPageSource.includes("Confirm final receipt"));
+assert.ok(settlementPageSource.includes("This receipt will be used to calculate the final split and host reimbursement."));
+assert.ok(settlementPageSource.includes("I confirm this receipt or meter proof is real, accurate, unaltered, and belongs to this completed ride."));
+assert.ok(settlementPageSource.includes("False or misleading proof may lead to reimbursement denial, account suspension, dispute review, and further action where required."));
+assert.ok(settlementPageSource.includes("Submit receipt"));
 assert.ok(moneySafetyUiSource.includes("Off-app payments are not protected"));
 assert.ok(podDetailSource.includes("No confirmed riders yet. Seats lock after payment authorization."));
 assert.ok(createPodChooseTypeSource.includes("Current estimate"));
@@ -540,20 +572,21 @@ assert.ok(createPodChooseTypeSource.includes("const moneyProtectionPanelIndex = 
 assert.ok(createPodChooseTypeSource.includes("reviewPanel === 3"));
 assert.ok(createPodChooseTypeSource.includes("Minimum locked guests"));
 assert.ok(createPodChooseTypeSource.includes("Ideal pod size"));
-assert.ok(createPodChooseTypeSource.includes("Total people in the ride, including the host."));
-assert.ok(createPodChooseTypeSource.includes("Minimum locked guests: {getMinimumLockedHelper(hostRidingMoney)}"));
+assert.ok(createPodChooseTypeSource.includes("Total people, including the host."));
+assert.ok(createPodChooseTypeSource.includes("Guests needed before host can book."));
 assert.ok(createPodChooseTypeSource.includes("hostIsRiding: true"));
 assert.ok(createPodChooseTypeSource.includes("RidePod route baseline"));
 assert.ok(createPodChooseTypeSource.includes("Host quote"));
 assert.ok(createPodChooseTypeSource.includes("if {getIdealPodSizeSummary(hostRidingMoney)} ride"));
 assert.ok(createPodChooseTypeSource.includes("unless higher max approved"));
-assert.ok(createPodChooseTypeSource.includes("quote must stay within this"));
+assert.ok(createPodChooseTypeSource.includes("RidePod taxi baseline sets this booking fare cap."));
 assert.ok(createPodChooseTypeSource.includes("Guests authorize the max charge before the host books. Final settlement uses the verified receipt and may be lower."));
 assert.ok(createPodChooseTypeSource.includes("This is RidePod's best estimate before the ride is booked."));
 assert.ok(createPodChooseTypeSource.includes("This is the estimated amount each guest may pay if the pod fills as planned."));
-assert.ok(createPodChooseTypeSource.includes("platform fee: 10% of fare share, minimum HK$6"));
-assert.ok(createPodChooseTypeSource.includes("Platform fee: {PLATFORM_FEE_RATE_BPS / 100}% of fare share, minimum HK${MINIMUM_PLATFORM_FEE_CENTS / 100}."));
-assert.ok(createPodChooseTypeSource.includes("Platform fee is {PLATFORM_FEE_RATE_BPS / 100}% of each guest&apos;s fare share, with a HK${MINIMUM_PLATFORM_FEE_CENTS / 100} minimum to cover payment processing and platform protection."));
+assert.ok(createPodChooseTypeSource.includes("Platform fee is 10% of each guest's fare share, with a HK$6 minimum to cover payment processing and platform protection."));
+assert.ok(createPodChooseTypeSource.includes("It includes the estimated fare share and system-controlled fees."));
+assert.equal(createPodChooseTypeSource.includes("Platform fee: {PLATFORM_FEE_RATE_BPS / 100}% of fare share"), false);
+assert.equal(createPodChooseTypeSource.includes("rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-2 text-xs font-bold"), false);
 assert.ok(createPodChooseTypeSource.includes("This is the most a guest can be charged for this pod unless they approve a higher fare."));
 assert.ok(createPodChooseTypeSource.includes("This is the maximum total fare allowed for protected booking."));
 assert.ok(createPodChooseTypeSource.includes("PricingExplanationDialog"));
@@ -561,11 +594,16 @@ assert.ok(createPodChooseTypeSource.includes("activeExplanation"));
 assert.ok(createPodChooseTypeSource.includes("setActiveExplanation(pricingExplanations.currentEstimate)"));
 assert.ok(createPodChooseTypeSource.includes("Back"));
 assert.equal(createPodChooseTypeSource.includes("PricingFieldExplanation"), false);
-assert.ok(createPodChooseTypeSource.includes("RidePod estimate"));
-assert.ok(createPodChooseTypeSource.includes("Suggested booking fare cap"));
-assert.ok(createPodChooseTypeSource.includes("Host confirms fare proof before booking. Final settlement uses the verified receipt."));
-assert.ok(createPodChooseTypeSource.includes("How RidePod estimates this"));
-assert.ok(createPodChooseTypeSource.includes("RidePod uses route distance, local taxi fare rules, baggage/toll assumptions, and a safety buffer to suggest a booking fare cap."));
+assert.ok(createPodChooseTypeSource.includes("RidePod sets a fare cap. Host uploads proof before booking. Final charge uses the verified receipt."));
+assert.ok(createPodChooseTypeSource.includes("RidePod uses the taxi baseline to set a fare cap. Guests authorize the max before the ride. Final charge uses verified meter proof or receipt."));
+assert.ok(createPodChooseTypeSource.includes("Booking fare cap"));
+assert.ok(createPodChooseTypeSource.includes("Quote must stay within this before host books."));
+assert.equal(createPodChooseTypeSource.includes("RidePod estimates the fare to help set a fair approved max. Host confirms booking fare proof before booking."), false);
+assert.equal(createPodChooseTypeSource.includes("RidePod estimate"), false);
+assert.equal(createPodChooseTypeSource.includes("Suggested booking fare cap"), false);
+assert.equal(createPodChooseTypeSource.includes("Host confirms fare proof before booking. Final settlement uses the verified receipt."), false);
+assert.equal(createPodChooseTypeSource.includes("How RidePod estimates this"), false);
+assert.equal(createPodChooseTypeSource.includes("RidePod uses route distance, local taxi fare rules, baggage/toll assumptions, and a safety buffer to suggest a booking fare cap."), false);
 assert.equal(createPodChooseTypeSource.includes("Estimate source"), false);
 assert.equal(createPodChooseTypeSource.includes("Approved max suggestion"), false);
 assert.equal(createPodChooseTypeSource.includes("Use RidePod estimate"), false);
@@ -574,27 +612,93 @@ assert.equal(createPodChooseTypeSource.includes("money.estimateConfidence"), fal
 assert.ok(createPodChooseTypeSource.includes("Ride app / fixed quote"));
 assert.ok(createPodChooseTypeSource.includes("Host books through an app or provider that shows the fare before booking."));
 assert.ok(createPodChooseTypeSource.includes("Fresh quote required before booking."));
+assert.ok(createPodChooseTypeSource.includes("Fresh quote required before each ride booking."));
 assert.ok(createPodChooseTypeSource.includes("Taxi meter"));
-assert.ok(createPodChooseTypeSource.includes("Host takes a metered taxi. RidePod uses the taxi baseline to set the approved max."));
-assert.ok(createPodChooseTypeSource.includes("Receipt or meter proof required after ride."));
+assert.ok(createPodChooseTypeSource.includes("Host takes a street taxi with a meter. RidePod uses the taxi baseline to set the booking fare cap."));
+assert.ok(createPodChooseTypeSource.includes("Meter photo or receipt required after ride."));
+assert.ok(createPodChooseTypeSource.includes("Meter proof or taxi receipt required after each ride."));
 assert.ok(createPodChooseTypeSource.includes("RidePod protection applies only when the ride stays within the approved max. Final settlement uses the verified receipt."));
-assert.ok(createPodChooseTypeSource.includes("Quote status"));
-assert.ok(createPodChooseTypeSource.includes("Upload later before booking"));
+assert.ok(createPodChooseTypeSource.includes("Repeat on"));
+assert.ok(createPodChooseTypeSource.includes("Start date"));
+assert.ok(createPodChooseTypeSource.includes("After N rides"));
+assert.ok(createPodChooseTypeSource.includes("On date"));
+assert.ok(createPodChooseTypeSource.includes("No end date"));
+assert.ok(createPodChooseTypeSource.includes("Number of rides"));
+assert.ok(createPodChooseTypeSource.includes("One-way"));
+assert.ok(createPodChooseTypeSource.includes("Return Trip"));
+assert.ok(createPodChooseTypeSource.includes("Trip pattern"));
+assert.equal(createPodChooseTypeSource.includes("Same direction on selected days."), false);
+assert.ok(createPodChooseTypeSource.includes("Back-and-forth"));
+assert.equal(createPodChooseTypeSource.includes("Outbound and return rides on selected days."), false);
+assert.equal(createPodChooseTypeSource.includes("Return ride added"), false);
+assert.equal(createPodChooseTypeSource.includes("Set the return time on the next step."), false);
+assert.ok(createPodChooseTypeSource.includes("Outbound ride"));
+assert.ok(createPodChooseTypeSource.includes("Return ride"));
+assert.ok(createPodChooseTypeSource.includes("Guests see this pickup time window before locking their seat."));
+assert.ok(createPodChooseTypeSource.includes("Recurring protection"));
+assert.ok(createPodChooseTypeSource.includes("Each date is protected separately."));
+assert.ok(createPodChooseTypeSource.includes("Every ride has its own seat lock, proof, receipt, and settlement."));
+assert.ok(createPodChooseTypeSource.includes("Pick weekdays to preview upcoming rides."));
+assert.ok(createPodChooseTypeSource.includes("Change rules"));
+assert.ok(createPodChooseTypeSource.includes("Before lock: flexible."));
+assert.ok(createPodChooseTypeSource.includes("After lock: may need guest approval."));
+assert.ok(createPodChooseTypeSource.includes("After proof/booking: update in RidePod first."));
+assert.ok(createPodChooseTypeSource.includes("I understand each ride settles separately."));
+assert.ok(createPodChooseTypeSource.includes("Review recurring pod"));
+assert.ok(createPodChooseTypeSource.includes("Template summary"));
+assert.ok(createPodChooseTypeSource.includes("Weekly on"));
+assert.ok(createPodChooseTypeSource.includes("Starts {formatReviewDate(dateTime.recurringStartDate)}"));
+assert.ok(createPodChooseTypeSource.includes("Flexibility: {dateTime.flexibility}"));
+assert.equal(createPodChooseTypeSource.includes("Upcoming rides"), false);
+assert.equal(createPodChooseTypeSource.includes("Pick at least one weekday to preview rides."), false);
+assert.ok(createPodChooseTypeSource.includes("Protected separately"));
+assert.ok(createPodChooseTypeSource.includes("Each ride has its own guest lock, proof, receipt, and settlement."));
+assert.ok(createPodChooseTypeSource.includes("Create Recurring Pod"));
+assert.ok(createPodChooseTypeSource.includes("Create recurring pod?"));
+assert.ok(createPodChooseTypeSource.includes("This creates a weekly template. Each ride date will lock guests, collect proof, and settle separately."));
+assert.equal(createPodChooseTypeSource.includes("Change &amp; exception rules"), false);
+assert.equal(createPodChooseTypeSource.includes("Recurring pods use a weekly template. Guests can request changes before a ride locks. After guests lock, major time or route changes may require re-approval."), false);
+assert.equal(createPodChooseTypeSource.includes("Before lock: host can edit and notify guests."), false);
+assert.equal(createPodChooseTypeSource.includes("After lock: changes may require guest re-approval."), false);
+assert.equal(createPodChooseTypeSource.includes("After proof/booking: changes are not protected unless updated in RidePod."), false);
+assert.equal(createPodChooseTypeSource.includes("FREQ=WEEKLY;BYDAY="), false);
+assert.ok(createPodChooseTypeSource.includes("Select at least one repeat day."));
+assert.ok(createPodChooseTypeSource.includes("Start date is required."));
+assert.ok(createPodChooseTypeSource.includes("Number of rides is required."));
+assert.ok(createPodChooseTypeSource.includes("Add an outbound time."));
+assert.ok(createPodChooseTypeSource.includes("Add a return time."));
+assert.ok(createPodChooseTypeSource.includes("Return time should be after outbound time."));
+assert.ok(createPodChooseTypeSource.includes("Booking proof"));
+assert.ok(createPodChooseTypeSource.includes("Required screenshot later"));
+assert.ok(createPodChooseTypeSource.includes("Fresh quote after guests lock."));
 assert.ok(createPodChooseTypeSource.includes("No upfront quote required"));
-assert.ok(createPodChooseTypeSource.includes("Booking rule"));
-assert.ok(createPodChooseTypeSource.includes("Host can book after the minimum locked guests authorize payment and the quote is within the approved max."));
-assert.ok(createPodChooseTypeSource.includes("RidePod uses the taxi baseline and approved max before booking."));
-assert.ok(createPodChooseTypeSource.includes("Settlement rule"));
+assert.ok(createPodChooseTypeSource.includes("Guests authorize the max charge before the ride. RidePod uses the taxi baseline as the booking fare cap."));
+assert.ok(createPodChooseTypeSource.includes("Final settlement uses verified meter proof or receipt."));
+assert.equal(createPodChooseTypeSource.includes("Required later"), false);
+assert.equal(createPodChooseTypeSource.includes("PreviewBookingRulesCard"), false);
+assert.equal(createPodChooseTypeSource.includes("Minimum locked guests: "), false);
+assert.equal(createPodChooseTypeSource.includes("must authorize before host can book."), false);
+assert.equal(createPodChooseTypeSource.includes("Upload a fresh quote after guests lock."), false);
+assert.equal(createPodChooseTypeSource.includes("Quote status"), false);
 assert.ok(createPodChooseTypeSource.includes("normalizeRideOptionId"));
 assert.ok(createPodChooseTypeSource.includes("rideConfirmationCopy"));
+assert.ok(createPodChooseTypeSource.includes("Create this pod?"));
+assert.ok(createPodChooseTypeSource.includes("Create this taxi meter pod?"));
+assert.ok(createPodChooseTypeSource.includes("Guests can join and lock their seats after the pod is created."));
+assert.ok(createPodChooseTypeSource.includes("Before you book the external ride, RidePod will ask you to upload a fresh quote or fare screenshot."));
+assert.ok(createPodChooseTypeSource.includes("You do not need to upload it now."));
+assert.ok(createPodChooseTypeSource.includes("After the ride, final settlement uses the verified receipt."));
+assert.ok(createPodChooseTypeSource.includes("No upfront quote is required for taxi meter rides. After the ride, upload a clear meter photo or taxi receipt for settlement."));
+assert.ok(createPodChooseTypeSource.includes("I understand quote proof is required before booking and receipt proof is required after the ride."));
+assert.ok(createPodChooseTypeSource.includes("I understand meter proof or receipt is required after the ride."));
 assert.ok(createPodChooseTypeSource.includes("Confirm External Ride"));
 assert.ok(createPodChooseTypeSource.includes("The host books the ride outside RidePod using an app or provider with an upfront quote."));
 assert.ok(createPodChooseTypeSource.includes("RidePod protection applies only when the fresh quote is within the approved max. Final settlement uses the verified receipt."));
 assert.ok(createPodChooseTypeSource.includes("I understand the fresh quote must be approved before booking, and final settlement uses the verified receipt."));
 assert.ok(createPodChooseTypeSource.includes("Confirm Taxi Meter Ride"));
 assert.ok(createPodChooseTypeSource.includes("The host takes a metered taxi outside RidePod."));
-assert.ok(createPodChooseTypeSource.includes("RidePod uses the taxi baseline to set the approved max. Final settlement uses the verified receipt or meter proof."));
-assert.ok(createPodChooseTypeSource.includes("I understand the taxi fare is settled from verified receipt or meter proof, within the approved max rules."));
+assert.ok(createPodChooseTypeSource.includes("RidePod uses the taxi baseline to set the booking fare cap. Final settlement uses verified meter proof or receipt."));
+assert.ok(createPodChooseTypeSource.includes("I understand the taxi fare is settled from verified meter proof or receipt, within the approved max rules."));
 assert.ok(createPodChooseTypeSource.includes("/ rider if ${getMinimumLockedSummary(hostRidingMoney)}"));
 assert.ok(createPodChooseTypeSource.includes("Guests authorize the max charge before the host books. Final settlement uses the verified receipt and may be lower."));
 assert.equal(createPodChooseTypeSource.includes("Expected total"), false);
@@ -645,6 +749,7 @@ assert.ok(legalCopySource.includes("The host books the external ride."));
 assert.ok(legalCopySource.includes("Host may preview fare early, but protected booking unlocks only after required participants authorize payment."));
 assert.ok(legalCopySource.includes("Host reimbursement is based on verified final receipt and approved max fare."));
 assert.ok(legalCopySource.includes("You will never pay more than your approved max unless you approve a higher fare."));
+assert.ok(legalCopySource.includes("Submitting false, altered, AI-generated, or misleading proof may result in temporary or permanent account suspension, loss of reimbursement, charge reversal, and reporting to payment providers or authorities where required by law."));
 for (const bannedCopy of [
   "prepaid and protected",
   "safe and secure",
@@ -659,7 +764,12 @@ for (const bannedCopy of [
   "Uber/Lyft integration",
   "RidePod driver",
   "100% safe",
+  "100% real",
   "verified safe",
+  "forever banned",
+  "crime of forgery",
+  "we guarantee fraud detection",
+  "AI detector verified",
 ]) {
   assert.equal(legalCopySource.toLowerCase().includes(bannedCopy.toLowerCase()), false, `Risky copy remains: ${bannedCopy}`);
 }
@@ -1712,6 +1822,14 @@ assert.ok(
   ),
 );
 assert.ok(earlyQuote.auditEvents.some((event) => event.eventType === "QUOTE_UPLOADED"));
+const quoteCertifiedEvent = earlyQuote.auditEvents.find((event) => event.eventType === "QUOTE_PROOF_CERTIFIED");
+assert.ok(quoteCertifiedEvent);
+assert.equal(quoteCertifiedEvent.eventPayload.podId, "quote-before-confirm");
+assert.equal(quoteCertifiedEvent.eventPayload.userId, "u1");
+assert.equal(quoteCertifiedEvent.eventPayload.proofType, "QUOTE_SCREENSHOT");
+assert.equal(quoteCertifiedEvent.eventPayload.certificationTextVersion, "quote-proof-certification-v1");
+assert.equal(typeof quoteCertifiedEvent.eventPayload.submittedAt, "string");
+assert.equal(quoteCertifiedEvent.eventPayload.screenshotFileId, "mock-file-quote-before-confirm");
 assert.ok(earlyQuote.auditEvents.some((event) => event.eventType === "QUOTE_APPROVED"));
 assert.equal(podBooking.canHostBook("u1", "quote-before-confirm").canBook, false);
 
@@ -1784,6 +1902,31 @@ assert.equal(externalBooking.ok, true);
 assert.equal(externalBooking.pod.lifecycleState, "RIDE_BOOKED");
 assert.equal(externalBooking.pod.bookingState, "BOOKED");
 assert.ok(externalBooking.auditEvents.some((event) => event.eventType === "HOST_BOOKED_EXTERNAL_RIDE"));
+
+const taxiMeterReadyPod = pod({
+  id: "taxi-meter-no-quote-ready",
+  hostUserId: "u1",
+  rideOption: "TAXI_METER",
+  lifecycleState: "LOCKED",
+  bookingState: "QUOTE_APPROVED",
+  minSeatsToBook: 3,
+  members: [
+    podMember("taxi-meter-no-quote-ready", "u1", { role: "HOST" }),
+    podMember("taxi-meter-no-quote-ready", "u2"),
+    podMember("taxi-meter-no-quote-ready", "u6"),
+  ],
+  quotes: [],
+});
+moneySafetyMock.protectedPods.push(taxiMeterReadyPod);
+const taxiMeterPermission = podBooking.canHostBook("u1", "taxi-meter-no-quote-ready");
+assert.equal(taxiMeterPermission.canBook, true);
+assert.equal(
+  taxiMeterPermission.reasons.some((reason) => reason.includes("quote screenshot")),
+  false,
+);
+const taxiMeterBooking = podBooking.confirmExternalBooking("u1", "taxi-meter-no-quote-ready");
+assert.equal(taxiMeterBooking.ok, true);
+assert.equal(taxiMeterBooking.pod.bookingState, "BOOKED");
 
 const aboveMaxServicePod = pod({
   id: "quote-above-max-blocks",
@@ -2092,6 +2235,14 @@ assert.equal(lowerReceiptUpload.ok, true);
 assert.equal(lowerReceiptUpload.receipt.verificationState, "SUBMITTED");
 assert.equal(lowerReceiptUpload.pod.lifecycleState, "RECEIPT_PENDING");
 assert.ok(lowerReceiptUpload.auditEvents.some((event) => event.eventType === "RECEIPT_UPLOADED"));
+const receiptCertifiedEvent = lowerReceiptUpload.auditEvents.find((event) => event.eventType === "RECEIPT_PROOF_CERTIFIED");
+assert.ok(receiptCertifiedEvent);
+assert.equal(receiptCertifiedEvent.eventPayload.podId, "settlement-lower-receipt");
+assert.equal(receiptCertifiedEvent.eventPayload.userId, "u1");
+assert.equal(receiptCertifiedEvent.eventPayload.proofType, "FINAL_RECEIPT_OR_METER_PROOF");
+assert.equal(receiptCertifiedEvent.eventPayload.certificationTextVersion, "receipt-proof-certification-v1");
+assert.equal(typeof receiptCertifiedEvent.eventPayload.submittedAt, "string");
+assert.equal(receiptCertifiedEvent.eventPayload.receiptFileId, "mock-file-receipt-lower");
 const beforeVerificationSettlement = podSettlement.calculateSettlement("settlement-lower-receipt");
 assert.equal(beforeVerificationSettlement.ok, false);
 assert.equal(beforeVerificationSettlement.error, "VERIFIED_RECEIPT_REQUIRED");

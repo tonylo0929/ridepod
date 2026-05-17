@@ -1,16 +1,16 @@
 import Link from "next/link";
 import {
-  AlertTriangle,
   ArrowRight,
-  CalendarClock,
+  CarFront,
+  ChevronDown,
   CheckCircle2,
   CircleDollarSign,
-  ClipboardCheck,
   HelpCircle,
   LockKeyhole,
-  MapPinned,
   ReceiptText,
+  Scale,
   ShieldCheck,
+  Smartphone,
   Sparkles,
   UsersRound,
 } from "lucide-react";
@@ -51,52 +51,53 @@ const featureCards = [
   },
 ];
 
-const timelineSteps = [
+const cleanHowSteps = [
   {
-    title: "Create or join a pod",
-    body: "Choose a planned route, time, safety mode, seats, estimated fare, and approved max fare.",
-    icon: MapPinned,
-  },
-  {
-    title: "Lock your seat",
-    body: "Participants authorize their max charge. A seat is confirmed only after payment authorization.",
-    icon: LockKeyhole,
-  },
-  {
-    title: "Group locks",
-    body: "Once required participants are authorized, the pod becomes locked and chat/pickup details can unlock.",
+    title: "Create pod",
+    body: "Host starts a pod and adds guests.",
     icon: UsersRound,
   },
   {
-    title: "Host checks the fare",
-    body: "The host uploads a live quote screenshot from Uber, Lyft, DiDi, taxi, or another external ride app.",
-    icon: ClipboardCheck,
+    title: "Guests lock",
+    body: "Guests join and lock their share.",
+    icon: LockKeyhole,
   },
   {
-    title: "Host can book",
-    body: "Protected booking unlocks only when required participants are authorized and the quote is within the approved max.",
-    icon: CheckCircle2,
+    title: "Take the ride",
+    body: "Ride happens with the group.",
+    icon: CarFront,
   },
   {
-    title: "Ride happens",
-    body: "The group rides together using the external ride booked by the host.",
-    icon: CalendarClock,
+    title: "Settle fairly",
+    body: "Costs split fairly with proof.",
+    icon: Scale,
+  },
+];
+
+const cleanRideOptions = [
+  {
+    title: "Ride app / fixed quote",
+    body: "Quote before booking",
+    icon: Smartphone,
   },
   {
-    title: "Host uploads receipt",
-    body: "After the ride, the host uploads the final receipt.",
-    icon: ReceiptText,
+    title: "Taxi meter",
+    body: "Meter proof after ride",
+    icon: CarFront,
   },
-  {
-    title: "RidePod settles fairly",
-    body: "RidePod verifies the receipt, calculates the final split, charges or adjusts riders, and marks host reimbursement.",
-    icon: CircleDollarSign,
-  },
-  {
-    title: "Stay protected in-app",
-    body: "Payments, key ride updates, and receipt settlement stay inside RidePod. Off-app payments are not protected.",
-    icon: ShieldCheck,
-  },
+];
+
+const cleanMoneyItems = [
+  "Booking fare cap",
+  "Max charge per guest",
+  "Verified receipt settlement",
+];
+
+const faqPreviewItems = [
+  "Does RidePod provide drivers?",
+  "What is max charge?",
+  "When is proof needed?",
+  "How are refunds handled?",
 ];
 
 const faqItems = [
@@ -134,6 +135,11 @@ const faqItems = [
     question: "Why does the host upload a quote screenshot?",
     answer:
       "The quote screenshot helps RidePod check whether the expected fare is within the approved max before the host books. The final settlement still uses the verified final receipt.",
+  },
+  {
+    question: "What happens if proof is false or altered?",
+    answer:
+      "Submitting false, altered, AI-generated, or misleading proof may result in temporary or permanent account suspension, loss of reimbursement, charge reversal, and reporting to payment providers or authorities where required by law.",
   },
   {
     question: "What happens if the final receipt is lower than expected?",
@@ -262,28 +268,106 @@ export function AboutRidePodPage() {
 
 export function HowRidePodWorksPage() {
   return (
-    <InfoPageLayout>
-      <PageIntro
-        eyebrow="How RidePod Works"
-        title="One planned pod, clear steps, protected settlement."
-        body="Each RidePod ride has its own payment lock, host quote check, final receipt, and fair split. The host books the external ride, while RidePod keeps the coordination and money rules visible."
-      />
-      <Timeline />
-      <Card className="p-5">
-        <div className="flex items-start gap-3">
-          <AlertTriangle className="mt-1 h-6 w-6 shrink-0 text-[var(--rp-primary)]" />
+    <div className="mx-auto grid w-full max-w-md gap-4 pb-6">
+      <section className="grid gap-2 text-center">
+        <h1 className="text-[30px] font-black leading-tight tracking-tight text-[var(--rp-text)]">
+          How RidePod Works
+        </h1>
+        <p className="text-base font-black text-[var(--rp-primary)]">
+          Split the ride. Not the risk.
+        </p>
+      </section>
+
+      <section className="grid grid-cols-4 gap-2">
+        {cleanHowSteps.map(({ title, body, icon: Icon }, index) => (
+          <Card key={title} className="relative p-2.5 text-center">
+            <span className="absolute -top-2 left-1/2 grid h-5 w-5 -translate-x-1/2 place-items-center rounded-full bg-[var(--rp-primary)] text-[11px] font-black text-[var(--rp-primary-text)]">
+              {index + 1}
+            </span>
+            <Icon className="mx-auto mt-3 h-6 w-6 text-[var(--rp-primary)]" />
+            <h2 className="mt-2 text-[11px] font-black text-[var(--rp-text)]">{title}</h2>
+            <p className="mt-1 text-[10px] font-semibold leading-4 text-[var(--rp-muted)]">{body}</p>
+          </Card>
+        ))}
+      </section>
+
+      <section className="grid grid-cols-2 gap-3">
+        {cleanRideOptions.map(({ title, body, icon: Icon }) => (
+          <Card key={title} className="grid grid-cols-[34px_1fr_auto] items-center gap-3 p-3">
+            <span className="grid h-9 w-9 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+              <Icon className="h-5 w-5" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-black leading-4 text-[var(--rp-text)]">{title}</span>
+              <span className="mt-1 block text-[11px] font-semibold text-[var(--rp-muted)]">{body}</span>
+            </span>
+            <ArrowRight className="h-4 w-4 text-[var(--rp-muted)]" />
+          </Card>
+        ))}
+      </section>
+
+      <Card className="p-4">
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5 text-[var(--rp-primary)]" />
+          <h2 className="text-base font-black text-[var(--rp-text)]">Money Protection</h2>
+        </div>
+        <div className="mt-3 grid gap-2">
+          {cleanMoneyItems.map((item) => (
+            <div key={item} className="flex items-center gap-2 text-sm font-semibold text-[var(--rp-muted-strong)]">
+              <CheckCircle2 className="h-4 w-4 text-[var(--rp-primary)]" />
+              <span>{item}</span>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
+          Guests see their cap before the ride. Final charge may be lower.
+        </p>
+      </Card>
+
+      <Card className="p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <HelpCircle className="h-5 w-5 text-[var(--rp-muted-strong)]" />
+            <h2 className="text-base font-black text-[var(--rp-text)]">FAQ</h2>
+          </div>
+          <Link href="/faq" className="text-xs font-black text-[var(--rp-primary)]">
+            View all
+          </Link>
+        </div>
+        <div className="mt-3 grid gap-2">
+          {faqPreviewItems.map((question) => (
+            <details
+              key={question}
+              className="group rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-2"
+            >
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-left text-xs font-black text-[var(--rp-text)]">
+                {question}
+                <ChevronDown className="h-4 w-4 shrink-0 text-[var(--rp-muted)] transition group-open:rotate-180" />
+              </summary>
+              <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
+                View the full FAQ for details.
+              </p>
+            </details>
+          ))}
+        </div>
+      </Card>
+
+      <Card className="border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_8%,var(--rp-card))] p-4">
+        <div className="flex items-center gap-3">
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+            <ShieldCheck className="h-7 w-7" />
+          </span>
           <div>
-            <h2 className="text-lg font-black text-[var(--rp-text)]">
-              Off-app payments are not protected.
+            <h2 className="text-base font-black text-[var(--rp-primary)]">
+              RidePod does not provide drivers.
             </h2>
-            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-              Payments, key ride updates, and receipt settlement stay inside RidePod so the group
-              can use max-charge rules, receipt verification, and dispute support.
+            <p className="mt-1 text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              The host books or takes the external ride.
             </p>
           </div>
         </div>
       </Card>
-    </InfoPageLayout>
+    </div>
   );
 }
 
@@ -381,34 +465,6 @@ function TwoColumnInfo() {
           receipt verification, or host reimbursement if payment happens outside the app.
         </p>
       </Card>
-    </section>
-  );
-}
-
-function Timeline() {
-  return (
-    <section className="grid gap-3">
-      {timelineSteps.map(({ title, body, icon: Icon }, index) => (
-        <div key={title} className="grid grid-cols-[44px_1fr] gap-3">
-          <div className="relative grid justify-items-center">
-            <span className="z-10 grid h-11 w-11 place-items-center rounded-2xl border border-[var(--rp-border-strong)] bg-[var(--rp-card)] text-[var(--rp-primary)] shadow-[var(--rp-shadow-soft)]">
-              <Icon className="h-5 w-5" />
-            </span>
-            {index < timelineSteps.length - 1 ? (
-              <span className="absolute bottom-[-18px] top-11 w-px bg-[var(--rp-border-strong)]" />
-            ) : null}
-          </div>
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
-                Step {index + 1}
-              </span>
-            </div>
-            <h2 className="mt-2 text-lg font-black text-[var(--rp-text)]">{title}</h2>
-            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">{body}</p>
-          </Card>
-        </div>
-      ))}
     </section>
   );
 }

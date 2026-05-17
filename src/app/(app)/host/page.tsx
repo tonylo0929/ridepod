@@ -20,20 +20,22 @@ function getReadyMembers(pod: RidePod) {
 }
 
 function getHostAction(pod: RidePod) {
+  const isTaxiMeter = pod.rideOption === "taxi_meter" || pod.vehicleType === "Taxi";
+
   if (pod.moneyStatus === "host_replacement_needed") {
     return "Confirm backup host";
   }
 
-  if (pod.moneyStatus === "quote_approval_needed") {
+  if (!isTaxiMeter && pod.moneyStatus === "quote_approval_needed") {
     return "Review higher quote";
   }
 
   if (pod.moneyStatus === "host_can_book" || pod.status === "host_booking") {
-    return "Book external ride";
+    return isTaxiMeter ? "Taxi meter ready" : "Book external ride";
   }
 
   if (pod.moneyStatus === "receipt_pending" || pod.status === "booked") {
-    return "Upload receipt";
+    return isTaxiMeter ? "Upload meter proof" : "Upload receipt";
   }
 
   if (pod.moneyStatus === "settlement_ready" || pod.status === "completed") {
