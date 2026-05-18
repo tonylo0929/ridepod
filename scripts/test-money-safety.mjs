@@ -849,6 +849,8 @@ assert.ok(mockDataSource.includes("disputeWindowEndsAt"));
 assert.ok(mockDataSource.includes("platformFeeCents: 2980"));
 assert.ok(mockDataSource.includes("hostReimbursementCents: 26820"));
 assert.ok(mockDataSource.includes("payoutState: \"PENDING\""));
+assert.ok(mockDataSource.includes("disputeReason?: string | null"));
+assert.ok(mockDataSource.includes("disputeNote?: string | null"));
 assert.ok(mockDataSource.includes("submittedAt"));
 assert.ok(mockDataSource.includes("reviewedAt"));
 assert.ok(mockDataSource.includes("bookingFareCapCents"));
@@ -934,6 +936,37 @@ for (const recurringInstanceCopy of [
   "48h remaining",
   "View settlement details",
   "Help center",
+  "Settlement details",
+  "Verified final fare",
+  "Booking fare cap",
+  "Within cap",
+  "Above cap - manual review required",
+  "Split breakdown",
+  "Provider fare / meter fare",
+  "Billable guests",
+  "Fare share per guest",
+  "Platform fee total",
+  "Host own share",
+  "deducted / not reimbursed",
+  "Guest final charge",
+  "Guests cannot be charged above their approved max unless they approved an increase.",
+  "Proof type",
+  "Meter proof / taxi receipt",
+  "Final receipt",
+  "Verified proof controls final settlement.",
+  "Guests can report an issue until the dispute window ends. If no issue is reported, settlement finalizes automatically.",
+  "Report an issue",
+  "Tell RidePod what looks wrong. Our team will review the proof, fare, route, and ride timeline.",
+  "Wrong fare",
+  "Wrong route",
+  "I did not take this ride",
+  "Receipt or proof looks wrong",
+  "Host issue",
+  "Other",
+  "Describe the issue",
+  "Add screenshot or proof",
+  "Submit issue",
+  "RidePod will review this issue. Payout may be held until the review is complete.",
 ]) {
   assert.ok(
     recurringInstanceProofFlowSource.includes(recurringInstanceCopy),

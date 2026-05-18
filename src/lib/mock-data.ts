@@ -120,6 +120,8 @@ export type RecurringRideInstancePreview = {
   platformFeeCents?: number;
   hostReimbursementCents?: number;
   payoutState?: RideInstancePayoutState;
+  disputeReason?: string | null;
+  disputeNote?: string | null;
 };
 
 export type RidePod = {

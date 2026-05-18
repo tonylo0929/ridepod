@@ -18,6 +18,7 @@ import {
   Upload,
   UsersRound,
   WalletCards,
+  X,
 } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { formatMoney, type RecurringRideInstancePreview, type RidePod } from "@/lib/mock-data";
@@ -239,17 +240,315 @@ function SettlementTimelineStep({
   );
 }
 
+const disputeIssueTypes = [
+  "Wrong fare",
+  "Wrong route",
+  "I did not take this ride",
+  "Receipt or proof looks wrong",
+  "Host issue",
+  "Other",
+] as const;
+
+function RideInstanceSettlementSummary({
+  rideInstance,
+  statusLabel,
+}: {
+  rideInstance: RecurringRideInstancePreview;
+  statusLabel: string;
+}) {
+  return (
+    <div className="rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
+      <p className="text-sm font-bold text-[var(--rp-muted-strong)]">
+        {rideInstance.displayDate}
+        {" \u00b7 "}
+        {rideInstance.departureTime}
+        {" \u00b7 "}
+        {rideInstance.legType === "return" ? "Return" : "Outbound"}
+      </p>
+      <h3 className="mt-2 text-2xl font-black leading-tight text-[var(--rp-text)]">
+        {rideInstance.originLabel}
+        {" \u2192 "}
+        {rideInstance.destinationLabel}
+      </h3>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Badge className="gap-1.5 bg-[var(--rp-success-bg)] px-3 py-1.5 text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]">
+          <CheckCircle2 className="h-4 w-4" /> Verified
+        </Badge>
+        <Badge className="gap-1.5 bg-[var(--rp-success-bg)] px-3 py-1.5 text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]">
+          <CheckCircle2 className="h-4 w-4" /> {statusLabel}
+        </Badge>
+      </div>
+    </div>
+  );
+}
+
+function SettlementDetailsScreen({
+  rideInstance,
+  onBack,
+}: {
+  rideInstance: RecurringRideInstancePreview;
+  onBack: () => void;
+}) {
+  const [showReportIssue, setShowReportIssue] = useState(false);
+  const [disputeSubmitted, setDisputeSubmitted] = useState(Boolean(rideInstance.disputeRaised));
+  const [selectedIssueType, setSelectedIssueType] = useState<(typeof disputeIssueTypes)[number]>("Wrong fare");
+  const providerFareCents = rideInstance.finalFareCents ?? rideInstance.receiptFareCents ?? 29800;
+  const bookingFareCapCents = rideInstance.bookingFareCapCents ?? 32000;
+  const billableGuestCount = 4;
+  const fareShareCents = Math.ceil(providerFareCents / billableGuestCount);
+  const guestPlatformFeeCents = Math.ceil(fareShareCents * 0.1);
+  const guestFinalChargeCents = fareShareCents + guestPlatformFeeCents;
+  const platformFeeCents = rideInstance.platformFeeCents ?? guestPlatformFeeCents * billableGuestCount;
+  const hostReimbursementCents = rideInstance.hostReimbursementCents ?? Math.max(0, providerFareCents - platformFeeCents);
+  const proofTypeLabel = rideInstance.proofType === "METER_PROOF" ? "Meter proof / taxi receipt" : "Final receipt";
+  const withinCap = providerFareCents <= bookingFareCapCents;
+  const statusLabel = disputeSubmitted ? "Dispute review" : "Settlement ready";
+
+  return (
+    <section className="overflow-hidden rounded-[30px] border border-[var(--rp-border-strong)] bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--rp-primary)_12%,transparent),transparent_36%),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)] sm:p-6">
+      <div className="flex items-center justify-between gap-4">
+        <button
+          type="button"
+          onClick={onBack}
+          className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-primary)]"
+          aria-label="Back to settlement"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <h2 className="text-xl font-black text-[var(--rp-text)]">Settlement details</h2>
+        <div className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-primary)]">
+          <ShieldCheck className="h-5 w-5" />
+        </div>
+      </div>
+
+      <div className="mt-5">
+        <RideInstanceSettlementSummary rideInstance={rideInstance} statusLabel={statusLabel} />
+      </div>
+
+      <div className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
+        <h3 className="text-lg font-black text-[var(--rp-text)]">Final fare</h3>
+        <dl className="mt-4 grid gap-3 text-sm">
+          <div className="flex justify-between gap-4">
+            <dt className="font-semibold text-[var(--rp-muted-strong)]">Verified final fare</dt>
+            <dd className="font-black text-[var(--rp-text)]">{formatHkdCents(providerFareCents)}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="font-semibold text-[var(--rp-muted-strong)]">Booking fare cap</dt>
+            <dd className="font-black text-[var(--rp-text)]">{formatHkdCents(bookingFareCapCents)}</dd>
+          </div>
+          <div className="flex justify-between gap-4 border-t border-[var(--rp-border)] pt-3">
+            <dt className="font-black text-[var(--rp-text)]">Status</dt>
+            <dd className={withinCap ? "font-black text-[var(--rp-success)]" : "font-black text-[var(--rp-danger)]"}>
+              {withinCap ? "Within cap" : "Above cap - manual review required"}
+            </dd>
+          </div>
+        </dl>
+      </div>
+
+      <div className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
+        <h3 className="text-lg font-black text-[var(--rp-text)]">Split breakdown</h3>
+        <dl className="mt-4 grid gap-3 text-sm">
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--rp-muted-strong)]">Provider fare / meter fare</dt>
+            <dd className="font-black text-[var(--rp-text)]">{formatHkdCents(providerFareCents)}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--rp-muted-strong)]">Billable guests</dt>
+            <dd className="font-black text-[var(--rp-text)]">{billableGuestCount}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--rp-muted-strong)]">Fare share per guest</dt>
+            <dd className="font-black text-[var(--rp-text)]">{formatHkdCents(fareShareCents)}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--rp-muted-strong)]">Platform fee</dt>
+            <dd className="font-black text-[var(--rp-text)]">10% of fare share</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--rp-muted-strong)]">Platform fee total</dt>
+            <dd className="font-black text-[var(--rp-text)]">{formatHkdCents(platformFeeCents)}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--rp-muted-strong)]">Host own share</dt>
+            <dd className="font-black text-[var(--rp-text)]">deducted / not reimbursed</dd>
+          </div>
+          <div className="flex justify-between gap-4 border-t border-[var(--rp-border)] pt-3">
+            <dt className="font-black text-[var(--rp-primary)]">Host reimbursement</dt>
+            <dd className="font-black text-[var(--rp-primary)]">{formatHkdCents(hostReimbursementCents)}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
+        <h3 className="text-lg font-black text-[var(--rp-text)]">Guest final charge</h3>
+        <p className="mt-2 text-[34px] font-black leading-none text-[var(--rp-primary)]">{formatHkdCents(guestFinalChargeCents)}</p>
+        <dl className="mt-4 grid gap-3 text-sm">
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--rp-muted-strong)]">Fare share</dt>
+            <dd className="font-black text-[var(--rp-text)]">{formatHkdCents(fareShareCents)}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--rp-muted-strong)]">Platform fee</dt>
+            <dd className="font-black text-[var(--rp-text)]">{formatHkdCents(guestPlatformFeeCents)}</dd>
+          </div>
+          <div className="flex justify-between gap-4 border-t border-[var(--rp-border)] pt-3">
+            <dt className="font-black text-[var(--rp-text)]">Total</dt>
+            <dd className="font-black text-[var(--rp-text)]">{formatHkdCents(guestFinalChargeCents)}</dd>
+          </div>
+        </dl>
+        <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+          Guests cannot be charged above their approved max unless they approved an increase.
+        </p>
+      </div>
+
+      <div className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
+        <h3 className="text-lg font-black text-[var(--rp-text)]">Proof</h3>
+        <dl className="mt-4 grid gap-3 text-sm">
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--rp-muted-strong)]">Proof type</dt>
+            <dd className="font-black text-[var(--rp-text)]">{proofTypeLabel}</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--rp-muted-strong)]">Receipt status</dt>
+            <dd className="font-black text-[var(--rp-success)]">Verified</dd>
+          </div>
+        </dl>
+        <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+          Verified proof controls final settlement.
+        </p>
+      </div>
+
+      <div className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-black text-[var(--rp-text)]">Dispute window</h3>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              Guests can report an issue until the dispute window ends. If no issue is reported, settlement finalizes automatically.
+            </p>
+          </div>
+          <Badge className={disputeSubmitted ? "bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border)]" : "bg-[var(--rp-success-bg)] text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]"}>
+            {disputeSubmitted ? "Dispute review" : "Open"}
+          </Badge>
+        </div>
+        <dl className="mt-4 grid gap-2 text-sm">
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--rp-muted-strong)]">Deadline</dt>
+            <dd className="font-black text-[var(--rp-text)]">May 22, 2025 · 8:00 AM</dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-[var(--rp-muted-strong)]">Remaining</dt>
+            <dd className="font-black text-[var(--rp-primary)]">48h remaining</dd>
+          </div>
+        </dl>
+        {disputeSubmitted ? (
+          <div className="mt-4 rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-warning-bg)] p-4 text-sm font-bold leading-6 text-[var(--rp-warning)]">
+            RidePod will review this issue. Payout may be held until the review is complete.
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowReportIssue(true)}
+            className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] px-4 text-sm font-black text-[var(--rp-primary)]"
+          >
+            Report an issue
+          </button>
+        )}
+      </div>
+
+      {showReportIssue ? (
+        <div className="fixed inset-0 z-[90] grid place-items-center bg-[rgba(3,7,18,0.72)] px-4 py-6 backdrop-blur-sm">
+          <section className="w-full max-w-[430px] rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-2xl font-black">Report an issue</h3>
+                <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                  Tell RidePod what looks wrong. Our team will review the proof, fare, route, and ride timeline.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReportIssue(false)}
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)]"
+                aria-label="Close report issue"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              {disputeIssueTypes.map((issueType) => (
+                <button
+                  key={issueType}
+                  type="button"
+                  onClick={() => setSelectedIssueType(issueType)}
+                  className={[
+                    "min-h-11 rounded-[14px] border px-3 text-left text-xs font-black",
+                    selectedIssueType === issueType
+                      ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                      : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
+                  ].join(" ")}
+                >
+                  {issueType}
+                </button>
+              ))}
+            </div>
+            <label className="mt-4 grid gap-2 text-sm font-bold text-[var(--rp-muted-strong)]">
+              Describe the issue
+              <textarea
+                className="min-h-28 rounded-[16px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 py-3 text-sm font-bold text-[var(--rp-text)]"
+                placeholder="Describe the issue"
+              />
+            </label>
+            <label className="mt-4 grid min-h-20 cursor-pointer place-items-center rounded-[16px] border border-dashed border-[var(--rp-primary)] bg-[var(--rp-card-soft)] p-4 text-center text-sm font-black text-[var(--rp-primary)]">
+              <input className="sr-only" type="file" />
+              Add screenshot or proof
+            </label>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setShowReportIssue(false)}
+                className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDisputeSubmitted(true);
+                  setShowReportIssue(false);
+                }}
+                className="min-h-12 rounded-2xl bg-[var(--rp-gradient-primary)] text-sm font-black text-[var(--rp-primary-text)]"
+              >
+                Submit issue
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function RecurringInstanceSettlementTimeline({
   rideInstance,
 }: {
   rideInstance: RecurringRideInstancePreview;
 }) {
+  const [showSettlementDetails, setShowSettlementDetails] = useState(false);
   const settlementState = getSettlementDisplayState(rideInstance);
   const providerFareCents = rideInstance.finalFareCents ?? rideInstance.receiptFareCents ?? 29800;
   const platformFeeCents = rideInstance.platformFeeCents ?? Math.round(providerFareCents * 0.1);
   const hostReimbursementCents = rideInstance.hostReimbursementCents ?? Math.max(0, providerFareCents - platformFeeCents);
   const dateLabel = compactRideDate(rideInstance);
   const disputeDeadline = "May 22, 8:00 AM";
+
+  if (showSettlementDetails) {
+    return (
+      <SettlementDetailsScreen
+        rideInstance={rideInstance}
+        onBack={() => setShowSettlementDetails(false)}
+      />
+    );
+  }
 
   return (
     <section className="overflow-hidden rounded-[30px] border border-[var(--rp-border-strong)] bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--rp-primary)_12%,transparent),transparent_36%),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)] sm:p-6">
@@ -387,6 +686,7 @@ function RecurringInstanceSettlementTimeline({
       <div className="mt-5 grid gap-3">
         <button
           type="button"
+          onClick={() => setShowSettlementDetails(true)}
           className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-[16px] px-5 text-base font-black text-[var(--rp-primary-text)] shadow-[0_18px_34px_color-mix(in_srgb,var(--rp-primary)_20%,transparent)]"
           style={{ background: "var(--rp-gradient-primary)" }}
         >
