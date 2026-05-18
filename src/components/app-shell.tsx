@@ -11,6 +11,7 @@ import {
   MessageCircle,
   PlusCircle,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   UserRound,
   UsersRound,
@@ -29,6 +30,7 @@ const primaryNav = [
 
 const utilityNav = [
   { href: "/host", label: "Host", icon: UsersRound },
+  { href: "/admin/review", label: "Admin review", icon: ShieldAlert },
   { href: "/how-it-works", label: "How it works", icon: ShieldCheck },
   { href: "/faq", label: "FAQ", icon: CircleHelp },
   { href: "/about", label: "About", icon: Info },
@@ -73,7 +75,7 @@ function PremiumBottomNav() {
       <div className="mx-auto grid max-w-md grid-cols-5 items-center">
         <NavLink href="/home" label="Home" icon={Home} compact />
         <NavLink href="/pods" label="My Pods" icon={CalendarCheck} compact />
-        <NavLink href="/create" label="Create" icon={PlusCircle} compact />
+        <NavLink href="/notifications" label="Updates" icon={Bell} compact />
         <NavLink href="/host" label="Chat" icon={MessageCircle} compact />
         <NavLink href="/profile" label="Profile" icon={UserRound} compact />
       </div>

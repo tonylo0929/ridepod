@@ -7,15 +7,19 @@ import {
   CheckCircle2,
   CircleDollarSign,
   Clock3,
+  FileText,
   Home,
+  LayoutGrid,
   Plus,
   Repeat2,
+  ReceiptText,
   ShieldCheck,
   Upload,
   UserRound,
   Users,
+  WalletCards,
 } from "lucide-react";
-import { formatMoney, getUser, type RidePod, type User } from "@/lib/mock-data";
+import { formatMoney, getUser, type RecurringRideInstancePreview, type RidePod, type User } from "@/lib/mock-data";
 
 export function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -78,268 +82,375 @@ function getDefaultMoneyStatus(pod: RidePod): NonNullable<RidePod["moneyStatus"]
   return "dispute_review";
 }
 
-const recurringRideStatusLabels: Record<NonNullable<RidePod["upcomingRideInstances"]>[number]["status"], string> = {
-  waiting_for_guests: "Waiting for guests",
-  guests_locking: "Guests locking",
-  quote_needed: "Quote needed",
-  quote_under_review: "Quote under review",
-  ready_to_book: "Ready to book",
-  ride_booked: "Ride booked",
-  ready_for_taxi_meter: "Ready for taxi meter",
-  meter_proof_needed: "Meter proof needed",
-  meter_proof_submitted: "Meter proof submitted",
-  meter_proof_under_review: "Meter proof under review",
-  receipt_pending: "Receipt pending",
-  receipt_submitted: "Receipt submitted",
-  receipt_under_review: "Receipt under review",
-  settlement_ready: "Settlement ready",
-  completed: "Completed",
-};
-
-const recurringRideChipLabels: Record<NonNullable<RidePod["upcomingRideInstances"]>[number]["status"], string> = {
-  waiting_for_guests: "Locking",
-  guests_locking: "Locking",
-  quote_needed: "Quote needed",
-  quote_under_review: "Under review",
-  ready_to_book: "Ready to book",
-  ride_booked: "Ride booked",
-  ready_for_taxi_meter: "Taxi ready",
-  meter_proof_needed: "Meter proof needed",
-  meter_proof_submitted: "Under review",
-  meter_proof_under_review: "Under review",
-  receipt_pending: "Receipt pending",
-  receipt_submitted: "Under review",
-  receipt_under_review: "Under review",
-  settlement_ready: "Settled",
-  completed: "Settled",
-};
-
 function getRecurringRideOptionLabel(pod: RidePod) {
   return pod.rideOption === "taxi_meter" || pod.vehicleType === "Taxi"
     ? "Taxi meter"
     : "Ride app / fixed quote";
 }
-
-function getRecurringProofCopy(pod: RidePod) {
-  const nextRide = pod.upcomingRideInstances?.[0];
-  const isTaxiMeter = getRecurringRideOptionLabel(pod) === "Taxi meter";
-
-  if (isTaxiMeter) {
-    return nextRide?.status === "meter_proof_needed" ||
-      nextRide?.status === "meter_proof_submitted" ||
-      nextRide?.status === "meter_proof_under_review"
-      ? "Upload meter proof after ride."
-      : "No upfront quote needed.";
-  }
-
-  if (
-    nextRide?.status === "receipt_pending" ||
-    nextRide?.status === "receipt_submitted" ||
-    nextRide?.status === "receipt_under_review"
-  ) {
-    return "Final receipt required for settlement.";
-  }
-
-  if (nextRide?.status === "quote_needed") {
-    return "Upload quote before booking.";
-  }
-
-  if (nextRide?.status === "ready_to_book" || nextRide?.status === "ride_booked") {
-    return "Quote approved. Host can book.";
-  }
-
-  return "Quote needed after guests lock.";
-}
-
-function getRecurringPrimaryAction(pod: RidePod) {
-  const nextRide = pod.upcomingRideInstances?.[0];
-  const isTaxiMeter = getRecurringRideOptionLabel(pod) === "Taxi meter";
-
-  if (!nextRide) {
-    return { label: "Review recurring pod", href: `/pods/${pod.id}` };
-  }
-
-  const instanceHref = `/host?rideInstanceId=${encodeURIComponent(nextRide.id)}`;
-
-  if (
-    isTaxiMeter &&
-    (nextRide.status === "meter_proof_needed" ||
-      nextRide.status === "meter_proof_submitted" ||
-      nextRide.status === "meter_proof_under_review")
-  ) {
-    return { label: "Upload meter proof", href: instanceHref };
-  }
-
-  if (!isTaxiMeter && nextRide.status === "receipt_pending") {
-    return { label: "Upload receipt", href: instanceHref };
-  }
-
-  if (nextRide.status === "quote_needed") {
-    return { label: "Upload quote", href: instanceHref };
-  }
-
-  if (nextRide.status === "ready_to_book") {
-    return { label: "Mark booked", href: instanceHref };
-  }
-
-  if (
-    nextRide.status === "receipt_submitted" ||
-    nextRide.status === "receipt_under_review" ||
-    nextRide.status === "settlement_ready" ||
-    nextRide.status === "completed"
-  ) {
-    return { label: "View settlement", href: instanceHref };
-  }
-
-  return { label: "View pod", href: `/pods/${pod.id}` };
-}
-
 function getRecurringRouteTitle(pod: RidePod) {
-  if (pod.title.includes("↔")) return pod.title;
-  return pod.recurringPattern === "back_and_forth"
-    ? `${pod.fromLabel} ↔ ${pod.toLabel}`
-    : `${pod.fromLabel} → ${pod.toLabel}`;
+  return `${pod.fromLabel} \u2192 ${pod.toLabel}`;
+}
+
+type RideInstanceDisplayStatus = {
+  label: string;
+  chipClassName: string;
+  cardClassName: string;
+  helperText: string;
+  primaryActionLabel: string;
+  primaryActionTarget: string;
+  bucket: "quote_needed" | "ready_to_book" | "ride_booked" | "receipt_needed" | "settlement_ready" | "closed";
+};
+
+const rideInstanceStatusTones = {
+  gold: {
+    chip: "bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border)]",
+    card: "border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-primary)_8%,var(--rp-card))] text-[var(--rp-primary)]",
+  },
+  green: {
+    chip: "bg-[var(--rp-success-bg)] text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]",
+    card: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300",
+  },
+  purple: {
+    chip: "bg-violet-400/10 text-violet-300 ring-violet-400/25",
+    card: "border-violet-400/20 bg-violet-400/10 text-violet-300",
+  },
+  orange: {
+    chip: "bg-[var(--rp-danger-bg)] text-[var(--rp-danger)] ring-[var(--rp-border)]",
+    card: "border-orange-400/20 bg-orange-400/10 text-orange-300",
+  },
+  blue: {
+    chip: "bg-sky-400/10 text-sky-300 ring-sky-400/25",
+    card: "border-sky-400/20 bg-sky-400/10 text-sky-300",
+  },
+  gray: {
+    chip: "bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-badge-neutral-text)] ring-[var(--rp-border)]",
+    card: "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
+  },
+};
+
+export function getRideInstanceDisplayStatus(
+  rideInstance: RecurringRideInstancePreview,
+  pod: RidePod,
+): RideInstanceDisplayStatus {
+  const taxiMeter = getRecurringRideOptionLabel(pod) === "Taxi meter";
+  const instanceHref = `/host?rideInstanceId=${encodeURIComponent(rideInstance.id)}`;
+
+  if (rideInstance.status === "completed" || rideInstance.settlementState === "PAID" || rideInstance.payoutState === "PAID") {
+    return {
+      label: "Closed",
+      chipClassName: rideInstanceStatusTones.gray.chip,
+      cardClassName: rideInstanceStatusTones.gray.card,
+      helperText: "Settlement complete. Payout processed.",
+      primaryActionLabel: "View receipt",
+      primaryActionTarget: instanceHref,
+      bucket: "closed",
+    };
+  }
+
+  if (rideInstance.status === "settlement_ready" || rideInstance.proofStatus === "VERIFIED") {
+    return {
+      label: "Settlement ready",
+      chipClassName: rideInstanceStatusTones.blue.chip,
+      cardClassName: rideInstanceStatusTones.blue.card,
+      helperText: "Proof verified. Dispute window is open.",
+      primaryActionLabel: "View settlement",
+      primaryActionTarget: instanceHref,
+      bucket: "settlement_ready",
+    };
+  }
+
+  if (taxiMeter) {
+    if (
+      rideInstance.status === "meter_proof_needed" ||
+      rideInstance.status === "meter_proof_submitted" ||
+      rideInstance.status === "meter_proof_under_review"
+    ) {
+      return {
+        label: "Meter proof needed",
+        chipClassName: rideInstanceStatusTones.orange.chip,
+        cardClassName: rideInstanceStatusTones.orange.card,
+        helperText: "Upload meter proof after the ride.",
+        primaryActionLabel: "Upload meter proof",
+        primaryActionTarget: instanceHref,
+        bucket: "receipt_needed",
+      };
+    }
+
+    return {
+      label: "Ready for taxi meter",
+      chipClassName: rideInstanceStatusTones.green.chip,
+      cardClassName: rideInstanceStatusTones.green.card,
+      helperText: "No upfront quote needed.",
+      primaryActionLabel: "View ride",
+      primaryActionTarget: instanceHref,
+      bucket: "ready_to_book",
+    };
+  }
+
+  if (rideInstance.status === "receipt_pending" || rideInstance.status === "receipt_submitted" || rideInstance.status === "receipt_under_review") {
+    return {
+      label: "Receipt needed",
+      chipClassName: rideInstanceStatusTones.orange.chip,
+      cardClassName: rideInstanceStatusTones.orange.card,
+      helperText: "Upload the final receipt for settlement.",
+      primaryActionLabel: "Upload receipt",
+      primaryActionTarget: instanceHref,
+      bucket: "receipt_needed",
+    };
+  }
+
+  if (rideInstance.status === "ride_booked") {
+    return {
+      label: "Ride booked",
+      chipClassName: rideInstanceStatusTones.purple.chip,
+      cardClassName: rideInstanceStatusTones.purple.card,
+      helperText: "Stay coordinated with guests.",
+      primaryActionLabel: "Open chat",
+      primaryActionTarget: instanceHref,
+      bucket: "ride_booked",
+    };
+  }
+
+  if (rideInstance.status === "ready_to_book" || rideInstance.proofStatus === "APPROVED") {
+    return {
+      label: "Ready to book",
+      chipClassName: rideInstanceStatusTones.green.chip,
+      cardClassName: rideInstanceStatusTones.green.card,
+      helperText: "Quote approved. Mark the ride as booked.",
+      primaryActionLabel: "Mark booked",
+      primaryActionTarget: instanceHref,
+      bucket: "ready_to_book",
+    };
+  }
+
+  return {
+    label: "Quote needed",
+    chipClassName: rideInstanceStatusTones.gold.chip,
+    cardClassName: rideInstanceStatusTones.gold.card,
+    helperText: "Upload a fresh quote before booking.",
+    primaryActionLabel: "Upload quote",
+    primaryActionTarget: instanceHref,
+    bucket: "quote_needed",
+  };
+}
+
+function getStatusOverviewItems(pod: RidePod) {
+  const counts = {
+    quote_needed: 0,
+    ready_to_book: 0,
+    ride_booked: 0,
+    receipt_needed: 0,
+    settlement_ready: 0,
+    closed: 0,
+  };
+
+  for (const ride of pod.upcomingRideInstances ?? []) {
+    counts[getRideInstanceDisplayStatus(ride, pod).bucket] += 1;
+  }
+
+  return [
+    {
+      key: "quote_needed",
+      count: counts.quote_needed,
+      label: "Quote needed",
+      helper: "Upload a fresh quote before booking.",
+      icon: FileText,
+      className: rideInstanceStatusTones.gold.card,
+    },
+    {
+      key: "ready_to_book",
+      count: counts.ready_to_book,
+      label: "Ready to book",
+      helper: "Quote approved. Mark the ride as booked.",
+      icon: CheckCircle2,
+      className: rideInstanceStatusTones.green.card,
+    },
+    {
+      key: "ride_booked",
+      count: counts.ride_booked,
+      label: "Ride booked",
+      helper: "Stay coordinated with guests.",
+      icon: Car,
+      className: rideInstanceStatusTones.purple.card,
+    },
+    {
+      key: "receipt_needed",
+      count: counts.receipt_needed,
+      label: "Receipt needed",
+      helper: "Upload the final receipt for settlement.",
+      icon: ReceiptText,
+      className: rideInstanceStatusTones.orange.card,
+    },
+    {
+      key: "settlement_ready",
+      count: counts.settlement_ready,
+      label: "Settlement ready",
+      helper: "Proof verified. Dispute window is open.",
+      icon: WalletCards,
+      className: rideInstanceStatusTones.blue.card,
+    },
+    {
+      key: "closed",
+      count: counts.closed,
+      label: "Closed",
+      helper: "Settlement complete. Payout processed.",
+      icon: ShieldCheck,
+      className: rideInstanceStatusTones.gray.card,
+    },
+  ];
+}
+
+function formatRecurringRideLine(rideInstance: RecurringRideInstancePreview) {
+  return rideInstance.displayDate.replace(/^(\w+)\s+(.+)$/, "$2 - $1");
 }
 
 function RecurringPodCard({ pod, compact = false }: { pod: RidePod; compact?: boolean }) {
-  const host = getUser(pod.hostUserId);
-  const progress = (pod.seatsFilled / pod.seatsTotal) * 100;
-  const remaining = pod.seatsTotal - pod.seatsFilled;
   const nextRide = pod.upcomingRideInstances?.[0] ?? null;
-  const upcomingRides = pod.upcomingRideInstances?.slice(0, 5) ?? [];
-  const primaryAction = getRecurringPrimaryAction(pod);
-  const rideOptionLabel = getRecurringRideOptionLabel(pod);
-  const patternLabel = pod.recurringPattern === "back_and_forth" ? "Back-and-forth" : "One-way";
+  const upcomingRides = pod.upcomingRideInstances?.slice(1, 5) ?? [];
+  const nextRideStatus = nextRide ? getRideInstanceDisplayStatus(nextRide, pod) : null;
+  const scheduleLine =
+    pod.recurringScheduleLine ?? `Every ${pod.recurringDays?.join(", ") ?? "Tue"} - Outbound ${pod.outboundTime ?? pod.time}`;
 
   return (
-    <article className="overflow-hidden rounded-[26px] border border-[var(--rp-border)] bg-[var(--rp-card)] shadow-[var(--rp-shadow-soft)]">
-      <div className="bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--rp-primary)_20%,transparent),transparent_36%),var(--rp-card)] p-4 sm:p-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+    <article className="grid gap-4">
+      <Link
+        href={`/pods/${pod.id}`}
+        className="group rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)] transition hover:border-[var(--rp-border-strong)]"
+      >
+        <div className="grid grid-cols-[1fr_auto] items-start gap-3">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge className="bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border)]">
-                Recurring
-              </Badge>
-              <Badge className="bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-badge-neutral-text)] ring-[var(--rp-border)]">
-                Weekly
-              </Badge>
-              <Badge className="bg-[var(--rp-card-muted)] text-[var(--rp-primary)] ring-[var(--rp-border)]">
-                {patternLabel}
-              </Badge>
+            <div className="flex items-center gap-2">
+              <h2 className="truncate text-lg font-black text-[var(--rp-text)]">{getRecurringRouteTitle(pod)}</h2>
+              <Badge className="bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border)]">Weekly</Badge>
             </div>
-            <h2 className="mt-4 text-2xl font-black leading-tight text-[var(--rp-text)]">
-              {getRecurringRouteTitle(pod)}
-            </h2>
-            <p className="mt-2 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
-              {pod.recurringScheduleLine ?? `${pod.recurrenceRule ?? "Weekly"} · ${pod.time}`}
-            </p>
-            <p className="mt-1 text-xs font-bold text-[var(--rp-muted)]">
-              Selected days: {pod.recurringDays?.join(", ") ?? pod.recurrenceRule ?? "Weekly"}
+            <p className="mt-2 text-xs font-bold text-[var(--rp-muted-strong)]">{scheduleLine}</p>
+            <p className="mt-1 text-xs font-bold text-[var(--rp-muted)]">Each ride settles separately</p>
+            <p className="mt-2 flex items-center gap-1.5 text-xs font-black text-[var(--rp-muted-strong)]">
+              <Users className="h-4 w-4 text-[var(--rp-primary)]" />
+              {pod.seatsFilled} / {pod.seatsTotal} seats locked
             </p>
           </div>
-          <div className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-4 py-3 text-left sm:text-right">
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Next ride</p>
-            <p className="mt-1 text-sm font-black leading-6 text-[var(--rp-text)]">
-              {nextRide
-                ? `${nextRide.displayDate} · ${nextRide.departureTime} · ${nextRide.legType === "return" ? "Return" : "Outbound"}`
-                : "No upcoming rides"}
-            </p>
-            <p className="mt-1 text-xs font-bold text-[var(--rp-muted)]">
-              {nextRide ? recurringRideStatusLabels[nextRide.status] : "Check the recurring schedule or create a new ride date."}
-            </p>
-          </div>
+          <ArrowRight className="mt-3 h-5 w-5 text-[var(--rp-muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--rp-primary)]" />
         </div>
+      </Link>
 
-        <div className="mt-5 grid gap-3 min-[720px]:grid-cols-3">
-          <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-            <Repeat2 className="h-5 w-5 text-[var(--rp-primary)]" />
-            <p className="mt-2 text-sm font-black text-[var(--rp-text)]">{rideOptionLabel}</p>
-            <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted)]">{getRecurringProofCopy(pod)}</p>
-          </div>
-          <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-            <Users className="h-5 w-5 text-[var(--rp-primary)]" />
-            <p className="mt-2 text-sm font-black text-[var(--rp-text)]">
-              {pod.seatsFilled}/{pod.seatsTotal} guests locked
-            </p>
+      <section>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="flex items-center gap-2 text-sm font-black text-[var(--rp-text)]">
+            <LayoutGrid className="h-4 w-4 text-[var(--rp-primary)]" />
+            Status overview
+          </h3>
+          <button type="button" className="text-xs font-bold text-[var(--rp-muted-strong)]">This week</button>
+        </div>
+        <div className="grid grid-cols-2 gap-3 min-[720px]:grid-cols-3">
+          {getStatusOverviewItems(pod).map((item) => {
+            const Icon = item.icon;
+            return (
+              <div key={item.key} className={cn("rounded-[18px] border p-3 shadow-[var(--rp-shadow-soft)]", item.className)}>
+                <div className="flex items-center gap-2">
+                  <Icon className="h-5 w-5" />
+                  <p className="text-2xl font-black leading-none">{item.count}</p>
+                </div>
+                <p className="mt-3 text-sm font-black">{item.label}</p>
+                <p className="mt-2 text-[11px] font-semibold leading-4 text-[var(--rp-muted-strong)]">{item.helper}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-black text-[var(--rp-muted-strong)]">Next ride</p>
+          {nextRideStatus ? <Badge className={nextRideStatus.chipClassName}>{nextRideStatus.label}</Badge> : null}
+        </div>
+        {nextRide && nextRideStatus ? (
+          <>
+            <div className="mt-3 grid grid-cols-[1fr_auto] items-start gap-3">
+              <div>
+                <p className="text-xl font-black text-[var(--rp-text)]">
+                  {formatRecurringRideLine(nextRide)} - {nextRide.departureTime}
+                </p>
+                <p className="mt-1 text-sm font-bold text-[var(--rp-muted-strong)]">
+                  {nextRide.legType === "return" ? "Return" : "Outbound"} - {nextRide.originLabel}
+                  {" \u2192 "}
+                  {nextRide.destinationLabel}
+                </p>
+                <p className="mt-1 flex items-center gap-1.5 text-xs font-black text-[var(--rp-muted-strong)]">
+                  <Users className="h-4 w-4 text-[var(--rp-primary)]" />
+                  {pod.seatsFilled} / {pod.seatsTotal} seats locked
+                </p>
+              </div>
+              <ArrowRight className="mt-2 h-5 w-5 text-[var(--rp-muted)]" />
+            </div>
+            {!compact ? (
+              <>
+                <div className="mt-4 border-t border-[var(--rp-border)] pt-4">
+                  <p className="text-xs font-bold text-[var(--rp-muted)]">Next action</p>
+                  <p className="mt-1 text-lg font-black text-[var(--rp-text)]">{nextRideStatus.primaryActionLabel}</p>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{nextRideStatus.helperText}</p>
+                </div>
+                <Link
+                  href={nextRideStatus.primaryActionTarget}
+                  className="mt-4 inline-flex min-h-13 w-full items-center justify-center gap-2 rounded-[16px] px-5 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_16px_34px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)] transition hover:brightness-105"
+                  style={{ background: "var(--rp-gradient-primary)" }}
+                >
+                  {nextRideStatus.primaryActionLabel} <Upload className="h-5 w-5" />
+                </Link>
+              </>
+            ) : null}
+          </>
+        ) : (
+          <div className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <p className="text-sm font-black text-[var(--rp-text)]">No upcoming rides</p>
             <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted)]">
-              {remaining > 0 ? `${remaining} open` : "Full"} for the template.
+              Check the recurring schedule or create a new ride date.
             </p>
           </div>
-          <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-            <ShieldCheck className="h-5 w-5 text-[var(--rp-primary)]" />
-            <p className="mt-2 text-sm font-black text-[var(--rp-text)]">Protection status</p>
-            <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted)]">
-              {pod.protectionStatus ?? "Each ride settles separately"}
-            </p>
-          </div>
-        </div>
+        )}
+      </section>
 
-        <div className="mt-5">
-          <div className="mb-2 flex items-center justify-between text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">
-            <span>Guest lock</span>
-            <span>{Math.round(progress)}%</span>
-          </div>
-          <ProgressBar value={progress} />
+      <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h3 className="text-sm font-black text-[var(--rp-text)]">Upcoming rides</h3>
+          <Link href={`/pods/${pod.id}`} className="text-xs font-black text-[var(--rp-primary)]">View all</Link>
         </div>
-      </div>
-
-      <div className="grid gap-4 p-4 sm:p-5">
-        <div className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-          <div className="flex items-center justify-between gap-3">
-            <h3 className="text-sm font-black text-[var(--rp-text)]">Next ride preview</h3>
-            <p className="text-xs font-bold text-[var(--rp-primary)]">Each ride settles separately</p>
-          </div>
-          {upcomingRides.length ? (
-            <div className="mt-3 grid gap-2">
-              {upcomingRides.map((ride) => (
+        {upcomingRides.length ? (
+          <div className="grid gap-2">
+            {upcomingRides.map((ride) => {
+              const status = getRideInstanceDisplayStatus(ride, pod);
+              return (
                 <Link
                   key={ride.id}
-                  href={`/host?rideInstanceId=${encodeURIComponent(ride.id)}`}
-                  className="grid gap-2 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 min-[560px]:grid-cols-[1fr_auto] min-[560px]:items-center"
+                  href={status.primaryActionTarget}
+                  className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 transition hover:bg-[var(--rp-card-muted)]"
                 >
-                  <div>
-                    <p className="text-sm font-black text-[var(--rp-text)]">
-                      {ride.displayDate} · {ride.departureTime} · {ride.legType === "return" ? "Return" : "Outbound"}
+                  <CalendarClock className="h-4 w-4 text-[var(--rp-muted-strong)]" />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-black text-[var(--rp-text)]">
+                      {formatRecurringRideLine(ride)} - {ride.departureTime}
                     </p>
-                    <p className="mt-1 text-xs font-bold text-[var(--rp-muted)]">
-                      {ride.originLabel} → {ride.destinationLabel}
+                    <p className="mt-0.5 text-xs font-bold text-[var(--rp-muted)]">
+                      {ride.legType === "return" ? "Return" : "Outbound"}
                     </p>
                   </div>
-                  <Badge className="w-fit bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-badge-neutral-text)] ring-[var(--rp-border)]">
-                    {recurringRideChipLabels[ride.status]}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className={cn("shrink-0", status.chipClassName)}>{status.label}</Badge>
+                    <ArrowRight className="h-4 w-4 text-[var(--rp-muted)]" />
+                  </div>
                 </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3">
-              <p className="text-sm font-black text-[var(--rp-text)]">No upcoming rides</p>
-              <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted)]">
-                Check the recurring schedule or create a new ride date.
-              </p>
-            </div>
-          )}
-        </div>
-
-        {!compact ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--rp-border)] pt-4">
-            <div className="flex items-center gap-2">
-              <Avatar user={host} size="sm" />
-              <div>
-                <p className="text-xs font-black text-[var(--rp-text)]">{host.name}</p>
-                <p className="text-xs font-bold text-[var(--rp-muted)]">Trust {host.trustScore}</p>
-              </div>
-            </div>
-            <Link
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)] transition hover:brightness-105"
-              href={primaryAction.href}
-              style={{ background: "var(--rp-gradient-primary)" }}
-            >
-              {primaryAction.label} <ArrowRight className="h-4 w-4" />
-            </Link>
+              );
+            })}
           </div>
-        ) : null}
-      </div>
+        ) : (
+          <div className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <p className="text-sm font-black text-[var(--rp-text)]">No upcoming rides</p>
+            <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted)]">
+              Check the recurring schedule or create a new ride date.
+            </p>
+          </div>
+        )}
+      </section>
     </article>
   );
 }

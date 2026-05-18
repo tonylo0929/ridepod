@@ -510,6 +510,11 @@ const moneySafetyUiSource = readFileSync("src/components/money-safety-ui.tsx", "
 const settlementPageSource = readFileSync("src/components/settlement-page.tsx", "utf8");
 const uiSource = readFileSync("src/components/ui.tsx", "utf8");
 const mockDataSource = readFileSync("src/lib/mock-data.ts", "utf8");
+const notificationsPageSource = readFileSync("src/app/(app)/notifications/page.tsx", "utf8");
+const rideInstanceNotificationsSource = readFileSync("src/lib/ride-instance-notifications.ts", "utf8");
+const adminReviewPageSource = readFileSync("src/app/(app)/admin/review/page.tsx", "utf8");
+const adminReviewQueueSource = readFileSync("src/lib/admin-review-queue.ts", "utf8");
+const appShellSource = readFileSync("src/components/app-shell.tsx", "utf8");
 const recurringInstanceProofFlowSource = readFileSync("src/components/recurring-instance-proof-flow.tsx", "utf8");
 const podDetailSource = readFileSync("src/app/(app)/pods/[id]/page.tsx", "utf8");
 const createPodChooseTypeSource = readFileSync("src/components/create-pod-choose-type.tsx", "utf8");
@@ -528,6 +533,10 @@ const legalCopySource = [
   "src/components/premium-pod-detail.tsx",
   "src/components/ridepod-info-pages.tsx",
   "src/components/settlement-page.tsx",
+  "src/app/(app)/notifications/page.tsx",
+  "src/lib/ride-instance-notifications.ts",
+  "src/app/(app)/admin/review/page.tsx",
+  "src/lib/admin-review-queue.ts",
   "src/lib/design-variants.ts",
   "src/lib/money-safety.ts",
   "src/lib/money-safety-mock.ts",
@@ -805,25 +814,31 @@ for (const recurringCopy of [
   "Return",
   "Quote needed",
   "Meter proof needed",
-  "Meter proof submitted",
-  "Meter proof under review",
   "Each ride settles separately",
-  "Quote needed after guests lock.",
-  "Upload quote before booking.",
-  "Quote approved. Host can book.",
-  "No upfront quote needed.",
-  "Upload meter proof after ride.",
-  "Final receipt required for settlement.",
   "Upload receipt",
-  "Receipt submitted",
-  "Receipt under review",
   "No upcoming rides",
   "Check the recurring schedule or create a new ride date.",
-  "Review recurring pod",
   "Upload quote",
   "Mark booked",
   "Upload meter proof",
   "View settlement",
+  "Status overview",
+  "This week",
+  "Upload a fresh quote before booking.",
+  "Ready to book",
+  "Quote approved. Mark the ride as booked.",
+  "Ride booked",
+  "Stay coordinated with guests.",
+  "Receipt needed",
+  "Upload the final receipt for settlement.",
+  "Proof verified. Dispute window is open.",
+  "Closed",
+  "Settlement complete. Payout processed.",
+  "Next action",
+  "Upcoming rides",
+  "View all",
+  "Open chat",
+  "View receipt",
 ]) {
   assert.ok(uiSource.includes(recurringCopy), `Missing My Pods recurring copy: ${recurringCopy}`);
 }
@@ -839,7 +854,10 @@ assert.ok(mockDataSource.includes("proofType: \"FINAL_RECEIPT\""));
 assert.ok(mockDataSource.includes("proofStatus: \"APPROVED\""));
 assert.ok(mockDataSource.includes("proofStatus: \"VERIFIED\""));
 assert.ok(mockDataSource.includes("status: \"receipt_pending\""));
+assert.ok(mockDataSource.includes("status: \"ride_booked\""));
 assert.ok(mockDataSource.includes("status: \"settlement_ready\""));
+assert.ok(mockDataSource.includes("campus-commute-442-2026-06-23-outbound"));
+assert.ok(mockDataSource.includes("campus-commute-442-2026-06-30-outbound"));
 assert.ok(mockDataSource.includes("taxi-meter-weekly-demo-2026-05-19-outbound"));
 assert.ok(mockDataSource.includes("bookingFareCapCents: 32000"));
 assert.ok(mockDataSource.includes("finalFareCents"));
@@ -856,8 +874,128 @@ assert.ok(mockDataSource.includes("reviewedAt"));
 assert.ok(mockDataSource.includes("bookingFareCapCents"));
 assert.ok(mockDataSource.includes("certificationTextVersion: \"ride-instance-proof-v1\""));
 assert.ok(uiSource.includes("/host?rideInstanceId="));
-assert.ok(uiSource.includes("guests locked"));
+assert.ok(uiSource.includes("seats locked") || uiSource.includes("guests locked"));
 assert.equal(uiSource.includes("FREQ=WEEKLY"), false);
+for (const updatesCopy of [
+  "Updates",
+  "Unread",
+  "All",
+  "Today",
+  "This week",
+  "Earlier",
+  "Upload quote needed",
+  "Guests are locked. Upload a fresh quote before booking this ride.",
+  "Quote approved",
+  "The quote is within the fare cap. You may book the external ride.",
+  "Upload receipt",
+  "Upload the final receipt so RidePod can prepare settlement.",
+  "Dispute window ending soon",
+  "Less than 24h left to report an issue before settlement finalizes.",
+  "Settlement ready",
+  "Proof is verified. Guests can report issues until the dispute window ends.",
+  "Payout ready",
+  "Settlement is final. Your payout can be processed.",
+  "Dispute under review",
+  "RidePod is reviewing the issue. Settlement or payout may be held.",
+  "Ride booked",
+  "You marked this ride as booked. We'll remind you after the ride.",
+  "Upload quote",
+  "Mark booked",
+  "Review settlement",
+  "View settlement",
+  "View payout",
+  "View dispute",
+  "View ride",
+  "No unread updates",
+]) {
+  assert.ok(
+    `${notificationsPageSource}\n${rideInstanceNotificationsSource}`.includes(updatesCopy),
+    `Missing Updates copy: ${updatesCopy}`,
+  );
+}
+for (const stableNotificationKey of [
+  "upload_quote_needed:${rideInstance.id}",
+  "quote_approved:${rideInstance.id}",
+  "upload_receipt_needed:${rideInstance.id}",
+  "meter_proof_needed:${rideInstance.id}",
+  "settlement_ready:${rideInstance.id}",
+  "dispute_window_ending:${rideInstance.id}",
+  "payout_ready:${rideInstance.id}",
+  "dispute_under_review:${rideInstance.id}",
+  "ride_booked:${rideInstance.id}",
+]) {
+  assert.ok(rideInstanceNotificationsSource.includes(stableNotificationKey), `Missing stable notification key: ${stableNotificationKey}`);
+}
+assert.ok(rideInstanceNotificationsSource.includes("getRideInstanceNotifications"));
+assert.ok(rideInstanceNotificationsSource.includes("getDemoRideInstanceNotifications"));
+assert.ok(notificationsPageSource.includes("readKeys"));
+assert.ok(notificationsPageSource.includes("selectedFilter === \"all\""));
+assert.ok(appShellSource.includes('href="/notifications" label="Updates" icon={Bell} compact'));
+assert.ok(appShellSource.includes('href: "/admin/review", label: "Admin review", icon: ShieldAlert'));
+for (const adminReviewCopy of [
+  "Admin Review",
+  "Review proof, disputes, above-cap fares, and payout holds.",
+  "All",
+  "Proof",
+  "Above cap",
+  "Disputes",
+  "Payout holds",
+  "Resolved",
+  "Quote above booking fare cap",
+  "Receipt above cap",
+  "Meter proof above cap",
+  "Suspicious proof",
+  "Guest dispute",
+  "Host cancellation after booking",
+  "No-show dispute",
+  "Receipt needs more info",
+  "Quote / receipt mismatch",
+  "Review case",
+  "Ride instance summary",
+  "Uploaded file preview",
+  "Proof type",
+  "Submitted amount",
+  "Submitted by",
+  "Certification accepted",
+  "Comparison",
+  "RidePod estimate / baseline",
+  "Difference from cap",
+  "Difference from quote",
+  "Dispute raised",
+  "Admin decision",
+  "Admin notes",
+  "Add review notes for audit trail.",
+  "Admin notes are required for this decision.",
+  "Approve proof",
+  "Request more info",
+  "Reject proof",
+  "Cap reimbursement at approved max",
+  "Hold payout",
+  "Release payout",
+  "Mark dispute resolved",
+  "Suspend / restrict account placeholder",
+  "Proof approved for settlement. Settlement can continue.",
+  "More information is required before settlement can continue.",
+  "Proof rejected. Host reimbursement is held until valid proof is provided.",
+  "Reimbursement is capped at the booking fare cap unless guests approve a higher max.",
+  "Payout held for manual review.",
+  "Payout can be processed.",
+  "Manual evidence review only. No AI detection.",
+  "ADMIN_REVIEW_OPENED",
+  "ADMIN_PROOF_APPROVED",
+  "ADMIN_PROOF_REJECTED",
+  "ADMIN_MORE_INFO_REQUESTED",
+  "ADMIN_PAYOUT_HELD",
+  "ADMIN_PAYOUT_RELEASED",
+  "ADMIN_REIMBURSEMENT_CAPPED",
+  "ADMIN_DISPUTE_RESOLVED",
+]) {
+  assert.ok(
+    `${adminReviewPageSource}\n${adminReviewQueueSource}`.includes(adminReviewCopy),
+    `Missing Admin Review copy: ${adminReviewCopy}`,
+  );
+}
+assert.equal(`${adminReviewPageSource}\n${adminReviewQueueSource}`.includes("Proof is guaranteed real"), false);
 for (const recurringInstanceCopy of [
   "Ride instance",
   "Upload fresh quote",
