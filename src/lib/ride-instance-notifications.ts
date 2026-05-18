@@ -83,7 +83,7 @@ export function getRideInstanceNotifications(
     );
   }
 
-  if (rideInstance.status === "ready_to_book" || rideInstance.proofStatus === "APPROVED") {
+  if (rideInstance.status === "ready_to_book") {
     items.push(
       notification(rideInstance, {
         stableKey: `quote_approved:${rideInstance.id}`,
@@ -246,7 +246,9 @@ export function getDemoRideInstanceNotifications(
           disputeRaised: true,
         },
         viewerRole,
-      ).filter((item) => item.type === "dispute_under_review"),
+      )
+        .filter((item) => item.type === "dispute_under_review")
+        .map((item) => ({ ...item, ctaTarget: hostTarget(settlementRide) })),
     );
   }
 

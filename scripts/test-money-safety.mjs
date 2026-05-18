@@ -948,6 +948,8 @@ for (const stableNotificationKey of [
 }
 assert.ok(rideInstanceNotificationsSource.includes("getRideInstanceNotifications"));
 assert.ok(rideInstanceNotificationsSource.includes("getDemoRideInstanceNotifications"));
+assert.equal(rideInstanceNotificationsSource.includes('rideInstance.status === "ready_to_book" || rideInstance.proofStatus === "APPROVED"'), false);
+assert.ok(rideInstanceNotificationsSource.includes("ctaTarget: hostTarget(settlementRide)"));
 assert.ok(notificationsPageSource.includes("readKeys"));
 assert.ok(notificationsPageSource.includes("selectedFilter === \"all\""));
 assert.ok(appShellSource.includes('href="/notifications" label="Updates" icon={Bell} compact'));
