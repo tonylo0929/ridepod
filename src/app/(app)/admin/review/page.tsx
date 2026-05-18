@@ -53,10 +53,21 @@ function differenceLabel(value?: number, compareTo?: number) {
 export default function AdminReviewPage() {
   const [selectedFilter, setSelectedFilter] = useState<AdminReviewFilter>("All");
   const [selectedCase, setSelectedCase] = useState<AdminReviewCase | null>(null);
-  const cases = useMemo(() => getAdminReviewCases(), []);
+  const [caseUpdates, setCaseUpdates] = useState<Record<string, Partial<AdminReviewCase>>>({});
+  const baseCases = useMemo(() => getAdminReviewCases(), []);
+  const cases = useMemo(
+    () => baseCases.map((reviewCase) => ({ ...reviewCase, ...caseUpdates[reviewCase.id] })),
+    [baseCases, caseUpdates],
+  );
   const visibleCases = cases.filter((reviewCase) =>
     selectedFilter === "All" ? true : reviewCase.filter === selectedFilter,
   );
+
+  const handleDecisionApplied = (caseId: string, decisionKey: AdminDecisionKey) => {
+    const update = getDecisionCaseUpdate(decisionKey);
+    setCaseUpdates((current) => ({ ...current, [caseId]: { ...current[caseId], ...update } }));
+    setSelectedCase((current) => (current?.id === caseId ? { ...current, ...update } : current));
+  };
 
   return (
     <div className="grid gap-5">
@@ -111,10 +122,39 @@ export default function AdminReviewPage() {
       </section>
 
       {selectedCase ? (
-        <ReviewCaseModal reviewCase={selectedCase} onClose={() => setSelectedCase(null)} />
+        <ReviewCaseModal
+          reviewCase={selectedCase}
+          onClose={() => setSelectedCase(null)}
+          onDecisionApplied={handleDecisionApplied}
+        />
       ) : null}
     </div>
   );
+}
+
+function getDecisionCaseUpdate(decisionKey: AdminDecisionKey): Partial<AdminReviewCase> {
+  if (decisionKey === "approveProof") {
+    return { reviewState: "APPROVED", proofStatus: "VERIFIED", statusLabel: "Proof approved" };
+  }
+  if (decisionKey === "requestMoreInfo") {
+    return { reviewState: "NEEDS_MORE_INFO", proofStatus: "NEEDS_MORE_INFO", statusLabel: "Needs more info" };
+  }
+  if (decisionKey === "rejectProof") {
+    return { reviewState: "REJECTED", proofStatus: "REJECTED", payoutStatus: "HELD_FOR_REVIEW", statusLabel: "Proof rejected" };
+  }
+  if (decisionKey === "capReimbursement") {
+    return { reviewState: "UNDER_REVIEW", payoutStatus: "HELD_FOR_REVIEW", statusLabel: "Capped at fare cap" };
+  }
+  if (decisionKey === "holdPayout") {
+    return { reviewState: "UNDER_REVIEW", payoutStatus: "HELD_FOR_REVIEW", statusLabel: "Payout held" };
+  }
+  if (decisionKey === "releasePayout") {
+    return { reviewState: "APPROVED", payoutStatus: "RELEASED", statusLabel: "Payout released" };
+  }
+  if (decisionKey === "resolveDispute") {
+    return { reviewState: "RESOLVED", disputeStatus: "Resolved", statusLabel: "Dispute resolved" };
+  }
+  return { reviewState: "UNDER_REVIEW", statusLabel: "Account follow-up recorded" };
 }
 
 function ReviewCaseCard({ reviewCase, onOpen }: { reviewCase: AdminReviewCase; onOpen: () => void }) {
@@ -172,7 +212,15 @@ function KeyValue({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function ReviewCaseModal({ reviewCase, onClose }: { reviewCase: AdminReviewCase; onClose: () => void }) {
+function ReviewCaseModal({
+  reviewCase,
+  onClose,
+  onDecisionApplied,
+}: {
+  reviewCase: AdminReviewCase;
+  onClose: () => void;
+  onDecisionApplied: (caseId: string, decisionKey: AdminDecisionKey) => void;
+}) {
   const [adminNotes, setAdminNotes] = useState("");
   const [decision, setDecision] = useState<AdminDecisionKey | null>(null);
   const selectedDecision = adminDecisionLabels.find((item) => item.key === decision);
@@ -186,6 +234,7 @@ function ReviewCaseModal({ reviewCase, onClose }: { reviewCase: AdminReviewCase;
       return;
     }
     setDecision(nextDecision);
+    onDecisionApplied(reviewCase.id, nextDecision);
   };
 
   return (
@@ -329,7 +378,7 @@ function ReviewCaseModal({ reviewCase, onClose }: { reviewCase: AdminReviewCase;
                 ))}
               </div>
               <p className="mt-3 text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-primary)]">
-                Manual evidence review only. No AI detection.
+                Manual evidence review only.
               </p>
             </DetailSection>
           </aside>

@@ -5,7 +5,7 @@ export type AdminReviewCaseType =
   | "Quote above booking fare cap"
   | "Receipt above cap"
   | "Meter proof above cap"
-  | "Suspicious proof"
+  | "Suspicious receipt"
   | "Guest dispute"
   | "Host cancellation after booking"
   | "No-show dispute"
@@ -66,7 +66,7 @@ export const adminDecisionLabels: Array<{ key: AdminDecisionKey; label: string; 
   { key: "capReimbursement", label: "Cap reimbursement at approved max", requiresNotes: true },
   { key: "holdPayout", label: "Hold payout", requiresNotes: true },
   { key: "releasePayout", label: "Release payout", requiresNotes: false },
-  { key: "resolveDispute", label: "Mark dispute resolved", requiresNotes: true },
+  { key: "resolveDispute", label: "Resolve dispute", requiresNotes: true },
   { key: "restrictAccount", label: "Suspend / restrict account placeholder", requiresNotes: false },
 ];
 
@@ -179,7 +179,7 @@ export function getAdminReviewCases(): AdminReviewCase[] {
     },
     {
       id: "review-suspicious-receipt",
-      caseType: "Suspicious proof",
+      caseType: "Suspicious receipt",
       filter: "Proof",
       severity: "Critical",
       reviewState: "OPEN",
