@@ -585,7 +585,8 @@ assert.equal(moneySafetyUiSource.includes("Preview quote only. A fresh quote may
 assert.equal(moneySafetyUiSource.includes("Booking fare proof"), false);
 assert.ok(settlementPageSource.includes("Confirm final receipt"));
 assert.ok(settlementPageSource.includes("This receipt will be used to calculate the final split and host reimbursement."));
-assert.ok(settlementPageSource.includes("I confirm this receipt or meter proof is real, accurate, unaltered, and belongs to this completed ride."));
+assert.ok(settlementPageSource.includes("I confirm this receipt is real, accurate, unaltered, and belongs to this completed ride."));
+assert.ok(settlementPageSource.includes("I confirm this meter proof or taxi receipt is real, accurate, unaltered, and belongs to this completed ride."));
 assert.ok(settlementPageSource.includes("False or misleading proof may lead to reimbursement denial, account suspension, dispute review, and further action where required."));
 assert.ok(settlementPageSource.includes("Submit receipt"));
 assert.ok(settlementPageSource.includes("Platform fee"));

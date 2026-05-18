@@ -21,7 +21,7 @@ import {
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui";
-import { formatMoney, type RecurringRideInstancePreview, type RidePod } from "@/lib/mock-data";
+import { formatMoney, type RecurringRideInstancePreview, type RideInstanceProofStatus, type RidePod } from "@/lib/mock-data";
 
 function getRideOptionLabel(pod: RidePod) {
   return pod.rideOption === "taxi_meter" || pod.vehicleType === "Taxi"
@@ -725,6 +725,7 @@ export function RecurringInstanceProofFlow({
   const [meterFare, setMeterFare] = useState(
     rideInstance.finalFareCents ? String(Math.round(rideInstance.finalFareCents / 100)) : "",
   );
+  const [localProofStatus, setLocalProofStatus] = useState<RideInstanceProofStatus | null>(null);
   const taxiMeter = getRideOptionLabel(pod) === "Taxi meter";
   const receiptFlow =
     !taxiMeter &&
@@ -741,7 +742,7 @@ export function RecurringInstanceProofFlow({
   const quoteAmountCents = quoteAmount.trim() ? centsFromInput(quoteAmount) : null;
   const receiptFareCents = receiptFare.trim() ? centsFromInput(receiptFare) : null;
   const meterFareCents = meterFare.trim() ? centsFromInput(meterFare) : null;
-  const proofStatus = rideInstance.proofStatus ?? "NEEDED";
+  const proofStatus = localProofStatus ?? rideInstance.proofStatus ?? "NEEDED";
   const receiptAboveCap = receiptFareCents !== null && receiptFareCents > bookingFareCapCents;
   const meterAboveCap = meterFareCents !== null && meterFareCents > bookingFareCapCents;
   const quoteResult = useMemo(() => {
@@ -1064,6 +1065,7 @@ export function RecurringInstanceProofFlow({
           <button
             type="button"
             disabled={!meterCertified}
+            onClick={() => setLocalProofStatus("SUBMITTED")}
             className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-[16px] px-5 text-base font-black text-[var(--rp-primary-text)] shadow-[0_18px_34px_color-mix(in_srgb,var(--rp-primary)_20%,transparent)] disabled:cursor-not-allowed disabled:opacity-45"
             style={{ background: "var(--rp-gradient-primary)" }}
           >

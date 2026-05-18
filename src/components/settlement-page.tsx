@@ -72,6 +72,7 @@ export function SettlementPage({ pod }: { pod: RidePod }) {
   const [isEditingFare, setIsEditingFare] = useState(false);
   const [settlementReviewReady, setSettlementReviewReady] = useState(false);
   const host = getUser(pod.hostUserId);
+  const isTaxiMeter = pod.rideOption === "taxi_meter" || pod.vehicleType === "Taxi";
 
   const totalPaid = useMemo(
     () => roundCurrency(baseFare + tolls + tip + platformFee),
@@ -112,6 +113,7 @@ export function SettlementPage({ pod }: { pod: RidePod }) {
       <ReceiptProtectionNotice
         receiptUploaded={receiptUploaded}
         receiptVerificationStatus={receiptVerificationStatus}
+        isTaxiMeter={isTaxiMeter}
       />
 
       <div className="grid gap-5 min-[820px]:grid-cols-[minmax(0,1fr)_340px] min-[820px]:items-start">
@@ -121,6 +123,7 @@ export function SettlementPage({ pod }: { pod: RidePod }) {
             setFinalFare={setFinalFare}
             isEditingFare={isEditingFare}
             setIsEditingFare={setIsEditingFare}
+            isTaxiMeter={isTaxiMeter}
           />
           <ReceiptUploadCard
             fileName={selectedReceiptFile}
@@ -129,6 +132,7 @@ export function SettlementPage({ pod }: { pod: RidePod }) {
             receiptVerificationStatus={receiptVerificationStatus}
             setReceiptVerificationStatus={setReceiptVerificationStatus}
             setSelectedReceiptFile={setSelectedReceiptFile}
+            isTaxiMeter={isTaxiMeter}
           />
           <FareBreakdownCard
             items={breakdownItems}
@@ -172,17 +176,23 @@ export function SettlementPage({ pod }: { pod: RidePod }) {
 function ReceiptProtectionNotice({
   receiptUploaded,
   receiptVerificationStatus,
+  isTaxiMeter,
 }: {
   receiptUploaded: boolean;
   receiptVerificationStatus: ReceiptVerificationStatusLabel;
+  isTaxiMeter: boolean;
 }) {
   return (
     <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-black text-[var(--rp-text)]">Receipt verification</h2>
+          <h2 className="text-lg font-black text-[var(--rp-text)]">
+            {isTaxiMeter ? "Meter proof verification" : "Receipt verification"}
+          </h2>
           <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-            Host reimbursement is based on verified final receipt and approved max fare.
+            {isTaxiMeter
+              ? "Host reimbursement is based on verified meter proof or taxi receipt and approved max fare."
+              : "Host reimbursement is based on verified final receipt and approved max fare."}
           </p>
         </div>
         <span className="rounded-full bg-[var(--rp-card-muted)] px-3 py-1 text-xs font-black text-[var(--rp-primary)]">
@@ -265,17 +275,21 @@ export function FinalFareCard({
   setFinalFare,
   isEditingFare,
   setIsEditingFare,
+  isTaxiMeter,
 }: {
   finalFare: number;
   setFinalFare: (fare: number) => void;
   isEditingFare: boolean;
   setIsEditingFare: (isEditing: boolean) => void;
+  isTaxiMeter: boolean;
 }) {
   return (
     <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-lg font-semibold text-[var(--rp-muted)]">Final fare</p>
+          <p className="text-lg font-semibold text-[var(--rp-muted)]">
+            {isTaxiMeter ? "Final meter fare" : "Final fare"}
+          </p>
           {isEditingFare ? (
             <label className="mt-3 block">
               <span className="sr-only">Final fare amount</span>
@@ -314,6 +328,7 @@ export function ReceiptUploadCard({
   receiptVerificationStatus,
   setReceiptVerificationStatus,
   setSelectedReceiptFile,
+  isTaxiMeter,
 }: {
   fileName: string | null;
   mockFileName: string;
@@ -321,6 +336,7 @@ export function ReceiptUploadCard({
   receiptVerificationStatus: ReceiptVerificationStatusLabel;
   setReceiptVerificationStatus: (status: ReceiptVerificationStatusLabel) => void;
   setSelectedReceiptFile: (fileName: string | null) => void;
+  isTaxiMeter: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [showReceiptCertification, setShowReceiptCertification] = useState(false);
@@ -330,7 +346,9 @@ export function ReceiptUploadCard({
   return (
     <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-black text-[var(--rp-text)]">Upload final receipt</h2>
+        <h2 className="text-lg font-black text-[var(--rp-text)]">
+          {isTaxiMeter ? "Upload meter proof" : "Upload final receipt"}
+        </h2>
         {receiptUploaded ? (
           <span className="rounded-full bg-[var(--rp-badge-success-bg)] px-3 py-1 text-xs font-black text-[var(--rp-badge-success-text)]">
             Submitted
@@ -363,16 +381,16 @@ export function ReceiptUploadCard({
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-lg font-black text-[var(--rp-text)]">
-            {receiptUploaded ? displayName : "Upload receipt"}
+            {receiptUploaded ? displayName : isTaxiMeter ? "Upload meter proof" : "Upload receipt"}
           </span>
           <span className="mt-1 block text-sm font-semibold text-[var(--rp-muted)]">
-            {receiptUploaded ? "Stored locally for this mock session" : "JPG, PNG, up to 10 MB"}
+            {receiptUploaded ? "Stored locally for this mock session" : "JPG, PNG, PDF, up to 10 MB"}
           </span>
         </span>
         <ChevronRight className="h-6 w-6 shrink-0 text-[var(--rp-primary)]" />
       </button>
       <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-        Verification status: {receiptUploaded ? receiptVerificationStatus : "Awaiting final receipt"}
+        Verification status: {receiptUploaded ? receiptVerificationStatus : isTaxiMeter ? "Awaiting meter proof" : "Awaiting final receipt"}
       </p>
       {receiptUploaded ? (
         <div className="mt-3 grid grid-cols-2 gap-2 min-[560px]:grid-cols-3">
@@ -407,10 +425,12 @@ export function ReceiptUploadCard({
               </span>
               <div>
                 <h2 id="receipt-certification-title" className="text-2xl font-black leading-tight">
-                  Confirm final receipt
+                  {isTaxiMeter ? "Confirm meter proof" : "Confirm final receipt"}
                 </h2>
                 <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                  This receipt will be used to calculate the final split and host reimbursement.
+                  {isTaxiMeter
+                    ? "This meter proof or taxi receipt will be used to calculate the final split and host reimbursement."
+                    : "This receipt will be used to calculate the final split and host reimbursement."}
                 </p>
               </div>
             </div>
@@ -422,7 +442,11 @@ export function ReceiptUploadCard({
                 onChange={(event) => setReceiptCertified(event.target.checked)}
                 className="mt-1 h-4 w-4 accent-[var(--rp-primary)]"
               />
-              <span>I confirm this receipt or meter proof is real, accurate, unaltered, and belongs to this completed ride.</span>
+              <span>
+                {isTaxiMeter
+                  ? "I confirm this meter proof or taxi receipt is real, accurate, unaltered, and belongs to this completed ride."
+                  : "I confirm this receipt is real, accurate, unaltered, and belongs to this completed ride."}
+              </span>
             </label>
 
             <p className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] px-3 py-2 text-xs font-bold leading-5 text-[var(--rp-warning)]">
@@ -450,7 +474,7 @@ export function ReceiptUploadCard({
                 }}
                 className="min-h-12 rounded-2xl bg-[var(--rp-gradient-primary)] text-sm font-black text-[var(--rp-primary-text)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
               >
-                Submit receipt
+                {isTaxiMeter ? "Submit meter proof" : "Submit receipt"}
               </button>
             </div>
           </section>
