@@ -493,8 +493,12 @@ assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RECEIPT_PROOF_CERTIFIED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDE_INSTANCE_QUOTE_SUBMITTED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDE_INSTANCE_QUOTE_APPROVED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDE_INSTANCE_QUOTE_ABOVE_CAP"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDE_INSTANCE_RECEIPT_SUBMITTED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDE_INSTANCE_METER_PROOF_SUBMITTED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDE_INSTANCE_PROOF_CERTIFIED"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDE_INSTANCE_PROOF_VERIFIED"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDE_INSTANCE_PROOF_REJECTED"));
+assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("RIDE_INSTANCE_FARE_ABOVE_CAP"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("STRIPE_CONNECT_ACCOUNT_CREATED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("STRIPE_CONNECT_ONBOARDING_LINK_CREATED"));
 assert.ok(moneySafety.AUDIT_EVENT_TYPES.includes("HOST_REIMBURSEMENT_SCHEDULED"));
@@ -801,12 +805,18 @@ for (const recurringCopy of [
   "Return",
   "Quote needed",
   "Meter proof needed",
+  "Meter proof submitted",
+  "Meter proof under review",
   "Each ride settles separately",
   "Quote needed after guests lock.",
   "Upload quote before booking.",
   "Quote approved. Host can book.",
   "No upfront quote needed.",
   "Upload meter proof after ride.",
+  "Final receipt required for settlement.",
+  "Upload receipt",
+  "Receipt submitted",
+  "Receipt under review",
   "No upcoming rides",
   "Check the recurring schedule or create a new ride date.",
   "Review recurring pod",
@@ -825,7 +835,16 @@ assert.ok(mockDataSource.includes("rideOption: \"taxi_meter\""));
 assert.ok(mockDataSource.includes("recurringTemplateId"));
 assert.ok(mockDataSource.includes("proofType: \"QUOTE_SCREENSHOT\""));
 assert.ok(mockDataSource.includes("proofType: \"METER_PROOF\""));
+assert.ok(mockDataSource.includes("proofType: \"FINAL_RECEIPT\""));
 assert.ok(mockDataSource.includes("proofStatus: \"APPROVED\""));
+assert.ok(mockDataSource.includes("proofStatus: \"VERIFIED\""));
+assert.ok(mockDataSource.includes("status: \"receipt_pending\""));
+assert.ok(mockDataSource.includes("status: \"settlement_ready\""));
+assert.ok(mockDataSource.includes("taxi-meter-weekly-demo-2026-05-19-outbound"));
+assert.ok(mockDataSource.includes("bookingFareCapCents: 32000"));
+assert.ok(mockDataSource.includes("finalFareCents"));
+assert.ok(mockDataSource.includes("submittedAt"));
+assert.ok(mockDataSource.includes("reviewedAt"));
 assert.ok(mockDataSource.includes("bookingFareCapCents"));
 assert.ok(mockDataSource.includes("certificationTextVersion: \"ride-instance-proof-v1\""));
 assert.ok(uiSource.includes("/host?rideInstanceId="));
@@ -847,10 +866,47 @@ for (const recurringInstanceCopy of [
   "Request higher max approval",
   "Fresh quote required before booking this ride.",
   "This ride instance has its own proof, booking, final receipt, and settlement.",
+  "Upload final receipt",
+  "Tap to upload or drag and drop",
+  "Provider / service",
+  "Final fare (HKD)",
+  "Receipt status",
+  "We'll review your receipt and update the status. Host reimbursement is held until review is complete.",
+  "False or misleading proof may lead to review, reimbursement denial, or account action.",
+  "Upload the final receipt for this ride. Final settlement uses the verified receipt.",
+  "Provider name",
+  "Final fare amount",
+  "PNG, JPG or PDF",
+  "I confirm this receipt is real, accurate, unaltered, and belongs to this ride.",
+  "False or misleading proof may lead to reimbursement denial, account suspension, dispute review, and manual review.",
+  "Submit receipt",
+  "Receipt submitted. RidePod will review it before settlement.",
+  "Receipt under review. Host reimbursement is held until review is complete.",
+  "Receipt verified. Settlement can continue.",
+  "Please upload a clearer receipt showing the final fare, date, time, and provider.",
+  "Receipt rejected. Settlement requires valid proof.",
+  "Fare above booking fare cap",
+  "Guests cannot be charged above their max unless they approve an increase. This receipt may need manual review.",
+  "Guests cannot be charged above their max unless they approve an increase. This proof may need manual review.",
   "Ready for taxi meter ride",
   "Meet the guests and take a metered taxi. Upload meter proof or taxi receipt after the ride.",
+  "Upload meter proof",
+  "Meter proof needed",
+  "Upload a clear meter photo or taxi receipt.",
+  "Final meter fare (HKD)",
+  "I certify this meter proof / receipt is real, accurate, unaltered, and belongs to this ride.",
+  "False or misleading proof may lead to review, reimbursement denial, or account action.",
+  "Guests cannot be charged above their max unless they approve an increase. This meter proof may need manual review.",
+  "Meter proof status",
   "Upload a clear meter photo or taxi receipt showing the final fare.",
+  "Final meter fare",
+  "Submit meter proof",
   "I confirm this meter proof or receipt is real, accurate, unaltered, and belongs to this ride.",
+  "Meter proof or taxi receipt is required after the ride.",
+  "Meter proof submitted. RidePod will review it before settlement.",
+  "Meter proof verified. Settlement can continue.",
+  "Please upload a clearer meter photo or taxi receipt showing the final fare.",
+  "Meter proof rejected. Settlement requires valid proof.",
 ]) {
   assert.ok(
     recurringInstanceProofFlowSource.includes(recurringInstanceCopy),

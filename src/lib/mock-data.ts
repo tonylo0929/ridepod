@@ -57,7 +57,11 @@ export type RecurringRideStatus =
   | "ride_booked"
   | "ready_for_taxi_meter"
   | "meter_proof_needed"
+  | "meter_proof_submitted"
+  | "meter_proof_under_review"
   | "receipt_pending"
+  | "receipt_submitted"
+  | "receipt_under_review"
   | "settlement_ready"
   | "completed";
 
@@ -66,7 +70,9 @@ export type RideInstanceProofStatus =
   | "NOT_REQUIRED"
   | "NEEDED"
   | "SUBMITTED"
+  | "UNDER_REVIEW"
   | "APPROVED"
+  | "VERIFIED"
   | "REJECTED"
   | "NEEDS_MORE_INFO";
 
@@ -84,9 +90,12 @@ export type RecurringRideInstancePreview = {
   proofStatus?: RideInstanceProofStatus;
   quotedFareCents?: number;
   bookingFareCapCents?: number;
+  finalFareCents?: number;
   receiptFareCents?: number;
   proofCertified?: boolean;
   certificationTextVersion?: string;
+  submittedAt?: string;
+  reviewedAt?: string;
 };
 
 export type RidePod = {
@@ -447,7 +456,7 @@ export const ridePods: RidePod[] = [
   {
     id: "campus-commute-442",
     type: "recurring",
-    title: "USC Village ↔ LAX Terminal 3",
+    title: "USC Village ??LAX Terminal 3",
     fromLabel: "USC Village",
     toLabel: "LAX Terminal 3",
     pickupHub: "USC Village rideshare zone",
@@ -535,12 +544,12 @@ export const ridePods: RidePod[] = [
         legType: "return",
         originLabel: "LAX Terminal 3",
         destinationLabel: "USC Village",
-        status: "ready_to_book",
-        proofType: "QUOTE_SCREENSHOT",
-        proofStatus: "APPROVED",
-        quotedFareCents: 3200,
-        bookingFareCapCents: 3400,
-        proofCertified: true,
+        status: "receipt_pending",
+        proofType: "FINAL_RECEIPT",
+        proofStatus: "NEEDED",
+        quotedFareCents: 29800,
+        bookingFareCapCents: 32000,
+        proofCertified: false,
         certificationTextVersion: "ride-instance-proof-v1",
       },
       {
@@ -552,11 +561,12 @@ export const ridePods: RidePod[] = [
         legType: "outbound",
         originLabel: "USC Village",
         destinationLabel: "LAX Terminal 3",
-        status: "guests_locking",
+        status: "ready_to_book",
         proofType: "QUOTE_SCREENSHOT",
-        proofStatus: "NEEDED",
+        proofStatus: "APPROVED",
+        quotedFareCents: 3300,
         bookingFareCapCents: 3400,
-        proofCertified: false,
+        proofCertified: true,
         certificationTextVersion: "ride-instance-proof-v1",
       },
       {
@@ -568,12 +578,17 @@ export const ridePods: RidePod[] = [
         legType: "return",
         originLabel: "LAX Terminal 3",
         destinationLabel: "USC Village",
-        status: "waiting_for_guests",
-        proofType: "QUOTE_SCREENSHOT",
-        proofStatus: "NEEDED",
+        status: "settlement_ready",
+        proofType: "FINAL_RECEIPT",
+        proofStatus: "VERIFIED",
+        quotedFareCents: 3300,
+        finalFareCents: 3300,
+        receiptFareCents: 3300,
         bookingFareCapCents: 3400,
-        proofCertified: false,
+        proofCertified: true,
         certificationTextVersion: "ride-instance-proof-v1",
+        submittedAt: "2026-05-21T19:10:00.000Z",
+        reviewedAt: "2026-05-21T19:20:00.000Z",
       },
     ],
   },
@@ -624,28 +639,28 @@ export const ridePods: RidePod[] = [
   {
     id: "taxi-meter-weekly-demo",
     type: "recurring",
-    title: "Campus Center → Downtown Station",
-    fromLabel: "Campus Center",
-    toLabel: "Downtown Station",
-    pickupHub: "Campus Center main curb",
-    dropoffHub: "Downtown Station taxi stand",
-    date: "Starts May 20, 2026",
-    time: "7:45 AM",
+    title: "USC Village -> LAX Terminal 3",
+    fromLabel: "USC Village",
+    toLabel: "LAX Terminal 3",
+    pickupHub: "USC Village rideshare zone",
+    dropoffHub: "LAX Terminal 3 arrivals",
+    date: "Starts May 19, 2026",
+    time: "8:00 AM",
     timeFlexibility: "+/- 10 min",
-    recurrenceRule: "Wed weekly",
-    recurringDays: ["Wed"],
+    recurrenceRule: "Tue weekly",
+    recurringDays: ["Tue"],
     recurringPattern: "one_way",
-    recurringScheduleLine: "Wed · 7:45 AM outbound",
-    outboundTime: "7:45 AM",
+    recurringScheduleLine: "Tue - 8:00 AM outbound",
+    outboundTime: "8:00 AM",
     protectionStatus: "Each ride settles separately",
     rideOption: "taxi_meter",
     vehicleType: "Taxi",
-    maxFare: 52,
-    estimatedFare: 41,
-    estimatedShare: 14,
+    maxFare: 320,
+    estimatedFare: 298,
+    estimatedShare: 80,
     platformFee: 6,
     seatsTotal: 4,
-    seatsFilled: 3,
+    seatsFilled: 4,
     genderMode: "mixed",
     accessMode: "verified_only",
     moneyStatus: "receipt_pending",
@@ -680,18 +695,18 @@ export const ridePods: RidePod[] = [
     waitlist: [],
     upcomingRideInstances: [
       {
-        id: "taxi-meter-weekly-demo-2026-05-20-outbound",
+        id: "taxi-meter-weekly-demo-2026-05-19-outbound",
         recurringTemplateId: "taxi-meter-weekly-demo",
-        instanceDate: "2026-05-20",
-        displayDate: "Wed May 20",
-        departureTime: "7:45 AM",
+        instanceDate: "2026-05-19",
+        displayDate: "Tue May 19",
+        departureTime: "8:00 AM",
         legType: "outbound",
-        originLabel: "Campus Center",
-        destinationLabel: "Downtown Station",
+        originLabel: "USC Village",
+        destinationLabel: "LAX Terminal 3",
         status: "meter_proof_needed",
         proofType: "METER_PROOF",
         proofStatus: "NEEDED",
-        bookingFareCapCents: 5200,
+        bookingFareCapCents: 32000,
         proofCertified: false,
         certificationTextVersion: "ride-instance-proof-v1",
       },
@@ -700,14 +715,14 @@ export const ridePods: RidePod[] = [
         recurringTemplateId: "taxi-meter-weekly-demo",
         instanceDate: "2026-05-27",
         displayDate: "Wed May 27",
-        departureTime: "7:45 AM",
+        departureTime: "8:00 AM",
         legType: "outbound",
-        originLabel: "Campus Center",
-        destinationLabel: "Downtown Station",
+        originLabel: "USC Village",
+        destinationLabel: "LAX Terminal 3",
         status: "ready_for_taxi_meter",
         proofType: "METER_PROOF",
         proofStatus: "NOT_REQUIRED",
-        bookingFareCapCents: 5200,
+        bookingFareCapCents: 32000,
         proofCertified: false,
         certificationTextVersion: "ride-instance-proof-v1",
       },

@@ -87,7 +87,11 @@ const recurringRideStatusLabels: Record<NonNullable<RidePod["upcomingRideInstanc
   ride_booked: "Ride booked",
   ready_for_taxi_meter: "Ready for taxi meter",
   meter_proof_needed: "Meter proof needed",
+  meter_proof_submitted: "Meter proof submitted",
+  meter_proof_under_review: "Meter proof under review",
   receipt_pending: "Receipt pending",
+  receipt_submitted: "Receipt submitted",
+  receipt_under_review: "Receipt under review",
   settlement_ready: "Settlement ready",
   completed: "Completed",
 };
@@ -100,8 +104,12 @@ const recurringRideChipLabels: Record<NonNullable<RidePod["upcomingRideInstances
   ready_to_book: "Ready to book",
   ride_booked: "Ride booked",
   ready_for_taxi_meter: "Taxi ready",
-  meter_proof_needed: "Receipt pending",
+  meter_proof_needed: "Meter proof needed",
+  meter_proof_submitted: "Under review",
+  meter_proof_under_review: "Under review",
   receipt_pending: "Receipt pending",
+  receipt_submitted: "Under review",
+  receipt_under_review: "Under review",
   settlement_ready: "Settled",
   completed: "Settled",
 };
@@ -117,9 +125,19 @@ function getRecurringProofCopy(pod: RidePod) {
   const isTaxiMeter = getRecurringRideOptionLabel(pod) === "Taxi meter";
 
   if (isTaxiMeter) {
-    return nextRide?.status === "meter_proof_needed" || nextRide?.status === "receipt_pending"
+    return nextRide?.status === "meter_proof_needed" ||
+      nextRide?.status === "meter_proof_submitted" ||
+      nextRide?.status === "meter_proof_under_review"
       ? "Upload meter proof after ride."
       : "No upfront quote needed.";
+  }
+
+  if (
+    nextRide?.status === "receipt_pending" ||
+    nextRide?.status === "receipt_submitted" ||
+    nextRide?.status === "receipt_under_review"
+  ) {
+    return "Final receipt required for settlement.";
   }
 
   if (nextRide?.status === "quote_needed") {
@@ -143,8 +161,17 @@ function getRecurringPrimaryAction(pod: RidePod) {
 
   const instanceHref = `/host?rideInstanceId=${encodeURIComponent(nextRide.id)}`;
 
-  if (isTaxiMeter && (nextRide.status === "meter_proof_needed" || nextRide.status === "receipt_pending")) {
+  if (
+    isTaxiMeter &&
+    (nextRide.status === "meter_proof_needed" ||
+      nextRide.status === "meter_proof_submitted" ||
+      nextRide.status === "meter_proof_under_review")
+  ) {
     return { label: "Upload meter proof", href: instanceHref };
+  }
+
+  if (!isTaxiMeter && nextRide.status === "receipt_pending") {
+    return { label: "Upload receipt", href: instanceHref };
   }
 
   if (nextRide.status === "quote_needed") {
@@ -155,7 +182,12 @@ function getRecurringPrimaryAction(pod: RidePod) {
     return { label: "Mark booked", href: instanceHref };
   }
 
-  if (nextRide.status === "receipt_pending" || nextRide.status === "settlement_ready" || nextRide.status === "completed") {
+  if (
+    nextRide.status === "receipt_submitted" ||
+    nextRide.status === "receipt_under_review" ||
+    nextRide.status === "settlement_ready" ||
+    nextRide.status === "completed"
+  ) {
     return { label: "View settlement", href: instanceHref };
   }
 
@@ -260,8 +292,9 @@ function RecurringPodCard({ pod, compact = false }: { pod: RidePod; compact?: bo
           {upcomingRides.length ? (
             <div className="mt-3 grid gap-2">
               {upcomingRides.map((ride) => (
-                <div
+                <Link
                   key={ride.id}
+                  href={`/host?rideInstanceId=${encodeURIComponent(ride.id)}`}
                   className="grid gap-2 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 min-[560px]:grid-cols-[1fr_auto] min-[560px]:items-center"
                 >
                   <div>
@@ -275,7 +308,7 @@ function RecurringPodCard({ pod, compact = false }: { pod: RidePod; compact?: bo
                   <Badge className="w-fit bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-badge-neutral-text)] ring-[var(--rp-border)]">
                     {recurringRideChipLabels[ride.status]}
                   </Badge>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (
