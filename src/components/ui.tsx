@@ -135,7 +135,7 @@ export function getRideInstanceDisplayStatus(
   const taxiMeter = getRecurringRideOptionLabel(pod) === "Taxi meter";
   const instanceHref = `/host?rideInstanceId=${encodeURIComponent(rideInstance.id)}`;
 
-  if (rideInstance.status === "completed" || rideInstance.settlementState === "PAID" || rideInstance.payoutState === "PAID") {
+  if (rideInstance.settlementState === "PAID" || rideInstance.payoutState === "PAID") {
     return {
       label: "Closed",
       chipClassName: rideInstanceStatusTones.gray.chip,
@@ -187,7 +187,12 @@ export function getRideInstanceDisplayStatus(
     };
   }
 
-  if (rideInstance.status === "receipt_pending" || rideInstance.status === "receipt_submitted" || rideInstance.status === "receipt_under_review") {
+  if (
+    rideInstance.status === "receipt_pending" ||
+    rideInstance.status === "receipt_submitted" ||
+    rideInstance.status === "receipt_under_review" ||
+    rideInstance.status === "completed"
+  ) {
     return {
       label: "Receipt needed",
       chipClassName: rideInstanceStatusTones.orange.chip,
@@ -235,6 +240,7 @@ export function getRideInstanceDisplayStatus(
 }
 
 function getStatusOverviewItems(pod: RidePod) {
+  const taxiMeter = getRecurringRideOptionLabel(pod) === "Taxi meter";
   const counts = {
     quote_needed: 0,
     ready_to_book: 0,
@@ -253,15 +259,15 @@ function getStatusOverviewItems(pod: RidePod) {
       key: "quote_needed",
       count: counts.quote_needed,
       label: "Quote needed",
-      helper: "Upload a fresh quote before booking.",
+      helper: taxiMeter ? "No upfront quote needed for taxi meter rides." : "Upload a fresh quote before booking.",
       icon: FileText,
       className: rideInstanceStatusTones.gold.card,
     },
     {
       key: "ready_to_book",
       count: counts.ready_to_book,
-      label: "Ready to book",
-      helper: "Quote approved. Mark the ride as booked.",
+      label: taxiMeter ? "Ready for taxi meter" : "Ready to book",
+      helper: taxiMeter ? "No upfront quote needed." : "Quote approved. Mark the ride as booked.",
       icon: CheckCircle2,
       className: rideInstanceStatusTones.green.card,
     },
@@ -276,8 +282,8 @@ function getStatusOverviewItems(pod: RidePod) {
     {
       key: "receipt_needed",
       count: counts.receipt_needed,
-      label: "Receipt needed",
-      helper: "Upload the final receipt for settlement.",
+      label: taxiMeter ? "Meter proof needed" : "Receipt needed",
+      helper: taxiMeter ? "Upload meter proof after the ride." : "Upload the final receipt for settlement.",
       icon: ReceiptText,
       className: rideInstanceStatusTones.orange.card,
     },
@@ -749,7 +755,7 @@ export function PodCard({ pod, compact = false }: { pod: RidePod; compact?: bool
       <div className="mt-4">
         <div className="mb-2 flex items-center justify-between text-xs font-semibold text-zinc-600">
           <span>
-            {pod.seatsFilled}/{pod.seatsTotal} seats owned
+            {pod.seatsFilled}/{pod.seatsTotal} seats locked
           </span>
           <span>{remaining > 0 ? `${remaining} open` : "Full"}</span>
         </div>

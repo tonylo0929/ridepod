@@ -853,9 +853,15 @@ for (const recurringCopy of [
   "View all",
   "Open chat",
   "View receipt",
+  "seats locked",
+  "Ready for taxi meter",
+  "No upfront quote needed.",
+  "No upfront quote needed for taxi meter rides.",
+  "Upload meter proof after the ride.",
 ]) {
   assert.ok(uiSource.includes(recurringCopy), `Missing My Pods recurring copy: ${recurringCopy}`);
 }
+assert.equal(uiSource.includes("seats owned"), false);
 assert.ok(mockDataSource.includes("upcomingRideInstances"));
 assert.ok(mockDataSource.includes("recurringPattern: \"back_and_forth\""));
 assert.ok(mockDataSource.includes("recurringPattern: \"one_way\""));
