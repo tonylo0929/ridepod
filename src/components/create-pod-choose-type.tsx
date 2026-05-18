@@ -530,6 +530,13 @@ function getScheduleDateSummary(dateTime: DateTimeState) {
   return dateTime.scheduleType === "RECURRING" ? getRecurringDateSummary(dateTime) : dateTime.date;
 }
 
+function getScheduleTimeSummary(dateTime: DateTimeState) {
+  if (dateTime.scheduleType !== "RECURRING") return dateTime.time;
+
+  const outbound = dateTime.recurringLegs.find((leg) => leg.legType === "OUTBOUND");
+  return formatLocalTimeLabel(outbound?.departureTime ?? displayTimeToLocalTime(dateTime.time));
+}
+
 function getScheduleTypeLabel(dateTime: DateTimeState) {
   return dateTime.scheduleType === "RECURRING" ? "Recurring pod" : "Scheduled pod";
 }
@@ -764,7 +771,7 @@ function RouteJourneyPreview({
   const points = [
     {
       id: "pickup",
-      label: "Pickup",
+      label: "Pickup point",
       value: routePointSummary(pickupAddress, "Pickup location"),
       type: "pickup",
     },
@@ -776,7 +783,7 @@ function RouteJourneyPreview({
     })),
     {
       id: "dropoff",
-      label: stops.length > 0 ? "Final dropoff" : "Dropoff",
+      label: stops.length > 0 ? "Final dropoff point" : "Dropoff point",
       value: routePointSummary(dropoffAddress, "Destination"),
       type: "dropoff",
     },
@@ -1007,7 +1014,7 @@ function RouteStopsStep({
 
           <div className="grid gap-4">
             <AddressField
-              label="Pickup"
+              label="Pickup point"
               type="pickup"
               value={pickupAddress}
               placeholder="Enter pickup address"
@@ -1025,7 +1032,7 @@ function RouteStopsStep({
               />
             ))}
             <AddressField
-              label="Dropoff"
+              label="Dropoff point"
               type="dropoff"
               value={dropoffAddress}
               placeholder="Enter dropoff address"
@@ -1500,6 +1507,35 @@ function RecurringScheduleFields({
             </div>
           </fieldset>
 
+          <fieldset>
+            <legend className="text-base font-bold text-[var(--rp-muted-strong)]">Trip pattern</legend>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {[
+                { id: "ONE_WAY" as const, label: "One-way" },
+                { id: "BACK_AND_FORTH" as const, label: "Back-and-forth" },
+              ].map((option) => {
+                const selected = dateTime.recurringPattern === option.id;
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => updatePattern(option.id)}
+                    aria-pressed={selected}
+                    className={cn(
+                      "min-h-12 rounded-xl border px-3 text-sm font-black transition",
+                      selected
+                        ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                        : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-muted)]",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
           <section className="grid gap-3">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-base font-bold text-[var(--rp-muted-strong)]">
@@ -1507,23 +1543,6 @@ function RecurringScheduleFields({
                   ? "Weekly ride times"
                   : "Weekly ride time"}
               </h2>
-              {dateTime.recurringPattern === "ONE_WAY" ? (
-                <button
-                  type="button"
-                  onClick={() => updatePattern("BACK_AND_FORTH")}
-                  className="min-h-9 rounded-xl border border-[var(--rp-primary)] bg-[var(--rp-card)] px-3 text-xs font-black text-[var(--rp-primary)] shadow-[0_10px_22px_color-mix(in_srgb,var(--rp-primary)_14%,transparent)] transition hover:bg-[var(--rp-card-muted)]"
-                >
-                  Add return ride
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => updatePattern("ONE_WAY")}
-                  className="min-h-9 rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-xs font-black text-[var(--rp-primary)] transition hover:border-[var(--rp-primary)] hover:bg-[var(--rp-card-muted)]"
-                >
-                  Remove return ride
-                </button>
-              )}
             </div>
 
             {selectedWeekdays.length === 0 ? (
@@ -2923,12 +2942,12 @@ function DetailSummaryCard({
     },
     {
       icon: MapPin,
-      label: "Pickup",
+      label: "Pickup point",
       value: pickup || "USC Village rideshare zone",
     },
     {
       icon: MapPin,
-      label: "Dropoff",
+      label: "Dropoff point",
       value: dropoff || "LAX Terminal 3 departures",
     },
   ];
@@ -2993,6 +3012,13 @@ function getRecurringRideLine(leg?: RecurringScheduleLeg) {
   return `${formatLocalTimeLabel(leg.departureTime)} \u2014 ${leg.originLabel} \u2192 ${leg.destinationLabel}`;
 }
 
+function getRecurringOccurrenceLine(occurrence: ReturnType<typeof generateRecurringOccurrences>[number]) {
+  const localTime = occurrence.departureAt.split("T")[1]?.slice(0, 5) ?? "";
+  const legLabel = occurrence.recurringLegType === "RETURN" ? "Return" : "Outbound";
+
+  return `${formatDateForPreview(occurrence.occurrenceDate)} \u00b7 ${formatLocalTimeLabel(localTime)} \u00b7 ${legLabel}`;
+}
+
 function RecurringReviewCard({
   title,
   children,
@@ -3023,6 +3049,10 @@ function RecurringPodReview({
   const outboundLeg = recurringLegs.find((leg) => leg.legType === "OUTBOUND");
   const returnLeg = recurringLegs.find((leg) => leg.legType === "RETURN");
   const rideOption = getRideOption(peopleVehicle.rideOption);
+  const upcomingRides = generateRecurringOccurrences(
+    buildPreviewTemplate({ dateTime, pickupAddress, dropoffAddress }),
+    { defaultOccurrenceLimit: 6, generatedAt: new Date(0).toISOString() },
+  ).slice(0, 6);
 
   return (
     <section className="grid gap-4">
@@ -3064,6 +3094,28 @@ function RecurringPodReview({
           <p className="text-[var(--rp-text)]">{rideOption.title}</p>
           <p>{rideOption.recurringHelper}</p>
         </div>
+      </RecurringReviewCard>
+
+      <RecurringReviewCard title="Upcoming rides">
+        {upcomingRides.length > 0 ? (
+          <div className="grid gap-2">
+            {upcomingRides.map((occurrence) => (
+              <div
+                key={occurrence.id}
+                className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-2"
+              >
+                <p className="text-sm font-black text-[var(--rp-text)]">{getRecurringOccurrenceLine(occurrence)}</p>
+                <p className="mt-1 text-xs font-bold text-[var(--rp-muted-strong)]">
+                  {occurrence.originLabel} \u2192 {occurrence.destinationLabel}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm font-bold text-[var(--rp-muted-strong)]">
+            Pick at least one weekday to preview rides.
+          </p>
+        )}
       </RecurringReviewCard>
 
       <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
@@ -3429,7 +3481,7 @@ function PodCreatedSummaryCard({
     {
       icon: CalendarDays,
       label: "Date & time",
-      value: `${getScheduleDateSummary(dateTime)} \u2022 ${dateTime.time}`,
+      value: `${getScheduleDateSummary(dateTime)} \u2022 ${getScheduleTimeSummary(dateTime)}`,
     },
     {
       icon: UsersRound,
