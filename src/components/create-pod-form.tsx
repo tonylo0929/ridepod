@@ -112,7 +112,7 @@ function MoneySafetyFields({
             onChange={(event) => updateMoney("approvedMaxTotalFareCents", Number(event.target.value))}
           />
         </Field>
-        <Field label="Target seats">
+        <Field label="Ideal pod size">
           <input
             className={inputClass}
             type="number"
@@ -121,7 +121,7 @@ function MoneySafetyFields({
             onChange={(event) => updateMoney("targetSeats", Number(event.target.value))}
           />
         </Field>
-        <Field label="Min seats to book">
+        <Field label="Minimum locked guests">
           <input
             className={inputClass}
             type="number"
@@ -130,11 +130,11 @@ function MoneySafetyFields({
             onChange={(event) => updateMoney("minSeatsToBook", Number(event.target.value))}
           />
         </Field>
-        <Field label="RidePod fee per participant (cents)">
+        <Field label="Platform fee note">
           <div className={cn(inputClass, "flex items-center font-semibold text-zinc-950")}>
             {money.ridepodFeeCents}
           </div>
-          <p className="mt-1 text-xs font-medium text-zinc-500">System fee / demo value.</p>
+          <p className="mt-1 text-xs font-medium text-zinc-500">System-controlled demo value.</p>
         </Field>
       </div>
 
