@@ -551,6 +551,13 @@ assert.equal(
 );
 assert.ok(moneySafetyUiSource.includes("Quote approved. You may book the external ride."));
 assert.equal(moneySafetyUiSource.includes("??host"), false);
+assert.equal(moneySafetyUiSource.includes("??{"), false);
+assert.equal(moneySafetyUiSource.includes("35??5 min"), false);
+assert.ok(moneySafetyUiSource.includes("→ ${protectedPod.destinationGeneral}"));
+assert.ok(moneySafetyUiSource.includes("→ ${pod.toLabel}"));
+assert.ok(moneySafetyUiSource.includes("getQuoteReviewDisplayLabel"));
+assert.ok(moneySafetyUiSource.includes("Submitted for review"));
+assert.ok(moneySafetyUiSource.includes("Needs higher max approval"));
 assert.ok(moneySafetyUiSource.includes("Waiting for guests to lock"));
 assert.ok(moneySafetyUiSource.includes("guests locked. You’ll upload a fresh quote once the minimum guests are locked."));
 assert.ok(moneySafetyUiSource.includes("Action needed: upload quote"));
@@ -581,6 +588,8 @@ assert.ok(settlementPageSource.includes("This receipt will be used to calculate 
 assert.ok(settlementPageSource.includes("I confirm this receipt or meter proof is real, accurate, unaltered, and belongs to this completed ride."));
 assert.ok(settlementPageSource.includes("False or misleading proof may lead to reimbursement denial, account suspension, dispute review, and further action where required."));
 assert.ok(settlementPageSource.includes("Submit receipt"));
+assert.ok(settlementPageSource.includes("Platform fee"));
+assert.equal(settlementPageSource.includes("RidePod fee"), false);
 assert.ok(moneySafetyUiSource.includes("Off-app payments are not protected"));
 assert.ok(podDetailSource.includes("No confirmed riders yet. Seats lock after payment authorization."));
 assert.ok(createPodChooseTypeSource.includes("Current estimate"));

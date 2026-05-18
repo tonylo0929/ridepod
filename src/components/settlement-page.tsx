@@ -153,7 +153,7 @@ export function SettlementPage({ pod }: { pod: RidePod }) {
             verifiedReceiptTotal={finalFare}
             approvedMax={pod.maxFare}
             fareShare={finalSharePerRider}
-            ridePodFee={pod.platformFee}
+            platformFee={pod.platformFee}
             noShowLateFee={0}
             finalCharge={finalSharePerRider + pod.platformFee}
             refundCredit={Math.max(0, pod.maxFare / Math.max(1, pod.seatsTotal) + pod.platformFee - (finalSharePerRider + pod.platformFee))}
@@ -610,7 +610,7 @@ function RiderFinalSplitCard({
   verifiedReceiptTotal,
   approvedMax,
   fareShare,
-  ridePodFee,
+  platformFee,
   noShowLateFee,
   finalCharge,
   refundCredit,
@@ -618,7 +618,7 @@ function RiderFinalSplitCard({
   verifiedReceiptTotal: number;
   approvedMax: number;
   fareShare: number;
-  ridePodFee: number;
+  platformFee: number;
   noShowLateFee: number;
   finalCharge: number;
   refundCredit: number;
@@ -627,7 +627,7 @@ function RiderFinalSplitCard({
     ["Verified receipt total", verifiedReceiptTotal],
     ["Approved max", approvedMax],
     ["Fare share", fareShare],
-    ["RidePod fee", ridePodFee],
+    ["Platform fee", platformFee],
     ["No-show / late fee", noShowLateFee],
     ["Final charge", finalCharge],
     ["Refund / credit", refundCredit],

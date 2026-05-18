@@ -203,6 +203,13 @@ function prettyProvider(value: string) {
     .join(" ");
 }
 
+function getQuoteReviewDisplayLabel(value: string) {
+  if (value === "AUTO_APPROVED") return "Approved";
+  if (value === "NEEDS_APPROVAL") return "Needs higher max approval";
+  if (value === "SUBMITTED") return "Submitted for review";
+  return prettyProvider(value);
+}
+
 function formatProtectedDeparture(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -224,7 +231,7 @@ function getHostQuoteState(pod: RidePod) {
     const snapshot = getMoneySafetySnapshot(protectedPod);
     const latestQuote = permission.latestQuote;
     const aboveMax = !taxiMeter && Boolean(latestQuote && latestQuote.quotedFareCents > protectedPod.approvedMaxTotalFareCents);
-    const routeLabel = `${protectedPod.originGeneral} ??${protectedPod.destinationGeneral}`;
+    const routeLabel = `${protectedPod.originGeneral} → ${protectedPod.destinationGeneral}`;
     const quotedFareCents = latestQuote?.quotedFareCents ?? protectedPod.estimatedTotalFareCents;
 
     return {
@@ -243,7 +250,7 @@ function getHostQuoteState(pod: RidePod) {
       quotedFareCents,
       routeSummary: latestQuote?.routeSummary ?? routeLabel,
       screenshotUrl: latestQuote?.screenshotFileUrl ?? "mock://quote/preview.png",
-      estimatedTime: `${Math.max(15, protectedPod.departureWindowMinutes + 25)}??{Math.max(25, protectedPod.departureWindowMinutes + 35)} min`,
+      estimatedTime: `${Math.max(15, protectedPod.departureWindowMinutes + 25)}-${Math.max(25, protectedPod.departureWindowMinutes + 35)} min`,
       aboveMax,
       taxiMeter,
       reasons: permission.reasons,
@@ -263,7 +270,7 @@ function getHostQuoteState(pod: RidePod) {
     required,
     approvedMax: formatMoney(pod.maxFare),
     approvedMaxCents: Math.round(pod.maxFare * 100),
-    routeLabel: `${pod.fromLabel} ??${pod.toLabel}`,
+    routeLabel: `${pod.fromLabel} → ${pod.toLabel}`,
     departureLabel: `${pod.date}, ${pod.time}`,
     quoteUploaded,
     quoteReviewState: aboveMax ? "NEEDS_APPROVAL" : "AUTO_APPROVED",
@@ -273,7 +280,7 @@ function getHostQuoteState(pod: RidePod) {
     quotedFareCents: Math.round(quotedFare * 100),
     routeSummary: `${pod.fromLabel} to ${pod.toLabel}`,
     screenshotUrl: quoteUploaded ? `mock://quote/${pod.id}.png` : "mock://quote/preview.png",
-    estimatedTime: "35??5 min",
+    estimatedTime: "35-45 min",
     aboveMax,
     taxiMeter,
     reasons: confirmed < required ? [`Waiting for participants: ${confirmed}/${required} authorized.`] : [],
@@ -609,7 +616,7 @@ export function HostQuoteUploadPanel({ pod }: { pod: RidePod }) {
                 ["Route", state.routeSummary],
                 ["Estimated time", state.estimatedTime],
                 ["Approved max", state.approvedMax],
-                ["Review", state.quoteReviewState.replaceAll("_", " ")],
+                ["Review", getQuoteReviewDisplayLabel(state.quoteReviewState)],
               ].map(([label, value]) => (
                 <div key={label} className="flex items-center justify-between gap-3 text-sm">
                   <span className="font-semibold text-[var(--rp-muted)]">{label}</span>
