@@ -9,12 +9,15 @@ import {
   Car,
   CheckCircle2,
   ChevronDown,
+  Clock3,
   FileText,
   HelpCircle,
+  Info,
   ReceiptText,
   ShieldCheck,
   Upload,
   UsersRound,
+  WalletCards,
 } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { formatMoney, type RecurringRideInstancePreview, type RidePod } from "@/lib/mock-data";
@@ -161,6 +164,248 @@ function ProofResultCard({
     </div>
   );
 }
+
+function compactRideDate(rideInstance: RecurringRideInstancePreview) {
+  return rideInstance.displayDate.replace(/^\w+\s+/, "");
+}
+
+function getSettlementDisplayState(rideInstance: RecurringRideInstancePreview) {
+  if (rideInstance.disputeRaised || rideInstance.settlementState === "DISPUTE_REVIEW") {
+    return {
+      badge: "Dispute review",
+      payoutHelper: "Payout is held while RidePod reviews the dispute.",
+      finalStepComplete: false,
+    };
+  }
+
+  if (rideInstance.settlementState === "SETTLEMENT_FINAL") {
+    return {
+      badge: "Settlement final",
+      payoutHelper: "Settlement is final. Payout can be processed.",
+      finalStepComplete: true,
+    };
+  }
+
+  if (rideInstance.settlementState === "PAID" || rideInstance.payoutState === "PAID") {
+    return {
+      badge: "Paid",
+      payoutHelper: "Payout completed.",
+      finalStepComplete: true,
+    };
+  }
+
+  return {
+    badge: "Settlement ready",
+    payoutHelper: "Payout will be processed after the dispute window.",
+    finalStepComplete: false,
+  };
+}
+
+function SettlementTimelineStep({
+  title,
+  detail,
+  active,
+  final,
+}: {
+  title: string;
+  detail: string;
+  active?: boolean;
+  final?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-[28px_1fr] gap-3">
+      <div className="relative grid justify-center">
+        {!final ? (
+          <span className="absolute left-1/2 top-8 h-[calc(100%+0.75rem)] w-px -translate-x-1/2 bg-[var(--rp-border-strong)]" />
+        ) : null}
+        <span
+          className={[
+            "relative z-10 grid h-7 w-7 place-items-center rounded-full border text-[11px] font-black",
+            active
+              ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+              : "border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted)]",
+          ].join(" ")}
+        >
+          {active ? <CheckCircle2 className="h-4 w-4" /> : <Clock3 className="h-4 w-4" />}
+        </span>
+      </div>
+      <div className="pb-4">
+        <p className={active ? "text-sm font-black text-[var(--rp-primary)]" : "text-sm font-black text-[var(--rp-text)]"}>
+          {title}
+        </p>
+        <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{detail}</p>
+      </div>
+    </div>
+  );
+}
+
+function RecurringInstanceSettlementTimeline({
+  rideInstance,
+}: {
+  rideInstance: RecurringRideInstancePreview;
+}) {
+  const settlementState = getSettlementDisplayState(rideInstance);
+  const providerFareCents = rideInstance.finalFareCents ?? rideInstance.receiptFareCents ?? 29800;
+  const platformFeeCents = rideInstance.platformFeeCents ?? Math.round(providerFareCents * 0.1);
+  const hostReimbursementCents = rideInstance.hostReimbursementCents ?? Math.max(0, providerFareCents - platformFeeCents);
+  const dateLabel = compactRideDate(rideInstance);
+  const disputeDeadline = "May 22, 8:00 AM";
+
+  return (
+    <section className="overflow-hidden rounded-[30px] border border-[var(--rp-border-strong)] bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--rp-primary)_12%,transparent),transparent_36%),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)] sm:p-6">
+      <div className="flex items-center justify-between gap-4">
+        <button
+          type="button"
+          onClick={() => window.history.back()}
+          className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-primary)]"
+          aria-label="Back"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <h2 className="text-xl font-black text-[var(--rp-text)]">Settlement</h2>
+        <div className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-primary)]">
+          <ShieldCheck className="h-5 w-5" />
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
+        <p className="text-sm font-bold text-[var(--rp-muted-strong)]">
+          {rideInstance.displayDate}
+          {" \u00b7 "}
+          {rideInstance.departureTime}
+          {" \u00b7 "}
+          {rideInstance.legType === "return" ? "Return" : "Outbound"}
+        </p>
+        <h3 className="mt-2 text-2xl font-black leading-tight text-[var(--rp-text)]">
+          {rideInstance.originLabel}
+          {" \u2192 "}
+          {rideInstance.destinationLabel}
+        </h3>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <Badge className="gap-1.5 bg-[var(--rp-success-bg)] px-3 py-1.5 text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]">
+            <CheckCircle2 className="h-4 w-4" /> Verified
+          </Badge>
+          <Badge className="gap-1.5 bg-[var(--rp-success-bg)] px-3 py-1.5 text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]">
+            <CheckCircle2 className="h-4 w-4" /> {settlementState.badge}
+          </Badge>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
+        <h3 className="text-lg font-black text-[var(--rp-text)]">Settlement timeline</h3>
+        <div className="mt-5 grid gap-5 min-[760px]:grid-cols-[1fr_260px] min-[760px]:items-center">
+          <div>
+            <SettlementTimelineStep title="Ride completed" detail={`${dateLabel}, ${rideInstance.departureTime}`} active />
+            <SettlementTimelineStep title="Proof verified" detail={`${dateLabel}, 9:30 AM`} active />
+            <SettlementTimelineStep title="Settlement ready" detail={`${dateLabel}, 10:15 AM`} active />
+            <SettlementTimelineStep title="Dispute window" detail={`Until ${disputeDeadline}`} active />
+            <SettlementTimelineStep
+              title="Settlement final"
+              detail={`After ${disputeDeadline}`}
+              active={settlementState.finalStepComplete}
+              final
+            />
+          </div>
+          <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h4 className="text-sm font-black text-[var(--rp-text)]">About the dispute window</h4>
+              <Info className="h-4 w-4 text-[var(--rp-primary)]" />
+            </div>
+            <p className="mt-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              Guests can raise a dispute until the window ends. If a dispute is raised, our team will review and update you.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
+        <h3 className="text-lg font-black text-[var(--rp-text)]">Final split</h3>
+        <dl className="mt-4 grid gap-3 text-sm">
+          <div className="flex items-center justify-between gap-4">
+            <dt className="flex items-center gap-2 font-semibold text-[var(--rp-muted-strong)]">
+              <UsersRound className="h-4 w-4 text-[var(--rp-primary)]" /> Provider fare
+            </dt>
+            <dd className="font-black text-[var(--rp-text)]">{formatHkdCents(providerFareCents)}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <dt className="flex items-center gap-2 font-semibold text-[var(--rp-muted-strong)]">
+              <ShieldCheck className="h-4 w-4 text-[var(--rp-primary)]" /> Platform fee
+            </dt>
+            <dd className="font-black text-[var(--rp-text)]">-{formatHkdCents(platformFeeCents)}</dd>
+          </div>
+          <div className="border-t border-[var(--rp-border)] pt-3">
+            <div className="flex items-center justify-between gap-4">
+              <dt className="font-black text-[var(--rp-primary)]">Host reimbursement</dt>
+              <dd className="font-black text-[var(--rp-primary)]">{formatHkdCents(hostReimbursementCents)}</dd>
+            </div>
+          </div>
+        </dl>
+      </div>
+
+      <div className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
+        <p className="text-sm font-bold text-[var(--rp-muted-strong)]">You&apos;ll receive</p>
+        <div className="mt-2 flex items-center justify-between gap-4">
+          <p className="text-[34px] font-black leading-none text-[var(--rp-primary)]">
+            {formatHkdCents(hostReimbursementCents)}
+          </p>
+          <WalletCards className="h-12 w-12 text-[var(--rp-primary)] opacity-80" />
+        </div>
+        <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+          {settlementState.payoutHelper}
+        </p>
+      </div>
+
+      <div className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
+        <div className="flex items-center gap-3">
+          <Clock3 className="h-5 w-5 text-[var(--rp-primary)]" />
+          <h3 className="text-lg font-black text-[var(--rp-text)]">Dispute window</h3>
+        </div>
+        <div className="mt-4 grid gap-5 min-[640px]:grid-cols-[1fr_auto] min-[640px]:items-center">
+          <div>
+            <p className="text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">Guests can raise a dispute until</p>
+            <p className="mt-2 text-xl font-black text-[var(--rp-text)]">May 22, 2025 · 8:00 AM</p>
+            <p className="mt-1 text-xs font-bold text-[var(--rp-muted)]">72 hours from now</p>
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--rp-card-muted)]">
+              <div className="h-full w-2/3 rounded-full bg-[var(--rp-primary)]" />
+            </div>
+            <p className="mt-2 text-center text-xs font-black text-[var(--rp-primary)]">48h remaining</p>
+          </div>
+          <div
+            className="grid h-24 w-24 place-items-center rounded-full text-center"
+            style={{ background: "conic-gradient(var(--rp-primary) 0 66%, var(--rp-card-muted) 66% 100%)" }}
+          >
+            <div className="grid h-20 w-20 place-items-center rounded-full bg-[var(--rp-card)]">
+              <p className="text-sm font-black leading-4 text-[var(--rp-primary)]">
+                48h
+                <span className="block text-[10px] text-[var(--rp-muted-strong)]">remaining</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3">
+        <button
+          type="button"
+          className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-[16px] px-5 text-base font-black text-[var(--rp-primary-text)] shadow-[0_18px_34px_color-mix(in_srgb,var(--rp-primary)_20%,transparent)]"
+          style={{ background: "var(--rp-gradient-primary)" }}
+        >
+          View settlement details <ArrowRight className="h-5 w-5" />
+        </button>
+        <button
+          type="button"
+          className="inline-flex min-h-12 w-full items-center justify-between rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-muted-strong)]"
+        >
+          <span className="inline-flex items-center gap-2">
+            <HelpCircle className="h-4 w-4 text-[var(--rp-primary)]" /> Help center
+          </span>
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      </div>
+    </section>
+  );
+}
+
 export function RecurringInstanceProofFlow({
   pod,
   rideInstance,
@@ -207,6 +452,13 @@ export function RecurringInstanceProofFlow({
     if (quoteAmountCents === null || Number.isNaN(quoteAmountCents)) return "missing";
     return quoteAmountCents <= bookingFareCapCents ? "approved" : "above_cap";
   }, [bookingFareCapCents, quoteAmountCents, rideInstance.proofStatus, rideInstance.status, taxiMeter]);
+  const settlementFlow =
+    (rideInstance.status === "settlement_ready" || rideInstance.status === "completed") &&
+    (rideInstance.proofStatus === "VERIFIED" || rideInstance.proofStatus === "APPROVED");
+
+  if (settlementFlow) {
+    return <RecurringInstanceSettlementTimeline rideInstance={rideInstance} />;
+  }
 
   if (receiptFlow) {
     const activeReceiptStatus =

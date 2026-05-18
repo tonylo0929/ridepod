@@ -843,6 +843,12 @@ assert.ok(mockDataSource.includes("status: \"settlement_ready\""));
 assert.ok(mockDataSource.includes("taxi-meter-weekly-demo-2026-05-19-outbound"));
 assert.ok(mockDataSource.includes("bookingFareCapCents: 32000"));
 assert.ok(mockDataSource.includes("finalFareCents"));
+assert.ok(mockDataSource.includes("settlementState: \"DISPUTE_WINDOW\""));
+assert.ok(mockDataSource.includes("settlementId: \"settlement-campus-commute-442-2026-05-19-outbound\""));
+assert.ok(mockDataSource.includes("disputeWindowEndsAt"));
+assert.ok(mockDataSource.includes("platformFeeCents: 2980"));
+assert.ok(mockDataSource.includes("hostReimbursementCents: 26820"));
+assert.ok(mockDataSource.includes("payoutState: \"PENDING\""));
 assert.ok(mockDataSource.includes("submittedAt"));
 assert.ok(mockDataSource.includes("reviewedAt"));
 assert.ok(mockDataSource.includes("bookingFareCapCents"));
@@ -907,6 +913,27 @@ for (const recurringInstanceCopy of [
   "Meter proof verified. Settlement can continue.",
   "Please upload a clearer meter photo or taxi receipt showing the final fare.",
   "Meter proof rejected. Settlement requires valid proof.",
+  "Settlement timeline",
+  "Ride completed",
+  "Proof verified",
+  "Settlement ready",
+  "Dispute window",
+  "Settlement final",
+  "About the dispute window",
+  "Guests can raise a dispute until the window ends. If a dispute is raised, our team will review and update you.",
+  "Final split",
+  "Provider fare",
+  "Platform fee",
+  "Host reimbursement",
+  "You&apos;ll receive",
+  "Payout will be processed after the dispute window.",
+  "Payout is held while RidePod reviews the dispute.",
+  "Settlement is final. Payout can be processed.",
+  "Payout completed.",
+  "Guests can raise a dispute until",
+  "48h remaining",
+  "View settlement details",
+  "Help center",
 ]) {
   assert.ok(
     recurringInstanceProofFlowSource.includes(recurringInstanceCopy),

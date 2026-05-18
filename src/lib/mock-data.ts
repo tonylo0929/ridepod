@@ -76,6 +76,20 @@ export type RideInstanceProofStatus =
   | "REJECTED"
   | "NEEDS_MORE_INFO";
 
+export type RideInstanceSettlementState =
+  | "SETTLEMENT_READY"
+  | "DISPUTE_WINDOW"
+  | "DISPUTE_REVIEW"
+  | "SETTLEMENT_FINAL"
+  | "PAYOUT_PENDING"
+  | "PAID";
+
+export type RideInstancePayoutState =
+  | "PENDING"
+  | "HELD_FOR_REVIEW"
+  | "READY"
+  | "PAID";
+
 export type RecurringRideInstancePreview = {
   id: string;
   recurringTemplateId?: string;
@@ -96,6 +110,16 @@ export type RecurringRideInstancePreview = {
   certificationTextVersion?: string;
   submittedAt?: string;
   reviewedAt?: string;
+  settlementId?: string;
+  settlementState?: RideInstanceSettlementState;
+  rideCompletedAt?: string;
+  proofVerifiedAt?: string;
+  settlementReadyAt?: string;
+  disputeWindowEndsAt?: string;
+  disputeRaised?: boolean;
+  platformFeeCents?: number;
+  hostReimbursementCents?: number;
+  payoutState?: RideInstancePayoutState;
 };
 
 export type RidePod = {
@@ -570,25 +594,35 @@ export const ridePods: RidePod[] = [
         certificationTextVersion: "ride-instance-proof-v1",
       },
       {
-        id: "campus-commute-442-2026-05-21-return",
+        id: "campus-commute-442-2026-05-19-settlement-outbound",
         recurringTemplateId: "campus-commute-442",
-        instanceDate: "2026-05-21",
-        displayDate: "Thu May 21",
-        departureTime: "6:00 PM",
-        legType: "return",
-        originLabel: "LAX Terminal 3",
-        destinationLabel: "USC Village",
+        instanceDate: "2026-05-19",
+        displayDate: "Tue May 19",
+        departureTime: "8:00 AM",
+        legType: "outbound",
+        originLabel: "USC Village",
+        destinationLabel: "LAX Terminal 3",
         status: "settlement_ready",
         proofType: "FINAL_RECEIPT",
         proofStatus: "VERIFIED",
-        quotedFareCents: 3300,
-        finalFareCents: 3300,
-        receiptFareCents: 3300,
-        bookingFareCapCents: 3400,
+        quotedFareCents: 29800,
+        finalFareCents: 29800,
+        receiptFareCents: 29800,
+        bookingFareCapCents: 32000,
         proofCertified: true,
         certificationTextVersion: "ride-instance-proof-v1",
-        submittedAt: "2026-05-21T19:10:00.000Z",
-        reviewedAt: "2026-05-21T19:20:00.000Z",
+        submittedAt: "2026-05-19T09:05:00.000Z",
+        reviewedAt: "2026-05-19T09:30:00.000Z",
+        settlementId: "settlement-campus-commute-442-2026-05-19-outbound",
+        settlementState: "DISPUTE_WINDOW",
+        rideCompletedAt: "2026-05-19T08:00:00.000Z",
+        proofVerifiedAt: "2026-05-19T09:30:00.000Z",
+        settlementReadyAt: "2026-05-19T10:15:00.000Z",
+        disputeWindowEndsAt: "2026-05-22T08:00:00.000Z",
+        disputeRaised: false,
+        platformFeeCents: 2980,
+        hostReimbursementCents: 26820,
+        payoutState: "PENDING",
       },
     ],
   },
