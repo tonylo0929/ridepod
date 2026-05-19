@@ -1084,6 +1084,11 @@ assert.ok(proofUploadSource.includes("uploadProofFileMock"));
 assert.ok(proofUploadSource.includes("uploadProofFileToSupabaseStorage"));
 assert.ok(proofUploadSource.includes("uploadProofFile"));
 assert.ok(proofUploadSource.includes("normalizeProofStoragePath"));
+assert.ok(proofUploadSource.includes("createProofSignedUrl"));
+assert.ok(proofUploadSource.includes("createSignedUrl(normalized.storagePath"));
+assert.ok(proofUploadSource.includes("defaultProofSignedUrlExpiresInSeconds = 300"));
+assert.ok(proofUploadSource.includes("maxProofSignedUrlExpiresInSeconds = 3600"));
+assert.ok(proofUploadSource.includes("Couldn't open proof preview. Try again later."));
 assert.ok(proofUploadSource.includes('"MOCK"'));
 assert.ok(proofUploadSource.includes('"SUPABASE_STORAGE"'));
 assert.ok(proofUploadSource.includes('"SUPABASE_STORAGE_FUTURE"'));
@@ -1222,6 +1227,45 @@ assert.equal(proofUpload.normalizeProofStoragePath(null), null);
 assert.equal(proofUpload.normalizeProofStoragePath(""), null);
 assert.equal(proofUpload.normalizeProofStoragePath("https://example.com/proof.png"), null);
 assert.equal(proofUpload.normalizeProofStoragePath("http://example.com/proof.png"), null);
+assert.equal(proofUpload.getProofSignedUrlExpiresInSeconds(), 300);
+assert.equal(proofUpload.getProofSignedUrlExpiresInSeconds(120), 120);
+assert.equal(proofUpload.getProofSignedUrlExpiresInSeconds(7200), 3600);
+assert.equal(proofUpload.getProofSignedUrlExpiresInSeconds(-10), 300);
+assert.equal(
+  (
+    await proofUpload.createProofSignedUrl({
+      storagePath: "mock://proofs/abc/METER_PROOF/file.jpg",
+    })
+  ).ok,
+  false,
+);
+assert.equal(
+  (
+    await proofUpload.createProofSignedUrl({
+      storagePath: "https://example.com/proof.png",
+    })
+  ).ok,
+  false,
+);
+const originalSupabaseUrlForSignedProof = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const originalSupabaseAnonKeyForSignedProof = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const missingSupabaseSignedProofUrl = await proofUpload.createProofSignedUrl({
+  storagePath: "ride-instances/abc/FINAL_RECEIPT/file.png",
+});
+assert.equal(missingSupabaseSignedProofUrl.ok, false);
+assert.equal(missingSupabaseSignedProofUrl.error, "Couldn't open proof preview. Try again later.");
+if (originalSupabaseUrlForSignedProof === undefined) {
+  delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+} else {
+  process.env.NEXT_PUBLIC_SUPABASE_URL = originalSupabaseUrlForSignedProof;
+}
+if (originalSupabaseAnonKeyForSignedProof === undefined) {
+  delete process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+} else {
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalSupabaseAnonKeyForSignedProof;
+}
 assert.ok(supabaseProofMetadataSource.includes("submitRideInstanceProofMetadata"));
 assert.ok(supabaseProofMetadataSource.includes("Proof certification is required."));
 assert.ok(supabaseProofMetadataSource.includes("amountCents must be greater than zero."));

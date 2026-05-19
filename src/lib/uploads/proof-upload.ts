@@ -39,12 +39,39 @@ export type NormalizedProofStoragePath =
       needsSignedUrl: false;
     };
 
+export type ProofSignedUrlInput = {
+  storagePath?: string | null;
+  expiresInSeconds?: number;
+  bucketId?: string;
+};
+
+export type ProofSignedUrlResult =
+  | {
+      ok: true;
+      signedUrl: string;
+      expiresAt: string;
+      storagePath: string;
+      bucketId: string;
+    }
+  | {
+      ok: false;
+      signedUrl: null;
+      expiresAt: null;
+      storagePath: string | null;
+      bucketId: string;
+      error: string;
+      developerError?: string;
+    };
+
 export type ProofUploadOptions = {
   provider?: ProofUploadProvider;
 };
 
 const maxProofUploadSizeBytes = 10 * 1024 * 1024;
 const ridePodProofsBucketId = "ridepod-proofs";
+const defaultProofSignedUrlExpiresInSeconds = 300;
+const maxProofSignedUrlExpiresInSeconds = 3600;
+const proofSignedUrlErrorMessage = "Couldn't open proof preview. Try again later.";
 const allowedProofUploadContentTypes = new Set(["image/png", "image/jpeg", "image/jpg", "application/pdf"]);
 
 function safeProofFileName(fileName: string) {
@@ -98,6 +125,69 @@ export function normalizeProofStoragePath(fileUrlOrStoragePath?: string | null):
     storagePath,
     needsSignedUrl: true,
   };
+}
+
+export function getProofSignedUrlExpiresInSeconds(expiresInSeconds = defaultProofSignedUrlExpiresInSeconds) {
+  if (!Number.isFinite(expiresInSeconds) || expiresInSeconds <= 0) {
+    return defaultProofSignedUrlExpiresInSeconds;
+  }
+
+  return Math.min(Math.floor(expiresInSeconds), maxProofSignedUrlExpiresInSeconds);
+}
+
+function proofSignedUrlError(
+  input: ProofSignedUrlInput,
+  developerError?: string,
+): Extract<ProofSignedUrlResult, { ok: false }> {
+  return {
+    ok: false,
+    signedUrl: null,
+    expiresAt: null,
+    storagePath: input.storagePath?.trim() || null,
+    bucketId: input.bucketId || ridePodProofsBucketId,
+    error: proofSignedUrlErrorMessage,
+    developerError,
+  };
+}
+
+export async function createProofSignedUrl(input: ProofSignedUrlInput): Promise<ProofSignedUrlResult> {
+  const normalized = normalizeProofStoragePath(input.storagePath);
+
+  if (!input.storagePath?.trim()) {
+    return proofSignedUrlError(input, "Missing storage path.");
+  }
+
+  if (!normalized || normalized.kind !== "storage") {
+    return proofSignedUrlError(input, "Only private RidePod proof storage paths can be signed.");
+  }
+
+  if (!hasSupabasePublicEnv()) {
+    return proofSignedUrlError(input, "Supabase is not configured.");
+  }
+
+  const bucketId = input.bucketId || normalized.bucketId;
+  const expiresInSeconds = getProofSignedUrlExpiresInSeconds(input.expiresInSeconds);
+
+  try {
+    const supabase = getSupabaseBrowserClient();
+    const { data, error } = await supabase.storage
+      .from(bucketId)
+      .createSignedUrl(normalized.storagePath, expiresInSeconds);
+
+    if (error || !data?.signedUrl) {
+      return proofSignedUrlError(input, error?.message || "Signed URL was not returned.");
+    }
+
+    return {
+      ok: true,
+      signedUrl: data.signedUrl,
+      expiresAt: new Date(Date.now() + expiresInSeconds * 1000).toISOString(),
+      storagePath: normalized.storagePath,
+      bucketId,
+    };
+  } catch (error) {
+    return proofSignedUrlError(input, error instanceof Error ? error.message : "Signed URL request failed.");
+  }
 }
 
 export function buildProofStoragePath(input: ProofUploadInput, date = new Date()) {
