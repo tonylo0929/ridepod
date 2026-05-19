@@ -26,6 +26,19 @@ export type ProofUploadResult = {
   checksum?: string;
 };
 
+export type NormalizedProofStoragePath =
+  | {
+      kind: "storage";
+      bucketId: string;
+      storagePath: string;
+      needsSignedUrl: true;
+    }
+  | {
+      kind: "mock";
+      mockUrl: string;
+      needsSignedUrl: false;
+    };
+
 export type ProofUploadOptions = {
   provider?: ProofUploadProvider;
 };
@@ -53,6 +66,38 @@ function isSupabaseStorageUploadEnabled(env: NodeJS.ProcessEnv = process.env) {
 
 function hasSupabasePublicEnv(env: NodeJS.ProcessEnv = process.env) {
   return Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}
+
+export function normalizeProofStoragePath(fileUrlOrStoragePath?: string | null): NormalizedProofStoragePath | null {
+  const value = fileUrlOrStoragePath?.trim();
+
+  if (!value) return null;
+
+  if (value.startsWith("mock://")) {
+    return {
+      kind: "mock",
+      mockUrl: value,
+      needsSignedUrl: false,
+    };
+  }
+
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return null;
+  }
+
+  const storagePrefix = `storage://${ridePodProofsBucketId}/`;
+  const storagePath = value.startsWith(storagePrefix) ? value.slice(storagePrefix.length) : value;
+
+  if (!storagePath.startsWith("ride-instances/")) {
+    return null;
+  }
+
+  return {
+    kind: "storage",
+    bucketId: ridePodProofsBucketId,
+    storagePath,
+    needsSignedUrl: true,
+  };
 }
 
 export function buildProofStoragePath(input: ProofUploadInput, date = new Date()) {

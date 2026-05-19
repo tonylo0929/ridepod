@@ -1083,6 +1083,7 @@ assert.ok(proofUploadSource.includes("validateProofUploadFile"));
 assert.ok(proofUploadSource.includes("uploadProofFileMock"));
 assert.ok(proofUploadSource.includes("uploadProofFileToSupabaseStorage"));
 assert.ok(proofUploadSource.includes("uploadProofFile"));
+assert.ok(proofUploadSource.includes("normalizeProofStoragePath"));
 assert.ok(proofUploadSource.includes('"MOCK"'));
 assert.ok(proofUploadSource.includes('"SUPABASE_STORAGE"'));
 assert.ok(proofUploadSource.includes('"SUPABASE_STORAGE_FUTURE"'));
@@ -1195,6 +1196,32 @@ assert.equal(
   "ride-instances/00000000-0000-4000-8000-000000000001/METER_PROOF/2026-05-19T08-00-00Z-Meter-Proof-1.jpg",
 );
 assert.equal(storageProofPath.fileName, "Meter-Proof-1.jpg");
+assert.deepEqual(
+  proofUpload.normalizeProofStoragePath(
+    "storage://ridepod-proofs/ride-instances/abc/FINAL_RECEIPT/file.png",
+  ),
+  {
+    kind: "storage",
+    bucketId: "ridepod-proofs",
+    storagePath: "ride-instances/abc/FINAL_RECEIPT/file.png",
+    needsSignedUrl: true,
+  },
+);
+assert.deepEqual(proofUpload.normalizeProofStoragePath("ride-instances/abc/METER_PROOF/file.jpg"), {
+  kind: "storage",
+  bucketId: "ridepod-proofs",
+  storagePath: "ride-instances/abc/METER_PROOF/file.jpg",
+  needsSignedUrl: true,
+});
+assert.deepEqual(proofUpload.normalizeProofStoragePath("mock://proofs/abc/METER_PROOF/file.jpg"), {
+  kind: "mock",
+  mockUrl: "mock://proofs/abc/METER_PROOF/file.jpg",
+  needsSignedUrl: false,
+});
+assert.equal(proofUpload.normalizeProofStoragePath(null), null);
+assert.equal(proofUpload.normalizeProofStoragePath(""), null);
+assert.equal(proofUpload.normalizeProofStoragePath("https://example.com/proof.png"), null);
+assert.equal(proofUpload.normalizeProofStoragePath("http://example.com/proof.png"), null);
 assert.ok(supabaseProofMetadataSource.includes("submitRideInstanceProofMetadata"));
 assert.ok(supabaseProofMetadataSource.includes("Proof certification is required."));
 assert.ok(supabaseProofMetadataSource.includes("amountCents must be greater than zero."));
