@@ -1440,6 +1440,63 @@ const originalProofSelectionInput = [
 const originalProofSelectionSnapshot = JSON.stringify(originalProofSelectionInput);
 supabaseProofMetadata.getCurrentProofForRideInstance(originalProofSelectionInput, "FINAL_RECEIPT");
 assert.equal(JSON.stringify(originalProofSelectionInput), originalProofSelectionSnapshot);
+assert.ok(supabaseProofMetadataSource.includes("replaceRideInstanceProofMetadata"));
+assert.ok(supabaseProofMetadataSource.includes("validateReplacementProofInput"));
+assert.ok(supabaseProofMetadataSource.includes("fileUrl or storagePath is required."));
+assert.ok(supabaseProofMetadataSource.includes("getProofsForReplacement"));
+assert.ok(supabaseProofMetadataSource.includes("getCurrentProofForRideInstance"));
+assert.ok(supabaseProofMetadataSource.includes("canReplaceProof"));
+assert.ok(supabaseProofMetadataSource.includes("oldProofSuperseded: false"));
+assert.ok(supabaseProofMetadataSource.includes("Add proof version columns in later schema cleanup."));
+assert.equal(supabaseProofMetadataSource.includes(".delete("), false);
+assert.equal(supabaseProofMetadataSource.includes(".remove("), false);
+await assert.rejects(
+  () =>
+    supabaseProofMetadata.replaceRideInstanceProofMetadata({
+      rideInstanceId: "ride-1",
+      proofType: "FINAL_RECEIPT",
+      amountCents: 1000,
+      fileUrl: "mock://proofs/ride-1/FINAL_RECEIPT/replacement.png",
+      certificationAccepted: false,
+      certificationTextVersion: "test",
+    }),
+  /Proof certification is required\./,
+);
+await assert.rejects(
+  () =>
+    supabaseProofMetadata.replaceRideInstanceProofMetadata({
+      rideInstanceId: "",
+      proofType: "FINAL_RECEIPT",
+      amountCents: 1000,
+      fileUrl: "mock://proofs/ride-1/FINAL_RECEIPT/replacement.png",
+      certificationAccepted: true,
+      certificationTextVersion: "test",
+    }),
+  /rideInstanceId is required\./,
+);
+await assert.rejects(
+  () =>
+    supabaseProofMetadata.replaceRideInstanceProofMetadata({
+      rideInstanceId: "ride-1",
+      proofType: "FINAL_RECEIPT",
+      amountCents: 0,
+      fileUrl: "mock://proofs/ride-1/FINAL_RECEIPT/replacement.png",
+      certificationAccepted: true,
+      certificationTextVersion: "test",
+    }),
+  /amountCents must be greater than zero\./,
+);
+await assert.rejects(
+  () =>
+    supabaseProofMetadata.replaceRideInstanceProofMetadata({
+      rideInstanceId: "ride-1",
+      proofType: "FINAL_RECEIPT",
+      amountCents: 1000,
+      certificationAccepted: true,
+      certificationTextVersion: "test",
+    }),
+  /fileUrl or storagePath is required\./,
+);
 assert.ok(recurringInstanceProofFlowSource.includes("submitRideInstanceProofMetadata"));
 assert.ok(recurringInstanceProofFlowSource.includes("uploadProofFile"));
 assert.ok(recurringInstanceProofFlowSource.includes("fileUrl: uploadResult.fileUrl"));

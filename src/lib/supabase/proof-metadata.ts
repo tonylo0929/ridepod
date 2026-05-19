@@ -14,6 +14,13 @@ export type RideInstanceProofMetadataInput = {
   certificationTextVersion: string;
 };
 
+export type ReplaceRideInstanceProofMetadataInput = RideInstanceProofMetadataInput & {
+  storagePath?: string;
+  contentType?: string;
+  sizeBytes?: number;
+  uploadedByUserId?: string;
+};
+
 export type RideInstanceProofMetadataResult = {
   source: "supabase" | "mock";
   proof: RidePodProofRow;
@@ -27,6 +34,17 @@ export type RideInstanceProofMetadataResult = {
   adminReviewCaseFailed: boolean;
   userFacingMessage: string;
   statusUpdateFailed: boolean;
+  fallbackNote: string | null;
+};
+
+export type ReplaceRideInstanceProofMetadataResult = {
+  source: "supabase" | "mock";
+  newProof: RidePodProofRow;
+  replacedProofId: string | null;
+  rideInstanceStatus: RideInstanceStatusAfterProofSubmit | null;
+  reviewCase: RidePodAdminReviewCaseRow | null;
+  replacementAllowed: true;
+  oldProofSuperseded: boolean;
   fallbackNote: string | null;
 };
 
@@ -362,6 +380,14 @@ function validateProofInput(input: RideInstanceProofMetadataInput) {
   }
 }
 
+function validateReplacementProofInput(input: ReplaceRideInstanceProofMetadataInput) {
+  validateProofInput(input);
+
+  if (!input.fileUrl && !input.storagePath) {
+    throw new Error("fileUrl or storagePath is required.");
+  }
+}
+
 function validateProofTypeForRideOption(proofType: RideInstanceProofMetadataInput["proofType"], rideOption: RideOptionForProof) {
   if (rideOption === "TAXI_METER" && proofType !== "METER_PROOF") {
     throw new Error("Taxi meter rides only accept meter proof after the ride.");
@@ -421,6 +447,41 @@ async function findExistingActiveProof(input: RideInstanceProofMetadataInput) {
 
   if (result.error) return null;
   return result.data?.find((proof) => activeProofStatuses.has(proof.proof_status)) ?? null;
+}
+
+async function getProofsForReplacement(input: ReplaceRideInstanceProofMetadataInput) {
+  const client = getSupabaseBrowserClient();
+  const result = await client
+    .from("proofs")
+    .select("*")
+    .eq("ride_instance_id", input.rideInstanceId)
+    .eq("proof_type", input.proofType)
+    .order("submitted_at", { ascending: true });
+
+  if (result.error) return [];
+  return result.data ?? [];
+}
+
+function toCurrentProofSelectionInput(proof: RidePodProofRow): CurrentProofSelectionInput {
+  return {
+    id: proof.id,
+    proofType: proof.proof_type,
+    proofStatus: proof.proof_status,
+    submittedAt: proof.submitted_at,
+    reviewedAt: proof.reviewed_at,
+  };
+}
+
+function createMockReplacementProof(
+  input: ReplaceRideInstanceProofMetadataInput,
+  uploadedByUserId: string | null,
+): RidePodProofRow {
+  return {
+    ...createMockProof(input),
+    id: `mock-replacement-proof-${input.rideInstanceId}-${input.proofType}`,
+    uploaded_by_user_id: uploadedByUserId,
+    file_url: input.fileUrl ?? input.storagePath ?? `mock://proofs/${input.rideInstanceId}/${input.proofType}`,
+  };
 }
 
 function mockSubmit(input: RideInstanceProofMetadataInput, fallbackNote: string): RideInstanceProofMetadataResult {
@@ -691,6 +752,127 @@ export async function updateRideInstanceStatusAfterProofSubmit(
         : getSubmittedMessage(input.proofType, aboveCap),
     statusUpdateFailed: false,
   };
+}
+
+export async function replaceRideInstanceProofMetadata(
+  input: ReplaceRideInstanceProofMetadataInput,
+): Promise<ReplaceRideInstanceProofMetadataResult> {
+  validateReplacementProofInput(input);
+
+  try {
+    const uploadedByUserId = input.uploadedByUserId ?? await getCurrentUserId();
+    if (!uploadedByUserId) {
+      // TODO: replace mock fallback with a real demo-auth/session path once auth is wired.
+      return {
+        source: "mock",
+        newProof: createMockReplacementProof(input, null),
+        replacedProofId: null,
+        rideInstanceStatus: getRideInstanceStatusForProofType(input.proofType),
+        reviewCase: null,
+        replacementAllowed: true,
+        oldProofSuperseded: false,
+        fallbackNote: "Supabase not configured; using mock proof replacement metadata.",
+      };
+    }
+
+    const rideContext = await getRideContextForProof(input.rideInstanceId);
+    validateProofTypeForRideOption(input.proofType, rideContext.rideOption);
+
+    const existingProofs = await getProofsForReplacement(input);
+    const currentProofSelection = getCurrentProofForRideInstance(
+      existingProofs.map(toCurrentProofSelectionInput),
+      input.proofType,
+    );
+    const currentProof = currentProofSelection
+      ? existingProofs.find((proof) => proof.id === currentProofSelection.id) ?? null
+      : null;
+
+    if (currentProof) {
+      const replacementPolicy = canReplaceProof({
+        proofStatus: currentProof.proof_status,
+        proofType: currentProof.proof_type,
+        uploadedByUserId: currentProof.uploaded_by_user_id,
+        currentUserId: uploadedByUserId,
+        currentUserRole: "HOST",
+      });
+
+      if (!replacementPolicy.canReplace) {
+        throw new ProofMetadataSubmitError(replacementPolicy.reason);
+      }
+    }
+
+    const client = getSupabaseBrowserClient();
+    const replacementFileUrl = (input.fileUrl ?? input.storagePath) as string;
+    const insertResult = await client
+      .from("proofs")
+      .insert({
+        ride_instance_id: input.rideInstanceId,
+        uploaded_by_user_id: uploadedByUserId,
+        proof_type: input.proofType,
+        proof_status: "SUBMITTED",
+        amount_cents: input.amountCents,
+        file_url: replacementFileUrl,
+        provider_name: input.providerName ?? null,
+        certification_accepted: true,
+        certification_text_version: input.certificationTextVersion,
+        submitted_at: new Date().toISOString(),
+      })
+      .select("*")
+      .single();
+
+    if (insertResult.error || !insertResult.data) {
+      throw new ProofMetadataSubmitError("Couldn't submit proof. Try again later.");
+    }
+
+    // TODO: Add proof version columns in later schema cleanup.
+    // If is_current, superseded_at, and superseded_by_proof_id exist later, mark currentProof as superseded here.
+    const statusResult = rideContext.rideOption === "UNKNOWN"
+      ? null
+      : await updateRideInstanceStatusAfterProofSubmit({
+          rideInstanceId: input.rideInstanceId,
+          proofType: input.proofType,
+          proofAmountCents: input.amountCents,
+          bookingFareCapCents: rideContext.bookingFareCapCents,
+          rideOption: rideContext.rideOption,
+        });
+    const reviewResult = rideContext.rideOption === "UNKNOWN" ||
+      !shouldCreateAdminReviewCaseForProof(input, insertResult.data.proof_status, rideContext.bookingFareCapCents)
+      ? null
+      : await createAdminReviewCaseForProofIfNeeded({
+          rideInstanceId: input.rideInstanceId,
+          proofId: insertResult.data.id,
+          proofType: input.proofType,
+          proofAmountCents: input.amountCents,
+          bookingFareCapCents: rideContext.bookingFareCapCents,
+          rideOption: rideContext.rideOption,
+          suspiciousReason: suspiciousReasonForProof(input, insertResult.data.proof_status),
+          submittedByUserId: uploadedByUserId,
+        });
+
+    return {
+      source: "supabase",
+      newProof: insertResult.data,
+      replacedProofId: currentProof?.id ?? null,
+      rideInstanceStatus: statusResult?.normalizedRideInstanceStatus ?? getRideInstanceStatusForProofType(input.proofType),
+      reviewCase: reviewResult?.existingCase ?? reviewResult?.createdCase ?? null,
+      replacementAllowed: true,
+      oldProofSuperseded: false,
+      fallbackNote: null,
+    };
+  } catch (error) {
+    if (error instanceof ProofMetadataSubmitError) throw error;
+
+    return {
+      source: "mock",
+      newProof: createMockReplacementProof(input, input.uploadedByUserId ?? null),
+      replacedProofId: null,
+      rideInstanceStatus: getRideInstanceStatusForProofType(input.proofType),
+      reviewCase: null,
+      replacementAllowed: true,
+      oldProofSuperseded: false,
+      fallbackNote: "Supabase not configured; using mock proof replacement metadata.",
+    };
+  }
 }
 
 export async function submitRideInstanceProofMetadata(
