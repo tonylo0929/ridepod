@@ -37,7 +37,7 @@ Guest raw proof preview is delayed intentionally because receipts may contain se
 
 The current `proofs` table has `file_url`. Store the storage object path there when real upload wiring is added. TODO: add `storage_path` and `provider` columns in a later schema cleanup if `file_url` becomes ambiguous.
 
-The real adapter stores private file references as `storage://ridepod-proofs/{storagePath}` in `proofs.file_url`. It does not store public URLs for proof files.
+The real adapter stores private file references as `storage://ridepod-proofs/{storagePath}` in `proofs.file_url`. It does not store open web links for proof files.
 
 ## Future Requirements
 
