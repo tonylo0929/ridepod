@@ -41,6 +41,7 @@ const proofUploadValidationMessages = new Set([
   "File must be 10MB or smaller.",
   "Ride instance is required.",
   "Proof type is required.",
+  "Couldn't upload proof file. Try again later.",
 ]);
 
 function getRideOptionLabel(pod: RidePod) {
@@ -818,6 +819,7 @@ export function RecurringInstanceProofFlow({
     }
 
     setSubmitPending(true);
+    let uploadedToSupabaseStorage = false;
     try {
       const selectedProofFile = selectedProofFiles[proofType] ?? null;
       const uploadResult = await uploadProofFile({
@@ -828,6 +830,7 @@ export function RecurringInstanceProofFlow({
         contentType: selectedProofFile?.type,
         sizeBytes: selectedProofFile?.size,
       });
+      uploadedToSupabaseStorage = uploadResult.provider === "SUPABASE_STORAGE";
       const result = await submitRideInstanceProofMetadata({
         rideInstanceId: rideInstance.id,
         proofType,
@@ -849,7 +852,13 @@ export function RecurringInstanceProofFlow({
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
-      setSubmitError(proofUploadValidationMessages.has(message) ? message : "Couldn't submit proof. Try again later.");
+      setSubmitError(
+        proofUploadValidationMessages.has(message)
+          ? message
+          : uploadedToSupabaseStorage
+            ? "Proof file uploaded, but proof record could not be saved. Please contact support or try again."
+            : "Couldn't submit proof. Try again later.",
+      );
     } finally {
       setSubmitPending(false);
     }

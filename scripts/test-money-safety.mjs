@@ -1084,19 +1084,30 @@ assert.ok(proofUploadSource.includes("uploadProofFileMock"));
 assert.ok(proofUploadSource.includes("uploadProofFileToSupabaseStorage"));
 assert.ok(proofUploadSource.includes("uploadProofFile"));
 assert.ok(proofUploadSource.includes('"MOCK"'));
+assert.ok(proofUploadSource.includes('"SUPABASE_STORAGE"'));
 assert.ok(proofUploadSource.includes('"SUPABASE_STORAGE_FUTURE"'));
+assert.ok(proofUploadSource.includes("buildProofStoragePath"));
+assert.ok(proofUploadSource.includes("ride-instances/${input.rideInstanceId}/${input.proofType}/${proofUploadTimestamp(date)}-${fileName}"));
+assert.ok(proofUploadSource.includes("NEXT_PUBLIC_RIDEPOD_USE_SUPABASE_STORAGE"));
+assert.ok(proofUploadSource.includes('from(ridePodProofsBucketId).upload(storagePath'));
+assert.ok(proofUploadSource.includes("upsert: false"));
+assert.ok(proofUploadSource.includes("storage://${ridePodProofsBucketId}/${storagePath}"));
 assert.ok(proofUploadSource.includes("mock://proofs/${input.rideInstanceId}/${input.proofType}/${fileName}"));
 assert.ok(proofUploadSource.includes("mock/${input.rideInstanceId}/${input.proofType}/${fileName}"));
-assert.ok(proofUploadSource.includes("Supabase Storage upload is not enabled yet."));
-assert.ok(proofUploadSource.includes("TODO SQL-2L: Implement Supabase Storage bucket + policies + signed upload/read URLs."));
-assert.equal(proofUploadSource.includes("storage.from"), false);
+assert.ok(proofUploadSource.includes("Couldn't upload proof file. Try again later."));
+assert.ok(proofUploadSource.includes("TODO SQL-2N: Signed proof preview URLs."));
+assert.ok(proofUploadSource.includes("metadata insert fails after storage upload"));
+assert.ok(proofUploadSource.includes("storage_path/provider columns"));
 assert.equal(proofUploadSource.includes("getSupabaseAdminClient"), false);
+assert.equal(proofUploadSource.includes("SUPABASE_SERVICE_ROLE_KEY"), false);
 assert.ok(storagePlanSource.includes("ridepod-proofs"));
 assert.ok(storagePlanSource.includes("ride-instances/{rideInstanceId}/{proofType}/{proofId-or-timestamp}-{safeFileName}"));
 assert.ok(storagePlanSource.includes("Storage RLS policies"));
 assert.ok(storagePlanSource.includes("Admin manual review"));
 assert.ok(storagePlanSource.includes("Guest raw proof preview is delayed intentionally"));
 assert.ok(storagePlanSource.includes("Apply the `storage.objects` policies"));
+assert.ok(storagePlanSource.includes("NEXT_PUBLIC_RIDEPOD_USE_SUPABASE_STORAGE=true"));
+assert.ok(storagePlanSource.includes("storage://ridepod-proofs/{storagePath}"));
 assert.ok(supabaseProofStorageMigrationSource.includes("insert into storage.buckets"));
 assert.ok(supabaseProofStorageMigrationSource.includes("'ridepod-proofs'"));
 assert.ok(supabaseProofStorageMigrationSource.includes("public = excluded.public"));
@@ -1171,6 +1182,19 @@ const mockProofUpload = await proofUpload.uploadProofFile({
 assert.equal(mockProofUpload.provider, "MOCK");
 assert.equal(mockProofUpload.fileUrl, "mock://proofs/ride-1/FINAL_RECEIPT/Final-Receipt.pdf");
 assert.equal(mockProofUpload.storagePath, "mock/ride-1/FINAL_RECEIPT/Final-Receipt.pdf");
+const storageProofPath = proofUpload.buildProofStoragePath(
+  {
+    rideInstanceId: "00000000-0000-4000-8000-000000000001",
+    proofType: "METER_PROOF",
+    file: { name: "Meter Proof 1.jpg", type: "image/jpeg", size: 2048 },
+  },
+  new Date("2026-05-19T08:00:00.000Z"),
+);
+assert.equal(
+  storageProofPath.storagePath,
+  "ride-instances/00000000-0000-4000-8000-000000000001/METER_PROOF/2026-05-19T08-00-00Z-Meter-Proof-1.jpg",
+);
+assert.equal(storageProofPath.fileName, "Meter-Proof-1.jpg");
 assert.ok(supabaseProofMetadataSource.includes("submitRideInstanceProofMetadata"));
 assert.ok(supabaseProofMetadataSource.includes("Proof certification is required."));
 assert.ok(supabaseProofMetadataSource.includes("amountCents must be greater than zero."));

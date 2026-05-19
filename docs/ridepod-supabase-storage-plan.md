@@ -1,6 +1,6 @@
 # RidePod Supabase Storage Plan
 
-RidePod proof files are private ride-instance evidence. The app still uses the mock upload adapter by default; frontend Supabase Storage upload wiring comes later.
+RidePod proof files are private ride-instance evidence. The app can attempt real Supabase Storage upload when `NEXT_PUBLIC_RIDEPOD_USE_SUPABASE_STORAGE=true`; otherwise it keeps the mock upload adapter fallback for local/demo use.
 
 ## Bucket
 
@@ -37,9 +37,11 @@ Guest raw proof preview is delayed intentionally because receipts may contain se
 
 The current `proofs` table has `file_url`. Store the storage object path there when real upload wiring is added. TODO: add `storage_path` and `provider` columns in a later schema cleanup if `file_url` becomes ambiguous.
 
+The real adapter stores private file references as `storage://ridepod-proofs/{storagePath}` in `proofs.file_url`. It does not store public URLs for proof files.
+
 ## Future Requirements
 
-- Signed upload and read URL flow.
+- Signed proof preview URLs.
 - Virus or malware scanning in a later safety slice.
 - OCR may be added later, but it must not control settlement by itself.
 - AI image detection must not be trusted as the sole source of truth.
