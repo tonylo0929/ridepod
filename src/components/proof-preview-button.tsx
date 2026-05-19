@@ -77,7 +77,7 @@ export function ProofPreviewButton({
         className="inline-flex min-h-10 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-sm font-black text-[var(--rp-text)] transition hover:border-[var(--rp-primary)] hover:text-[var(--rp-primary)] disabled:cursor-not-allowed disabled:opacity-60"
       >
         <ExternalLink className="h-4 w-4" />
-        {isOpening ? "Opening…" : buttonLabel}
+        {isOpening ? "Opening..." : buttonLabel}
       </button>
       {errorMessage ? (
         <p className="rounded-[12px] border border-[var(--rp-border)] bg-[var(--rp-danger-bg)] p-2 text-xs font-bold leading-5 text-[var(--rp-danger)]">

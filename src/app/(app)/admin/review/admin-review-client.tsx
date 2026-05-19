@@ -71,7 +71,7 @@ export function AdminReviewClient({
   userFacingError: string | null;
 }) {
   const [selectedFilter, setSelectedFilter] = useState<AdminReviewFilter>("All");
-  const [selectedCase, setSelectedCase] = useState<AdminReviewCase | null>(null);
+  const [selectedCase, setSelectedCase] = useState<AdminReviewCaseViewModel | null>(null);
   const [caseUpdates, setCaseUpdates] = useState<Record<string, Partial<AdminReviewCase>>>({});
   const baseCases = useMemo(() => initialCases, [initialCases]);
   const cases = useMemo(
@@ -223,7 +223,7 @@ function getDecisionCaseUpdate(
   return { reviewState: reviewState ?? "UNDER_REVIEW", statusLabel: "Manual review" };
 }
 
-function ReviewCaseCard({ reviewCase, onOpen }: { reviewCase: AdminReviewCase; onOpen: () => void }) {
+function ReviewCaseCard({ reviewCase, onOpen }: { reviewCase: AdminReviewCaseViewModel; onOpen: () => void }) {
   const aboveCap = reviewCase.fareAmountCents > reviewCase.bookingFareCapCents;
 
   return (
@@ -283,7 +283,7 @@ function ReviewCaseModal({
   onClose,
   onDecisionApplied,
 }: {
-  reviewCase: AdminReviewCase;
+  reviewCase: AdminReviewCaseViewModel;
   onClose: () => void;
   onDecisionApplied: (
     caseId: string,
@@ -388,6 +388,69 @@ function ReviewCaseModal({
                   <KeyValue label="Proof status" value={reviewCase.proofStatus.replaceAll("_", " ")} />
                 </dl>
               </div>
+            </DetailSection>
+
+            <DetailSection icon={FileSearch} title="Evidence timeline">
+              {reviewCase.evidenceTimeline?.length ? (
+                <div className="grid gap-3">
+                  {reviewCase.evidenceTimeline.map((timelineItem) => (
+                    <article
+                      key={timelineItem.id}
+                      className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <Badge
+                            className={cn(
+                              "mb-2 ring-[var(--rp-border)]",
+                              timelineItem.isCurrent
+                                ? "bg-[var(--rp-success-bg)] text-[var(--rp-badge-success-text)]"
+                                : "bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-badge-neutral-text)]",
+                            )}
+                          >
+                            {timelineItem.versionLabel}
+                          </Badge>
+                          <h4 className="text-sm font-black text-[var(--rp-text)]">{timelineItem.title}</h4>
+                          <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                            {timelineItem.proofTypeLabel} - {timelineItem.statusLabel} - {timelineItem.amountLabel}
+                          </p>
+                        </div>
+                        <ProofPreviewButton
+                          fileUrlOrStoragePath={timelineItem.fileUrl}
+                          proofType={
+                            timelineItem.proofType === "quote screenshot" ||
+                            timelineItem.proofType === "final receipt" ||
+                            timelineItem.proofType === "meter proof"
+                              ? timelineItem.proofType
+                              : undefined
+                          }
+                          fileName={timelineItem.fileName ?? undefined}
+                        />
+                      </div>
+                      <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+                        <KeyValue label="Submitted" value={timelineItem.submittedAtLabel} />
+                        <KeyValue label="Reviewed" value={timelineItem.reviewedAtLabel} />
+                        <KeyValue label="Actor" value={timelineItem.actorLabel} />
+                        <KeyValue label="Status" value={timelineItem.statusLabel} />
+                      </dl>
+                      {timelineItem.adminNotes ? (
+                        <div className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3">
+                          <p className="text-[11px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">
+                            Admin notes
+                          </p>
+                          <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                            {timelineItem.adminNotes}
+                          </p>
+                        </div>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                  Evidence history is built from available proof rows. Full audit event timeline will be added later.
+                </p>
+              )}
             </DetailSection>
 
             <DetailSection icon={AlertTriangle} title="Comparison">

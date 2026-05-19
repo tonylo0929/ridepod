@@ -3,6 +3,7 @@ import "server-only";
 import {
   getAdminReviewCases as getMockAdminReviewCases,
   type AdminReviewCase,
+  type AdminEvidenceTimelineItem,
   type AdminReviewFilter,
   type AdminReviewSeverity,
 } from "@/lib/admin-review-queue";
@@ -60,6 +61,7 @@ type AdminReviewRelatedRows = {
   pod: RidePodPodRow | null;
   proof: RidePodProofRow | null;
   settlement: RidePodSettlementRow | null;
+  proofs?: RidePodProofRow[];
 };
 
 export type AdminReviewCasesReadResult = {
@@ -117,6 +119,17 @@ function titleCaseEnum(value: string | null | undefined) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function proofStatusTimelineLabel(value: string | null | undefined) {
+  if (value === "NEEDS_MORE_INFO") return "Needs more info";
+  if (value === "REJECTED") return "Rejected";
+  if (value === "VERIFIED") return "Verified";
+  if (value === "UNDER_REVIEW") return "Under review";
+  if (value === "FRAUD_SUSPECTED") return "Manual review";
+  if (value === "SUBMITTED") return "Under review";
+  if (value === "NEEDED") return "Needs proof";
+  return "Proof status unknown";
 }
 
 function caseTypeLabel(caseType: string) {
@@ -189,6 +202,170 @@ function differenceLabel(amountCents: number, capCents: number) {
   return `${difference > 0 ? "+" : "-"}${formatHkd(Math.abs(difference))}`;
 }
 
+function proofStatusRank(status: string | null | undefined) {
+  if (status === "VERIFIED") return 0;
+  if (status === "UNDER_REVIEW") return 1;
+  if (status === "SUBMITTED") return 2;
+  if (status === "NEEDS_MORE_INFO") return 3;
+  if (status === "REJECTED") return 4;
+  if (status === "FRAUD_SUSPECTED") return 5;
+  if (status === "NEEDED") return 6;
+  return 7;
+}
+
+function timestampMs(value: string | null | undefined) {
+  const date = safeDate(value);
+  return date ? date.getTime() : 0;
+}
+
+function chooseCurrentProof(proofs: RidePodProofRow[]) {
+  const realProofs = proofs.filter((proof) => proof.proof_status !== "NEEDED");
+  const candidates = realProofs.length ? realProofs : proofs;
+
+  return candidates.reduce<RidePodProofRow | null>((selected, proof) => {
+    if (!selected) return proof;
+    const proofRank = proofStatusRank(proof.proof_status);
+    const selectedRank = proofStatusRank(selected.proof_status);
+    if (proofRank !== selectedRank) return proofRank < selectedRank ? proof : selected;
+
+    const proofTime = timestampMs(proof.submitted_at ?? proof.reviewed_at);
+    const selectedTime = timestampMs(selected.submitted_at ?? selected.reviewed_at);
+    return proofTime >= selectedTime ? proof : selected;
+  }, null);
+}
+
+function proofFileName(fileUrl: string | null | undefined) {
+  if (!fileUrl) return null;
+  const lastSegment = fileUrl.split("/").filter(Boolean).at(-1);
+  return lastSegment ?? null;
+}
+
+function proofTimelineTitle(proof: RidePodProofRow, isCurrent: boolean) {
+  if (proof.proof_status === "NEEDS_MORE_INFO") return "Proof marked needs more info";
+  if (proof.proof_status === "REJECTED") return "Proof rejected";
+  if (proof.proof_status === "VERIFIED") return "Proof approved";
+  if (proof.proof_status === "UNDER_REVIEW") return "Proof under review";
+  if (proof.proof_status === "FRAUD_SUSPECTED") return "Proof under manual review";
+  return isCurrent ? "Proof uploaded" : "Replacement proof uploaded";
+}
+
+function buildEvidenceTimeline(
+  reviewCase: RidePodAdminReviewCaseRow,
+  related: AdminReviewRelatedRows,
+): AdminEvidenceTimelineItem[] {
+  const proofRows = related.proofs?.length ? related.proofs : related.proof ? [related.proof] : [];
+  const sortedProofs = [...proofRows].sort(
+    (first, second) =>
+      timestampMs(second.submitted_at ?? second.reviewed_at) - timestampMs(first.submitted_at ?? first.reviewed_at),
+  );
+  const currentProof = chooseCurrentProof(sortedProofs);
+  const proofItems = sortedProofs.map<AdminEvidenceTimelineItem>((proof) => {
+    const isCurrent = proof.id === currentProof?.id;
+    const proofLabel = proofTypeLabel(proof.proof_type);
+
+    return {
+      id: `proof-${proof.id}`,
+      title: proofTimelineTitle(proof, isCurrent),
+      proofType: proofLabel,
+      proofTypeLabel: proofLabel,
+      amountCents: proof.amount_cents,
+      amountLabel: typeof proof.amount_cents === "number" ? formatHkd(proof.amount_cents) : "Amount unavailable",
+      status: proof.proof_status,
+      statusLabel: proofStatusTimelineLabel(proof.proof_status),
+      submittedAt: proof.submitted_at,
+      submittedAtLabel: formatCreatedAt(proof.submitted_at),
+      reviewedAt: proof.reviewed_at,
+      reviewedAtLabel: proof.reviewed_at ? formatCreatedAt(proof.reviewed_at) : "Not reviewed yet",
+      actorLabel: proof.uploaded_by_user_id ? `User ${proof.uploaded_by_user_id.slice(0, 8)}` : "Host",
+      fileUrl: proof.file_url,
+      fileName: proofFileName(proof.file_url),
+      adminNotes: proof.admin_notes,
+      versionLabel: isCurrent ? "Current proof" : "Previous proof",
+      isCurrent,
+    };
+  });
+
+  const reviewItems: AdminEvidenceTimelineItem[] = [];
+  if (reviewCase.admin_notes) {
+    reviewItems.push({
+      id: `review-notes-${reviewCase.id}`,
+      title: "Admin notes added",
+      proofType: "review case",
+      proofTypeLabel: "Review case",
+      amountCents: null,
+      amountLabel: "None",
+      status: reviewCase.review_state,
+      statusLabel: titleCaseEnum(reviewCase.review_state),
+      submittedAt: reviewCase.resolved_at ?? reviewCase.created_at,
+      submittedAtLabel: formatCreatedAt(reviewCase.resolved_at ?? reviewCase.created_at),
+      reviewedAt: reviewCase.resolved_at,
+      reviewedAtLabel: reviewCase.resolved_at ? formatCreatedAt(reviewCase.resolved_at) : "Review open",
+      actorLabel: "Admin",
+      fileUrl: null,
+      fileName: null,
+      adminNotes: reviewCase.admin_notes,
+      versionLabel: "Review event",
+      isCurrent: false,
+    });
+  }
+
+  if (reviewCase.case_type.includes("DISPUTE")) {
+    reviewItems.push({
+      id: `dispute-${reviewCase.id}`,
+      title: "Dispute opened",
+      proofType: "review case",
+      proofTypeLabel: "Review case",
+      amountCents: null,
+      amountLabel: "None",
+      status: reviewCase.review_state,
+      statusLabel: titleCaseEnum(reviewCase.review_state),
+      submittedAt: reviewCase.created_at,
+      submittedAtLabel: formatCreatedAt(reviewCase.created_at),
+      reviewedAt: null,
+      reviewedAtLabel: "Review open",
+      actorLabel: "Reporter",
+      fileUrl: null,
+      fileName: null,
+      adminNotes: reviewCase.description,
+      versionLabel: "Review event",
+      isCurrent: false,
+    });
+  }
+
+  if (
+    reviewCase.case_type.includes("PAYOUT") ||
+    related.settlement?.settlement_state === "ADMIN_REVIEW" ||
+    related.settlement?.settlement_state === "DISPUTE_HOLD"
+  ) {
+    reviewItems.push({
+      id: `payout-held-${reviewCase.id}`,
+      title: "Payout held",
+      proofType: "settlement",
+      proofTypeLabel: "Settlement",
+      amountCents: related.settlement?.host_reimbursement_cents ?? null,
+      amountLabel:
+        typeof related.settlement?.host_reimbursement_cents === "number"
+          ? formatHkd(related.settlement.host_reimbursement_cents)
+          : "Amount unavailable",
+      status: related.settlement?.settlement_state ?? reviewCase.review_state,
+      statusLabel: "Payout held",
+      submittedAt: reviewCase.created_at,
+      submittedAtLabel: formatCreatedAt(reviewCase.created_at),
+      reviewedAt: null,
+      reviewedAtLabel: "Manual review",
+      actorLabel: "RidePod",
+      fileUrl: null,
+      fileName: null,
+      adminNotes: "Reimbursement may be held while RidePod completes manual review.",
+      versionLabel: "Review event",
+      isCurrent: false,
+    });
+  }
+
+  // TODO SQL-2Q: replace this derived evidence timeline with persisted pod_events audit history when available.
+  return [...proofItems, ...reviewItems];
+}
+
 export function mapSupabaseAdminReviewCaseToViewModel(
   reviewCase: RidePodAdminReviewCaseRow,
   related: AdminReviewRelatedRows,
@@ -197,6 +374,7 @@ export function mapSupabaseAdminReviewCaseToViewModel(
   const rideInstance = related.rideInstance;
   const pod = related.pod;
   const settlement = related.settlement;
+  const evidenceTimeline = buildEvidenceTimeline(reviewCase, related);
   const severity = severityLabel(reviewCase.severity);
   const fareAmountCents =
     proof?.amount_cents ??
@@ -255,6 +433,7 @@ export function mapSupabaseAdminReviewCaseToViewModel(
     finalProofCents: proof?.proof_type !== "QUOTE_SCREENSHOT" ? proof?.amount_cents ?? undefined : undefined,
     evidenceLabel: proof?.file_url ?? "Proof preview placeholder",
     fileUrl: proof?.file_url ?? null,
+    evidenceTimeline,
     statusLabel: statusLabel(reviewCase, payoutStatus),
     primaryAction: reviewCase.review_state === "RESOLVED" ? "View resolution" : "Review case",
     primaryActionLabel: reviewCase.review_state === "RESOLVED" ? "View resolution" : "Review case",
@@ -279,24 +458,50 @@ function applyFilters(cases: AdminReviewCaseViewModel[], filters: AdminReviewCas
 
 function mockCases(filters?: AdminReviewCaseFilters): AdminReviewCaseViewModel[] {
   return applyFilters(
-    getMockAdminReviewCases().map((reviewCase) => ({
-      ...reviewCase,
-      caseTypeLabel: reviewCase.caseType,
-      severityLabel: reviewCase.severity,
-      severityTone: severityTone(reviewCase.severity),
-      reviewStateLabel: titleCaseEnum(reviewCase.reviewState),
-      routeLabel: reviewCase.route,
-      rideDateLabel: reviewCase.rideDateTime,
-      rideOptionLabel: reviewCase.rideOption,
-      proofTypeLabel: reviewCase.proofType,
-      proofStatusLabel: titleCaseEnum(reviewCase.proofStatus),
-      fareAmountLabel: formatHkd(reviewCase.fareAmountCents),
-      bookingFareCapLabel: formatHkd(reviewCase.bookingFareCapCents),
-      differenceLabel: differenceLabel(reviewCase.fareAmountCents, reviewCase.bookingFareCapCents),
-      payoutStatusLabel: titleCaseEnum(reviewCase.payoutStatus),
-      primaryActionLabel: reviewCase.primaryAction,
-      createdAtLabel: reviewCase.createdTime,
-    })),
+    getMockAdminReviewCases().map((reviewCase) => {
+      const evidenceTimeline: AdminEvidenceTimelineItem[] = reviewCase.evidenceTimeline ?? [
+        {
+          id: `mock-proof-${reviewCase.id}`,
+          title: reviewCase.proofStatus === "REJECTED" ? "Proof rejected" : "Proof uploaded",
+          proofType: reviewCase.proofType,
+          proofTypeLabel: reviewCase.proofType,
+          amountCents: reviewCase.fareAmountCents,
+          amountLabel: formatHkd(reviewCase.fareAmountCents),
+          status: reviewCase.proofStatus,
+          statusLabel: proofStatusTimelineLabel(reviewCase.proofStatus),
+          submittedAt: null,
+          submittedAtLabel: reviewCase.submittedAt,
+          reviewedAt: null,
+          reviewedAtLabel: reviewCase.proofStatus === "VERIFIED" ? reviewCase.createdTime : "Not reviewed yet",
+          actorLabel: reviewCase.submittedBy,
+          fileUrl: reviewCase.fileUrl ?? null,
+          fileName: reviewCase.evidenceLabel ?? null,
+          adminNotes: reviewCase.disputeNote ?? null,
+          versionLabel: "Current proof",
+          isCurrent: true,
+        },
+      ];
+
+      return {
+        ...reviewCase,
+        caseTypeLabel: reviewCase.caseType,
+        severityLabel: reviewCase.severity,
+        severityTone: severityTone(reviewCase.severity),
+        reviewStateLabel: titleCaseEnum(reviewCase.reviewState),
+        routeLabel: reviewCase.route,
+        rideDateLabel: reviewCase.rideDateTime,
+        rideOptionLabel: reviewCase.rideOption,
+        proofTypeLabel: reviewCase.proofType,
+        proofStatusLabel: titleCaseEnum(reviewCase.proofStatus),
+        fareAmountLabel: formatHkd(reviewCase.fareAmountCents),
+        bookingFareCapLabel: formatHkd(reviewCase.bookingFareCapCents),
+        differenceLabel: differenceLabel(reviewCase.fareAmountCents, reviewCase.bookingFareCapCents),
+        payoutStatusLabel: titleCaseEnum(reviewCase.payoutStatus),
+        primaryActionLabel: reviewCase.primaryAction,
+        createdAtLabel: reviewCase.createdTime,
+        evidenceTimeline,
+      };
+    }),
     filters,
   );
 }
@@ -379,11 +584,25 @@ export async function getAdminReviewCaseDetail(caseId: string): Promise<AdminRev
   const pods = await fetchRowsByIds<RidePodPodRow>("pods", rideInstance?.pod_id ? [rideInstance.pod_id] : []);
   const proof = result.data.proof_id ? proofs.get(result.data.proof_id) ?? null : null;
   const settlement = result.data.settlement_id ? settlements.get(result.data.settlement_id) ?? null : null;
+  let evidenceProofs = proof ? [proof] : [];
+  if (rideInstance && proof) {
+    const allProofsResult = await client
+      .from("proofs")
+      .select("*")
+      .eq("ride_instance_id", rideInstance.id)
+      .eq("proof_type", proof.proof_type)
+      .order("submitted_at", { ascending: false });
+
+    if (!allProofsResult.error) {
+      evidenceProofs = (allProofsResult.data ?? []) as RidePodProofRow[];
+    }
+  }
   const viewModel = mapSupabaseAdminReviewCaseToViewModel(result.data, {
     rideInstance,
     pod: rideInstance?.pod_id ? pods.get(rideInstance.pod_id) ?? null : null,
     proof,
     settlement,
+    proofs: evidenceProofs,
   });
   const differenceCents = viewModel.fareAmountCents - viewModel.bookingFareCapCents;
 

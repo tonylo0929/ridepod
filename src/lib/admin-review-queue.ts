@@ -43,8 +43,30 @@ export type AdminReviewCase = {
   disputeNote?: string;
   evidenceLabel?: string;
   fileUrl?: string | null;
+  evidenceTimeline?: AdminEvidenceTimelineItem[];
   statusLabel: string;
   primaryAction: "Review case" | "View resolution";
+};
+
+export type AdminEvidenceTimelineItem = {
+  id: string;
+  title: string;
+  proofType: AdminReviewCase["proofType"] | "review case" | "settlement";
+  proofTypeLabel: string;
+  amountCents: number | null;
+  amountLabel: string;
+  status: string;
+  statusLabel: string;
+  submittedAt: string | null;
+  submittedAtLabel: string;
+  reviewedAt: string | null;
+  reviewedAtLabel: string;
+  actorLabel: string;
+  fileUrl: string | null;
+  fileName: string | null;
+  adminNotes: string | null;
+  versionLabel: "Current proof" | "Previous proof" | "Review event";
+  isCurrent: boolean;
 };
 
 export const adminReviewDecisionCopy = {
