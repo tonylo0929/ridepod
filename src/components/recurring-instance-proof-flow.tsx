@@ -34,7 +34,12 @@ import {
   submitRideInstanceProofMetadata,
   type RideInstanceProofMetadataInput,
 } from "@/lib/supabase/proof-metadata";
-import { uploadProofFile, type ProofUploadFile, type ProofUploadType } from "@/lib/uploads/proof-upload";
+import {
+  cleanupOrphanProofFile,
+  uploadProofFile,
+  type ProofUploadFile,
+  type ProofUploadType,
+} from "@/lib/uploads/proof-upload";
 
 const proofCertificationTextVersion = "ridepod-proof-certification-v1";
 const proofUploadAccept = "image/png,image/jpeg,image/jpg,application/pdf";
@@ -828,6 +833,8 @@ export function RecurringInstanceProofFlow({
 
     setSubmitPending(true);
     let uploadedToSupabaseStorage = false;
+    let uploadedProofStoragePath: string | null = null;
+    let uploadedProofBucketId = "ridepod-proofs";
     try {
       const selectedProofFile = selectedProofFiles[proofType] ?? null;
       const uploadResult = await uploadProofFile({
@@ -839,6 +846,8 @@ export function RecurringInstanceProofFlow({
         sizeBytes: selectedProofFile?.size,
       });
       uploadedToSupabaseStorage = uploadResult.provider === "SUPABASE_STORAGE";
+      uploadedProofStoragePath = uploadResult.storagePath;
+      uploadedProofBucketId = uploadResult.bucketId;
       const result = await submitRideInstanceProofMetadata({
         rideInstanceId: rideInstance.id,
         proofType,
@@ -868,11 +877,20 @@ export function RecurringInstanceProofFlow({
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
+      if (uploadedToSupabaseStorage && uploadedProofStoragePath) {
+        await cleanupOrphanProofFile({
+          bucketId: uploadedProofBucketId,
+          storagePath: uploadedProofStoragePath,
+          reason: "Proof metadata insert failed after storage upload.",
+          proofType,
+          rideInstanceId: rideInstance.id,
+        });
+      }
       setSubmitError(
         proofUploadValidationMessages.has(message)
           ? message
           : uploadedToSupabaseStorage
-            ? "Proof file uploaded, but proof record could not be saved. Please contact support or try again."
+            ? "Proof file uploaded, but proof record could not be saved. Please try again."
             : "Couldn't submit proof. Try again later.",
       );
     } finally {

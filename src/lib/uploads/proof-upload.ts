@@ -67,6 +67,21 @@ export type ProofUploadOptions = {
   provider?: ProofUploadProvider;
 };
 
+export type OrphanProofFileCleanupInput = {
+  bucketId?: string;
+  storagePath?: string | null;
+  reason: string;
+  proofType?: ProofUploadType;
+  rideInstanceId?: string;
+};
+
+export type OrphanProofFileCleanupResult = {
+  cleanupAttempted: boolean;
+  cleanupSucceeded: boolean;
+  cleanupSkipped: boolean;
+  reason: string;
+};
+
 const maxProofUploadSizeBytes = 10 * 1024 * 1024;
 const ridePodProofsBucketId = "ridepod-proofs";
 const defaultProofSignedUrlExpiresInSeconds = 300;
@@ -93,6 +108,43 @@ function isSupabaseStorageUploadEnabled(env: NodeJS.ProcessEnv = process.env) {
 
 function hasSupabasePublicEnv(env: NodeJS.ProcessEnv = process.env) {
   return Boolean(env.NEXT_PUBLIC_SUPABASE_URL && env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+}
+
+function isUnsafeProofStorageCleanupPath(storagePath?: string | null) {
+  const value = storagePath?.trim();
+
+  return (
+    !value ||
+    value.startsWith("mock://") ||
+    value.startsWith("http://") ||
+    value.startsWith("https://") ||
+    value.includes("..") ||
+    !value.startsWith("ride-instances/")
+  );
+}
+
+export async function cleanupOrphanProofFile(
+  input: OrphanProofFileCleanupInput,
+): Promise<OrphanProofFileCleanupResult> {
+  const bucketId = input.bucketId || ridePodProofsBucketId;
+
+  if (isUnsafeProofStorageCleanupPath(input.storagePath)) {
+    return {
+      cleanupAttempted: false,
+      cleanupSucceeded: false,
+      cleanupSkipped: true,
+      reason: "Storage cleanup is not enabled yet.",
+    };
+  }
+
+  void bucketId;
+  // TODO SQL-2O-F: enable guarded Supabase Storage API remove() only after delete policy and retention rules are approved.
+  return {
+    cleanupAttempted: false,
+    cleanupSucceeded: false,
+    cleanupSkipped: true,
+    reason: "Storage cleanup is not enabled yet.",
+  };
 }
 
 export function normalizeProofStoragePath(fileUrlOrStoragePath?: string | null): NormalizedProofStoragePath | null {

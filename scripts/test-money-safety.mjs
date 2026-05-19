@@ -1091,6 +1091,7 @@ assert.ok(proofUploadSource.includes("validateProofUploadFile"));
 assert.ok(proofUploadSource.includes("uploadProofFileMock"));
 assert.ok(proofUploadSource.includes("uploadProofFileToSupabaseStorage"));
 assert.ok(proofUploadSource.includes("uploadProofFile"));
+assert.ok(proofUploadSource.includes("cleanupOrphanProofFile"));
 assert.ok(proofUploadSource.includes("normalizeProofStoragePath"));
 assert.ok(proofUploadSource.includes("createProofSignedUrl"));
 assert.ok(proofUploadSource.includes("createSignedUrl(normalized.storagePath"));
@@ -1109,6 +1110,13 @@ assert.ok(proofUploadSource.includes("storage://${ridePodProofsBucketId}/${stora
 assert.ok(proofUploadSource.includes("mock://proofs/${input.rideInstanceId}/${input.proofType}/${fileName}"));
 assert.ok(proofUploadSource.includes("mock/${input.rideInstanceId}/${input.proofType}/${fileName}"));
 assert.ok(proofUploadSource.includes("Couldn't upload proof file. Try again later."));
+assert.ok(proofUploadSource.includes("Storage cleanup is not enabled yet."));
+assert.ok(proofUploadSource.includes("!value.startsWith(\"ride-instances/\")"));
+assert.ok(proofUploadSource.includes("value.startsWith(\"mock://\")"));
+assert.ok(proofUploadSource.includes("value.startsWith(\"http://\")"));
+assert.ok(proofUploadSource.includes("value.startsWith(\"https://\")"));
+assert.ok(proofUploadSource.includes("value.includes(\"..\")"));
+assert.equal(proofUploadSource.includes(".remove("), false);
 assert.ok(proofUploadSource.includes("TODO SQL-2N: Signed proof preview URLs."));
 assert.ok(proofUploadSource.includes("metadata insert fails after storage upload"));
 assert.ok(proofUploadSource.includes("storage_path/provider columns"));
@@ -1235,6 +1243,45 @@ assert.equal(proofUpload.normalizeProofStoragePath(null), null);
 assert.equal(proofUpload.normalizeProofStoragePath(""), null);
 assert.equal(proofUpload.normalizeProofStoragePath("https://example.com/proof.png"), null);
 assert.equal(proofUpload.normalizeProofStoragePath("http://example.com/proof.png"), null);
+assert.deepEqual(
+  await proofUpload.cleanupOrphanProofFile({
+    storagePath: "ride-instances/abc/FINAL_RECEIPT/file.png",
+    reason: "metadata failed",
+  }),
+  {
+    cleanupAttempted: false,
+    cleanupSucceeded: false,
+    cleanupSkipped: true,
+    reason: "Storage cleanup is not enabled yet.",
+  },
+);
+assert.equal(
+  (
+    await proofUpload.cleanupOrphanProofFile({
+      storagePath: "",
+      reason: "metadata failed",
+    })
+  ).cleanupSkipped,
+  true,
+);
+assert.equal(
+  (
+    await proofUpload.cleanupOrphanProofFile({
+      storagePath: "https://example.com/proof.png",
+      reason: "metadata failed",
+    })
+  ).cleanupSkipped,
+  true,
+);
+assert.equal(
+  (
+    await proofUpload.cleanupOrphanProofFile({
+      storagePath: "other/file.png",
+      reason: "metadata failed",
+    })
+  ).cleanupSkipped,
+  true,
+);
 assert.equal(proofUpload.getProofSignedUrlExpiresInSeconds(), 300);
 assert.equal(proofUpload.getProofSignedUrlExpiresInSeconds(120), 120);
 assert.equal(proofUpload.getProofSignedUrlExpiresInSeconds(7200), 3600);
@@ -1498,6 +1545,9 @@ await assert.rejects(
   /fileUrl or storagePath is required\./,
 );
 assert.ok(recurringInstanceProofFlowSource.includes("submitRideInstanceProofMetadata"));
+assert.ok(recurringInstanceProofFlowSource.includes("cleanupOrphanProofFile"));
+assert.ok(recurringInstanceProofFlowSource.includes("Proof metadata insert failed after storage upload."));
+assert.ok(recurringInstanceProofFlowSource.includes("Proof file uploaded, but proof record could not be saved. Please try again."));
 assert.ok(recurringInstanceProofFlowSource.includes("canReplaceProof"));
 assert.ok(recurringInstanceProofFlowSource.includes("getProofReplacementUi"));
 assert.ok(recurringInstanceProofFlowSource.includes("focusProofUploadForm"));
