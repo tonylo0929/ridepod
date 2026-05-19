@@ -7,9 +7,10 @@ import { createProofSignedUrl, normalizeProofStoragePath } from "@/lib/uploads/p
 
 type ProofPreviewButtonProps = {
   fileUrlOrStoragePath?: string | null;
-  proofType: string;
+  proofType?: "QUOTE_SCREENSHOT" | "FINAL_RECEIPT" | "METER_PROOF" | (string & {});
   fileName?: string | null;
   contentType?: string | null;
+  label?: string;
   className?: string;
 };
 
@@ -22,12 +23,13 @@ export function ProofPreviewButton({
   proofType,
   fileName,
   contentType,
+  label,
   className,
 }: ProofPreviewButtonProps) {
   const [isOpening, setIsOpening] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const normalizedPath = normalizeProofStoragePath(fileUrlOrStoragePath);
-  const buttonLabel = isPdfProof(fileName, contentType) ? "Open PDF" : "Preview proof";
+  const buttonLabel = label || (isPdfProof(fileName, contentType) ? "Open PDF" : "Preview proof");
 
   if (!normalizedPath) {
     return (
@@ -45,7 +47,7 @@ export function ProofPreviewButton({
           Mock proof preview
         </div>
         <p className="mt-1 break-words text-xs font-semibold text-[var(--rp-muted)]">
-          {fileName || proofType}
+          {fileName || proofType || "Proof file"}
         </p>
       </div>
     );
