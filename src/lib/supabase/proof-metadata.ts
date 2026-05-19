@@ -38,6 +38,14 @@ type AdminReviewCaseTypeForProof =
   | "METER_PROOF_ABOVE_CAP"
   | "SUSPICIOUS_PROOF";
 type AdminReviewSeverityForProof = "HIGH" | "CRITICAL";
+type ReplaceableProofStatus =
+  | "NEEDED"
+  | "SUBMITTED"
+  | "UNDER_REVIEW"
+  | "VERIFIED"
+  | "NEEDS_MORE_INFO"
+  | "REJECTED"
+  | "FRAUD_SUSPECTED";
 type ProofReplacementPolicyReason =
   | "NO_EXISTING_PROOF"
   | "PROOF_NEEDS_UPLOAD"
@@ -92,6 +100,20 @@ export type ProofReplacementPolicyResult = {
   blocksNewSubmission: boolean;
   reason: ProofReplacementPolicyReason;
   userFacingMessage: string;
+};
+
+export type CanReplaceProofInput = {
+  proofStatus?: ReplaceableProofStatus | string | null;
+  proofType?: RideInstanceProofMetadataInput["proofType"] | string | null;
+  uploadedByUserId?: string | null;
+  currentUserId?: string | null;
+  currentUserRole?: string | null;
+};
+
+export type CanReplaceProofResult = {
+  canReplace: boolean;
+  reason: string;
+  ctaLabel?: string;
 };
 
 const activeProofStatuses = new Set(["SUBMITTED", "UNDER_REVIEW", "VERIFIED"]);
@@ -176,6 +198,54 @@ export function getProofReplacementPolicy(
 
 export function canSubmitReplacementProof(existingProof?: Pick<RidePodProofRow, "proof_status"> | null) {
   return getProofReplacementPolicy(existingProof).canSubmitProof;
+}
+
+export function canReplaceProof(proof?: CanReplaceProofInput | null): CanReplaceProofResult {
+  switch (proof?.proofStatus) {
+    case "NEEDS_MORE_INFO":
+      return {
+        canReplace: true,
+        reason: "Upload a clearer proof.",
+        ctaLabel: "Upload replacement proof",
+      };
+    case "REJECTED":
+      return {
+        canReplace: true,
+        reason: "Upload valid proof to continue.",
+        ctaLabel: "Upload new proof",
+      };
+    case "SUBMITTED":
+      return {
+        canReplace: false,
+        reason: "Proof already submitted.",
+      };
+    case "UNDER_REVIEW":
+      return {
+        canReplace: false,
+        reason: "Proof is under review.",
+      };
+    case "VERIFIED":
+      return {
+        canReplace: false,
+        reason: "Proof already verified.",
+      };
+    case "FRAUD_SUSPECTED":
+      return {
+        canReplace: false,
+        reason: "Proof is under admin review.",
+      };
+    case "NEEDED":
+      return {
+        canReplace: true,
+        reason: "Proof is required.",
+        ctaLabel: "Upload proof",
+      };
+    default:
+      return {
+        canReplace: false,
+        reason: "Proof status is unknown.",
+      };
+  }
 }
 
 function createMockProof(input: RideInstanceProofMetadataInput): RidePodProofRow {

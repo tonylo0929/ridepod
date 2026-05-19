@@ -79,6 +79,7 @@ const moneyProtection = loadTsModule("src/lib/money-protection.ts");
 const fareEstimates = loadTsModule("src/lib/fare-estimates.ts");
 const joinMoney = loadTsModule("src/lib/join-money.ts");
 const proofUpload = loadTsModule("src/lib/uploads/proof-upload.ts");
+const supabaseProofMetadata = loadTsModule("src/lib/supabase/proof-metadata.ts");
 
 assert.deepEqual(moneySafety.POD_LIFECYCLE_STATES, [
   "DRAFT",
@@ -1319,12 +1320,48 @@ assert.equal(supabaseProofMetadataSource.includes('instance_status: "READY_TO_BO
 assert.equal(supabaseProofMetadataSource.includes('instance_status: "SETTLEMENT_READY"'), false);
 assert.ok(supabaseProofMetadataSource.includes("getProofReplacementPolicy"));
 assert.ok(supabaseProofMetadataSource.includes("canSubmitReplacementProof"));
+assert.ok(supabaseProofMetadataSource.includes("canReplaceProof"));
 assert.ok(supabaseProofMetadataSource.includes("proofResubmissionAllowedStatuses"));
 assert.ok(supabaseProofMetadataSource.includes('"NEEDS_MORE_INFO"'));
 assert.ok(supabaseProofMetadataSource.includes('"REJECTED"'));
 assert.ok(supabaseProofMetadataSource.includes('"FRAUD_SUSPECTED"'));
 assert.ok(supabaseProofMetadataSource.includes("ACTIVE_PROOF_EXISTS"));
 assert.ok(supabaseProofMetadataSource.includes("SUSPICIOUS_PROOF_REVIEW"));
+assert.deepEqual(supabaseProofMetadata.canReplaceProof({ proofStatus: "NEEDS_MORE_INFO" }), {
+  canReplace: true,
+  reason: "Upload a clearer proof.",
+  ctaLabel: "Upload replacement proof",
+});
+assert.deepEqual(supabaseProofMetadata.canReplaceProof({ proofStatus: "REJECTED" }), {
+  canReplace: true,
+  reason: "Upload valid proof to continue.",
+  ctaLabel: "Upload new proof",
+});
+assert.deepEqual(supabaseProofMetadata.canReplaceProof({ proofStatus: "SUBMITTED" }), {
+  canReplace: false,
+  reason: "Proof already submitted.",
+});
+assert.deepEqual(supabaseProofMetadata.canReplaceProof({ proofStatus: "UNDER_REVIEW" }), {
+  canReplace: false,
+  reason: "Proof is under review.",
+});
+assert.deepEqual(supabaseProofMetadata.canReplaceProof({ proofStatus: "VERIFIED" }), {
+  canReplace: false,
+  reason: "Proof already verified.",
+});
+assert.deepEqual(supabaseProofMetadata.canReplaceProof({ proofStatus: "FRAUD_SUSPECTED" }), {
+  canReplace: false,
+  reason: "Proof is under admin review.",
+});
+assert.deepEqual(supabaseProofMetadata.canReplaceProof({ proofStatus: "NEEDED" }), {
+  canReplace: true,
+  reason: "Proof is required.",
+  ctaLabel: "Upload proof",
+});
+assert.deepEqual(supabaseProofMetadata.canReplaceProof({ proofStatus: "SOMETHING_ELSE" }), {
+  canReplace: false,
+  reason: "Proof status is unknown.",
+});
 assert.ok(recurringInstanceProofFlowSource.includes("submitRideInstanceProofMetadata"));
 assert.ok(recurringInstanceProofFlowSource.includes("uploadProofFile"));
 assert.ok(recurringInstanceProofFlowSource.includes("fileUrl: uploadResult.fileUrl"));
