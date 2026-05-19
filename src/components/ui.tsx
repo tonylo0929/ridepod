@@ -160,11 +160,19 @@ export function getRideInstanceDisplayStatus(
   }
 
   if (taxiMeter) {
-    if (
-      rideInstance.status === "meter_proof_needed" ||
-      rideInstance.status === "meter_proof_submitted" ||
-      rideInstance.status === "meter_proof_under_review"
-    ) {
+    if (rideInstance.status === "meter_proof_submitted" || rideInstance.status === "meter_proof_under_review") {
+      return {
+        label: "Meter proof under review",
+        chipClassName: rideInstanceStatusTones.orange.chip,
+        cardClassName: rideInstanceStatusTones.orange.card,
+        helperText: "Meter proof submitted. RidePod will review it before settlement.",
+        primaryActionLabel: "View ride",
+        primaryActionTarget: instanceHref,
+        bucket: "receipt_needed",
+      };
+    }
+
+    if (rideInstance.status === "meter_proof_needed") {
       return {
         label: "Meter proof needed",
         chipClassName: rideInstanceStatusTones.orange.chip,
@@ -189,8 +197,6 @@ export function getRideInstanceDisplayStatus(
 
   if (
     rideInstance.status === "receipt_pending" ||
-    rideInstance.status === "receipt_submitted" ||
-    rideInstance.status === "receipt_under_review" ||
     rideInstance.status === "completed"
   ) {
     return {
@@ -199,6 +205,18 @@ export function getRideInstanceDisplayStatus(
       cardClassName: rideInstanceStatusTones.orange.card,
       helperText: "Upload the final receipt for settlement.",
       primaryActionLabel: "Upload receipt",
+      primaryActionTarget: instanceHref,
+      bucket: "receipt_needed",
+    };
+  }
+
+  if (rideInstance.status === "receipt_submitted" || rideInstance.status === "receipt_under_review") {
+    return {
+      label: "Receipt under review",
+      chipClassName: rideInstanceStatusTones.orange.chip,
+      cardClassName: rideInstanceStatusTones.orange.card,
+      helperText: "Receipt submitted. RidePod will review it before settlement.",
+      primaryActionLabel: "View ride",
       primaryActionTarget: instanceHref,
       bucket: "receipt_needed",
     };
@@ -225,6 +243,18 @@ export function getRideInstanceDisplayStatus(
       primaryActionLabel: "Mark booked",
       primaryActionTarget: instanceHref,
       bucket: "ready_to_book",
+    };
+  }
+
+  if (rideInstance.status === "quote_under_review") {
+    return {
+      label: "Quote under review",
+      chipClassName: rideInstanceStatusTones.gold.chip,
+      cardClassName: rideInstanceStatusTones.gold.card,
+      helperText: "Quote submitted. RidePod will review it before booking.",
+      primaryActionLabel: "View ride",
+      primaryActionTarget: instanceHref,
+      bucket: "quote_needed",
     };
   }
 

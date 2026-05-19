@@ -21,7 +21,19 @@ import {
   X,
 } from "lucide-react";
 import { Badge } from "@/components/ui";
-import { formatMoney, type RecurringRideInstancePreview, type RideInstanceProofStatus, type RidePod } from "@/lib/mock-data";
+import {
+  formatMoney,
+  type RecurringRideInstancePreview,
+  type RecurringRideStatus,
+  type RideInstanceProofStatus,
+  type RidePod,
+} from "@/lib/mock-data";
+import {
+  submitRideInstanceProofMetadata,
+  type RideInstanceProofMetadataInput,
+} from "@/lib/supabase/proof-metadata";
+
+const proofCertificationTextVersion = "ridepod-proof-certification-v1";
 
 function getRideOptionLabel(pod: RidePod) {
   return pod.rideOption === "taxi_meter" || pod.vehicleType === "Taxi"
@@ -107,6 +119,20 @@ function centsFromInput(value: string) {
 
 function formatHkdCents(cents: number) {
   return `HK$${(cents / 100).toFixed(2)}`;
+}
+
+function getSubmittedCopy(proofType: RideInstanceProofMetadataInput["proofType"]) {
+  if (proofType === "QUOTE_SCREENSHOT") return "Quote submitted. RidePod will review it before booking.";
+  if (proofType === "METER_PROOF") return "Meter proof submitted. RidePod will review it before settlement.";
+  return "Receipt submitted. RidePod will review it before settlement.";
+}
+
+function getLocalRideStatusAfterProofSubmit(
+  proofType: RideInstanceProofMetadataInput["proofType"],
+): RecurringRideStatus {
+  if (proofType === "QUOTE_SCREENSHOT") return "quote_under_review";
+  if (proofType === "METER_PROOF") return "meter_proof_under_review";
+  return "receipt_under_review";
 }
 
 const receiptStatusSteps = [
@@ -725,11 +751,21 @@ export function RecurringInstanceProofFlow({
   const [meterFare, setMeterFare] = useState(
     rideInstance.finalFareCents ? String(Math.round(rideInstance.finalFareCents / 100)) : "",
   );
+  const [providerName, setProviderName] = useState("");
+  const [proofNote, setProofNote] = useState("");
+  const [submitMessage, setSubmitMessage] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitPending, setSubmitPending] = useState(false);
   const [localProofStatus, setLocalProofStatus] = useState<RideInstanceProofStatus | null>(null);
+  const [localRideStatus, setLocalRideStatus] = useState<RecurringRideStatus | null>(null);
   const taxiMeter = getRideOptionLabel(pod) === "Taxi meter";
+  const effectiveRideInstance = {
+    ...rideInstance,
+    status: localRideStatus ?? rideInstance.status,
+  };
   const receiptFlow =
     !taxiMeter &&
-    (rideInstance.proofType === "FINAL_RECEIPT" ||
+    (effectiveRideInstance.proofType === "FINAL_RECEIPT" ||
       [
         "ride_booked",
         "receipt_pending",
@@ -737,7 +773,7 @@ export function RecurringInstanceProofFlow({
         "receipt_under_review",
         "settlement_ready",
         "completed",
-      ].includes(rideInstance.status));
+      ].includes(effectiveRideInstance.status));
   const bookingFareCapCents = rideInstance.bookingFareCapCents ?? Math.round(pod.maxFare * 100);
   const quoteAmountCents = quoteAmount.trim() ? centsFromInput(quoteAmount) : null;
   const receiptFareCents = receiptFare.trim() ? centsFromInput(receiptFare) : null;
@@ -747,15 +783,54 @@ export function RecurringInstanceProofFlow({
   const meterAboveCap = meterFareCents !== null && meterFareCents > bookingFareCapCents;
   const quoteResult = useMemo(() => {
     if (taxiMeter) return null;
-    if (rideInstance.status === "ready_to_book" || rideInstance.proofStatus === "APPROVED") {
+    if (localProofStatus === "SUBMITTED" || localProofStatus === "UNDER_REVIEW") return "submitted";
+    if (effectiveRideInstance.status === "ready_to_book" || effectiveRideInstance.proofStatus === "APPROVED") {
       return "approved";
     }
     if (quoteAmountCents === null || Number.isNaN(quoteAmountCents)) return "missing";
     return quoteAmountCents <= bookingFareCapCents ? "approved" : "above_cap";
-  }, [bookingFareCapCents, quoteAmountCents, rideInstance.proofStatus, rideInstance.status, taxiMeter]);
+  }, [bookingFareCapCents, effectiveRideInstance.proofStatus, effectiveRideInstance.status, localProofStatus, quoteAmountCents, taxiMeter]);
   const settlementFlow =
-    (rideInstance.status === "settlement_ready" || rideInstance.status === "completed") &&
-    (rideInstance.proofStatus === "VERIFIED" || rideInstance.proofStatus === "APPROVED");
+    (effectiveRideInstance.status === "settlement_ready" || effectiveRideInstance.status === "completed") &&
+    (effectiveRideInstance.proofStatus === "VERIFIED" || effectiveRideInstance.proofStatus === "APPROVED");
+  async function submitProofMetadata(
+    proofType: RideInstanceProofMetadataInput["proofType"],
+    amountCents: number | null,
+    certificationAccepted: boolean,
+  ) {
+    setSubmitError(null);
+    setSubmitMessage(null);
+
+    if (amountCents === null || Number.isNaN(amountCents) || amountCents <= 0) {
+      setSubmitError("Enter a valid fare amount before submitting proof.");
+      return;
+    }
+
+    setSubmitPending(true);
+    try {
+      const result = await submitRideInstanceProofMetadata({
+        rideInstanceId: rideInstance.id,
+        proofType,
+        amountCents,
+        providerName: providerName.trim() || (proofType === "METER_PROOF" ? "Taxi meter" : undefined),
+        note: proofNote.trim() || undefined,
+        certificationAccepted,
+        certificationTextVersion: proofCertificationTextVersion,
+      });
+
+      setLocalProofStatus(result.normalizedProofStatus);
+      setLocalRideStatus(getLocalRideStatusAfterProofSubmit(proofType));
+      if (result.statusUpdateFailed) {
+        setSubmitError(result.userFacingMessage);
+      } else {
+        setSubmitMessage(result.duplicate ? "Proof already submitted." : result.userFacingMessage || getSubmittedCopy(proofType));
+      }
+    } catch {
+      setSubmitError("Couldn't submit proof. Try again later.");
+    } finally {
+      setSubmitPending(false);
+    }
+  }
 
   if (settlementFlow) {
     return <RecurringInstanceSettlementTimeline rideInstance={rideInstance} />;
@@ -849,6 +924,8 @@ export function RecurringInstanceProofFlow({
                 <input
                   className="min-h-12 w-full rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 pr-11 text-sm font-bold text-[var(--rp-text)]"
                   placeholder="e.g. Uber, Lyft"
+                  value={providerName}
+                  onChange={(event) => setProviderName(event.target.value)}
                 />
                 <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--rp-muted)]" />
               </span>
@@ -868,6 +945,8 @@ export function RecurringInstanceProofFlow({
               <textarea
                 className="min-h-20 rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 py-3 text-sm font-bold text-[var(--rp-text)]"
                 placeholder="Add a note about the ride"
+                value={proofNote}
+                onChange={(event) => setProofNote(event.target.value)}
               />
             </label>
           </div>
@@ -895,13 +974,25 @@ export function RecurringInstanceProofFlow({
             </div>
           ) : null}
 
+          {submitError ? (
+            <p className="mt-4 rounded-[14px] border border-[var(--rp-danger)] bg-[var(--rp-danger-bg)] p-3 text-sm font-bold text-[var(--rp-danger)]">
+              {submitError}
+            </p>
+          ) : null}
+          {submitMessage ? (
+            <p className="mt-4 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-sm font-bold text-[var(--rp-success)]">
+              {submitMessage}
+            </p>
+          ) : null}
+
           <button
             type="button"
-            disabled={!receiptCertified}
+            disabled={!receiptCertified || submitPending}
+            onClick={() => submitProofMetadata("FINAL_RECEIPT", receiptFareCents, receiptCertified)}
             className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-[16px] px-5 text-base font-black text-[var(--rp-primary-text)] shadow-[0_18px_34px_color-mix(in_srgb,var(--rp-primary)_20%,transparent)] disabled:cursor-not-allowed disabled:opacity-45"
             style={{ background: "var(--rp-gradient-primary)" }}
           >
-            Submit receipt <ArrowRight className="h-5 w-5" />
+            {submitPending ? "Submitting..." : "Submit receipt"} <ArrowRight className="h-5 w-5" />
           </button>
         </div>
 
@@ -1034,6 +1125,8 @@ export function RecurringInstanceProofFlow({
               <textarea
                 className="min-h-20 rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 py-3 text-sm font-bold text-[var(--rp-text)]"
                 placeholder="Add a note about the ride"
+                value={proofNote}
+                onChange={(event) => setProofNote(event.target.value)}
               />
             </label>
           </div>
@@ -1062,14 +1155,25 @@ export function RecurringInstanceProofFlow({
             </div>
           ) : null}
 
+          {submitError ? (
+            <p className="mt-4 rounded-[14px] border border-[var(--rp-danger)] bg-[var(--rp-danger-bg)] p-3 text-sm font-bold text-[var(--rp-danger)]">
+              {submitError}
+            </p>
+          ) : null}
+          {submitMessage ? (
+            <p className="mt-4 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-sm font-bold text-[var(--rp-success)]">
+              {submitMessage}
+            </p>
+          ) : null}
+
           <button
             type="button"
-            disabled={!meterCertified}
-            onClick={() => setLocalProofStatus("SUBMITTED")}
+            disabled={!meterCertified || submitPending}
+            onClick={() => submitProofMetadata("METER_PROOF", meterFareCents, meterCertified)}
             className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-[16px] px-5 text-base font-black text-[var(--rp-primary-text)] shadow-[0_18px_34px_color-mix(in_srgb,var(--rp-primary)_20%,transparent)] disabled:cursor-not-allowed disabled:opacity-45"
             style={{ background: "var(--rp-gradient-primary)" }}
           >
-            Submit meter proof <ArrowRight className="h-5 w-5" />
+            {submitPending ? "Submitting..." : "Submit meter proof"} <ArrowRight className="h-5 w-5" />
           </button>
         </div>
 
@@ -1119,7 +1223,7 @@ export function RecurringInstanceProofFlow({
             </p>
           </div>
           <Badge className="bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border)]">
-            {getStatusLabel(rideInstance, taxiMeter)}
+            {getStatusLabel(effectiveRideInstance, taxiMeter)}
           </Badge>
         </div>
 
@@ -1171,6 +1275,8 @@ export function RecurringInstanceProofFlow({
                   <input
                     className="min-h-12 rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-sm font-bold text-[var(--rp-text)]"
                     placeholder="Provider name"
+                    value={providerName}
+                    onChange={(event) => setProviderName(event.target.value)}
                   />
                   <input
                     className="min-h-12 rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-sm font-bold text-[var(--rp-text)]"
@@ -1189,6 +1295,8 @@ export function RecurringInstanceProofFlow({
                 <textarea
                   className="min-h-24 rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 py-3 text-sm font-bold text-[var(--rp-text)]"
                   placeholder="Optional note"
+                  value={proofNote}
+                  onChange={(event) => setProofNote(event.target.value)}
                 />
                 <label className="flex gap-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
                   <input
@@ -1204,16 +1312,27 @@ export function RecurringInstanceProofFlow({
                 </p>
                 <button
                   type="button"
-                  disabled={!receiptCertified}
+                  disabled={!receiptCertified || submitPending}
+                  onClick={() => submitProofMetadata("FINAL_RECEIPT", receiptFareCents, receiptCertified)}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] px-5 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)] disabled:cursor-not-allowed disabled:opacity-45"
                   style={{ background: "var(--rp-gradient-primary)" }}
                 >
-                  <ReceiptText className="h-4 w-4" /> Submit receipt
+                  <ReceiptText className="h-4 w-4" /> {submitPending ? "Submitting..." : "Submit receipt"}
                 </button>
+                {submitError ? (
+                  <p className="rounded-[14px] border border-[var(--rp-danger)] bg-[var(--rp-danger-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-danger)]">
+                    {submitError}
+                  </p>
+                ) : null}
+                {submitMessage ? (
+                  <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-xs font-bold leading-5 text-[var(--rp-success)]">
+                    {submitMessage}
+                  </p>
+                ) : null}
               </div>
             </div>
             <ProofResultCard
-              title={getStatusLabel(rideInstance, taxiMeter)}
+              title={getStatusLabel(effectiveRideInstance, taxiMeter)}
               body={receiptStatusCopy[proofStatus]}
               tone={proofStatus === "VERIFIED" || proofStatus === "APPROVED" ? "success" : proofStatus === "REJECTED" ? "warning" : "neutral"}
             />
@@ -1227,10 +1346,10 @@ export function RecurringInstanceProofFlow({
           </>
         ) : taxiMeter ? (
           <>
-            {rideInstance.status === "meter_proof_needed" ||
-            rideInstance.status === "meter_proof_submitted" ||
-            rideInstance.status === "meter_proof_under_review" ||
-            rideInstance.status === "settlement_ready" ? (
+            {effectiveRideInstance.status === "meter_proof_needed" ||
+            effectiveRideInstance.status === "meter_proof_submitted" ||
+            effectiveRideInstance.status === "meter_proof_under_review" ||
+            effectiveRideInstance.status === "settlement_ready" ? (
               <div className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
                 <h3 className="text-lg font-black text-[var(--rp-text)]">Upload meter proof</h3>
                 <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
@@ -1261,12 +1380,23 @@ export function RecurringInstanceProofFlow({
                   </label>
                   <button
                     type="button"
-                    disabled={!meterCertified}
+                    disabled={!meterCertified || submitPending}
+                    onClick={() => submitProofMetadata("METER_PROOF", meterFareCents, meterCertified)}
                     className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] px-5 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)] disabled:cursor-not-allowed disabled:opacity-45"
                     style={{ background: "var(--rp-gradient-primary)" }}
                   >
-                    <Upload className="h-4 w-4" /> Submit meter proof
+                    <Upload className="h-4 w-4" /> {submitPending ? "Submitting..." : "Submit meter proof"}
                   </button>
+                  {submitError ? (
+                    <p className="rounded-[14px] border border-[var(--rp-danger)] bg-[var(--rp-danger-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-danger)]">
+                      {submitError}
+                    </p>
+                  ) : null}
+                  {submitMessage ? (
+                    <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-xs font-bold leading-5 text-[var(--rp-success)]">
+                      {submitMessage}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             ) : (
@@ -1277,7 +1407,7 @@ export function RecurringInstanceProofFlow({
               />
             )}
             <ProofResultCard
-              title={getStatusLabel(rideInstance, taxiMeter)}
+              title={getStatusLabel(effectiveRideInstance, taxiMeter)}
               body={meterProofStatusCopy[proofStatus]}
               tone={proofStatus === "VERIFIED" || proofStatus === "APPROVED" ? "success" : proofStatus === "REJECTED" ? "warning" : "neutral"}
             />
@@ -1300,6 +1430,8 @@ export function RecurringInstanceProofFlow({
                 <input
                   className="min-h-12 rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-sm font-bold text-[var(--rp-text)]"
                   placeholder="Provider / app name"
+                  value={providerName}
+                  onChange={(event) => setProviderName(event.target.value)}
                 />
                 <input
                   className="min-h-12 rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-sm font-bold text-[var(--rp-text)]"
@@ -1315,6 +1447,8 @@ export function RecurringInstanceProofFlow({
                 <textarea
                   className="min-h-24 rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 py-3 text-sm font-bold text-[var(--rp-text)]"
                   placeholder="Optional note"
+                  value={proofNote}
+                  onChange={(event) => setProofNote(event.target.value)}
                 />
                 <label className="flex gap-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
                   <input
@@ -1332,16 +1466,32 @@ export function RecurringInstanceProofFlow({
                 </p>
                 <button
                   type="button"
-                  disabled={!quoteCertified}
+                  disabled={!quoteCertified || submitPending}
+                  onClick={() => submitProofMetadata("QUOTE_SCREENSHOT", quoteAmountCents, quoteCertified)}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] px-5 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)] disabled:cursor-not-allowed disabled:opacity-45"
                   style={{ background: "var(--rp-gradient-primary)" }}
                 >
-                  <ReceiptText className="h-4 w-4" /> Submit quote
+                  <ReceiptText className="h-4 w-4" /> {submitPending ? "Submitting..." : "Submit quote"}
                 </button>
+                {submitError ? (
+                  <p className="rounded-[14px] border border-[var(--rp-danger)] bg-[var(--rp-danger-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-danger)]">
+                    {submitError}
+                  </p>
+                ) : null}
+                {submitMessage ? (
+                  <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-xs font-bold leading-5 text-[var(--rp-success)]">
+                    {submitMessage}
+                  </p>
+                ) : null}
               </div>
             </div>
 
-            {quoteResult === "approved" ? (
+            {quoteResult === "submitted" ? (
+              <ProofResultCard
+                title="Quote submitted"
+                body="Quote submitted. RidePod will review it before booking."
+              />
+            ) : quoteResult === "approved" ? (
               <ProofResultCard
                 title="Quote approved"
                 body="The quote is within the booking fare cap. You may book the external ride."

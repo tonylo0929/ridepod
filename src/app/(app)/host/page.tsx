@@ -11,8 +11,9 @@ import {
 } from "lucide-react";
 import { Avatar, Badge, ProgressBar, StatusBadge, cn } from "@/components/ui";
 import { RecurringInstanceProofFlow } from "@/components/recurring-instance-proof-flow";
-import { formatMoney, getHostedPods, getRecurringRideInstance, getUser, type RidePod } from "@/lib/mock-data";
+import { formatMoney, getHostedPods, getUser, type RidePod } from "@/lib/mock-data";
 import { HostQuoteUploadPanel } from "@/components/money-safety-ui";
+import { getRideInstanceDetailWithFallback } from "@/lib/supabase/ride-instance-detail";
 
 function getReadyMembers(pod: RidePod) {
   return pod.members.filter(
@@ -193,7 +194,7 @@ export default async function HostDashboardPage({
   const params = searchParams ? await searchParams : {};
   const pods = getHostedPods();
   const selectedRideInstance = params.rideInstanceId
-    ? getRecurringRideInstance(params.rideInstanceId)
+    ? await getRideInstanceDetailWithFallback(params.rideInstanceId)
     : null;
   const readyToBookCount = pods.filter(
     (pod) => pod.moneyStatus === "host_can_book" || pod.status === "host_booking",
@@ -235,10 +236,24 @@ export default async function HostDashboardPage({
       </section>
 
       {selectedRideInstance ? (
-        <RecurringInstanceProofFlow
-          pod={selectedRideInstance.pod}
-          rideInstance={selectedRideInstance.rideInstance}
-        />
+        <div className="grid gap-3">
+          {selectedRideInstance.fallbackNote ? (
+            <p className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-xs font-bold text-[var(--rp-muted-strong)]">
+              {selectedRideInstance.fallbackNote}
+            </p>
+          ) : null}
+          <RecurringInstanceProofFlow
+            pod={selectedRideInstance.pod}
+            rideInstance={selectedRideInstance.rideInstance}
+          />
+        </div>
+      ) : params.rideInstanceId ? (
+        <div className="rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5">
+          <h2 className="text-xl font-black text-[var(--rp-text)]">Ride not found</h2>
+          <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+            Couldn&apos;t load this ride. Try again later.
+          </p>
+        </div>
       ) : null}
 
       <section className="grid gap-4">

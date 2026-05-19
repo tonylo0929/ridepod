@@ -521,6 +521,12 @@ const createPodChooseTypeSource = readFileSync("src/components/create-pod-choose
 const createPodFormSource = readFileSync("src/components/create-pod-form.tsx", "utf8");
 const joinFlowSource = readFileSync("src/components/join-flow.tsx", "utf8");
 const joinPodMapFirstSource = readFileSync("src/components/join-pod-map-first-screen.tsx", "utf8");
+const supabaseEnvSource = readFileSync("src/lib/supabase/env.ts", "utf8");
+const supabaseClientSource = readFileSync("src/lib/supabase/client.ts", "utf8");
+const supabaseServerSource = readFileSync("src/lib/supabase/server.ts", "utf8");
+const supabaseAdminSource = readFileSync("src/lib/supabase/admin.ts", "utf8");
+const supabaseQueriesSource = readFileSync("src/lib/supabase/queries.ts", "utf8");
+const supabaseProofMetadataSource = readFileSync("src/lib/supabase/proof-metadata.ts", "utf8");
 const legalCopySource = [
   "src/app/layout.tsx",
   "src/app/invite/[id]/page.tsx",
@@ -960,6 +966,61 @@ assert.ok(notificationsPageSource.includes("readKeys"));
 assert.ok(notificationsPageSource.includes("selectedFilter === \"all\""));
 assert.ok(appShellSource.includes('href="/notifications" label="Updates" icon={Bell} compact'));
 assert.ok(appShellSource.includes('href: "/admin/review", label: "Admin review", icon: ShieldAlert'));
+assert.ok(supabaseEnvSource.includes("getSupabasePublicEnv"));
+assert.ok(supabaseEnvSource.includes("Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."));
+assert.equal(supabaseClientSource.includes("SUPABASE_SERVICE_ROLE_KEY"), false);
+assert.ok(supabaseClientSource.includes("getSupabaseBrowserClient"));
+assert.ok(supabaseServerSource.includes("getSupabaseServerClient"));
+assert.ok(supabaseServerSource.includes('import "server-only"'));
+assert.ok(supabaseEnvSource.includes("SUPABASE_SERVICE_ROLE_KEY"));
+assert.ok(supabaseAdminSource.includes("getSupabaseAdminEnv"));
+assert.ok(supabaseAdminSource.includes("Do not import this helper into client components."));
+assert.ok(supabaseAdminSource.includes('import "server-only"'));
+assert.ok(supabaseQueriesSource.includes("unwrapSupabaseResult"));
+assert.ok(supabaseQueriesSource.includes("getMyPods"));
+assert.ok(supabaseQueriesSource.includes("getRideInstancesForPod"));
+assert.ok(supabaseQueriesSource.includes("getRideInstanceById"));
+assert.ok(supabaseQueriesSource.includes("getProofsForRideInstance"));
+assert.ok(supabaseQueriesSource.includes("getSettlementForRideInstance"));
+assert.ok(supabaseQueriesSource.includes("getAdminReviewCases"));
+assert.ok(supabaseProofMetadataSource.includes("submitRideInstanceProofMetadata"));
+assert.ok(supabaseProofMetadataSource.includes("Proof certification is required."));
+assert.ok(supabaseProofMetadataSource.includes("amountCents must be greater than zero."));
+assert.ok(supabaseProofMetadataSource.includes('"QUOTE_SCREENSHOT"'));
+assert.ok(supabaseProofMetadataSource.includes('"FINAL_RECEIPT"'));
+assert.ok(supabaseProofMetadataSource.includes('"METER_PROOF"'));
+assert.ok(supabaseProofMetadataSource.includes("mock://proofs/${input.rideInstanceId}/${input.proofType}"));
+assert.equal(supabaseProofMetadataSource.includes("getSupabaseAdminClient"), false);
+assert.equal(supabaseProofMetadataSource.includes("SUPABASE_SERVICE_ROLE_KEY"), false);
+assert.ok(supabaseProofMetadataSource.includes("updateRideInstanceStatusAfterProofSubmit"));
+assert.ok(supabaseProofMetadataSource.includes('"QUOTE_UNDER_REVIEW"'));
+assert.ok(supabaseProofMetadataSource.includes('"PROOF_UNDER_REVIEW"'));
+assert.ok(supabaseProofMetadataSource.includes('.from("ride_instances")'));
+assert.ok(supabaseProofMetadataSource.includes("instance_status: normalizedRideInstanceStatus"));
+assert.ok(supabaseProofMetadataSource.includes("aboveCap"));
+assert.ok(supabaseProofMetadataSource.includes("Proof was submitted, but ride status could not be updated. Try refreshing."));
+assert.ok(supabaseProofMetadataSource.includes("createAdminReviewCaseForProofIfNeeded"));
+assert.ok(supabaseProofMetadataSource.includes("QUOTE_ABOVE_CAP"));
+assert.ok(supabaseProofMetadataSource.includes("RECEIPT_ABOVE_CAP"));
+assert.ok(supabaseProofMetadataSource.includes("METER_PROOF_ABOVE_CAP"));
+assert.ok(supabaseProofMetadataSource.includes("SUSPICIOUS_PROOF"));
+assert.ok(supabaseProofMetadataSource.includes("openAdminReviewStates"));
+assert.ok(supabaseProofMetadataSource.includes('.from("admin_review_cases")'));
+assert.ok(supabaseProofMetadataSource.includes("Create server action/RPC for admin review case creation."));
+assert.ok(supabaseProofMetadataSource.includes("ADMIN_REVIEW_CASE_CREATED"));
+assert.ok(supabaseProofMetadataSource.includes("PROOF_ABOVE_CAP_REVIEW_CREATED"));
+assert.ok(supabaseProofMetadataSource.includes("SUSPICIOUS_PROOF_REVIEW_CREATED"));
+assert.equal(supabaseProofMetadataSource.includes('instance_status: "READY_TO_BOOK"'), false);
+assert.equal(supabaseProofMetadataSource.includes('instance_status: "SETTLEMENT_READY"'), false);
+assert.ok(recurringInstanceProofFlowSource.includes("submitRideInstanceProofMetadata"));
+assert.ok(recurringInstanceProofFlowSource.includes('submitProofMetadata("QUOTE_SCREENSHOT"'));
+assert.ok(recurringInstanceProofFlowSource.includes('submitProofMetadata("FINAL_RECEIPT"'));
+assert.ok(recurringInstanceProofFlowSource.includes('submitProofMetadata("METER_PROOF"'));
+assert.ok(recurringInstanceProofFlowSource.includes("getLocalRideStatusAfterProofSubmit"));
+assert.ok(recurringInstanceProofFlowSource.includes('"quote_under_review"'));
+assert.ok(recurringInstanceProofFlowSource.includes('"receipt_under_review"'));
+assert.ok(recurringInstanceProofFlowSource.includes('"meter_proof_under_review"'));
+assert.ok(recurringInstanceProofFlowSource.includes("Couldn't submit proof. Try again later."));
 for (const adminReviewCopy of [
   "Admin Review",
   "Review proof, disputes, above-cap fares, and payout holds.",
