@@ -511,7 +511,9 @@ const settlementPageSource = readFileSync("src/components/settlement-page.tsx", 
 const uiSource = readFileSync("src/components/ui.tsx", "utf8");
 const mockDataSource = readFileSync("src/lib/mock-data.ts", "utf8");
 const notificationsPageSource = readFileSync("src/app/(app)/notifications/page.tsx", "utf8");
+const notificationsClientSource = readFileSync("src/app/(app)/notifications/notifications-client.tsx", "utf8");
 const rideInstanceNotificationsSource = readFileSync("src/lib/ride-instance-notifications.ts", "utf8");
+const rideInstanceUpdatesSource = readFileSync("src/lib/supabase/ride-instance-updates.ts", "utf8");
 const adminReviewPageSource = readFileSync("src/app/(app)/admin/review/page.tsx", "utf8");
 const adminReviewClientSource = readFileSync("src/app/(app)/admin/review/admin-review-client.tsx", "utf8");
 const adminReviewQueueSource = readFileSync("src/lib/admin-review-queue.ts", "utf8");
@@ -943,9 +945,23 @@ for (const updatesCopy of [
   "View dispute",
   "View ride",
   "No unread updates",
+  "More quote info needed",
+  "More receipt info needed",
+  "More meter proof needed",
+  "Quote rejected",
+  "Receipt rejected",
+  "Meter proof rejected",
+  "Payout held for review",
+  "Settlement under review",
+  "Final split ready",
+  "Your quote proof was approved. You may book the external ride.",
+  "The host can now book this ride under the booking fare cap.",
+  "Upload valid quote proof before booking this ride.",
+  "RidePod needs clearer quote proof before this ride can be protected.",
+  "RidePod is reviewing this case. Payout is held until review is complete.",
 ]) {
   assert.ok(
-    `${notificationsPageSource}\n${rideInstanceNotificationsSource}`.includes(updatesCopy),
+    `${notificationsPageSource}\n${notificationsClientSource}\n${rideInstanceNotificationsSource}\n${rideInstanceUpdatesSource}`.includes(updatesCopy),
     `Missing Updates copy: ${updatesCopy}`,
   );
 }
@@ -959,15 +975,33 @@ for (const stableNotificationKey of [
   "payout_ready:${rideInstance.id}",
   "dispute_under_review:${rideInstance.id}",
   "ride_booked:${rideInstance.id}",
+  "admin_proof_approved:${rideInstance.id}:${proofId}",
+  "admin_more_info:${rideInstance.id}:${proofId}",
+  "admin_proof_rejected:${rideInstance.id}:${proofId}",
+  "admin_payout_held:${rideInstance.id}:${caseId}",
 ]) {
   assert.ok(rideInstanceNotificationsSource.includes(stableNotificationKey), `Missing stable notification key: ${stableNotificationKey}`);
 }
 assert.ok(rideInstanceNotificationsSource.includes("getRideInstanceNotifications"));
 assert.ok(rideInstanceNotificationsSource.includes("getDemoRideInstanceNotifications"));
+assert.ok(rideInstanceNotificationsSource.includes("getAdminActionNotifications"));
+assert.ok(rideInstanceUpdatesSource.includes("getRideInstanceUpdatesWithFallback"));
+assert.ok(rideInstanceUpdatesSource.includes(".from(\"pod_events\")"));
+assert.ok(rideInstanceUpdatesSource.includes("ADMIN_PROOF_APPROVED"));
+assert.ok(rideInstanceUpdatesSource.includes("ADMIN_MORE_INFO_REQUESTED"));
+assert.ok(rideInstanceUpdatesSource.includes("ADMIN_PROOF_REJECTED"));
+assert.ok(rideInstanceUpdatesSource.includes("ADMIN_PAYOUT_HELD"));
+assert.equal(rideInstanceUpdatesSource.includes("getSupabaseAdminClient"), false);
+assert.ok(rideInstanceUpdatesSource.includes("Persist notification rows in later slice.") || rideInstanceUpdatesSource.includes("using mock ride notifications"));
 assert.equal(rideInstanceNotificationsSource.includes('rideInstance.status === "ready_to_book" || rideInstance.proofStatus === "APPROVED"'), false);
 assert.ok(rideInstanceNotificationsSource.includes("ctaTarget: hostTarget(settlementRide)"));
-assert.ok(notificationsPageSource.includes("readKeys"));
-assert.ok(notificationsPageSource.includes("selectedFilter === \"all\""));
+assert.ok(notificationsPageSource.includes("getRideInstanceUpdatesWithFallback"));
+assert.ok(notificationsClientSource.includes("readKeys"));
+assert.ok(notificationsClientSource.includes("selectedFilter === \"all\""));
+assert.ok(uiSource.includes('rideInstance.proofType === "FINAL_RECEIPT"'));
+assert.ok(uiSource.includes('rideInstance.settlementState === "DISPUTE_REVIEW"'));
+assert.ok(recurringInstanceProofFlowSource.includes("More quote info needed"));
+assert.ok(recurringInstanceProofFlowSource.includes("Quote rejected"));
 assert.ok(appShellSource.includes('href="/notifications" label="Updates" icon={Bell} compact'));
 assert.ok(appShellSource.includes('href: "/admin/review", label: "Admin review", icon: ShieldAlert'));
 assert.ok(supabaseEnvSource.includes("getSupabasePublicEnv"));

@@ -147,7 +147,23 @@ export function getRideInstanceDisplayStatus(
     };
   }
 
-  if (rideInstance.status === "settlement_ready" || rideInstance.proofStatus === "VERIFIED") {
+  if (rideInstance.settlementState === "DISPUTE_REVIEW" || rideInstance.payoutState === "HELD_FOR_REVIEW") {
+    return {
+      label: "Dispute review",
+      chipClassName: rideInstanceStatusTones.blue.chip,
+      cardClassName: rideInstanceStatusTones.blue.card,
+      helperText: "Payout is held while RidePod reviews this ride.",
+      primaryActionLabel: "View settlement",
+      primaryActionTarget: instanceHref,
+      bucket: "settlement_ready",
+    };
+  }
+
+  if (
+    rideInstance.status === "settlement_ready" ||
+    ((rideInstance.proofType === "FINAL_RECEIPT" || rideInstance.proofType === "METER_PROOF") &&
+      rideInstance.proofStatus === "VERIFIED")
+  ) {
     return {
       label: "Settlement ready",
       chipClassName: rideInstanceStatusTones.blue.chip,

@@ -1,6 +1,7 @@
 import type { RecurringRideInstancePreview, RidePod } from "@/lib/mock-data";
+import type { RidePodAdminReviewCaseRow, RidePodProofRow, RidePodSettlementRow } from "@/lib/supabase/types";
 
-export type RideInstanceNotificationTone = "gold" | "green" | "orange" | "purple" | "blue" | "neutral";
+export type RideInstanceNotificationTone = "gold" | "green" | "orange" | "amber" | "red" | "purple" | "blue" | "neutral";
 export type RideInstanceNotificationGroup = "Today" | "This week" | "Earlier";
 export type RideInstanceNotificationType =
   | "upload_quote_needed"
@@ -11,8 +12,18 @@ export type RideInstanceNotificationType =
   | "settlement_ready"
   | "payout_ready"
   | "dispute_under_review"
-  | "ride_booked";
+  | "ride_booked"
+  | "proof_approved"
+  | "proof_more_info_needed"
+  | "proof_rejected"
+  | "payout_held";
 export type RideInstanceNotificationViewerRole = "HOST" | "GUEST";
+export type RideInstanceNotificationAudience = "HOST" | "GUEST" | "LOCKED_GUESTS" | "ALL";
+export type AdminActionNotificationEventType =
+  | "ADMIN_PROOF_APPROVED"
+  | "ADMIN_MORE_INFO_REQUESTED"
+  | "ADMIN_PROOF_REJECTED"
+  | "ADMIN_PAYOUT_HELD";
 
 export type RideInstanceNotification = {
   id: string;
@@ -29,6 +40,7 @@ export type RideInstanceNotification = {
   timeAgo: string;
   group: RideInstanceNotificationGroup;
   read: boolean;
+  audience?: RideInstanceNotificationAudience;
 };
 
 function rideMeta(rideInstance: RecurringRideInstancePreview) {
@@ -55,6 +67,192 @@ function notification(
     meta: rideMeta(rideInstance),
     routeLabel: routeLabel(rideInstance),
   };
+}
+
+function notificationGroup(createdAt: string): RideInstanceNotificationGroup {
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return "Earlier";
+  const ageMs = Date.now() - created.getTime();
+  if (ageMs <= 24 * 60 * 60 * 1000) return "Today";
+  if (ageMs <= 7 * 24 * 60 * 60 * 1000) return "This week";
+  return "Earlier";
+}
+
+function notificationTimeAgo(createdAt: string) {
+  const created = new Date(createdAt);
+  if (Number.isNaN(created.getTime())) return "now";
+  const ageMinutes = Math.max(0, Math.round((Date.now() - created.getTime()) / 60000));
+  if (ageMinutes < 60) return `${Math.max(1, ageMinutes)}m`;
+  const ageHours = Math.round(ageMinutes / 60);
+  if (ageHours < 24) return `${ageHours}h`;
+  return `${Math.round(ageHours / 24)}d`;
+}
+
+function proofKind(proof: Pick<RidePodProofRow, "proof_type" | "id"> | null | undefined) {
+  if (proof?.proof_type === "QUOTE_SCREENSHOT") return "quote";
+  if (proof?.proof_type === "METER_PROOF") return "meter";
+  return "receipt";
+}
+
+function adminActionTarget(rideInstance: RecurringRideInstancePreview) {
+  return hostTarget(rideInstance);
+}
+
+function adminActionStableKey(
+  eventType: AdminActionNotificationEventType,
+  rideInstance: RecurringRideInstancePreview,
+  proof: Pick<RidePodProofRow, "id" | "proof_type"> | null | undefined,
+  reviewCase: Pick<RidePodAdminReviewCaseRow, "id"> | null | undefined,
+) {
+  const proofId = proof?.id ?? "proof";
+  const caseId = reviewCase?.id ?? "case";
+
+  if (eventType === "ADMIN_PROOF_APPROVED") return `admin_proof_approved:${rideInstance.id}:${proofId}`;
+  if (eventType === "ADMIN_MORE_INFO_REQUESTED") return `admin_more_info:${rideInstance.id}:${proofId}`;
+  if (eventType === "ADMIN_PROOF_REJECTED") return `admin_proof_rejected:${rideInstance.id}:${proofId}`;
+  return `admin_payout_held:${rideInstance.id}:${caseId}`;
+}
+
+export function getAdminActionNotifications(input: {
+  adminAction: AdminActionNotificationEventType;
+  rideInstance: RecurringRideInstancePreview;
+  proof?: Pick<RidePodProofRow, "id" | "proof_type"> | null;
+  settlement?: Pick<RidePodSettlementRow, "id" | "settlement_state"> | null;
+  reviewCase?: Pick<RidePodAdminReviewCaseRow, "id" | "case_type"> | null;
+  viewerRole: RideInstanceNotificationViewerRole;
+  createdAt?: string | null;
+  read?: boolean;
+}): RideInstanceNotification[] {
+  const createdAt = input.createdAt ?? new Date().toISOString();
+  const group = notificationGroup(createdAt);
+  const timeAgo = notificationTimeAgo(createdAt);
+  const target = adminActionTarget(input.rideInstance);
+  const proofType = proofKind(input.proof);
+  const host = input.viewerRole === "HOST";
+  const audience: RideInstanceNotificationAudience = host ? "HOST" : "LOCKED_GUESTS";
+  const common = {
+    createdAt,
+    group,
+    timeAgo,
+    read: input.read ?? false,
+    audience,
+  };
+
+  if (input.adminAction === "ADMIN_PROOF_APPROVED") {
+    if (proofType === "quote") {
+      return [
+        notification(input.rideInstance, {
+          ...common,
+          stableKey: adminActionStableKey(input.adminAction, input.rideInstance, input.proof, input.reviewCase),
+          type: "proof_approved",
+          title: "Quote approved",
+          body: host
+            ? "Your quote proof was approved. You may book the external ride."
+            : "The host can now book this ride under the booking fare cap.",
+          ctaLabel: host ? "Mark booked" : "View ride",
+          ctaTarget: target,
+          tone: "green",
+        }),
+      ];
+    }
+
+    const meter = proofType === "meter";
+    return [
+      notification(input.rideInstance, {
+        ...common,
+        stableKey: adminActionStableKey(input.adminAction, input.rideInstance, input.proof, input.reviewCase),
+        type: "proof_approved",
+        title: host ? (meter ? "Meter proof approved" : "Receipt approved") : "Final split ready",
+        body: host
+          ? meter
+            ? "Your meter proof was approved. Settlement can continue."
+            : "Your receipt was approved. Settlement can continue."
+          : meter
+            ? "Meter proof was approved. Review your final split before the dispute window ends."
+            : "Receipt was approved. Review your final split before the dispute window ends.",
+        ctaLabel: host ? "View settlement" : "View final split",
+        ctaTarget: target,
+        tone: host ? "green" : "blue",
+      }),
+    ];
+  }
+
+  if (input.adminAction === "ADMIN_MORE_INFO_REQUESTED") {
+    const quote = proofType === "quote";
+    const meter = proofType === "meter";
+    return [
+      notification(input.rideInstance, {
+        ...common,
+        stableKey: adminActionStableKey(input.adminAction, input.rideInstance, input.proof, input.reviewCase),
+        type: "proof_more_info_needed",
+        title: host
+          ? quote
+            ? "More quote info needed"
+            : meter
+              ? "More meter proof needed"
+              : "More receipt info needed"
+          : quote
+            ? "Quote under review"
+            : "Settlement delayed",
+        body: host
+          ? quote
+            ? "RidePod needs clearer quote proof before this ride can be protected."
+            : meter
+              ? "Upload a clearer meter photo or taxi receipt so settlement can continue."
+              : "Upload a clearer receipt so settlement can continue."
+          : quote
+            ? "RidePod needs more proof before the host can book this ride."
+            : meter
+              ? "RidePod needs more meter proof before settlement can continue."
+              : "RidePod needs more receipt information before settlement can continue.",
+        ctaLabel: host ? (quote ? "Upload quote" : meter ? "Upload meter proof" : "Upload receipt") : quote ? "View ride" : "View settlement",
+        ctaTarget: target,
+        tone: "amber",
+      }),
+    ];
+  }
+
+  if (input.adminAction === "ADMIN_PROOF_REJECTED") {
+    const quote = proofType === "quote";
+    const meter = proofType === "meter";
+    return [
+      notification(input.rideInstance, {
+        ...common,
+        stableKey: adminActionStableKey(input.adminAction, input.rideInstance, input.proof, input.reviewCase),
+        type: "proof_rejected",
+        title: quote ? "Quote rejected" : meter ? "Meter proof rejected" : host ? "Receipt rejected" : "Settlement delayed",
+        body: host
+          ? quote
+            ? "Upload valid quote proof before booking this ride."
+            : meter
+              ? "Upload valid meter proof before settlement can continue."
+              : "Upload valid receipt proof before settlement can continue."
+          : quote
+            ? "The host must upload valid quote proof before this ride can be protected."
+            : meter
+              ? "Meter proof was rejected. Settlement requires valid proof."
+              : "Receipt proof was rejected. Settlement requires valid proof.",
+        ctaLabel: host ? (quote ? "Upload quote" : meter ? "Upload meter proof" : "Upload receipt") : quote ? "View ride" : "View settlement",
+        ctaTarget: target,
+        tone: "red",
+      }),
+    ];
+  }
+
+  return [
+    notification(input.rideInstance, {
+      ...common,
+      stableKey: adminActionStableKey(input.adminAction, input.rideInstance, input.proof, input.reviewCase),
+      type: "payout_held",
+      title: host ? "Payout held for review" : "Settlement under review",
+      body: host
+        ? "RidePod is reviewing this case. Payout is held until review is complete."
+        : "RidePod is reviewing this ride. Settlement may be delayed.",
+      ctaLabel: host ? "View review" : "View settlement",
+      ctaTarget: target,
+      tone: "amber",
+    }),
+  ];
 }
 
 export function getRideInstanceNotifications(
@@ -249,6 +447,56 @@ export function getDemoRideInstanceNotifications(
       )
         .filter((item) => item.type === "dispute_under_review")
         .map((item) => ({ ...item, ctaTarget: hostTarget(settlementRide) })),
+    );
+
+    notifications.push(
+      ...getAdminActionNotifications({
+        adminAction: "ADMIN_PROOF_APPROVED",
+        rideInstance: settlementRide,
+        proof: { id: "demo-final-receipt-proof", proof_type: "FINAL_RECEIPT" },
+        reviewCase: { id: "demo-receipt-approved", case_type: "RECEIPT_ABOVE_CAP" },
+        viewerRole,
+        createdAt: "2026-05-18T11:30:00.000Z",
+      }),
+      ...getAdminActionNotifications({
+        adminAction: "ADMIN_PROOF_REJECTED",
+        rideInstance: {
+          ...settlementRide,
+          id: `${settlementRide.id}-rejected-demo`,
+          status: "receipt_pending",
+          proofStatus: "REJECTED",
+        },
+        proof: { id: "demo-rejected-receipt-proof", proof_type: "FINAL_RECEIPT" },
+        reviewCase: { id: "demo-receipt-rejected", case_type: "SUSPICIOUS_PROOF" },
+        viewerRole,
+        createdAt: "2026-05-18T10:45:00.000Z",
+      }),
+      ...getAdminActionNotifications({
+        adminAction: "ADMIN_MORE_INFO_REQUESTED",
+        rideInstance: {
+          ...settlementRide,
+          id: `${settlementRide.id}-more-info-demo`,
+          status: "receipt_under_review",
+          proofStatus: "NEEDS_MORE_INFO",
+        },
+        proof: { id: "demo-more-info-receipt-proof", proof_type: "FINAL_RECEIPT" },
+        reviewCase: { id: "demo-receipt-more-info", case_type: "RECEIPT_ABOVE_CAP" },
+        viewerRole,
+        createdAt: "2026-05-18T10:20:00.000Z",
+      }),
+      ...getAdminActionNotifications({
+        adminAction: "ADMIN_PAYOUT_HELD",
+        rideInstance: {
+          ...settlementRide,
+          id: `${settlementRide.id}-payout-held-demo`,
+          settlementState: "DISPUTE_REVIEW",
+          payoutState: "HELD_FOR_REVIEW",
+        },
+        proof: { id: "demo-payout-held-proof", proof_type: "FINAL_RECEIPT" },
+        reviewCase: { id: "demo-payout-held-case", case_type: "PAYOUT_HOLD" },
+        viewerRole,
+        createdAt: "2026-05-18T09:40:00.000Z",
+      }),
     );
   }
 

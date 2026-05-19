@@ -783,13 +783,15 @@ export function RecurringInstanceProofFlow({
   const meterAboveCap = meterFareCents !== null && meterFareCents > bookingFareCapCents;
   const quoteResult = useMemo(() => {
     if (taxiMeter) return null;
+    if (proofStatus === "NEEDS_MORE_INFO") return "needs_more_info";
+    if (proofStatus === "REJECTED") return "rejected";
     if (localProofStatus === "SUBMITTED" || localProofStatus === "UNDER_REVIEW") return "submitted";
     if (effectiveRideInstance.status === "ready_to_book" || effectiveRideInstance.proofStatus === "APPROVED") {
       return "approved";
     }
     if (quoteAmountCents === null || Number.isNaN(quoteAmountCents)) return "missing";
     return quoteAmountCents <= bookingFareCapCents ? "approved" : "above_cap";
-  }, [bookingFareCapCents, effectiveRideInstance.proofStatus, effectiveRideInstance.status, localProofStatus, quoteAmountCents, taxiMeter]);
+  }, [bookingFareCapCents, effectiveRideInstance.proofStatus, effectiveRideInstance.status, localProofStatus, proofStatus, quoteAmountCents, taxiMeter]);
   const settlementFlow =
     (effectiveRideInstance.status === "settlement_ready" || effectiveRideInstance.status === "completed") &&
     (effectiveRideInstance.proofStatus === "VERIFIED" || effectiveRideInstance.proofStatus === "APPROVED");
@@ -1490,6 +1492,18 @@ export function RecurringInstanceProofFlow({
               <ProofResultCard
                 title="Quote submitted"
                 body="Quote submitted. RidePod will review it before booking."
+              />
+            ) : quoteResult === "needs_more_info" ? (
+              <ProofResultCard
+                title="More quote info needed"
+                body="RidePod needs clearer quote proof before this ride can be protected."
+                tone="warning"
+              />
+            ) : quoteResult === "rejected" ? (
+              <ProofResultCard
+                title="Quote rejected"
+                body="Upload valid quote proof before booking this ride."
+                tone="warning"
               />
             ) : quoteResult === "approved" ? (
               <ProofResultCard
