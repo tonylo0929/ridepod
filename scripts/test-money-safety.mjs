@@ -78,6 +78,7 @@ const podSchedule = loadTsModule("src/lib/pod-schedule.ts");
 const moneyProtection = loadTsModule("src/lib/money-protection.ts");
 const fareEstimates = loadTsModule("src/lib/fare-estimates.ts");
 const joinMoney = loadTsModule("src/lib/join-money.ts");
+const proofUpload = loadTsModule("src/lib/uploads/proof-upload.ts");
 
 assert.deepEqual(moneySafety.POD_LIFECYCLE_STATES, [
   "DRAFT",
@@ -530,6 +531,16 @@ const supabaseServerSource = readFileSync("src/lib/supabase/server.ts", "utf8");
 const supabaseAdminSource = readFileSync("src/lib/supabase/admin.ts", "utf8");
 const supabaseQueriesSource = readFileSync("src/lib/supabase/queries.ts", "utf8");
 const supabaseProofMetadataSource = readFileSync("src/lib/supabase/proof-metadata.ts", "utf8");
+const proofUploadSource = readFileSync("src/lib/uploads/proof-upload.ts", "utf8");
+const storagePlanSource = readFileSync("docs/ridepod-supabase-storage-plan.md", "utf8");
+const supabaseProofStorageMigrationSource = readFileSync(
+  "supabase/migrations/202605190003_ridepod_proof_storage.sql",
+  "utf8",
+);
+const supabaseProofStorageSanitySource = readFileSync(
+  "supabase/tests/ridepod_storage_policy_sanity_checks.sql",
+  "utf8",
+);
 const supabaseAdminReviewCasesSource = readFileSync("src/lib/supabase/admin-review-cases.ts", "utf8");
 const supabaseAdminReviewActionsSource = readFileSync("src/lib/supabase/admin-review-actions.ts", "utf8");
 const adminReviewActionsSource = readFileSync("src/app/(app)/admin/review/actions.ts", "utf8");
@@ -1065,6 +1076,101 @@ assert.ok(supabaseAdminReviewActionsSource.includes("ADMIN_PROOF_REJECTED"));
 assert.ok(supabaseAdminReviewActionsSource.includes("ADMIN_PAYOUT_HELD"));
 assert.ok(supabaseAdminReviewActionsSource.includes(".from(\"pod_events\")"));
 assert.ok(supabaseAdminReviewActionsSource.includes("Supabase admin action is unavailable; using mock admin action state."));
+assert.ok(proofUploadSource.includes("ProofUploadType"));
+assert.ok(proofUploadSource.includes("ProofUploadInput"));
+assert.ok(proofUploadSource.includes("ProofUploadResult"));
+assert.ok(proofUploadSource.includes("validateProofUploadFile"));
+assert.ok(proofUploadSource.includes("uploadProofFileMock"));
+assert.ok(proofUploadSource.includes("uploadProofFileToSupabaseStorage"));
+assert.ok(proofUploadSource.includes("uploadProofFile"));
+assert.ok(proofUploadSource.includes('"MOCK"'));
+assert.ok(proofUploadSource.includes('"SUPABASE_STORAGE_FUTURE"'));
+assert.ok(proofUploadSource.includes("mock://proofs/${input.rideInstanceId}/${input.proofType}/${fileName}"));
+assert.ok(proofUploadSource.includes("mock/${input.rideInstanceId}/${input.proofType}/${fileName}"));
+assert.ok(proofUploadSource.includes("Supabase Storage upload is not enabled yet."));
+assert.ok(proofUploadSource.includes("TODO SQL-2L: Implement Supabase Storage bucket + policies + signed upload/read URLs."));
+assert.equal(proofUploadSource.includes("storage.from"), false);
+assert.equal(proofUploadSource.includes("getSupabaseAdminClient"), false);
+assert.ok(storagePlanSource.includes("ridepod-proofs"));
+assert.ok(storagePlanSource.includes("ride-instances/{rideInstanceId}/{proofType}/{proofId-or-timestamp}-{safeFileName}"));
+assert.ok(storagePlanSource.includes("Storage RLS policies"));
+assert.ok(storagePlanSource.includes("Admin manual review"));
+assert.ok(storagePlanSource.includes("Guest raw proof preview is delayed intentionally"));
+assert.ok(storagePlanSource.includes("Apply the `storage.objects` policies"));
+assert.ok(supabaseProofStorageMigrationSource.includes("insert into storage.buckets"));
+assert.ok(supabaseProofStorageMigrationSource.includes("'ridepod-proofs'"));
+assert.ok(supabaseProofStorageMigrationSource.includes("public = excluded.public"));
+assert.ok(supabaseProofStorageMigrationSource.includes("10485760"));
+assert.ok(supabaseProofStorageMigrationSource.includes("array['image/png', 'image/jpeg', 'image/jpg', 'application/pdf']::text[]"));
+assert.ok(supabaseProofStorageMigrationSource.includes("ridepod_proof_object_ride_instance_id"));
+assert.ok(supabaseProofStorageMigrationSource.includes("ridepod_is_valid_proof_storage_path"));
+assert.ok(supabaseProofStorageMigrationSource.includes("ridepod_can_host_storage_ride_instance"));
+assert.ok(supabaseProofStorageMigrationSource.includes("storage.foldername(object_name)"));
+assert.ok(supabaseProofStorageMigrationSource.includes("storage.filename(object_name)"));
+assert.ok(supabaseProofStorageMigrationSource.includes("QUOTE_SCREENSHOT"));
+assert.ok(supabaseProofStorageMigrationSource.includes("FINAL_RECEIPT"));
+assert.ok(supabaseProofStorageMigrationSource.includes("METER_PROOF"));
+assert.ok(supabaseProofStorageMigrationSource.includes("RidePod hosts can upload proof files"));
+assert.ok(supabaseProofStorageMigrationSource.includes("RidePod hosts can read own proof files"));
+assert.ok(supabaseProofStorageMigrationSource.includes("RidePod admins can read proof files"));
+assert.ok(supabaseProofStorageMigrationSource.includes("public.is_admin()"));
+assert.ok(supabaseProofStorageMigrationSource.includes("Guests intentionally do not get raw proof file access"));
+assert.ok(supabaseProofStorageMigrationSource.includes("TODO SQL-2L: Implement signed upload/read URLs"));
+assert.ok(supabaseProofStorageMigrationSource.includes("storage_path/provider columns"));
+assert.equal(supabaseProofStorageMigrationSource.includes("for delete"), false);
+assert.equal(supabaseProofStorageMigrationSource.includes("for update"), false);
+assert.equal(supabaseProofStorageMigrationSource.includes("public = true"), false);
+assert.equal(supabaseProofStorageMigrationSource.includes("using (bucket_id = 'ridepod-proofs')"), false);
+assert.ok(supabaseProofStorageSanitySource.includes("Bucket exists and is private"));
+assert.ok(supabaseProofStorageSanitySource.includes("Host insert/read expectations"));
+assert.ok(supabaseProofStorageSanitySource.includes("Guest raw proof file access is intentionally disabled"));
+assert.doesNotThrow(() =>
+  proofUpload.validateProofUploadFile({
+    rideInstanceId: "ride-1",
+    proofType: "QUOTE_SCREENSHOT",
+    file: { name: "quote.png", type: "image/png", size: 1024 },
+  }),
+);
+assert.doesNotThrow(() =>
+  proofUpload.validateProofUploadFile({
+    rideInstanceId: "ride-1",
+    proofType: "FINAL_RECEIPT",
+    file: { name: "receipt.jpg", type: "image/jpeg", size: 1024 },
+  }),
+);
+assert.doesNotThrow(() =>
+  proofUpload.validateProofUploadFile({
+    rideInstanceId: "ride-1",
+    proofType: "METER_PROOF",
+    file: { name: "meter.pdf", type: "application/pdf", size: 1024 },
+  }),
+);
+assert.throws(
+  () =>
+    proofUpload.validateProofUploadFile({
+      rideInstanceId: "ride-1",
+      proofType: "QUOTE_SCREENSHOT",
+      file: { name: "quote.gif", type: "image/gif", size: 1024 },
+    }),
+  /Upload a PNG, JPG, or PDF file\./,
+);
+assert.throws(
+  () =>
+    proofUpload.validateProofUploadFile({
+      rideInstanceId: "ride-1",
+      proofType: "QUOTE_SCREENSHOT",
+      file: { name: "quote.png", type: "image/png", size: 10 * 1024 * 1024 + 1 },
+    }),
+  /File must be 10MB or smaller\./,
+);
+const mockProofUpload = await proofUpload.uploadProofFile({
+  rideInstanceId: "ride-1",
+  proofType: "FINAL_RECEIPT",
+  file: { name: "Final Receipt.pdf", type: "application/pdf", size: 2048 },
+});
+assert.equal(mockProofUpload.provider, "MOCK");
+assert.equal(mockProofUpload.fileUrl, "mock://proofs/ride-1/FINAL_RECEIPT/Final-Receipt.pdf");
+assert.equal(mockProofUpload.storagePath, "mock/ride-1/FINAL_RECEIPT/Final-Receipt.pdf");
 assert.ok(supabaseProofMetadataSource.includes("submitRideInstanceProofMetadata"));
 assert.ok(supabaseProofMetadataSource.includes("Proof certification is required."));
 assert.ok(supabaseProofMetadataSource.includes("amountCents must be greater than zero."));
@@ -1095,6 +1201,10 @@ assert.ok(supabaseProofMetadataSource.includes("SUSPICIOUS_PROOF_REVIEW_CREATED"
 assert.equal(supabaseProofMetadataSource.includes('instance_status: "READY_TO_BOOK"'), false);
 assert.equal(supabaseProofMetadataSource.includes('instance_status: "SETTLEMENT_READY"'), false);
 assert.ok(recurringInstanceProofFlowSource.includes("submitRideInstanceProofMetadata"));
+assert.ok(recurringInstanceProofFlowSource.includes("uploadProofFile"));
+assert.ok(recurringInstanceProofFlowSource.includes("fileUrl: uploadResult.fileUrl"));
+assert.ok(recurringInstanceProofFlowSource.includes("fileName: uploadResult.fileName"));
+assert.ok(recurringInstanceProofFlowSource.includes("proofUploadAccept"));
 assert.ok(recurringInstanceProofFlowSource.includes('submitProofMetadata("QUOTE_SCREENSHOT"'));
 assert.ok(recurringInstanceProofFlowSource.includes('submitProofMetadata("FINAL_RECEIPT"'));
 assert.ok(recurringInstanceProofFlowSource.includes('submitProofMetadata("METER_PROOF"'));

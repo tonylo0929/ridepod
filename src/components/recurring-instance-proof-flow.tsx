@@ -32,8 +32,16 @@ import {
   submitRideInstanceProofMetadata,
   type RideInstanceProofMetadataInput,
 } from "@/lib/supabase/proof-metadata";
+import { uploadProofFile, type ProofUploadFile, type ProofUploadType } from "@/lib/uploads/proof-upload";
 
 const proofCertificationTextVersion = "ridepod-proof-certification-v1";
+const proofUploadAccept = "image/png,image/jpeg,image/jpg,application/pdf";
+const proofUploadValidationMessages = new Set([
+  "Upload a PNG, JPG, or PDF file.",
+  "File must be 10MB or smaller.",
+  "Ride instance is required.",
+  "Proof type is required.",
+]);
 
 function getRideOptionLabel(pod: RidePod) {
   return pod.rideOption === "taxi_meter" || pod.vehicleType === "Taxi"
@@ -758,6 +766,7 @@ export function RecurringInstanceProofFlow({
   const [submitPending, setSubmitPending] = useState(false);
   const [localProofStatus, setLocalProofStatus] = useState<RideInstanceProofStatus | null>(null);
   const [localRideStatus, setLocalRideStatus] = useState<RecurringRideStatus | null>(null);
+  const [selectedProofFiles, setSelectedProofFiles] = useState<Partial<Record<ProofUploadType, ProofUploadFile>>>({});
   const taxiMeter = getRideOptionLabel(pod) === "Taxi meter";
   const effectiveRideInstance = {
     ...rideInstance,
@@ -810,11 +819,22 @@ export function RecurringInstanceProofFlow({
 
     setSubmitPending(true);
     try {
+      const selectedProofFile = selectedProofFiles[proofType] ?? null;
+      const uploadResult = await uploadProofFile({
+        rideInstanceId: rideInstance.id,
+        proofType,
+        file: selectedProofFile,
+        fileName: selectedProofFile?.name,
+        contentType: selectedProofFile?.type,
+        sizeBytes: selectedProofFile?.size,
+      });
       const result = await submitRideInstanceProofMetadata({
         rideInstanceId: rideInstance.id,
         proofType,
         amountCents,
         providerName: providerName.trim() || (proofType === "METER_PROOF" ? "Taxi meter" : undefined),
+        fileUrl: uploadResult.fileUrl,
+        fileName: uploadResult.fileName,
         note: proofNote.trim() || undefined,
         certificationAccepted,
         certificationTextVersion: proofCertificationTextVersion,
@@ -827,11 +847,21 @@ export function RecurringInstanceProofFlow({
       } else {
         setSubmitMessage(result.duplicate ? "Proof already submitted." : result.userFacingMessage || getSubmittedCopy(proofType));
       }
-    } catch {
-      setSubmitError("Couldn't submit proof. Try again later.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      setSubmitError(proofUploadValidationMessages.has(message) ? message : "Couldn't submit proof. Try again later.");
     } finally {
       setSubmitPending(false);
     }
+  }
+
+  function handleProofFileChange(proofType: ProofUploadType, file: File | null) {
+    setSubmitError(null);
+    setSelectedProofFiles((current) => ({ ...current, [proofType]: file ?? undefined }));
+  }
+
+  function getSelectedProofFileName(proofType: ProofUploadType) {
+    return selectedProofFiles[proofType]?.name;
   }
 
   if (settlementFlow) {
@@ -914,9 +944,19 @@ export function RecurringInstanceProofFlow({
           <p className="mt-1 text-sm font-semibold text-[var(--rp-muted-strong)]">PNG, JPG or PDF {"\u00b7"} Max 10MB</p>
 
           <label className="mt-5 grid min-h-36 cursor-pointer place-items-center rounded-[20px] border border-dashed border-[var(--rp-primary)] bg-[var(--rp-card)] p-5 text-center">
-            <input className="sr-only" type="file" />
+            <input
+              className="sr-only"
+              type="file"
+              accept={proofUploadAccept}
+              onChange={(event) => handleProofFileChange("FINAL_RECEIPT", event.target.files?.[0] ?? null)}
+            />
             <Upload className="h-12 w-12 text-[var(--rp-primary)]" />
             <span className="mt-3 text-base font-black text-[var(--rp-primary)]">Tap to upload or drag and drop</span>
+            {getSelectedProofFileName("FINAL_RECEIPT") ? (
+              <span className="mt-1 max-w-full truncate text-xs font-bold text-[var(--rp-muted-strong)]">
+                {getSelectedProofFileName("FINAL_RECEIPT")}
+              </span>
+            ) : null}
           </label>
 
           <div className="mt-5 grid gap-4">
@@ -1105,10 +1145,20 @@ export function RecurringInstanceProofFlow({
           </p>
 
           <label className="mt-5 grid min-h-36 cursor-pointer place-items-center rounded-[20px] border border-dashed border-[var(--rp-primary)] bg-[var(--rp-card)] p-5 text-center">
-            <input className="sr-only" type="file" />
+            <input
+              className="sr-only"
+              type="file"
+              accept={proofUploadAccept}
+              onChange={(event) => handleProofFileChange("METER_PROOF", event.target.files?.[0] ?? null)}
+            />
             <Upload className="h-12 w-12 text-[var(--rp-primary)]" />
             <span className="mt-3 text-base font-black text-[var(--rp-primary)]">Tap to upload or drag and drop</span>
             <span className="mt-1 text-xs font-bold text-[var(--rp-muted-strong)]">PNG, JPG or PDF {"\u00b7"} Max 10MB</span>
+            {getSelectedProofFileName("METER_PROOF") ? (
+              <span className="mt-1 max-w-full truncate text-xs font-bold text-[var(--rp-muted-strong)]">
+                {getSelectedProofFileName("METER_PROOF")}
+              </span>
+            ) : null}
           </label>
 
           <div className="mt-5 grid gap-4">
@@ -1289,10 +1339,20 @@ export function RecurringInstanceProofFlow({
                   />
                 </div>
                 <label className="grid min-h-36 cursor-pointer place-items-center rounded-[20px] border border-dashed border-[var(--rp-primary)] bg-[var(--rp-card)] p-5 text-center">
-                  <input className="sr-only" type="file" />
+                  <input
+                    className="sr-only"
+                    type="file"
+                    accept={proofUploadAccept}
+                    onChange={(event) => handleProofFileChange("FINAL_RECEIPT", event.target.files?.[0] ?? null)}
+                  />
                   <Upload className="h-9 w-9 text-[var(--rp-primary)]" />
                   <span className="mt-3 text-base font-black text-[var(--rp-text)]">Upload final receipt</span>
                   <span className="mt-1 text-xs font-bold text-[var(--rp-muted)]">PNG, JPG or PDF - Max 10MB</span>
+                  {getSelectedProofFileName("FINAL_RECEIPT") ? (
+                    <span className="mt-1 max-w-full truncate text-xs font-bold text-[var(--rp-muted-strong)]">
+                      {getSelectedProofFileName("FINAL_RECEIPT")}
+                    </span>
+                  ) : null}
                 </label>
                 <textarea
                   className="min-h-24 rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 py-3 text-sm font-bold text-[var(--rp-text)]"
@@ -1368,7 +1428,12 @@ export function RecurringInstanceProofFlow({
                   <input
                     className="min-h-12 rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 py-3 text-sm font-bold text-[var(--rp-text)]"
                     type="file"
+                    accept={proofUploadAccept}
+                    onChange={(event) => handleProofFileChange("METER_PROOF", event.target.files?.[0] ?? null)}
                   />
+                  {getSelectedProofFileName("METER_PROOF") ? (
+                    <p className="text-xs font-bold text-[var(--rp-muted-strong)]">{getSelectedProofFileName("METER_PROOF")}</p>
+                  ) : null}
                   <label className="flex gap-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
                     <input
                       type="checkbox"
@@ -1445,7 +1510,12 @@ export function RecurringInstanceProofFlow({
                 <input
                   className="min-h-12 rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 py-3 text-sm font-bold text-[var(--rp-text)]"
                   type="file"
+                  accept={proofUploadAccept}
+                  onChange={(event) => handleProofFileChange("QUOTE_SCREENSHOT", event.target.files?.[0] ?? null)}
                 />
+                {getSelectedProofFileName("QUOTE_SCREENSHOT") ? (
+                  <p className="text-xs font-bold text-[var(--rp-muted-strong)]">{getSelectedProofFileName("QUOTE_SCREENSHOT")}</p>
+                ) : null}
                 <textarea
                   className="min-h-24 rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 py-3 text-sm font-bold text-[var(--rp-text)]"
                   placeholder="Optional note"
