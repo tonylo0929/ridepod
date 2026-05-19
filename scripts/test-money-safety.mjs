@@ -529,6 +529,8 @@ const supabaseAdminSource = readFileSync("src/lib/supabase/admin.ts", "utf8");
 const supabaseQueriesSource = readFileSync("src/lib/supabase/queries.ts", "utf8");
 const supabaseProofMetadataSource = readFileSync("src/lib/supabase/proof-metadata.ts", "utf8");
 const supabaseAdminReviewCasesSource = readFileSync("src/lib/supabase/admin-review-cases.ts", "utf8");
+const supabaseAdminReviewActionsSource = readFileSync("src/lib/supabase/admin-review-actions.ts", "utf8");
+const adminReviewActionsSource = readFileSync("src/app/(app)/admin/review/actions.ts", "utf8");
 const legalCopySource = [
   "src/app/layout.tsx",
   "src/app/invite/[id]/page.tsx",
@@ -1002,7 +1004,33 @@ assert.ok(supabaseAdminReviewCasesSource.includes('if (severity === "Critical") 
 assert.ok(supabaseAdminReviewCasesSource.includes("Supabase admin review read is unavailable; using mock admin review cases."));
 assert.ok(adminReviewPageSource.includes("getAdminReviewCasesWithFallback"));
 assert.ok(adminReviewPageSource.includes("initialCases={reviewCases.cases}"));
-assert.ok(adminReviewClientSource.includes("Admin actions are handled in the next slice."));
+assert.ok(adminReviewClientSource.includes("applyAdminReviewActionForCase"));
+assert.ok(adminReviewClientSource.includes("Admin actions update proof, review, ride, and settlement hold state only."));
+assert.ok(adminReviewActionsSource.includes('"use server"'));
+assert.ok(adminReviewActionsSource.includes("applyAdminReviewAction"));
+assert.ok(adminReviewActionsSource.includes("Protect Admin Review route/actions with durable admin auth before production."));
+assert.ok(supabaseAdminReviewActionsSource.includes("applyAdminReviewAction"));
+assert.ok(supabaseAdminReviewActionsSource.includes('"APPROVE_PROOF"'));
+assert.ok(supabaseAdminReviewActionsSource.includes('"REQUEST_MORE_INFO"'));
+assert.ok(supabaseAdminReviewActionsSource.includes('"REJECT_PROOF"'));
+assert.ok(supabaseAdminReviewActionsSource.includes('"HOLD_PAYOUT"'));
+assert.ok(supabaseAdminReviewActionsSource.includes("Admin notes are required for this action."));
+assert.ok(supabaseAdminReviewActionsSource.includes('"VERIFIED"'));
+assert.ok(supabaseAdminReviewActionsSource.includes('"READY_TO_BOOK"'));
+assert.ok(supabaseAdminReviewActionsSource.includes('"SETTLEMENT_READY"'));
+assert.ok(supabaseAdminReviewActionsSource.includes('"NEEDS_MORE_INFO"'));
+assert.ok(supabaseAdminReviewActionsSource.includes('"REJECTED"'));
+assert.ok(supabaseAdminReviewActionsSource.includes('"QUOTE_NEEDED"'));
+assert.ok(supabaseAdminReviewActionsSource.includes('"RECEIPT_NEEDED"'));
+assert.ok(supabaseAdminReviewActionsSource.includes('"METER_PROOF_NEEDED"'));
+assert.ok(supabaseAdminReviewActionsSource.includes('"DISPUTE_HOLD"'));
+assert.ok(supabaseAdminReviewActionsSource.includes('"ADMIN_REVIEW"'));
+assert.ok(supabaseAdminReviewActionsSource.includes("ADMIN_PROOF_APPROVED"));
+assert.ok(supabaseAdminReviewActionsSource.includes("ADMIN_MORE_INFO_REQUESTED"));
+assert.ok(supabaseAdminReviewActionsSource.includes("ADMIN_PROOF_REJECTED"));
+assert.ok(supabaseAdminReviewActionsSource.includes("ADMIN_PAYOUT_HELD"));
+assert.ok(supabaseAdminReviewActionsSource.includes(".from(\"pod_events\")"));
+assert.ok(supabaseAdminReviewActionsSource.includes("Supabase admin action is unavailable; using mock admin action state."));
 assert.ok(supabaseProofMetadataSource.includes("submitRideInstanceProofMetadata"));
 assert.ok(supabaseProofMetadataSource.includes("Proof certification is required."));
 assert.ok(supabaseProofMetadataSource.includes("amountCents must be greater than zero."));
@@ -1073,31 +1101,30 @@ for (const adminReviewCopy of [
   "Dispute raised",
   "Admin decision",
   "Admin notes",
-  "Add review notes for audit trail.",
-  "Admin notes are required for this decision.",
+  "Add notes for the audit trail.",
+  "Admin notes are required for this action.",
   "Approve proof",
   "Request more info",
   "Reject proof",
-  "Cap reimbursement at approved max",
   "Hold payout",
-  "Release payout",
-  "Resolve dispute",
-  "Suspend / restrict account placeholder",
-  "Proof approved for settlement. Settlement can continue.",
+  "Proof approved. Settlement can continue.",
   "More information is required before settlement can continue.",
-  "Proof rejected. Host reimbursement is held until valid proof is provided.",
-  "Reimbursement is capped at the booking fare cap unless guests approve a higher max.",
-  "Payout held for manual review.",
-  "Payout can be processed.",
+  "Proof rejected. Valid proof is required before settlement can continue.",
+  "Payout is held for manual review.",
+  "Approve this proof?",
+  "This proof will be approved for RidePod settlement rules.",
+  "Reject this proof?",
+  "This proof will be marked rejected. The host must upload valid proof before settlement can continue.",
+  "Hold payout?",
+  "Payout will be held while RidePod reviews this case.",
+  "Request more info?",
+  "The host will need to provide clearer or corrected proof.",
   "Manual evidence review only.",
   "ADMIN_REVIEW_OPENED",
   "ADMIN_PROOF_APPROVED",
   "ADMIN_PROOF_REJECTED",
   "ADMIN_MORE_INFO_REQUESTED",
   "ADMIN_PAYOUT_HELD",
-  "ADMIN_PAYOUT_RELEASED",
-  "ADMIN_REIMBURSEMENT_CAPPED",
-  "ADMIN_DISPUTE_RESOLVED",
 ]) {
   assert.ok(
     `${adminReviewPageSource}\n${adminReviewClientSource}\n${adminReviewQueueSource}`.includes(adminReviewCopy),

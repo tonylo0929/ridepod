@@ -12,6 +12,7 @@ import {
   ShieldAlert,
   X,
 } from "lucide-react";
+import { applyAdminReviewActionForCase } from "@/app/(app)/admin/review/actions";
 import { Badge, cn } from "@/components/ui";
 import {
   adminAuditEventPlaceholders,
@@ -25,6 +26,9 @@ import {
   type AdminReviewSeverity,
 } from "@/lib/admin-review-queue";
 import type { AdminReviewCaseViewModel } from "@/lib/supabase/admin-review-cases";
+
+type AdminReviewAction = "APPROVE_PROOF" | "REQUEST_MORE_INFO" | "REJECT_PROOF" | "HOLD_PAYOUT";
+type ApplyAdminReviewActionResult = Awaited<ReturnType<typeof applyAdminReviewActionForCase>>;
 
 function severityClass(severity: AdminReviewSeverity) {
   if (severity === "Critical") return "bg-[var(--rp-danger-bg)] text-[var(--rp-danger)] ring-[var(--rp-border)]";
@@ -41,6 +45,10 @@ function reviewStateClass(state: string) {
     return "bg-[var(--rp-danger-bg)] text-[var(--rp-danger)] ring-[var(--rp-border)]";
   }
   return "bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-badge-neutral-text)] ring-[var(--rp-border)]";
+}
+
+function isOpenReviewState(state: string) {
+  return !["APPROVED", "REJECTED", "RESOLVED"].includes(state);
 }
 
 function differenceLabel(value?: number, compareTo?: number) {
@@ -73,10 +81,24 @@ export function AdminReviewClient({
     selectedFilter === "All" ? true : reviewCase.filter === selectedFilter,
   );
 
-  const handleDecisionApplied = (caseId: string, decisionKey: AdminDecisionKey) => {
-    const update = getDecisionCaseUpdate(decisionKey);
+  const handleDecisionApplied = async (caseId: string, decisionKey: AdminDecisionKey, adminNotes: string) => {
+    const result = await applyAdminReviewActionForCase({
+      caseId,
+      action: adminActionForDecision(decisionKey),
+      adminNotes,
+    });
+
+    if (!result.ok) {
+      return {
+        ok: false,
+        message: result.validationError ?? result.userFacingMessage,
+      };
+    }
+
+    const update = getDecisionCaseUpdate(decisionKey, result);
     setCaseUpdates((current) => ({ ...current, [caseId]: { ...current[caseId], ...update } }));
     setSelectedCase((current) => (current?.id === caseId ? { ...current, ...update } : current));
+    return { ok: true, message: result.userFacingMessage };
   };
 
   return (
@@ -98,7 +120,7 @@ export function AdminReviewClient({
           <div className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 py-3 text-right">
             <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">Open cases</p>
             <p className="mt-1 text-3xl font-black text-[var(--rp-primary)]">
-              {cases.filter((reviewCase) => reviewCase.reviewState !== "RESOLVED").length}
+              {cases.filter((reviewCase) => isOpenReviewState(reviewCase.reviewState)).length}
             </p>
           </div>
         </div>
@@ -147,29 +169,57 @@ export function AdminReviewClient({
   );
 }
 
-function getDecisionCaseUpdate(decisionKey: AdminDecisionKey): Partial<AdminReviewCase> {
+function adminActionForDecision(decisionKey: AdminDecisionKey): AdminReviewAction {
+  if (decisionKey === "approveProof") return "APPROVE_PROOF";
+  if (decisionKey === "requestMoreInfo") return "REQUEST_MORE_INFO";
+  if (decisionKey === "rejectProof") return "REJECT_PROOF";
+  return "HOLD_PAYOUT";
+}
+
+function getDecisionCaseUpdate(
+  decisionKey: AdminDecisionKey,
+  result?: ApplyAdminReviewActionResult,
+): Partial<AdminReviewCase> {
+  const reviewState = result?.updatedReviewCase?.review_state as AdminReviewCase["reviewState"] | undefined;
+  const proofStatus = result?.updatedProof?.proof_status as AdminReviewCase["proofStatus"] | undefined;
+  const settlementHeld =
+    result?.updatedSettlement?.settlement_state === "ADMIN_REVIEW" ||
+    result?.updatedSettlement?.settlement_state === "DISPUTE_HOLD";
+
   if (decisionKey === "approveProof") {
-    return { reviewState: "APPROVED", proofStatus: "VERIFIED", statusLabel: "Proof approved" };
+    return {
+      reviewState: reviewState ?? "APPROVED",
+      proofStatus: proofStatus ?? "VERIFIED",
+      filter: "Resolved",
+      primaryAction: "View resolution",
+      statusLabel: "Proof approved",
+    };
   }
   if (decisionKey === "requestMoreInfo") {
-    return { reviewState: "NEEDS_MORE_INFO", proofStatus: "NEEDS_MORE_INFO", statusLabel: "Needs more info" };
+    return {
+      reviewState: reviewState ?? "NEEDS_MORE_INFO",
+      proofStatus: proofStatus ?? "NEEDS_MORE_INFO",
+      statusLabel: "Needs more info",
+    };
   }
   if (decisionKey === "rejectProof") {
-    return { reviewState: "REJECTED", proofStatus: "REJECTED", payoutStatus: "HELD_FOR_REVIEW", statusLabel: "Proof rejected" };
-  }
-  if (decisionKey === "capReimbursement") {
-    return { reviewState: "UNDER_REVIEW", payoutStatus: "HELD_FOR_REVIEW", statusLabel: "Capped at fare cap" };
+    return {
+      reviewState: reviewState ?? "REJECTED",
+      proofStatus: proofStatus ?? "REJECTED",
+      payoutStatus: "HELD_FOR_REVIEW",
+      filter: "Resolved",
+      primaryAction: "View resolution",
+      statusLabel: "Proof rejected",
+    };
   }
   if (decisionKey === "holdPayout") {
-    return { reviewState: "UNDER_REVIEW", payoutStatus: "HELD_FOR_REVIEW", statusLabel: "Payout held" };
+    return {
+      reviewState: reviewState ?? "UNDER_REVIEW",
+      payoutStatus: settlementHeld ? "HELD_FOR_REVIEW" : "HELD_FOR_REVIEW",
+      statusLabel: "Payout held",
+    };
   }
-  if (decisionKey === "releasePayout") {
-    return { reviewState: "APPROVED", payoutStatus: "RELEASED", statusLabel: "Payout released" };
-  }
-  if (decisionKey === "resolveDispute") {
-    return { reviewState: "RESOLVED", disputeStatus: "Resolved", statusLabel: "Dispute resolved" };
-  }
-  return { reviewState: "UNDER_REVIEW", statusLabel: "Account follow-up recorded" };
+  return { reviewState: reviewState ?? "UNDER_REVIEW", statusLabel: "Manual review" };
 }
 
 function ReviewCaseCard({ reviewCase, onOpen }: { reviewCase: AdminReviewCase; onOpen: () => void }) {
@@ -234,10 +284,18 @@ function ReviewCaseModal({
 }: {
   reviewCase: AdminReviewCase;
   onClose: () => void;
-  onDecisionApplied: (caseId: string, decisionKey: AdminDecisionKey) => void;
+  onDecisionApplied: (
+    caseId: string,
+    decisionKey: AdminDecisionKey,
+    adminNotes: string,
+  ) => Promise<{ ok: boolean; message: string }>;
 }) {
   const [adminNotes, setAdminNotes] = useState("");
   const [decision, setDecision] = useState<AdminDecisionKey | null>(null);
+  const [confirmationDecision, setConfirmationDecision] = useState<AdminDecisionKey | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const selectedDecision = adminDecisionLabels.find((item) => item.key === decision);
   const notesRequired = Boolean(selectedDecision?.requiresNotes);
   const notesMissing = notesRequired && !adminNotes.trim();
@@ -246,10 +304,31 @@ function ReviewCaseModal({
     const config = adminDecisionLabels.find((item) => item.key === nextDecision);
     if (config?.requiresNotes && !adminNotes.trim()) {
       setDecision(nextDecision);
+      setActionMessage(null);
+      setActionError(null);
       return;
     }
     setDecision(nextDecision);
-    onDecisionApplied(reviewCase.id, nextDecision);
+    setActionMessage(null);
+    setActionError(null);
+    setConfirmationDecision(nextDecision);
+  };
+
+  const confirmDecision = async () => {
+    if (!confirmationDecision) return;
+    setIsSubmitting(true);
+    setActionError(null);
+
+    const result = await onDecisionApplied(reviewCase.id, confirmationDecision, adminNotes);
+    setIsSubmitting(false);
+    setConfirmationDecision(null);
+
+    if (!result.ok) {
+      setActionError(result.message);
+      return;
+    }
+
+    setActionMessage(result.message);
   };
 
   return (
@@ -361,12 +440,12 @@ function ReviewCaseModal({
                   value={adminNotes}
                   onChange={(event) => setAdminNotes(event.target.value)}
                   className="min-h-28 rounded-[16px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 py-3 text-sm font-bold text-[var(--rp-text)]"
-                  placeholder="Add review notes for audit trail."
+                  placeholder="Add notes for the audit trail."
                 />
               </label>
               {notesMissing ? (
                 <p className="mt-2 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-warning)]">
-                  Admin notes are required for this decision.
+                  Admin notes are required for this action.
                 </p>
               ) : null}
               {decision && !notesMissing ? (
@@ -379,8 +458,18 @@ function ReviewCaseModal({
                   </div>
                 </div>
               ) : null}
+              {actionError ? (
+                <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-danger-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-danger)]">
+                  {actionError}
+                </p>
+              ) : null}
+              {actionMessage ? (
+                <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-success-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-badge-success-text)]">
+                  {actionMessage}
+                </p>
+              ) : null}
               <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-                Admin actions are handled in the next slice.
+                Admin actions update proof, review, ride, and settlement hold state only. Real payouts are handled later.
               </p>
             </DetailSection>
 
@@ -400,6 +489,98 @@ function ReviewCaseModal({
               </p>
             </DetailSection>
           </aside>
+        </div>
+        {confirmationDecision ? (
+          <AdminDecisionConfirmation
+            decision={confirmationDecision}
+            disabled={isSubmitting}
+            onCancel={() => setConfirmationDecision(null)}
+            onConfirm={confirmDecision}
+          />
+        ) : null}
+      </section>
+    </div>
+  );
+}
+
+const confirmationCopy: Record<AdminDecisionKey, { title: string; body: string; confirm: string }> = {
+  approveProof: {
+    title: "Approve this proof?",
+    body: "This proof will be approved for RidePod settlement rules.",
+    confirm: "Approve proof",
+  },
+  requestMoreInfo: {
+    title: "Request more info?",
+    body: "The host will need to provide clearer or corrected proof.",
+    confirm: "Request more info",
+  },
+  rejectProof: {
+    title: "Reject this proof?",
+    body: "This proof will be marked rejected. The host must upload valid proof before settlement can continue.",
+    confirm: "Reject proof",
+  },
+  holdPayout: {
+    title: "Hold payout?",
+    body: "Payout will be held while RidePod reviews this case.",
+    confirm: "Hold payout",
+  },
+  capReimbursement: {
+    title: "Hold payout?",
+    body: "Payout will be held while RidePod reviews this case.",
+    confirm: "Hold payout",
+  },
+  releasePayout: {
+    title: "Hold payout?",
+    body: "Payout will be held while RidePod reviews this case.",
+    confirm: "Hold payout",
+  },
+  resolveDispute: {
+    title: "Request more info?",
+    body: "The host will need to provide clearer or corrected proof.",
+    confirm: "Request more info",
+  },
+  restrictAccount: {
+    title: "Hold payout?",
+    body: "Payout will be held while RidePod reviews this case.",
+    confirm: "Hold payout",
+  },
+};
+
+function AdminDecisionConfirmation({
+  decision,
+  disabled,
+  onCancel,
+  onConfirm,
+}: {
+  decision: AdminDecisionKey;
+  disabled: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const copy = confirmationCopy[decision];
+
+  return (
+    <div className="fixed inset-0 z-[100] grid place-items-center bg-[rgba(3,7,18,0.62)] px-4 backdrop-blur-sm">
+      <section className="w-full max-w-md rounded-[24px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
+        <h3 className="text-xl font-black text-[var(--rp-text)]">{copy.title}</h3>
+        <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{copy.body}</p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={disabled}
+            className="min-h-12 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-text)] disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={disabled}
+            className="min-h-12 rounded-[16px] bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] disabled:opacity-60"
+          >
+            {disabled ? "Applying..." : copy.confirm}
+          </button>
         </div>
       </section>
     </div>

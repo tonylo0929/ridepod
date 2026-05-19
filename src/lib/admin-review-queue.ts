@@ -47,11 +47,11 @@ export type AdminReviewCase = {
 };
 
 export const adminReviewDecisionCopy = {
-  approveProof: "Proof approved for settlement. Settlement can continue.",
+  approveProof: "Proof approved. Settlement can continue.",
   requestMoreInfo: "More information is required before settlement can continue.",
-  rejectProof: "Proof rejected. Host reimbursement is held until valid proof is provided.",
+  rejectProof: "Proof rejected. Valid proof is required before settlement can continue.",
   capReimbursement: "Reimbursement is capped at the booking fare cap unless guests approve a higher max.",
-  holdPayout: "Payout held for manual review.",
+  holdPayout: "Payout is held for manual review.",
   releasePayout: "Payout can be processed.",
   resolveDispute: "Dispute marked resolved. Settlement can continue according to the admin decision.",
   restrictAccount: "Account restriction placeholder recorded for manual follow-up.",
@@ -61,13 +61,9 @@ export type AdminDecisionKey = keyof typeof adminReviewDecisionCopy;
 
 export const adminDecisionLabels: Array<{ key: AdminDecisionKey; label: string; requiresNotes: boolean }> = [
   { key: "approveProof", label: "Approve proof", requiresNotes: false },
-  { key: "requestMoreInfo", label: "Request more info", requiresNotes: false },
+  { key: "requestMoreInfo", label: "Request more info", requiresNotes: true },
   { key: "rejectProof", label: "Reject proof", requiresNotes: true },
-  { key: "capReimbursement", label: "Cap reimbursement at approved max", requiresNotes: true },
   { key: "holdPayout", label: "Hold payout", requiresNotes: true },
-  { key: "releasePayout", label: "Release payout", requiresNotes: false },
-  { key: "resolveDispute", label: "Resolve dispute", requiresNotes: true },
-  { key: "restrictAccount", label: "Suspend / restrict account placeholder", requiresNotes: false },
 ];
 
 export const adminReviewFilters: AdminReviewFilter[] = ["All", "Proof", "Above cap", "Disputes", "Payout holds", "Resolved"];
