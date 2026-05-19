@@ -116,9 +116,29 @@ export type CanReplaceProofResult = {
   ctaLabel?: string;
 };
 
+export type CurrentProofSelectionInput = {
+  id?: string | null;
+  proofType?: RideInstanceProofMetadataInput["proofType"] | string | null;
+  proofStatus?: ReplaceableProofStatus | string | null;
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+  isCurrent?: boolean | null;
+  supersededAt?: string | null;
+  supersededByProofId?: string | null;
+};
+
 const activeProofStatuses = new Set(["SUBMITTED", "UNDER_REVIEW", "VERIFIED"]);
 const proofResubmissionAllowedStatuses = new Set(["NEEDED", "NEEDS_MORE_INFO", "REJECTED"]);
 const openAdminReviewStates = ["OPEN", "UNDER_REVIEW", "NEEDS_MORE_INFO"];
+const proofStatusPriority = new Map<string, number>([
+  ["VERIFIED", 7],
+  ["UNDER_REVIEW", 6],
+  ["SUBMITTED", 5],
+  ["NEEDS_MORE_INFO", 4],
+  ["REJECTED", 3],
+  ["FRAUD_SUSPECTED", 2],
+  ["NEEDED", 1],
+]);
 
 class ProofMetadataSubmitError extends Error {}
 
@@ -246,6 +266,71 @@ export function canReplaceProof(proof?: CanReplaceProofInput | null): CanReplace
         reason: "Proof status is unknown.",
       };
   }
+}
+
+function proofTimestampValue(proof: CurrentProofSelectionInput) {
+  const timestamp = proof.submittedAt || proof.reviewedAt;
+  if (!timestamp) return null;
+
+  const value = Date.parse(timestamp);
+  return Number.isFinite(value) ? value : null;
+}
+
+export function getCurrentProofForRideInstance<TProof extends CurrentProofSelectionInput>(
+  proofs: readonly TProof[],
+  proofType: RideInstanceProofMetadataInput["proofType"],
+): TProof | null {
+  const matchingProofs = proofs.filter((proof) => proof.proofType === proofType);
+  if (matchingProofs.length === 0) return null;
+
+  const currentProofs = matchingProofs.filter((proof) => proof.isCurrent === true);
+  if (currentProofs.length > 0) {
+    // TODO: enforce a single current proof in schema once proof versioning lands.
+    return chooseLatestStableProof(currentProofs);
+  }
+
+  const unsupersededProofs = matchingProofs.filter((proof) => !proof.supersededAt);
+  const candidateProofs = unsupersededProofs.length > 0 ? unsupersededProofs : matchingProofs;
+  const realProofs = candidateProofs.filter((proof) => proof.proofStatus !== "NEEDED");
+
+  return chooseHighestPriorityProof(realProofs.length > 0 ? realProofs : candidateProofs);
+}
+
+function chooseLatestStableProof<TProof extends CurrentProofSelectionInput>(proofs: readonly TProof[]) {
+  return proofs.reduce<TProof | null>((selectedProof, proof) => {
+    if (!selectedProof) return proof;
+
+    const selectedTimestamp = proofTimestampValue(selectedProof);
+    const proofTimestamp = proofTimestampValue(proof);
+
+    if (proofTimestamp === null && selectedTimestamp === null) return proof;
+    if (proofTimestamp === null) return selectedProof;
+    if (selectedTimestamp === null) return proof;
+
+    return proofTimestamp >= selectedTimestamp ? proof : selectedProof;
+  }, null);
+}
+
+function chooseHighestPriorityProof<TProof extends CurrentProofSelectionInput>(proofs: readonly TProof[]) {
+  return proofs.reduce<TProof | null>((selectedProof, proof) => {
+    if (!selectedProof) return proof;
+
+    const selectedPriority = proofStatusPriority.get(selectedProof.proofStatus || "") ?? 0;
+    const proofPriority = proofStatusPriority.get(proof.proofStatus || "") ?? 0;
+
+    if (proofPriority !== selectedPriority) {
+      return proofPriority > selectedPriority ? proof : selectedProof;
+    }
+
+    const selectedTimestamp = proofTimestampValue(selectedProof);
+    const proofTimestamp = proofTimestampValue(proof);
+
+    if (proofTimestamp === null && selectedTimestamp === null) return proof;
+    if (proofTimestamp === null) return selectedProof;
+    if (selectedTimestamp === null) return proof;
+
+    return proofTimestamp >= selectedTimestamp ? proof : selectedProof;
+  }, null);
 }
 
 function createMockProof(input: RideInstanceProofMetadataInput): RidePodProofRow {

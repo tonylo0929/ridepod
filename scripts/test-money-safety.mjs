@@ -1362,6 +1362,84 @@ assert.deepEqual(supabaseProofMetadata.canReplaceProof({ proofStatus: "SOMETHING
   canReplace: false,
   reason: "Proof status is unknown.",
 });
+assert.equal(supabaseProofMetadata.getCurrentProofForRideInstance([], "FINAL_RECEIPT"), null);
+assert.equal(
+  supabaseProofMetadata.getCurrentProofForRideInstance(
+    [
+      { id: "quote-1", proofType: "QUOTE_SCREENSHOT", proofStatus: "SUBMITTED", submittedAt: "2026-05-19T08:00:00Z" },
+      { id: "receipt-1", proofType: "FINAL_RECEIPT", proofStatus: "SUBMITTED", submittedAt: "2026-05-19T09:00:00Z" },
+    ],
+    "FINAL_RECEIPT",
+  )?.id,
+  "receipt-1",
+);
+assert.equal(
+  supabaseProofMetadata.getCurrentProofForRideInstance(
+    [
+      { id: "receipt-old-current", proofType: "FINAL_RECEIPT", proofStatus: "SUBMITTED", isCurrent: true, submittedAt: "2026-05-19T08:00:00Z" },
+      { id: "receipt-new-current", proofType: "FINAL_RECEIPT", proofStatus: "REJECTED", isCurrent: true, submittedAt: "2026-05-19T09:00:00Z" },
+    ],
+    "FINAL_RECEIPT",
+  )?.id,
+  "receipt-new-current",
+);
+assert.equal(
+  supabaseProofMetadata.getCurrentProofForRideInstance(
+    [
+      { id: "receipt-superseded", proofType: "FINAL_RECEIPT", proofStatus: "VERIFIED", supersededAt: "2026-05-19T10:00:00Z", submittedAt: "2026-05-19T08:00:00Z" },
+      { id: "receipt-active", proofType: "FINAL_RECEIPT", proofStatus: "SUBMITTED", submittedAt: "2026-05-19T09:00:00Z" },
+    ],
+    "FINAL_RECEIPT",
+  )?.id,
+  "receipt-active",
+);
+assert.equal(
+  supabaseProofMetadata.getCurrentProofForRideInstance(
+    [
+      { id: "receipt-submitted", proofType: "FINAL_RECEIPT", proofStatus: "SUBMITTED", submittedAt: "2026-05-19T10:00:00Z" },
+      { id: "receipt-verified", proofType: "FINAL_RECEIPT", proofStatus: "VERIFIED", submittedAt: "2026-05-19T08:00:00Z" },
+    ],
+    "FINAL_RECEIPT",
+  )?.id,
+  "receipt-verified",
+);
+assert.equal(
+  supabaseProofMetadata.getCurrentProofForRideInstance(
+    [
+      { id: "quote-submitted", proofType: "QUOTE_SCREENSHOT", proofStatus: "SUBMITTED", submittedAt: "2026-05-19T10:00:00Z" },
+      { id: "quote-under-review", proofType: "QUOTE_SCREENSHOT", proofStatus: "UNDER_REVIEW", submittedAt: "2026-05-19T08:00:00Z" },
+    ],
+    "QUOTE_SCREENSHOT",
+  )?.id,
+  "quote-under-review",
+);
+assert.equal(
+  supabaseProofMetadata.getCurrentProofForRideInstance(
+    [
+      { id: "meter-old", proofType: "METER_PROOF", proofStatus: "SUBMITTED", submittedAt: "2026-05-19T08:00:00Z" },
+      { id: "meter-new", proofType: "METER_PROOF", proofStatus: "SUBMITTED", submittedAt: "2026-05-19T09:00:00Z" },
+    ],
+    "METER_PROOF",
+  )?.id,
+  "meter-new",
+);
+assert.equal(
+  supabaseProofMetadata.getCurrentProofForRideInstance(
+    [
+      { id: "receipt-needed", proofType: "FINAL_RECEIPT", proofStatus: "NEEDED", submittedAt: "2026-05-19T10:00:00Z" },
+      { id: "receipt-rejected", proofType: "FINAL_RECEIPT", proofStatus: "REJECTED", submittedAt: "2026-05-19T08:00:00Z" },
+    ],
+    "FINAL_RECEIPT",
+  )?.id,
+  "receipt-rejected",
+);
+const originalProofSelectionInput = [
+  { id: "stable-1", proofType: "FINAL_RECEIPT", proofStatus: "SUBMITTED", submittedAt: "2026-05-19T08:00:00Z" },
+  { id: "stable-2", proofType: "FINAL_RECEIPT", proofStatus: "SUBMITTED", submittedAt: "2026-05-19T09:00:00Z" },
+];
+const originalProofSelectionSnapshot = JSON.stringify(originalProofSelectionInput);
+supabaseProofMetadata.getCurrentProofForRideInstance(originalProofSelectionInput, "FINAL_RECEIPT");
+assert.equal(JSON.stringify(originalProofSelectionInput), originalProofSelectionSnapshot);
 assert.ok(recurringInstanceProofFlowSource.includes("submitRideInstanceProofMetadata"));
 assert.ok(recurringInstanceProofFlowSource.includes("uploadProofFile"));
 assert.ok(recurringInstanceProofFlowSource.includes("fileUrl: uploadResult.fileUrl"));
