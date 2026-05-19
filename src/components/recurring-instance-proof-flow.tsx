@@ -30,6 +30,7 @@ import {
   type RidePod,
 } from "@/lib/mock-data";
 import {
+  canReplaceProof,
   submitRideInstanceProofMetadata,
   type RideInstanceProofMetadataInput,
 } from "@/lib/supabase/proof-metadata";
@@ -84,17 +85,6 @@ function getStatusLabel(rideInstance: RecurringRideInstancePreview, taxiMeter: b
   return "Guests locking";
 }
 
-const receiptStatusCopy = {
-  NEEDED: "We'll review your receipt and update the status. Host reimbursement is held until review is complete.",
-  SUBMITTED: "Receipt submitted. RidePod will review it before settlement.",
-  UNDER_REVIEW: "Receipt under review. Host reimbursement is held until review is complete.",
-  VERIFIED: "Receipt verified. Settlement can continue.",
-  APPROVED: "Receipt verified. Settlement can continue.",
-  NEEDS_MORE_INFO: "Please upload a clearer receipt showing the final fare, date, time, and provider.",
-  REJECTED: "Receipt rejected. Settlement requires valid proof.",
-  NOT_REQUIRED: "We'll review your receipt and update the status. Host reimbursement is held until review is complete.",
-} as const;
-
 const receiptBadgeLabels = {
   NEEDED: "Receipt needed",
   SUBMITTED: "Receipt submitted",
@@ -104,17 +94,6 @@ const receiptBadgeLabels = {
   NEEDS_MORE_INFO: "Needs more info",
   REJECTED: "Rejected",
   NOT_REQUIRED: "Receipt needed",
-} as const;
-
-const meterProofStatusCopy = {
-  NEEDED: "Meter proof or taxi receipt is required after the ride.",
-  SUBMITTED: "Meter proof submitted. RidePod will review it before settlement.",
-  UNDER_REVIEW: "Meter proof under review. Host reimbursement is held until review is complete.",
-  VERIFIED: "Meter proof verified. Settlement can continue.",
-  APPROVED: "Meter proof verified. Settlement can continue.",
-  NEEDS_MORE_INFO: "Please upload a clearer meter photo or taxi receipt showing the final fare.",
-  REJECTED: "Meter proof rejected. Settlement requires valid proof.",
-  NOT_REQUIRED: "Meter proof or taxi receipt is required after the ride.",
 } as const;
 
 const meterProofBadgeLabels = {
@@ -151,6 +130,20 @@ function getLocalRideStatusAfterProofSubmit(
   return "receipt_under_review";
 }
 
+function normalizeProofStatusForReplacement(proofStatus: RideInstanceProofStatus | "NOT_REQUIRED") {
+  if (proofStatus === "APPROVED") return "VERIFIED";
+  if (proofStatus === "NOT_REQUIRED") return "NEEDED";
+  return proofStatus;
+}
+
+function getProofReplacementUi(proofStatus: RideInstanceProofStatus | "NOT_REQUIRED") {
+  const result = canReplaceProof({ proofStatus: normalizeProofStatusForReplacement(proofStatus) });
+  return {
+    ...result,
+    reason: result.reason === "Proof already verified." ? "Proof verified." : result.reason,
+  };
+}
+
 const receiptStatusSteps = [
   { id: "NEEDED", label: "Receipt needed" },
   { id: "SUBMITTED", label: "Submitted" },
@@ -173,12 +166,14 @@ function ProofResultCard({
   title,
   body,
   action,
+  onAction,
   preview,
   tone = "neutral",
 }: {
   title: string;
   body: string;
   action?: string;
+  onAction?: () => void;
   preview?: ReactNode;
   tone?: "neutral" | "success" | "warning";
 }) {
@@ -199,6 +194,7 @@ function ProofResultCard({
           {action ? (
             <button
               type="button"
+              onClick={onAction}
               className="mt-4 inline-flex min-h-11 items-center justify-center rounded-[14px] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]"
               style={{ background: "var(--rp-gradient-primary)" }}
             >
@@ -800,6 +796,7 @@ export function RecurringInstanceProofFlow({
   const receiptFareCents = receiptFare.trim() ? centsFromInput(receiptFare) : null;
   const meterFareCents = meterFare.trim() ? centsFromInput(meterFare) : null;
   const proofStatus = localProofStatus ?? rideInstance.proofStatus ?? "NEEDED";
+  const replacementUi = getProofReplacementUi(proofStatus);
   const receiptAboveCap = receiptFareCents !== null && receiptFareCents > bookingFareCapCents;
   const meterAboveCap = meterFareCents !== null && meterFareCents > bookingFareCapCents;
   const quoteResult = useMemo(() => {
@@ -892,6 +889,14 @@ export function RecurringInstanceProofFlow({
     return selectedProofFiles[proofType]?.name;
   }
 
+  function focusProofUploadForm(proofType: ProofUploadType) {
+    // TODO SQL-2O-E: submit replacement uploads through replaceRideInstanceProofMetadata.
+    const uploadForm = document.getElementById(`proof-upload-${proofType}`);
+    uploadForm?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const focusTarget = uploadForm?.querySelector("input, textarea, button");
+    if (focusTarget instanceof HTMLElement) focusTarget.focus();
+  }
+
   function getHostProofPreview(proofType: ProofUploadType): HostProofPreview | null {
     const localPreview = localProofPreviews[proofType];
     if (localPreview) return localPreview;
@@ -924,7 +929,6 @@ export function RecurringInstanceProofFlow({
   if (receiptFlow) {
     const activeReceiptStatus =
       proofStatus === "APPROVED" || proofStatus === "VERIFIED" ? "VERIFIED" : proofStatus;
-    const statusBody = receiptStatusCopy[proofStatus];
 
     return (
       <section className="overflow-hidden rounded-[30px] border border-[var(--rp-border-strong)] bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--rp-primary)_12%,transparent),transparent_36%),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)] sm:p-6">
@@ -992,7 +996,7 @@ export function RecurringInstanceProofFlow({
           </div>
         </div>
 
-        <div className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
+        <div id="proof-upload-FINAL_RECEIPT" className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
           <h3 className="text-xl font-black text-[var(--rp-text)]">Upload final receipt</h3>
           <p className="mt-1 text-sm font-semibold text-[var(--rp-muted-strong)]">PNG, JPG or PDF {"\u00b7"} Max 10MB</p>
 
@@ -1091,7 +1095,7 @@ export function RecurringInstanceProofFlow({
           </button>
         </div>
 
-        <div className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
+        <div id="proof-upload-METER_PROOF" className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 sm:p-5">
           <h3 className="text-lg font-black text-[var(--rp-text)]">Receipt status</h3>
           <div className="mt-4 grid grid-cols-2 gap-3 min-[720px]:grid-cols-6">
             {receiptStatusSteps.map((step) => {
@@ -1115,8 +1119,18 @@ export function RecurringInstanceProofFlow({
               );
             })}
           </div>
-          <p className="mt-5 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{statusBody}</p>
+          <p className="mt-5 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{replacementUi.reason}</p>
           <div className="mt-4">{renderHostProofPreview("FINAL_RECEIPT")}</div>
+          {replacementUi.canReplace && replacementUi.ctaLabel ? (
+            <button
+              type="button"
+              onClick={() => focusProofUploadForm("FINAL_RECEIPT")}
+              className="mt-4 inline-flex min-h-11 items-center justify-center rounded-[14px] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]"
+              style={{ background: "var(--rp-gradient-primary)" }}
+            >
+              {replacementUi.ctaLabel}
+            </button>
+          ) : null}
         </div>
       </section>
     );
@@ -1129,7 +1143,6 @@ export function RecurringInstanceProofFlow({
         : proofStatus === "NOT_REQUIRED"
           ? "NEEDED"
           : proofStatus;
-    const statusBody = meterProofStatusCopy[proofStatus];
 
     return (
       <section className="overflow-hidden rounded-[30px] border border-[var(--rp-border-strong)] bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--rp-primary)_12%,transparent),transparent_36%),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)] sm:p-6">
@@ -1307,8 +1320,18 @@ export function RecurringInstanceProofFlow({
               );
             })}
           </div>
-          <p className="mt-5 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{statusBody}</p>
+          <p className="mt-5 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{replacementUi.reason}</p>
           <div className="mt-4">{renderHostProofPreview("METER_PROOF")}</div>
+          {replacementUi.canReplace && replacementUi.ctaLabel ? (
+            <button
+              type="button"
+              onClick={() => focusProofUploadForm("METER_PROOF")}
+              className="mt-4 inline-flex min-h-11 items-center justify-center rounded-[14px] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]"
+              style={{ background: "var(--rp-gradient-primary)" }}
+            >
+              {replacementUi.ctaLabel}
+            </button>
+          ) : null}
         </div>
       </section>
     );
@@ -1372,7 +1395,7 @@ export function RecurringInstanceProofFlow({
       <div className="grid gap-4 p-5 sm:p-6">
         {receiptFlow ? (
           <>
-            <div className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+            <div id="proof-upload-FINAL_RECEIPT" className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
               <h3 className="text-lg font-black text-[var(--rp-text)]">Upload final receipt</h3>
               <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
                 Upload the final receipt for this ride. Final settlement uses the verified receipt.
@@ -1450,7 +1473,9 @@ export function RecurringInstanceProofFlow({
             </div>
             <ProofResultCard
               title={getStatusLabel(effectiveRideInstance, taxiMeter)}
-              body={receiptStatusCopy[proofStatus]}
+              body={replacementUi.reason}
+              action={replacementUi.canReplace ? replacementUi.ctaLabel : undefined}
+              onAction={() => focusProofUploadForm("FINAL_RECEIPT")}
               preview={renderHostProofPreview("FINAL_RECEIPT")}
               tone={proofStatus === "VERIFIED" || proofStatus === "APPROVED" ? "success" : proofStatus === "REJECTED" ? "warning" : "neutral"}
             />
@@ -1468,7 +1493,7 @@ export function RecurringInstanceProofFlow({
             effectiveRideInstance.status === "meter_proof_submitted" ||
             effectiveRideInstance.status === "meter_proof_under_review" ||
             effectiveRideInstance.status === "settlement_ready" ? (
-              <div className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+              <div id="proof-upload-METER_PROOF" className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
                 <h3 className="text-lg font-black text-[var(--rp-text)]">Upload meter proof</h3>
                 <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
                   Upload a clear meter photo or taxi receipt showing the final fare.
@@ -1531,7 +1556,9 @@ export function RecurringInstanceProofFlow({
             )}
             <ProofResultCard
               title={getStatusLabel(effectiveRideInstance, taxiMeter)}
-              body={meterProofStatusCopy[proofStatus]}
+              body={replacementUi.reason}
+              action={replacementUi.canReplace ? replacementUi.ctaLabel : undefined}
+              onAction={() => focusProofUploadForm("METER_PROOF")}
               preview={renderHostProofPreview("METER_PROOF")}
               tone={proofStatus === "VERIFIED" || proofStatus === "APPROVED" ? "success" : proofStatus === "REJECTED" ? "warning" : "neutral"}
             />
@@ -1545,7 +1572,7 @@ export function RecurringInstanceProofFlow({
           </>
         ) : (
           <>
-            <div className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+            <div id="proof-upload-QUOTE_SCREENSHOT" className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
               <h3 className="text-lg font-black text-[var(--rp-text)]">Upload fresh quote</h3>
               <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
                 Upload a quote or fare screenshot for this ride before booking.
@@ -1618,27 +1645,31 @@ export function RecurringInstanceProofFlow({
             {quoteResult === "submitted" ? (
               <ProofResultCard
                 title="Quote submitted"
-                body="Quote submitted. RidePod will review it before booking."
+                body={replacementUi.reason}
                 preview={renderHostProofPreview("QUOTE_SCREENSHOT")}
               />
             ) : quoteResult === "needs_more_info" ? (
               <ProofResultCard
                 title="More quote info needed"
-                body="RidePod needs clearer quote proof before this ride can be protected."
+                body={replacementUi.reason}
+                action={replacementUi.canReplace ? replacementUi.ctaLabel : undefined}
+                onAction={() => focusProofUploadForm("QUOTE_SCREENSHOT")}
                 preview={renderHostProofPreview("QUOTE_SCREENSHOT")}
                 tone="warning"
               />
             ) : quoteResult === "rejected" ? (
               <ProofResultCard
                 title="Quote rejected"
-                body="Upload valid quote proof before booking this ride."
+                body={replacementUi.reason}
+                action={replacementUi.canReplace ? replacementUi.ctaLabel : undefined}
+                onAction={() => focusProofUploadForm("QUOTE_SCREENSHOT")}
                 preview={renderHostProofPreview("QUOTE_SCREENSHOT")}
                 tone="warning"
               />
             ) : quoteResult === "approved" ? (
               <ProofResultCard
                 title="Quote approved"
-                body="The quote is within the booking fare cap. You may book the external ride."
+                body={replacementUi.reason}
                 action="Mark ride as booked"
                 preview={renderHostProofPreview("QUOTE_SCREENSHOT")}
                 tone="success"
@@ -1654,7 +1685,9 @@ export function RecurringInstanceProofFlow({
             ) : (
               <ProofResultCard
                 title="Quote needed"
-                body="Fresh quote required before booking this ride."
+                body={replacementUi.reason}
+                action={replacementUi.canReplace ? replacementUi.ctaLabel : undefined}
+                onAction={() => focusProofUploadForm("QUOTE_SCREENSHOT")}
               />
             )}
           </>

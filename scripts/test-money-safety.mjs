@@ -1498,6 +1498,20 @@ await assert.rejects(
   /fileUrl or storagePath is required\./,
 );
 assert.ok(recurringInstanceProofFlowSource.includes("submitRideInstanceProofMetadata"));
+assert.ok(recurringInstanceProofFlowSource.includes("canReplaceProof"));
+assert.ok(recurringInstanceProofFlowSource.includes("getProofReplacementUi"));
+assert.ok(recurringInstanceProofFlowSource.includes("focusProofUploadForm"));
+assert.ok(supabaseProofMetadataSource.includes("Upload replacement proof"));
+assert.ok(supabaseProofMetadataSource.includes("Upload new proof"));
+assert.ok(supabaseProofMetadataSource.includes("Proof already submitted."));
+assert.ok(supabaseProofMetadataSource.includes("Proof is under review."));
+assert.ok(recurringInstanceProofFlowSource.includes("Proof verified."));
+assert.ok(supabaseProofMetadataSource.includes("Proof is under admin review."));
+assert.ok(supabaseProofMetadataSource.includes("Proof status is unknown."));
+assert.ok(recurringInstanceProofFlowSource.includes("proof-upload-QUOTE_SCREENSHOT"));
+assert.ok(recurringInstanceProofFlowSource.includes("proof-upload-FINAL_RECEIPT"));
+assert.ok(recurringInstanceProofFlowSource.includes("proof-upload-METER_PROOF"));
+assert.ok(recurringInstanceProofFlowSource.includes("TODO SQL-2O-E"));
 assert.ok(recurringInstanceProofFlowSource.includes("uploadProofFile"));
 assert.ok(recurringInstanceProofFlowSource.includes("fileUrl: uploadResult.fileUrl"));
 assert.ok(recurringInstanceProofFlowSource.includes("fileName: uploadResult.fileName"));
@@ -1596,18 +1610,16 @@ for (const recurringInstanceCopy of [
   "False or misleading proof may lead to booking denial, reimbursement denial, account suspension, and manual review.",
   "Submit quote",
   "Quote approved",
-  "The quote is within the booking fare cap. You may book the external ride.",
+  "Proof verified.",
   "Quote above booking fare cap",
   "Guests must approve a higher max before this ride can be RidePod-protected.",
   "Request higher max approval",
-  "Fresh quote required before booking this ride.",
   "This ride instance has its own proof, booking, final receipt, and settlement.",
   "Upload final receipt",
   "Tap to upload or drag and drop",
   "Provider / service",
   "Final fare (HKD)",
   "Receipt status",
-  "We'll review your receipt and update the status. Host reimbursement is held until review is complete.",
   "False or misleading proof may lead to review, reimbursement denial, or account action.",
   "Upload the final receipt for this ride. Final settlement uses the verified receipt.",
   "Provider name",
@@ -1617,10 +1629,6 @@ for (const recurringInstanceCopy of [
   "False or misleading proof may lead to reimbursement denial, account suspension, dispute review, and manual review.",
   "Submit receipt",
   "Receipt submitted. RidePod will review it before settlement.",
-  "Receipt under review. Host reimbursement is held until review is complete.",
-  "Receipt verified. Settlement can continue.",
-  "Please upload a clearer receipt showing the final fare, date, time, and provider.",
-  "Receipt rejected. Settlement requires valid proof.",
   "Fare above booking fare cap",
   "Guests cannot be charged above their max unless they approve an increase. This receipt may need manual review.",
   "Guests cannot be charged above their max unless they approve an increase. This proof may need manual review.",
@@ -1638,11 +1646,7 @@ for (const recurringInstanceCopy of [
   "Final meter fare",
   "Submit meter proof",
   "I confirm this meter proof or receipt is real, accurate, unaltered, and belongs to this ride.",
-  "Meter proof or taxi receipt is required after the ride.",
   "Meter proof submitted. RidePod will review it before settlement.",
-  "Meter proof verified. Settlement can continue.",
-  "Please upload a clearer meter photo or taxi receipt showing the final fare.",
-  "Meter proof rejected. Settlement requires valid proof.",
   "Settlement timeline",
   "Ride completed",
   "Proof verified",
