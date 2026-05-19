@@ -513,6 +513,7 @@ const mockDataSource = readFileSync("src/lib/mock-data.ts", "utf8");
 const notificationsPageSource = readFileSync("src/app/(app)/notifications/page.tsx", "utf8");
 const rideInstanceNotificationsSource = readFileSync("src/lib/ride-instance-notifications.ts", "utf8");
 const adminReviewPageSource = readFileSync("src/app/(app)/admin/review/page.tsx", "utf8");
+const adminReviewClientSource = readFileSync("src/app/(app)/admin/review/admin-review-client.tsx", "utf8");
 const adminReviewQueueSource = readFileSync("src/lib/admin-review-queue.ts", "utf8");
 const appShellSource = readFileSync("src/components/app-shell.tsx", "utf8");
 const recurringInstanceProofFlowSource = readFileSync("src/components/recurring-instance-proof-flow.tsx", "utf8");
@@ -527,6 +528,7 @@ const supabaseServerSource = readFileSync("src/lib/supabase/server.ts", "utf8");
 const supabaseAdminSource = readFileSync("src/lib/supabase/admin.ts", "utf8");
 const supabaseQueriesSource = readFileSync("src/lib/supabase/queries.ts", "utf8");
 const supabaseProofMetadataSource = readFileSync("src/lib/supabase/proof-metadata.ts", "utf8");
+const supabaseAdminReviewCasesSource = readFileSync("src/lib/supabase/admin-review-cases.ts", "utf8");
 const legalCopySource = [
   "src/app/layout.tsx",
   "src/app/invite/[id]/page.tsx",
@@ -983,6 +985,24 @@ assert.ok(supabaseQueriesSource.includes("getRideInstanceById"));
 assert.ok(supabaseQueriesSource.includes("getProofsForRideInstance"));
 assert.ok(supabaseQueriesSource.includes("getSettlementForRideInstance"));
 assert.ok(supabaseQueriesSource.includes("getAdminReviewCases"));
+assert.ok(supabaseAdminReviewCasesSource.includes("getAdminReviewCases"));
+assert.ok(supabaseAdminReviewCasesSource.includes("getAdminReviewCaseDetail"));
+assert.ok(supabaseAdminReviewCasesSource.includes("mapSupabaseAdminReviewCaseToViewModel"));
+assert.ok(supabaseAdminReviewCasesSource.includes("getAdminReviewCasesWithFallback"));
+assert.ok(supabaseAdminReviewCasesSource.includes(".from(\"admin_review_cases\")"));
+assert.ok(supabaseAdminReviewCasesSource.includes('"ride_instances"'));
+assert.ok(supabaseAdminReviewCasesSource.includes('"pods"'));
+assert.ok(supabaseAdminReviewCasesSource.includes('"proofs"'));
+assert.ok(supabaseAdminReviewCasesSource.includes('"settlements"'));
+assert.ok(supabaseAdminReviewCasesSource.includes("Quote above fare cap"));
+assert.ok(supabaseAdminReviewCasesSource.includes("Receipt above fare cap"));
+assert.ok(supabaseAdminReviewCasesSource.includes("Meter proof above fare cap"));
+assert.ok(supabaseAdminReviewCasesSource.includes('if (severity === "High") return "amber"'));
+assert.ok(supabaseAdminReviewCasesSource.includes('if (severity === "Critical") return "red"'));
+assert.ok(supabaseAdminReviewCasesSource.includes("Supabase admin review read is unavailable; using mock admin review cases."));
+assert.ok(adminReviewPageSource.includes("getAdminReviewCasesWithFallback"));
+assert.ok(adminReviewPageSource.includes("initialCases={reviewCases.cases}"));
+assert.ok(adminReviewClientSource.includes("Admin actions are handled in the next slice."));
 assert.ok(supabaseProofMetadataSource.includes("submitRideInstanceProofMetadata"));
 assert.ok(supabaseProofMetadataSource.includes("Proof certification is required."));
 assert.ok(supabaseProofMetadataSource.includes("amountCents must be greater than zero."));
@@ -1080,11 +1100,11 @@ for (const adminReviewCopy of [
   "ADMIN_DISPUTE_RESOLVED",
 ]) {
   assert.ok(
-    `${adminReviewPageSource}\n${adminReviewQueueSource}`.includes(adminReviewCopy),
+    `${adminReviewPageSource}\n${adminReviewClientSource}\n${adminReviewQueueSource}`.includes(adminReviewCopy),
     `Missing Admin Review copy: ${adminReviewCopy}`,
   );
 }
-assert.equal(`${adminReviewPageSource}\n${adminReviewQueueSource}`.includes("Proof is guaranteed real"), false);
+assert.equal(`${adminReviewPageSource}\n${adminReviewClientSource}\n${adminReviewQueueSource}`.includes("Proof is guaranteed real"), false);
 for (const recurringInstanceCopy of [
   "Ride instance",
   "Upload fresh quote",
