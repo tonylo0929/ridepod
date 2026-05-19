@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { applyAdminReviewActionForCase } from "@/app/(app)/admin/review/actions";
+import { ProofPreviewButton } from "@/components/proof-preview-button";
 import { Badge, cn } from "@/components/ui";
 import {
   adminAuditEventPlaceholders,
@@ -366,11 +367,16 @@ function ReviewCaseModal({
 
             <DetailSection icon={ReceiptText} title="Proof">
               <div className="grid gap-3 md:grid-cols-[180px_1fr]">
-                <div className="grid min-h-40 place-items-center rounded-[18px] border border-dashed border-[var(--rp-primary)] bg-[var(--rp-card-soft)] p-4 text-center">
+                <div className="grid min-h-40 place-items-center rounded-[18px] border border-dashed border-[var(--rp-primary)] bg-[var(--rp-card-soft)] p-4">
                   <div>
                     <FileSearch className="mx-auto h-8 w-8 text-[var(--rp-primary)]" />
-                    <p className="mt-2 text-sm font-black text-[var(--rp-text)]">Uploaded file preview</p>
-                    <p className="mt-1 text-xs font-semibold text-[var(--rp-muted)]">{reviewCase.evidenceLabel ?? "Screenshot / PDF placeholder"}</p>
+                    <p className="mt-2 text-center text-sm font-black text-[var(--rp-text)]">Uploaded file preview</p>
+                    <ProofPreviewButton
+                      className="mt-3"
+                      fileUrlOrStoragePath={reviewCase.fileUrl}
+                      proofType={reviewCase.proofType}
+                      fileName={reviewCase.evidenceLabel}
+                    />
                   </div>
                 </div>
                 <dl className="grid gap-2 sm:grid-cols-2">

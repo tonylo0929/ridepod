@@ -42,6 +42,7 @@ export type AdminReviewCase = {
   disputeIssueType?: string;
   disputeNote?: string;
   evidenceLabel?: string;
+  fileUrl?: string | null;
   statusLabel: string;
   primaryAction: "Review case" | "View resolution";
 };

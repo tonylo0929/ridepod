@@ -254,6 +254,7 @@ export function mapSupabaseAdminReviewCaseToViewModel(
     uploadedQuoteCents: proof?.proof_type === "QUOTE_SCREENSHOT" ? proof.amount_cents ?? undefined : undefined,
     finalProofCents: proof?.proof_type !== "QUOTE_SCREENSHOT" ? proof?.amount_cents ?? undefined : undefined,
     evidenceLabel: proof?.file_url ?? "Proof preview placeholder",
+    fileUrl: proof?.file_url ?? null,
     statusLabel: statusLabel(reviewCase, payoutStatus),
     primaryAction: reviewCase.review_state === "RESOLVED" ? "View resolution" : "Review case",
     primaryActionLabel: reviewCase.review_state === "RESOLVED" ? "View resolution" : "Review case",
