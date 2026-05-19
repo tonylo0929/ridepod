@@ -1280,6 +1280,7 @@ assert.ok(proofPreviewButtonSource.includes("Preview proof"));
 assert.ok(proofPreviewButtonSource.includes("Open PDF"));
 assert.ok(proofPreviewButtonSource.includes("Mock proof preview"));
 assert.ok(proofPreviewButtonSource.includes("No proof file available"));
+assert.ok(proofPreviewButtonSource.includes("Opening…"));
 assert.ok(proofPreviewButtonSource.includes("Couldn't open proof preview. Try again later."));
 assert.ok(proofPreviewButtonSource.includes("window.open(result.signedUrl"));
 assert.ok(proofPreviewButtonSource.includes('"noopener,noreferrer"'));
