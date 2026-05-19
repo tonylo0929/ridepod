@@ -38,6 +38,14 @@ type AdminReviewCaseTypeForProof =
   | "METER_PROOF_ABOVE_CAP"
   | "SUSPICIOUS_PROOF";
 type AdminReviewSeverityForProof = "HIGH" | "CRITICAL";
+type ProofReplacementPolicyReason =
+  | "NO_EXISTING_PROOF"
+  | "PROOF_NEEDS_UPLOAD"
+  | "PROOF_NEEDS_MORE_INFO"
+  | "PROOF_REJECTED"
+  | "ACTIVE_PROOF_EXISTS"
+  | "SUSPICIOUS_PROOF_REVIEW"
+  | "UNKNOWN_PROOF_STATUS";
 
 export type RideInstanceStatusAfterProofSubmitInput = {
   rideInstanceId: string;
@@ -78,10 +86,97 @@ export type AdminReviewCaseForProofResult = {
   failed: boolean;
 };
 
+export type ProofReplacementPolicyResult = {
+  canSubmitProof: boolean;
+  canReplaceProof: boolean;
+  blocksNewSubmission: boolean;
+  reason: ProofReplacementPolicyReason;
+  userFacingMessage: string;
+};
+
 const activeProofStatuses = new Set(["SUBMITTED", "UNDER_REVIEW", "VERIFIED"]);
+const proofResubmissionAllowedStatuses = new Set(["NEEDED", "NEEDS_MORE_INFO", "REJECTED"]);
 const openAdminReviewStates = ["OPEN", "UNDER_REVIEW", "NEEDS_MORE_INFO"];
 
 class ProofMetadataSubmitError extends Error {}
+
+export function getProofReplacementPolicy(
+  existingProof?: Pick<RidePodProofRow, "proof_status"> | null,
+): ProofReplacementPolicyResult {
+  const proofStatus = existingProof?.proof_status ?? null;
+
+  if (!proofStatus) {
+    return {
+      canSubmitProof: true,
+      canReplaceProof: false,
+      blocksNewSubmission: false,
+      reason: "NO_EXISTING_PROOF",
+      userFacingMessage: "No proof has been submitted yet.",
+    };
+  }
+
+  if (proofResubmissionAllowedStatuses.has(proofStatus) && proofStatus === "NEEDED") {
+    return {
+      canSubmitProof: true,
+      canReplaceProof: false,
+      blocksNewSubmission: false,
+      reason: "PROOF_NEEDS_UPLOAD",
+      userFacingMessage: "Proof is needed before this ride can continue.",
+    };
+  }
+
+  if (proofResubmissionAllowedStatuses.has(proofStatus) && proofStatus === "NEEDS_MORE_INFO") {
+    return {
+      canSubmitProof: true,
+      canReplaceProof: true,
+      blocksNewSubmission: false,
+      reason: "PROOF_NEEDS_MORE_INFO",
+      userFacingMessage: "Upload clearer proof so review can continue.",
+    };
+  }
+
+  if (proofResubmissionAllowedStatuses.has(proofStatus) && proofStatus === "REJECTED") {
+    return {
+      canSubmitProof: true,
+      canReplaceProof: true,
+      blocksNewSubmission: false,
+      reason: "PROOF_REJECTED",
+      userFacingMessage: "Upload valid proof before this ride can continue.",
+    };
+  }
+
+  if (activeProofStatuses.has(proofStatus)) {
+    return {
+      canSubmitProof: false,
+      canReplaceProof: false,
+      blocksNewSubmission: true,
+      reason: "ACTIVE_PROOF_EXISTS",
+      userFacingMessage: "Proof already submitted.",
+    };
+  }
+
+  if (proofStatus === "FRAUD_SUSPECTED") {
+    return {
+      canSubmitProof: false,
+      canReplaceProof: false,
+      blocksNewSubmission: true,
+      reason: "SUSPICIOUS_PROOF_REVIEW",
+      userFacingMessage: "Proof needs manual review before another upload can replace it.",
+    };
+  }
+
+  return {
+    canSubmitProof: false,
+    canReplaceProof: false,
+    blocksNewSubmission: true,
+    reason: "UNKNOWN_PROOF_STATUS",
+    userFacingMessage: "Proof status needs review before another upload can replace it.",
+  };
+}
+
+export function canSubmitReplacementProof(existingProof?: Pick<RidePodProofRow, "proof_status"> | null) {
+  return getProofReplacementPolicy(existingProof).canSubmitProof;
+}
 
 function createMockProof(input: RideInstanceProofMetadataInput): RidePodProofRow {
   return {

@@ -1317,6 +1317,14 @@ assert.ok(supabaseProofMetadataSource.includes("PROOF_ABOVE_CAP_REVIEW_CREATED")
 assert.ok(supabaseProofMetadataSource.includes("SUSPICIOUS_PROOF_REVIEW_CREATED"));
 assert.equal(supabaseProofMetadataSource.includes('instance_status: "READY_TO_BOOK"'), false);
 assert.equal(supabaseProofMetadataSource.includes('instance_status: "SETTLEMENT_READY"'), false);
+assert.ok(supabaseProofMetadataSource.includes("getProofReplacementPolicy"));
+assert.ok(supabaseProofMetadataSource.includes("canSubmitReplacementProof"));
+assert.ok(supabaseProofMetadataSource.includes("proofResubmissionAllowedStatuses"));
+assert.ok(supabaseProofMetadataSource.includes('"NEEDS_MORE_INFO"'));
+assert.ok(supabaseProofMetadataSource.includes('"REJECTED"'));
+assert.ok(supabaseProofMetadataSource.includes('"FRAUD_SUSPECTED"'));
+assert.ok(supabaseProofMetadataSource.includes("ACTIVE_PROOF_EXISTS"));
+assert.ok(supabaseProofMetadataSource.includes("SUSPICIOUS_PROOF_REVIEW"));
 assert.ok(recurringInstanceProofFlowSource.includes("submitRideInstanceProofMetadata"));
 assert.ok(recurringInstanceProofFlowSource.includes("uploadProofFile"));
 assert.ok(recurringInstanceProofFlowSource.includes("fileUrl: uploadResult.fileUrl"));
