@@ -44,6 +44,7 @@ export type AdminReviewCase = {
   evidenceLabel?: string;
   fileUrl?: string | null;
   evidenceTimeline?: AdminEvidenceTimelineItem[];
+  disputeEvidenceTimeline?: AdminDisputeEvidenceTimelineItem[];
   statusLabel: string;
   primaryAction: "Review case" | "View resolution";
 };
@@ -67,6 +68,20 @@ export type AdminEvidenceTimelineItem = {
   adminNotes: string | null;
   versionLabel: "Current proof" | "Previous proof" | "Review event";
   isCurrent: boolean;
+};
+
+export type AdminDisputeEvidenceTimelineItem = {
+  id: string;
+  title: string;
+  timestamp: string | null;
+  timestampLabel: string;
+  actorLabel: "Host" | "Guest" | "Admin" | "System" | "RidePod";
+  description: string;
+  fileUrl: string | null;
+  fileName: string | null;
+  proofType?: AdminReviewCase["proofType"];
+  adminNotes: string | null;
+  tone: "neutral" | "blue" | "amber" | "red" | "green";
 };
 
 export const adminReviewDecisionCopy = {

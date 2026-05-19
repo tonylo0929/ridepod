@@ -22,6 +22,7 @@ import {
   adminReviewFilters,
   formatAdminHkd,
   type AdminDecisionKey,
+  type AdminDisputeEvidenceTimelineItem,
   type AdminReviewCase,
   type AdminReviewFilter,
   type AdminReviewSeverity,
@@ -45,6 +46,14 @@ function reviewStateClass(state: string) {
   if (["REJECTED", "HELD_FOR_REVIEW", "FRAUD_SUSPECTED"].includes(state)) {
     return "bg-[var(--rp-danger-bg)] text-[var(--rp-danger)] ring-[var(--rp-border)]";
   }
+  return "bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-badge-neutral-text)] ring-[var(--rp-border)]";
+}
+
+function timelineToneClass(tone: AdminDisputeEvidenceTimelineItem["tone"]) {
+  if (tone === "green") return "bg-[var(--rp-success-bg)] text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]";
+  if (tone === "red") return "bg-[var(--rp-danger-bg)] text-[var(--rp-danger)] ring-[var(--rp-border)]";
+  if (tone === "amber") return "bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border)]";
+  if (tone === "blue") return "bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-primary)] ring-[var(--rp-border)]";
   return "bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-badge-neutral-text)] ring-[var(--rp-border)]";
 }
 
@@ -472,10 +481,55 @@ function ReviewCaseModal({
                   <KeyValue label="Reporter" value={reviewCase.reporter ?? "Guest"} />
                   <KeyValue label="Submitted time" value={reviewCase.createdTime} />
                   <KeyValue label="Attached evidence" value={reviewCase.evidenceLabel ?? "Evidence placeholder"} />
+                  <KeyValue label="Settlement state" value={reviewCase.payoutStatus.replaceAll("_", " ")} />
+                  <KeyValue label="Payout state" value={reviewCase.statusLabel} />
                 </dl>
                 <div className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
                   <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Issue note</p>
                   <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{reviewCase.disputeNote}</p>
+                </div>
+                <div className="mt-4">
+                  <h4 className="text-sm font-black text-[var(--rp-text)]">Dispute evidence</h4>
+                  {reviewCase.disputeEvidenceTimeline?.length ? (
+                    <div className="mt-3 grid gap-3">
+                      {reviewCase.disputeEvidenceTimeline.map((timelineItem) => (
+                        <article
+                          key={timelineItem.id}
+                          className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3"
+                        >
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                              <Badge className={timelineToneClass(timelineItem.tone)}>{timelineItem.actorLabel}</Badge>
+                              <h5 className="mt-2 text-sm font-black text-[var(--rp-text)]">{timelineItem.title}</h5>
+                              <p className="mt-1 text-xs font-bold text-[var(--rp-muted)]">{timelineItem.timestampLabel}</p>
+                            </div>
+                            <ProofPreviewButton
+                              fileUrlOrStoragePath={timelineItem.fileUrl}
+                              proofType={timelineItem.proofType}
+                              fileName={timelineItem.fileName ?? undefined}
+                            />
+                          </div>
+                          <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                            {timelineItem.description}
+                          </p>
+                          {timelineItem.adminNotes ? (
+                            <div className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3">
+                              <p className="text-[11px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">
+                                Admin notes
+                              </p>
+                              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                                {timelineItem.adminNotes}
+                              </p>
+                            </div>
+                          ) : null}
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                      Dispute evidence is built from available review, proof, settlement, and event rows. Add a dedicated disputes table in later schema cleanup.
+                    </p>
+                  )}
                 </div>
               </DetailSection>
             ) : null}

@@ -3,6 +3,7 @@ import "server-only";
 import {
   getAdminReviewCases as getMockAdminReviewCases,
   type AdminReviewCase,
+  type AdminDisputeEvidenceTimelineItem,
   type AdminEvidenceTimelineItem,
   type AdminReviewFilter,
   type AdminReviewSeverity,
@@ -10,6 +11,7 @@ import {
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
   RidePodAdminReviewCaseRow,
+  RidePodEventRow,
   RidePodPodRow,
   RidePodProofRow,
   RidePodRideInstanceRow,
@@ -62,6 +64,7 @@ type AdminReviewRelatedRows = {
   proof: RidePodProofRow | null;
   settlement: RidePodSettlementRow | null;
   proofs?: RidePodProofRow[];
+  events?: RidePodEventRow[];
 };
 
 export type AdminReviewCasesReadResult = {
@@ -130,6 +133,16 @@ function proofStatusTimelineLabel(value: string | null | undefined) {
   if (value === "SUBMITTED") return "Under review";
   if (value === "NEEDED") return "Needs proof";
   return "Proof status unknown";
+}
+
+function reviewStateDisplayLabel(value: string | null | undefined) {
+  if (value === "NEEDS_MORE_INFO") return "Needs more info";
+  if (value === "UNDER_REVIEW") return "Manual review";
+  if (value === "APPROVED") return "Approved";
+  if (value === "REJECTED") return "Rejected";
+  if (value === "RESOLVED") return "Resolved";
+  if (value === "OPEN") return "Open";
+  return titleCaseEnum(value);
 }
 
 function caseTypeLabel(caseType: string) {
@@ -238,6 +251,13 @@ function proofFileName(fileUrl: string | null | undefined) {
   if (!fileUrl) return null;
   const lastSegment = fileUrl.split("/").filter(Boolean).at(-1);
   return lastSegment ?? null;
+}
+
+function eventPayloadText(event: RidePodEventRow, key: string) {
+  const payload = event.event_payload;
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+  const value = payload[key];
+  return typeof value === "string" ? value : null;
 }
 
 function proofTimelineTitle(proof: RidePodProofRow, isCurrent: boolean) {
@@ -366,6 +386,199 @@ function buildEvidenceTimeline(
   return [...proofItems, ...reviewItems];
 }
 
+function isDisputeCase(reviewCase: RidePodAdminReviewCaseRow) {
+  return reviewCase.case_type.includes("DISPUTE") || reviewCase.case_type.toLowerCase().includes("dispute");
+}
+
+function disputeIssueType(reviewCase: RidePodAdminReviewCaseRow): string {
+  const caseType = reviewCase.case_type.toLowerCase();
+  const description = reviewCase.description?.toLowerCase() ?? "";
+
+  if (caseType.includes("no_show") || caseType.includes("no-show") || description.includes("did not take")) {
+    return "I did not take this ride";
+  }
+  if (description.includes("route") || caseType.includes("route")) return "Wrong route";
+  if (description.includes("fare") || caseType.includes("fare")) return "Wrong fare";
+  if (description.includes("receipt") || description.includes("proof")) return "Receipt or proof looks wrong";
+  if (description.includes("host") || caseType.includes("host")) return "Host issue";
+  return "Other";
+}
+
+function disputeTimelineTone(title: string): AdminDisputeEvidenceTimelineItem["tone"] {
+  if (title === "Payout held") return "amber";
+  if (title === "Admin decision") return "green";
+  if (title === "Dispute opened") return "red";
+  if (title.includes("Proof")) return "blue";
+  return "neutral";
+}
+
+function buildDisputeEvidenceTimeline(
+  reviewCase: RidePodAdminReviewCaseRow,
+  related: AdminReviewRelatedRows,
+): AdminDisputeEvidenceTimelineItem[] {
+  if (!isDisputeCase(reviewCase)) return [];
+
+  // TODO SQL-2R: Add a dedicated disputes table in later schema cleanup.
+  const proofRows = related.proofs?.length ? related.proofs : related.proof ? [related.proof] : [];
+  const items: AdminDisputeEvidenceTimelineItem[] = [];
+  const pushItem = (item: Omit<AdminDisputeEvidenceTimelineItem, "tone"> & { tone?: AdminDisputeEvidenceTimelineItem["tone"] }) => {
+    items.push({
+      ...item,
+      tone: item.tone ?? disputeTimelineTone(item.title),
+    });
+  };
+
+  if (related.rideInstance?.updated_at || related.rideInstance?.created_at) {
+    pushItem({
+      id: `ride-completed-${reviewCase.id}`,
+      title: "Ride completed",
+      timestamp: related.rideInstance.updated_at ?? related.rideInstance.created_at,
+      timestampLabel: formatCreatedAt(related.rideInstance.updated_at ?? related.rideInstance.created_at),
+      actorLabel: "System",
+      description: "Ride instance reached the settlement review flow.",
+      fileUrl: null,
+      fileName: null,
+      adminNotes: null,
+    });
+  }
+
+  proofRows.forEach((proof) => {
+    const proofLabel = proofTypeLabel(proof.proof_type);
+    pushItem({
+      id: `dispute-proof-uploaded-${proof.id}`,
+      title: "Proof uploaded",
+      timestamp: proof.submitted_at,
+      timestampLabel: formatCreatedAt(proof.submitted_at),
+      actorLabel: "Host",
+      description: `${proofLabel} submitted for settlement review.`,
+      fileUrl: proof.file_url,
+      fileName: proofFileName(proof.file_url),
+      proofType: proofLabel,
+      adminNotes: proof.admin_notes,
+      tone: "blue",
+    });
+
+    if (proof.reviewed_at || proof.proof_status !== "SUBMITTED") {
+      pushItem({
+        id: `dispute-proof-reviewed-${proof.id}`,
+        title: proof.proof_status === "VERIFIED" ? "Proof reviewed" : "Proof under review",
+        timestamp: proof.reviewed_at ?? proof.submitted_at,
+        timestampLabel: formatCreatedAt(proof.reviewed_at ?? proof.submitted_at),
+        actorLabel: proof.reviewed_at ? "Admin" : "System",
+        description: `Proof status: ${proofStatusTimelineLabel(proof.proof_status)}.`,
+        fileUrl: proof.file_url,
+        fileName: proofFileName(proof.file_url),
+        proofType: proofLabel,
+        adminNotes: proof.admin_notes,
+        tone: proof.proof_status === "VERIFIED" ? "green" : "blue",
+      });
+    }
+  });
+
+  if (related.settlement) {
+    pushItem({
+      id: `final-split-notice-${related.settlement.id}`,
+      title: "Final split notice",
+      timestamp: related.settlement.created_at,
+      timestampLabel: formatCreatedAt(related.settlement.created_at),
+      actorLabel: "RidePod",
+      description: related.settlement.dispute_deadline_at
+        ? `Guests can report an issue until ${formatCreatedAt(related.settlement.dispute_deadline_at)}.`
+        : "Final split notice is available from settlement metadata when present.",
+      fileUrl: null,
+      fileName: null,
+      adminNotes: null,
+      tone: "neutral",
+    });
+  }
+
+  related.events
+    ?.filter((event) =>
+      [
+        "RECEIPT_UPLOADED",
+        "RECEIPT_VERIFIED",
+        "SETTLEMENT_CREATED",
+        "DISPUTE_REPORTED",
+        "RIDEPOD_DISPUTE_OPENED",
+        "PAYOUT_HELD",
+        "ADMIN_PAYOUT_HELD",
+        "ADMIN_DISPUTE_RESOLVED",
+      ].includes(event.event_type),
+    )
+    .forEach((event) => {
+      const eventTitle =
+        event.event_type === "RECEIPT_UPLOADED"
+          ? "Proof uploaded"
+          : event.event_type === "RECEIPT_VERIFIED"
+            ? "Proof reviewed"
+            : event.event_type === "SETTLEMENT_CREATED"
+              ? "Final split notice"
+              : event.event_type.includes("DISPUTE") && event.event_type.includes("RESOLVED")
+                ? "Admin decision"
+                : event.event_type.includes("DISPUTE")
+                  ? "Dispute opened"
+                  : "Payout held";
+
+      pushItem({
+        id: `event-${event.id}`,
+        title: eventTitle,
+        timestamp: event.created_at,
+        timestampLabel: formatCreatedAt(event.created_at),
+        actorLabel: event.user_id ? "Guest" : "System",
+        description: eventPayloadText(event, "description") ?? eventPayloadText(event, "notes") ?? titleCaseEnum(event.event_type),
+        fileUrl: eventPayloadText(event, "fileUrl"),
+        fileName: proofFileName(eventPayloadText(event, "fileUrl")),
+        adminNotes: eventPayloadText(event, "adminNotes"),
+      });
+    });
+
+  pushItem({
+    id: `dispute-opened-${reviewCase.id}`,
+    title: "Dispute opened",
+    timestamp: reviewCase.created_at,
+    timestampLabel: formatCreatedAt(reviewCase.created_at),
+    actorLabel: "Guest",
+    description: reviewCase.description ?? "Issue reported for manual review.",
+    fileUrl: related.proof?.file_url ?? null,
+    fileName: proofFileName(related.proof?.file_url),
+    proofType: related.proof ? proofTypeLabel(related.proof.proof_type) : undefined,
+    adminNotes: null,
+    tone: "red",
+  });
+
+  if (related.settlement?.settlement_state === "ADMIN_REVIEW" || related.settlement?.settlement_state === "DISPUTE_HOLD") {
+    pushItem({
+      id: `dispute-payout-held-${reviewCase.id}`,
+      title: "Payout held",
+      timestamp: reviewCase.created_at,
+      timestampLabel: formatCreatedAt(reviewCase.created_at),
+      actorLabel: "RidePod",
+      description: "Payout may be held while RidePod completes manual review.",
+      fileUrl: null,
+      fileName: null,
+      adminNotes: null,
+      tone: "amber",
+    });
+  }
+
+  if (reviewCase.resolved_at || ["APPROVED", "REJECTED", "RESOLVED"].includes(reviewCase.review_state)) {
+    pushItem({
+      id: `admin-decision-${reviewCase.id}`,
+      title: "Admin decision",
+      timestamp: reviewCase.resolved_at ?? reviewCase.created_at,
+      timestampLabel: formatCreatedAt(reviewCase.resolved_at ?? reviewCase.created_at),
+      actorLabel: "Admin",
+      description: `Case status: ${reviewStateDisplayLabel(reviewCase.review_state)}.`,
+      fileUrl: null,
+      fileName: null,
+      adminNotes: reviewCase.admin_notes,
+      tone: "green",
+    });
+  }
+
+  return items.sort((first, second) => timestampMs(first.timestamp) - timestampMs(second.timestamp));
+}
+
 export function mapSupabaseAdminReviewCaseToViewModel(
   reviewCase: RidePodAdminReviewCaseRow,
   related: AdminReviewRelatedRows,
@@ -375,6 +588,7 @@ export function mapSupabaseAdminReviewCaseToViewModel(
   const pod = related.pod;
   const settlement = related.settlement;
   const evidenceTimeline = buildEvidenceTimeline(reviewCase, related);
+  const disputeEvidenceTimeline = buildDisputeEvidenceTimeline(reviewCase, related);
   const severity = severityLabel(reviewCase.severity);
   const fareAmountCents =
     proof?.amount_cents ??
@@ -408,7 +622,7 @@ export function mapSupabaseAdminReviewCaseToViewModel(
     rideOption: rideOptionLabel(pod),
     rideOptionLabel: rideOptionLabel(pod),
     host: pod?.host_user_id ? `Host ${pod.host_user_id.slice(0, 8)}` : "Host unavailable",
-    reporter: "System",
+    reporter: isDisputeCase(reviewCase) ? "Guest" : "System",
     guestsLocked,
     fareLabel: proofLabel === "quote screenshot" ? "Quote" : proofLabel === "meter proof" ? "Meter proof" : "Receipt",
     fareAmountCents,
@@ -420,7 +634,7 @@ export function mapSupabaseAdminReviewCaseToViewModel(
     proofTypeLabel: proofLabel,
     proofStatus: (proof?.proof_status ?? "SUBMITTED") as AdminReviewCase["proofStatus"],
     proofStatusLabel: titleCaseEnum(proof?.proof_status ?? "SUBMITTED"),
-    disputeStatus: reviewCase.case_type.includes("DISPUTE") ? "Submitted" : "None",
+    disputeStatus: isDisputeCase(reviewCase) ? "Submitted" : "None",
     payoutStatus,
     payoutStatusLabel: titleCaseEnum(payoutStatus),
     createdTime: formatCreatedAt(reviewCase.created_at),
@@ -434,6 +648,9 @@ export function mapSupabaseAdminReviewCaseToViewModel(
     evidenceLabel: proof?.file_url ?? "Proof preview placeholder",
     fileUrl: proof?.file_url ?? null,
     evidenceTimeline,
+    disputeEvidenceTimeline,
+    disputeIssueType: isDisputeCase(reviewCase) ? disputeIssueType(reviewCase) : undefined,
+    disputeNote: isDisputeCase(reviewCase) ? reviewCase.description ?? "Issue reported for manual review." : undefined,
     statusLabel: statusLabel(reviewCase, payoutStatus),
     primaryAction: reviewCase.review_state === "RESOLVED" ? "View resolution" : "Review case",
     primaryActionLabel: reviewCase.review_state === "RESOLVED" ? "View resolution" : "Review case",
@@ -481,6 +698,49 @@ function mockCases(filters?: AdminReviewCaseFilters): AdminReviewCaseViewModel[]
           isCurrent: true,
         },
       ];
+      const disputeEvidenceTimeline: AdminDisputeEvidenceTimelineItem[] =
+        reviewCase.disputeEvidenceTimeline ??
+        (reviewCase.disputeStatus === "None"
+          ? []
+          : [
+              {
+                id: `mock-dispute-proof-${reviewCase.id}`,
+                title: "Proof uploaded",
+                timestamp: null,
+                timestampLabel: reviewCase.submittedAt,
+                actorLabel: "Host",
+                description: `${reviewCase.proofType} submitted for settlement review.`,
+                fileUrl: reviewCase.fileUrl ?? null,
+                fileName: reviewCase.evidenceLabel ?? null,
+                proofType: reviewCase.proofType,
+                adminNotes: null,
+                tone: "blue",
+              },
+              {
+                id: `mock-dispute-opened-${reviewCase.id}`,
+                title: "Dispute opened",
+                timestamp: null,
+                timestampLabel: reviewCase.createdTime,
+                actorLabel: "Guest",
+                description: reviewCase.disputeNote ?? "Issue reported for manual review.",
+                fileUrl: null,
+                fileName: null,
+                adminNotes: reviewCase.disputeNote ?? null,
+                tone: "red",
+              },
+              {
+                id: `mock-dispute-payout-held-${reviewCase.id}`,
+                title: "Payout held",
+                timestamp: null,
+                timestampLabel: reviewCase.createdTime,
+                actorLabel: "RidePod",
+                description: "Payout may be held while RidePod completes manual review.",
+                fileUrl: null,
+                fileName: null,
+                adminNotes: null,
+                tone: "amber",
+              },
+            ]);
 
       return {
         ...reviewCase,
@@ -500,6 +760,7 @@ function mockCases(filters?: AdminReviewCaseFilters): AdminReviewCaseViewModel[]
         primaryActionLabel: reviewCase.primaryAction,
         createdAtLabel: reviewCase.createdTime,
         evidenceTimeline,
+        disputeEvidenceTimeline,
       };
     }),
     filters,
@@ -507,7 +768,7 @@ function mockCases(filters?: AdminReviewCaseFilters): AdminReviewCaseViewModel[]
 }
 
 async function fetchRowsByIds<Row extends { id: string }>(
-  table: "ride_instances" | "pods" | "proofs" | "settlements",
+  table: "ride_instances" | "pods" | "proofs" | "settlements" | "pod_events",
   ids: string[],
 ): Promise<Map<string, Row>> {
   const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
@@ -585,6 +846,7 @@ export async function getAdminReviewCaseDetail(caseId: string): Promise<AdminRev
   const proof = result.data.proof_id ? proofs.get(result.data.proof_id) ?? null : null;
   const settlement = result.data.settlement_id ? settlements.get(result.data.settlement_id) ?? null : null;
   let evidenceProofs = proof ? [proof] : [];
+  let events: RidePodEventRow[] = [];
   if (rideInstance && proof) {
     const allProofsResult = await client
       .from("proofs")
@@ -597,12 +859,24 @@ export async function getAdminReviewCaseDetail(caseId: string): Promise<AdminRev
       evidenceProofs = (allProofsResult.data ?? []) as RidePodProofRow[];
     }
   }
+  if (rideInstance) {
+    const eventsResult = await client
+      .from("pod_events")
+      .select("*")
+      .eq("ride_instance_id", rideInstance.id)
+      .order("created_at", { ascending: true });
+
+    if (!eventsResult.error) {
+      events = (eventsResult.data ?? []) as RidePodEventRow[];
+    }
+  }
   const viewModel = mapSupabaseAdminReviewCaseToViewModel(result.data, {
     rideInstance,
     pod: rideInstance?.pod_id ? pods.get(rideInstance.pod_id) ?? null : null,
     proof,
     settlement,
     proofs: evidenceProofs,
+    events,
   });
   const differenceCents = viewModel.fareAmountCents - viewModel.bookingFareCapCents;
 
