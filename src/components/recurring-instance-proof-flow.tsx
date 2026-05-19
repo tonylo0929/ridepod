@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -20,6 +20,7 @@ import {
   WalletCards,
   X,
 } from "lucide-react";
+import { ProofPreviewButton } from "@/components/proof-preview-button";
 import { Badge } from "@/components/ui";
 import {
   formatMoney,
@@ -43,6 +44,12 @@ const proofUploadValidationMessages = new Set([
   "Proof type is required.",
   "Couldn't upload proof file. Try again later.",
 ]);
+
+type HostProofPreview = {
+  fileUrl?: string | null;
+  fileName?: string | null;
+  contentType?: string | null;
+};
 
 function getRideOptionLabel(pod: RidePod) {
   return pod.rideOption === "taxi_meter" || pod.vehicleType === "Taxi"
@@ -166,11 +173,13 @@ function ProofResultCard({
   title,
   body,
   action,
+  preview,
   tone = "neutral",
 }: {
   title: string;
   body: string;
   action?: string;
+  preview?: ReactNode;
   tone?: "neutral" | "success" | "warning";
 }) {
   return (
@@ -186,6 +195,7 @@ function ProofResultCard({
         <div className="min-w-0">
           <h3 className="text-base font-black text-[var(--rp-text)]">{title}</h3>
           <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{body}</p>
+          {preview ? <div className="mt-4">{preview}</div> : null}
           {action ? (
             <button
               type="button"
@@ -768,6 +778,7 @@ export function RecurringInstanceProofFlow({
   const [localProofStatus, setLocalProofStatus] = useState<RideInstanceProofStatus | null>(null);
   const [localRideStatus, setLocalRideStatus] = useState<RecurringRideStatus | null>(null);
   const [selectedProofFiles, setSelectedProofFiles] = useState<Partial<Record<ProofUploadType, ProofUploadFile>>>({});
+  const [localProofPreviews, setLocalProofPreviews] = useState<Partial<Record<ProofUploadType, HostProofPreview>>>({});
   const taxiMeter = getRideOptionLabel(pod) === "Taxi meter";
   const effectiveRideInstance = {
     ...rideInstance,
@@ -848,6 +859,14 @@ export function RecurringInstanceProofFlow({
       if (result.statusUpdateFailed) {
         setSubmitError(result.userFacingMessage);
       } else {
+        setLocalProofPreviews((current) => ({
+          ...current,
+          [proofType]: {
+            fileUrl: uploadResult.fileUrl,
+            fileName: uploadResult.fileName,
+            contentType: uploadResult.contentType,
+          },
+        }));
         setSubmitMessage(result.duplicate ? "Proof already submitted." : result.userFacingMessage || getSubmittedCopy(proofType));
       }
     } catch (error) {
@@ -871,6 +890,31 @@ export function RecurringInstanceProofFlow({
 
   function getSelectedProofFileName(proofType: ProofUploadType) {
     return selectedProofFiles[proofType]?.name;
+  }
+
+  function getHostProofPreview(proofType: ProofUploadType): HostProofPreview | null {
+    const localPreview = localProofPreviews[proofType];
+    if (localPreview) return localPreview;
+    if (rideInstance.proofType !== proofType) return null;
+
+    return {
+      fileUrl: rideInstance.proofFileUrl ?? null,
+      fileName: rideInstance.proofFileName ?? null,
+      contentType: rideInstance.proofContentType ?? null,
+    };
+  }
+
+  function renderHostProofPreview(proofType: ProofUploadType) {
+    const preview = getHostProofPreview(proofType);
+
+    return (
+      <ProofPreviewButton
+        fileUrlOrStoragePath={preview?.fileUrl}
+        proofType={proofType}
+        fileName={preview?.fileName}
+        contentType={preview?.contentType}
+      />
+    );
   }
 
   if (settlementFlow) {
@@ -1072,6 +1116,7 @@ export function RecurringInstanceProofFlow({
             })}
           </div>
           <p className="mt-5 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{statusBody}</p>
+          <div className="mt-4">{renderHostProofPreview("FINAL_RECEIPT")}</div>
         </div>
       </section>
     );
@@ -1263,6 +1308,7 @@ export function RecurringInstanceProofFlow({
             })}
           </div>
           <p className="mt-5 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{statusBody}</p>
+          <div className="mt-4">{renderHostProofPreview("METER_PROOF")}</div>
         </div>
       </section>
     );
@@ -1405,6 +1451,7 @@ export function RecurringInstanceProofFlow({
             <ProofResultCard
               title={getStatusLabel(effectiveRideInstance, taxiMeter)}
               body={receiptStatusCopy[proofStatus]}
+              preview={renderHostProofPreview("FINAL_RECEIPT")}
               tone={proofStatus === "VERIFIED" || proofStatus === "APPROVED" ? "success" : proofStatus === "REJECTED" ? "warning" : "neutral"}
             />
             {receiptAboveCap ? (
@@ -1485,6 +1532,7 @@ export function RecurringInstanceProofFlow({
             <ProofResultCard
               title={getStatusLabel(effectiveRideInstance, taxiMeter)}
               body={meterProofStatusCopy[proofStatus]}
+              preview={renderHostProofPreview("METER_PROOF")}
               tone={proofStatus === "VERIFIED" || proofStatus === "APPROVED" ? "success" : proofStatus === "REJECTED" ? "warning" : "neutral"}
             />
             {meterAboveCap ? (
@@ -1571,17 +1619,20 @@ export function RecurringInstanceProofFlow({
               <ProofResultCard
                 title="Quote submitted"
                 body="Quote submitted. RidePod will review it before booking."
+                preview={renderHostProofPreview("QUOTE_SCREENSHOT")}
               />
             ) : quoteResult === "needs_more_info" ? (
               <ProofResultCard
                 title="More quote info needed"
                 body="RidePod needs clearer quote proof before this ride can be protected."
+                preview={renderHostProofPreview("QUOTE_SCREENSHOT")}
                 tone="warning"
               />
             ) : quoteResult === "rejected" ? (
               <ProofResultCard
                 title="Quote rejected"
                 body="Upload valid quote proof before booking this ride."
+                preview={renderHostProofPreview("QUOTE_SCREENSHOT")}
                 tone="warning"
               />
             ) : quoteResult === "approved" ? (
@@ -1589,6 +1640,7 @@ export function RecurringInstanceProofFlow({
                 title="Quote approved"
                 body="The quote is within the booking fare cap. You may book the external ride."
                 action="Mark ride as booked"
+                preview={renderHostProofPreview("QUOTE_SCREENSHOT")}
                 tone="success"
               />
             ) : quoteResult === "above_cap" ? (
@@ -1596,6 +1648,7 @@ export function RecurringInstanceProofFlow({
                 title="Quote above booking fare cap"
                 body="Guests must approve a higher max before this ride can be RidePod-protected."
                 action="Request higher max approval"
+                preview={renderHostProofPreview("QUOTE_SCREENSHOT")}
                 tone="warning"
               />
             ) : (

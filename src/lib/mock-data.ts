@@ -107,6 +107,9 @@ export type RecurringRideInstancePreview = {
   finalFareCents?: number;
   receiptFareCents?: number;
   proofCertified?: boolean;
+  proofFileUrl?: string | null;
+  proofFileName?: string | null;
+  proofContentType?: string | null;
   certificationTextVersion?: string;
   submittedAt?: string;
   reviewedAt?: string;
