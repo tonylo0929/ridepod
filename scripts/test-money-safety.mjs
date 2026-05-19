@@ -532,6 +532,7 @@ const supabaseAdminSource = readFileSync("src/lib/supabase/admin.ts", "utf8");
 const supabaseQueriesSource = readFileSync("src/lib/supabase/queries.ts", "utf8");
 const supabaseProofMetadataSource = readFileSync("src/lib/supabase/proof-metadata.ts", "utf8");
 const proofUploadSource = readFileSync("src/lib/uploads/proof-upload.ts", "utf8");
+const proofPreviewButtonSource = readFileSync("src/components/proof-preview-button.tsx", "utf8");
 const storagePlanSource = readFileSync("docs/ridepod-supabase-storage-plan.md", "utf8");
 const supabaseProofStorageMigrationSource = readFileSync(
   "supabase/migrations/202605190003_ridepod_proof_storage.sql",
@@ -1266,6 +1267,20 @@ if (originalSupabaseAnonKeyForSignedProof === undefined) {
 } else {
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = originalSupabaseAnonKeyForSignedProof;
 }
+assert.ok(proofPreviewButtonSource.includes("export function ProofPreviewButton"));
+assert.ok(proofPreviewButtonSource.includes("createProofSignedUrl"));
+assert.ok(proofPreviewButtonSource.includes("normalizeProofStoragePath"));
+assert.ok(proofPreviewButtonSource.includes("Preview proof"));
+assert.ok(proofPreviewButtonSource.includes("Open PDF"));
+assert.ok(proofPreviewButtonSource.includes("Mock proof preview"));
+assert.ok(proofPreviewButtonSource.includes("No proof file available"));
+assert.ok(proofPreviewButtonSource.includes("Couldn't open proof preview. Try again later."));
+assert.ok(proofPreviewButtonSource.includes("window.open(result.signedUrl"));
+assert.ok(proofPreviewButtonSource.includes('"noopener,noreferrer"'));
+assert.equal(proofPreviewButtonSource.includes("public URL"), false);
+assert.equal(proofPreviewButtonSource.includes("100% verified"), false);
+assert.equal(proofPreviewButtonSource.includes("AI verified"), false);
+assert.equal(proofPreviewButtonSource.includes("fake"), false);
 assert.ok(supabaseProofMetadataSource.includes("submitRideInstanceProofMetadata"));
 assert.ok(supabaseProofMetadataSource.includes("Proof certification is required."));
 assert.ok(supabaseProofMetadataSource.includes("amountCents must be greater than zero."));
