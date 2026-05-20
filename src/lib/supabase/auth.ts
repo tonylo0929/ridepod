@@ -9,6 +9,7 @@ export type RidePodGenderIdentity =
   | "PREFER_NOT_TO_SAY"
   | "UNKNOWN";
 
+export type IdVerificationStatus = "NOT_REQUESTED" | "REQUESTED" | "UNDER_REVIEW" | "VERIFIED" | "REJECTED";
 export type ProfileSource = "supabase" | "mock";
 
 export type CurrentProfileResult = {
@@ -36,6 +37,14 @@ export type UpdateRidePodProfileResult = {
   fallbackNote: string | null;
 };
 
+export type RequestManualIdVerificationReviewResult = {
+  ok: boolean;
+  source: ProfileSource;
+  profile: RidePodProfileRow | null;
+  userFacingMessage: string;
+  fallbackNote: string | null;
+};
+
 export const mockRidePodProfile: RidePodProfileRow = {
   id: "mock-current-user",
   display_name: "Maya Chen",
@@ -51,6 +60,10 @@ export const mockRidePodProfile: RidePodProfileRow = {
   no_show_count: 0,
   late_cancel_count: 0,
   risk_status: "NORMAL",
+  id_verification_status: "NOT_REQUESTED",
+  id_verified_at: null,
+  manual_verification_requested_at: null,
+  manually_verified_by: null,
   created_at: null,
   updated_at: null,
 };
@@ -80,6 +93,32 @@ function mockProfileFromInput(input: UpdateRidePodProfileInput): RidePodProfileR
   return {
     ...mockRidePodProfile,
     ...update,
+  };
+}
+
+export function normalizeIdVerificationStatus(value: string | null | undefined): IdVerificationStatus {
+  if (value === "REQUESTED" || value === "UNDER_REVIEW" || value === "VERIFIED" || value === "REJECTED") {
+    return value;
+  }
+
+  return "NOT_REQUESTED";
+}
+
+export function idVerificationStatusLabel(value: string | null | undefined) {
+  const status = normalizeIdVerificationStatus(value);
+  if (status === "REQUESTED") return "Review requested";
+  if (status === "UNDER_REVIEW") return "Under review";
+  if (status === "VERIFIED") return "Verified";
+  if (status === "REJECTED") return "Rejected";
+  return "Not requested";
+}
+
+function mockProfileWithIdVerificationRequest(): RidePodProfileRow {
+  return {
+    ...mockRidePodProfile,
+    id_verification_status: "REQUESTED",
+    manual_verification_requested_at: nowIso(),
+    updated_at: nowIso(),
   };
 }
 
@@ -254,6 +293,99 @@ export async function updateCurrentProfile(input: UpdateRidePodProfileInput): Pr
       source: "supabase",
       profile: null,
       userFacingMessage: "Couldn't save profile. Try again later.",
+      fallbackNote: null,
+    };
+  }
+}
+
+export async function requestManualIdVerificationReview(): Promise<RequestManualIdVerificationReviewResult> {
+  try {
+    const currentUser = await getCurrentUser();
+
+    if (currentUser.source === "mock") {
+      return {
+        ok: true,
+        source: "mock",
+        profile: mockProfileWithIdVerificationRequest(),
+        userFacingMessage: "Review requested.",
+        fallbackNote: currentUser.fallbackNote,
+      };
+    }
+
+    if (!currentUser.user) {
+      return {
+        ok: false,
+        source: "supabase",
+        profile: null,
+        userFacingMessage: "Log in to continue",
+        fallbackNote: null,
+      };
+    }
+
+    const client = getSupabaseBrowserClient();
+    const timestamp = nowIso();
+    const profileUpdate = await client
+      .from("profiles")
+      .upsert(
+        {
+          id: currentUser.user.id,
+          email: currentUser.user.email ?? null,
+          id_verification_status: "REQUESTED",
+          manual_verification_requested_at: timestamp,
+          updated_at: timestamp,
+        },
+        { onConflict: "id" },
+      )
+      .select("*")
+      .maybeSingle();
+
+    if (profileUpdate.error || !profileUpdate.data) {
+      return {
+        ok: true,
+        source: "mock",
+        profile: mockProfileWithIdVerificationRequest(),
+        userFacingMessage: "Review requested.",
+        fallbackNote: "ID verification request is local until profile verification fields are available.",
+      };
+    }
+
+    const caseInsert = await client
+      .from("admin_review_cases")
+      .insert({
+        subject_user_id: currentUser.user.id,
+        review_state: "OPEN",
+        case_type: "ID_VERIFICATION_REQUEST",
+        severity: "LOW",
+        title: "ID verification request",
+        description: "User requested manual ID verification review. No identity document was collected.",
+        created_at: timestamp,
+      });
+
+    return {
+      ok: true,
+      source: "supabase",
+      profile: profileUpdate.data,
+      userFacingMessage: "Review requested.",
+      fallbackNote: caseInsert.error
+        ? "Profile status was saved, but the admin review request could not be created yet."
+        : null,
+    };
+  } catch (error) {
+    if (isMissingSupabaseConfig(error)) {
+      return {
+        ok: true,
+        source: "mock",
+        profile: mockProfileWithIdVerificationRequest(),
+        userFacingMessage: "Review requested.",
+        fallbackNote: "Supabase not configured; using mock profile data.",
+      };
+    }
+
+    return {
+      ok: false,
+      source: "supabase",
+      profile: null,
+      userFacingMessage: "Couldn't request review. Try again later.",
       fallbackNote: null,
     };
   }

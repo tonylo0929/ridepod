@@ -603,6 +603,7 @@ function createMockAdminReviewCase(
     ride_instance_id: input.rideInstanceId,
     proof_id: input.proofId,
     settlement_id: null,
+    subject_user_id: null,
     review_state: "OPEN",
     case_type: trigger.caseType,
     severity: trigger.severity,

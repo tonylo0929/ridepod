@@ -13,6 +13,7 @@ import type {
   RidePodAdminReviewCaseRow,
   RidePodEventRow,
   RidePodPodRow,
+  RidePodProfileRow,
   RidePodProofRow,
   RidePodRideInstanceRow,
   RidePodSettlementRow,
@@ -32,7 +33,7 @@ export type AdminReviewCaseViewModel = AdminReviewCase & {
   reviewStateLabel: string;
   routeLabel: string;
   rideDateLabel: string;
-  rideOptionLabel: "Ride app / fixed quote" | "Taxi meter";
+  rideOptionLabel: AdminReviewCase["rideOption"];
   proofTypeLabel: "quote screenshot" | "final receipt" | "meter proof";
   proofStatusLabel: string;
   fareAmountLabel: string;
@@ -63,6 +64,7 @@ type AdminReviewRelatedRows = {
   pod: RidePodPodRow | null;
   proof: RidePodProofRow | null;
   settlement: RidePodSettlementRow | null;
+  subjectProfile?: RidePodProfileRow | null;
   proofs?: RidePodProofRow[];
   events?: RidePodEventRow[];
 };
@@ -153,11 +155,13 @@ function caseTypeLabel(caseType: string) {
   if (caseType === "GUEST_DISPUTE") return "Guest dispute";
   if (caseType === "PAYOUT_HOLD") return "Payout hold";
   if (caseType === "QUOTE_RECEIPT_MISMATCH") return "Quote / receipt mismatch";
+  if (caseType === "ID_VERIFICATION_REQUEST") return "ID verification request";
   return caseType.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function caseFilter(caseType: string, reviewState: string): Exclude<AdminReviewFilter, "All"> {
   if (reviewState === "RESOLVED") return "Resolved";
+  if (caseType === "ID_VERIFICATION_REQUEST") return "Proof";
   if (caseType.includes("ABOVE_CAP") || caseType.toLowerCase().includes("above cap")) return "Above cap";
   if (caseType.includes("DISPUTE") || caseType.toLowerCase().includes("dispute")) return "Disputes";
   if (caseType.includes("PAYOUT") || caseType.toLowerCase().includes("payout")) return "Payout holds";
@@ -203,6 +207,7 @@ function payoutStatusLabel(reviewCase: RidePodAdminReviewCaseRow, settlement: Ri
 }
 
 function statusLabel(reviewCase: RidePodAdminReviewCaseRow, payoutStatus: AdminReviewCase["payoutStatus"]) {
+  if (reviewCase.case_type === "ID_VERIFICATION_REQUEST") return reviewStateDisplayLabel(reviewCase.review_state);
   if (reviewCase.review_state === "RESOLVED") return "Resolved";
   if (payoutStatus === "HELD_FOR_REVIEW") return "Payout held";
   if (reviewCase.review_state === "NEEDS_MORE_INFO") return "Needs more info";
@@ -579,6 +584,13 @@ function buildDisputeEvidenceTimeline(
   return items.sort((first, second) => timestampMs(first.timestamp) - timestampMs(second.timestamp));
 }
 
+function subjectUserLabel(profile: RidePodProfileRow | null | undefined, fallbackId: string | null | undefined) {
+  if (profile?.display_name) return profile.display_name;
+  if (profile?.email) return profile.email;
+  if (fallbackId) return `User ${fallbackId.slice(0, 8)}`;
+  return "User unavailable";
+}
+
 export function mapSupabaseAdminReviewCaseToViewModel(
   reviewCase: RidePodAdminReviewCaseRow,
   related: AdminReviewRelatedRows,
@@ -604,6 +616,63 @@ export function mapSupabaseAdminReviewCaseToViewModel(
   const label = caseTypeLabel(reviewCase.case_type);
   const rideDateTime = formatRideDateTime(rideInstance?.departure_at, rideInstance?.leg_type);
   const route = rideInstance?.route_label ?? pod?.route_label ?? "Route unavailable";
+  const isIdVerificationCase = reviewCase.case_type === "ID_VERIFICATION_REQUEST";
+  const accountLabel = subjectUserLabel(related.subjectProfile, reviewCase.subject_user_id);
+
+  if (isIdVerificationCase) {
+    return {
+      id: reviewCase.id,
+      caseType: "ID verification request",
+      caseTypeLabel: "ID verification request",
+      filter: caseFilter(reviewCase.case_type, reviewCase.review_state),
+      severity,
+      severityLabel: severity,
+      severityTone: severityTone(severity),
+      reviewState: reviewCase.review_state as AdminReviewCase["reviewState"],
+      reviewStateLabel: titleCaseEnum(reviewCase.review_state),
+      rideDateTime: formatCreatedAt(reviewCase.created_at),
+      rideDateLabel: formatCreatedAt(reviewCase.created_at),
+      route: "Account review",
+      routeLabel: "Account review",
+      rideOption: "Account review",
+      rideOptionLabel: "Account review",
+      host: accountLabel,
+      reporter: "User",
+      guestsLocked: "None",
+      fareLabel: "Manual review",
+      fareAmountCents: 0,
+      fareAmountLabel: "None",
+      bookingFareCapCents: 0,
+      bookingFareCapLabel: "None",
+      maxChargePerGuestCents: 0,
+      proofType: "final receipt",
+      proofTypeLabel: "final receipt",
+      proofStatus: "UNDER_REVIEW",
+      proofStatusLabel: "Manual review",
+      disputeStatus: "None",
+      payoutStatus,
+      payoutStatusLabel: titleCaseEnum(payoutStatus),
+      createdTime: formatCreatedAt(reviewCase.created_at),
+      createdAtLabel: formatCreatedAt(reviewCase.created_at),
+      submittedBy: accountLabel,
+      submittedAt: formatCreatedAt(reviewCase.created_at),
+      certificationAccepted: false,
+      ridepodEstimateCents: 0,
+      evidenceLabel: "No identity document was collected.",
+      fileUrl: null,
+      evidenceTimeline: [],
+      disputeEvidenceTimeline: [],
+      statusLabel: statusLabel(reviewCase, payoutStatus),
+      primaryAction: reviewCase.review_state === "RESOLVED" ? "View resolution" : "Review case",
+      primaryActionLabel: reviewCase.review_state === "RESOLVED" ? "View resolution" : "Review case",
+      differenceLabel: "None",
+      isIdVerificationCase: true,
+      subjectUserLabel: accountLabel,
+      subjectUserEmail: related.subjectProfile?.email ?? null,
+      idVerificationStatus: related.subjectProfile?.id_verification_status ?? null,
+      caseDescription: reviewCase.description,
+    };
+  }
 
   return {
     id: reviewCase.id,
@@ -655,6 +724,8 @@ export function mapSupabaseAdminReviewCaseToViewModel(
     primaryAction: reviewCase.review_state === "RESOLVED" ? "View resolution" : "Review case",
     primaryActionLabel: reviewCase.review_state === "RESOLVED" ? "View resolution" : "Review case",
     differenceLabel: differenceLabel(fareAmountCents, bookingFareCapCents),
+    isIdVerificationCase: false,
+    caseDescription: reviewCase.description,
   };
 }
 
@@ -768,7 +839,7 @@ function mockCases(filters?: AdminReviewCaseFilters): AdminReviewCaseViewModel[]
 }
 
 async function fetchRowsByIds<Row extends { id: string }>(
-  table: "ride_instances" | "pods" | "proofs" | "settlements" | "pod_events",
+  table: "ride_instances" | "pods" | "proofs" | "settlements" | "pod_events" | "profiles",
   ids: string[],
 ): Promise<Map<string, Row>> {
   const uniqueIds = Array.from(new Set(ids.filter(Boolean)));
@@ -811,6 +882,10 @@ export async function getAdminReviewCases(filters: AdminReviewCaseFilters = {}):
     "pods",
     Array.from(rideInstances.values()).map((rideInstance) => rideInstance.pod_id).filter((id): id is string => Boolean(id)),
   );
+  const subjectProfiles = await fetchRowsByIds<RidePodProfileRow>(
+    "profiles",
+    reviewCases.map((reviewCase) => reviewCase.subject_user_id).filter((id): id is string => Boolean(id)),
+  );
 
   return applyFilters(
     reviewCases.map((reviewCase) => {
@@ -820,6 +895,7 @@ export async function getAdminReviewCases(filters: AdminReviewCaseFilters = {}):
         pod: rideInstance?.pod_id ? pods.get(rideInstance.pod_id) ?? null : null,
         proof: reviewCase.proof_id ? proofs.get(reviewCase.proof_id) ?? null : null,
         settlement: reviewCase.settlement_id ? settlements.get(reviewCase.settlement_id) ?? null : null,
+        subjectProfile: reviewCase.subject_user_id ? subjectProfiles.get(reviewCase.subject_user_id) ?? null : null,
       });
     }),
     filters,
@@ -843,6 +919,7 @@ export async function getAdminReviewCaseDetail(caseId: string): Promise<AdminRev
   ]);
   const rideInstance = result.data.ride_instance_id ? rideInstances.get(result.data.ride_instance_id) ?? null : null;
   const pods = await fetchRowsByIds<RidePodPodRow>("pods", rideInstance?.pod_id ? [rideInstance.pod_id] : []);
+  const subjectProfiles = await fetchRowsByIds<RidePodProfileRow>("profiles", result.data.subject_user_id ? [result.data.subject_user_id] : []);
   const proof = result.data.proof_id ? proofs.get(result.data.proof_id) ?? null : null;
   const settlement = result.data.settlement_id ? settlements.get(result.data.settlement_id) ?? null : null;
   let evidenceProofs = proof ? [proof] : [];
@@ -875,6 +952,7 @@ export async function getAdminReviewCaseDetail(caseId: string): Promise<AdminRev
     pod: rideInstance?.pod_id ? pods.get(rideInstance.pod_id) ?? null : null,
     proof,
     settlement,
+    subjectProfile: result.data.subject_user_id ? subjectProfiles.get(result.data.subject_user_id) ?? null : null,
     proofs: evidenceProofs,
     events,
   });

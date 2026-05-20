@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   FileSearch,
+  IdCard,
   LockKeyhole,
   ReceiptText,
   ShieldAlert,
@@ -29,7 +30,13 @@ import {
 } from "@/lib/admin-review-queue";
 import type { AdminReviewCaseViewModel } from "@/lib/supabase/admin-review-cases";
 
-type AdminReviewAction = "APPROVE_PROOF" | "REQUEST_MORE_INFO" | "REJECT_PROOF" | "HOLD_PAYOUT";
+type AdminReviewAction =
+  | "APPROVE_PROOF"
+  | "REQUEST_MORE_INFO"
+  | "REJECT_PROOF"
+  | "HOLD_PAYOUT"
+  | "APPROVE_VERIFICATION"
+  | "REJECT_VERIFICATION";
 type ApplyAdminReviewActionResult = Awaited<ReturnType<typeof applyAdminReviewActionForCase>>;
 
 function severityClass(severity: AdminReviewSeverity) {
@@ -181,6 +188,8 @@ export function AdminReviewClient({
 
 function adminActionForDecision(decisionKey: AdminDecisionKey): AdminReviewAction {
   if (decisionKey === "approveProof") return "APPROVE_PROOF";
+  if (decisionKey === "approveVerification") return "APPROVE_VERIFICATION";
+  if (decisionKey === "rejectVerification") return "REJECT_VERIFICATION";
   if (decisionKey === "requestMoreInfo") return "REQUEST_MORE_INFO";
   if (decisionKey === "rejectProof") return "REJECT_PROOF";
   return "HOLD_PAYOUT";
@@ -196,6 +205,24 @@ function getDecisionCaseUpdate(
     result?.updatedSettlement?.settlement_state === "ADMIN_REVIEW" ||
     result?.updatedSettlement?.settlement_state === "DISPUTE_HOLD";
 
+  if (decisionKey === "approveVerification") {
+    return {
+      reviewState: reviewState ?? "APPROVED",
+      filter: "Resolved",
+      primaryAction: "View resolution",
+      statusLabel: "Approved",
+      idVerificationStatus: result?.updatedProfile?.id_verification_status ?? "VERIFIED",
+    };
+  }
+  if (decisionKey === "rejectVerification") {
+    return {
+      reviewState: reviewState ?? "REJECTED",
+      filter: "Resolved",
+      primaryAction: "View resolution",
+      statusLabel: "Rejected",
+      idVerificationStatus: result?.updatedProfile?.id_verification_status ?? "REJECTED",
+    };
+  }
   if (decisionKey === "approveProof") {
     return {
       reviewState: reviewState ?? "APPROVED",
@@ -249,16 +276,25 @@ function ReviewCaseCard({ reviewCase, onOpen }: { reviewCase: AdminReviewCaseVie
           <h2 className="mt-3 text-xl font-black text-[var(--rp-text)]">{reviewCase.caseType}</h2>
           <p className="mt-2 text-sm font-bold text-[var(--rp-muted-strong)]">{reviewCase.rideDateTime}</p>
           <p className="mt-1 text-sm font-black text-[var(--rp-text)]">{reviewCase.route}</p>
-          <dl className="mt-4 grid gap-2 text-sm min-[560px]:grid-cols-2">
-            <KeyValue label="Ride option" value={reviewCase.rideOption} />
-            <KeyValue label="Host" value={reviewCase.host} />
-            <KeyValue label="Reporter" value={reviewCase.reporter ?? "None"} />
-            <KeyValue label="Created" value={reviewCase.createdTime} />
-            <KeyValue label={reviewCase.fareLabel} value={formatAdminHkd(reviewCase.fareAmountCents)} />
-            <KeyValue label="Booking fare cap" value={formatAdminHkd(reviewCase.bookingFareCapCents)} />
-            <KeyValue label="Proof status" value={reviewCase.proofStatus.replaceAll("_", " ")} />
-            <KeyValue label="Payout status" value={reviewCase.payoutStatus.replaceAll("_", " ")} />
-          </dl>
+          {reviewCase.isIdVerificationCase ? (
+            <dl className="mt-4 grid gap-2 text-sm min-[560px]:grid-cols-2">
+              <KeyValue label="User" value={reviewCase.subjectUserLabel ?? reviewCase.host} />
+              <KeyValue label="Email" value={reviewCase.subjectUserEmail ?? "Not available"} />
+              <KeyValue label="Review status" value={reviewCase.reviewState.replaceAll("_", " ")} />
+              <KeyValue label="Description" value="No identity document was collected." />
+            </dl>
+          ) : (
+            <dl className="mt-4 grid gap-2 text-sm min-[560px]:grid-cols-2">
+              <KeyValue label="Ride option" value={reviewCase.rideOption} />
+              <KeyValue label="Host" value={reviewCase.host} />
+              <KeyValue label="Reporter" value={reviewCase.reporter ?? "None"} />
+              <KeyValue label="Created" value={reviewCase.createdTime} />
+              <KeyValue label={reviewCase.fareLabel} value={formatAdminHkd(reviewCase.fareAmountCents)} />
+              <KeyValue label="Booking fare cap" value={formatAdminHkd(reviewCase.bookingFareCapCents)} />
+              <KeyValue label="Proof status" value={reviewCase.proofStatus.replaceAll("_", " ")} />
+              <KeyValue label="Payout status" value={reviewCase.payoutStatus.replaceAll("_", " ")} />
+            </dl>
+          )}
         </div>
         <div className="grid gap-3 min-[760px]:w-52">
           <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
@@ -306,7 +342,14 @@ function ReviewCaseModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const selectedDecision = adminDecisionLabels.find((item) => item.key === decision);
+  const activeDecisionLabels = reviewCase.isIdVerificationCase
+    ? [
+        { key: "approveVerification" as const, label: "Approve verification", requiresNotes: false },
+        { key: "rejectVerification" as const, label: "Reject verification", requiresNotes: true },
+        { key: "requestMoreInfo" as const, label: "Request more info", requiresNotes: true },
+      ]
+    : adminDecisionLabels;
+  const selectedDecision = activeDecisionLabels.find((item) => item.key === decision);
   const notesRequired = Boolean(selectedDecision?.requiresNotes);
   const notesMissing = notesRequired && !adminNotes.trim();
 
@@ -362,6 +405,22 @@ function ReviewCaseModal({
 
         <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
           <div className="grid gap-4">
+            {reviewCase.isIdVerificationCase ? (
+              <DetailSection icon={IdCard} title="ID verification request">
+                <dl className="grid gap-2 sm:grid-cols-2">
+                  <KeyValue label="User" value={reviewCase.subjectUserLabel ?? reviewCase.host} />
+                  <KeyValue label="Email" value={reviewCase.subjectUserEmail ?? "Not available"} />
+                  <KeyValue label="Review status" value={reviewCase.reviewState.replaceAll("_", " ")} />
+                  <KeyValue label="ID verification status" value={(reviewCase.idVerificationStatus ?? "NOT_REQUESTED").replaceAll("_", " ")} />
+                  <KeyValue label="Created" value={reviewCase.createdTime} />
+                  <KeyValue label="Evidence" value="No identity document was collected." />
+                </dl>
+                <p className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                  {reviewCase.caseDescription ?? "User requested manual ID verification review. No identity document was collected."}
+                </p>
+              </DetailSection>
+            ) : (
+              <>
             <DetailSection icon={ClipboardCheck} title="Ride instance summary">
               <dl className="grid gap-2 sm:grid-cols-2">
                 <KeyValue label="Ride" value={reviewCase.rideDateTime} />
@@ -533,12 +592,14 @@ function ReviewCaseModal({
                 </div>
               </DetailSection>
             ) : null}
+              </>
+            )}
           </div>
 
           <aside className="grid content-start gap-4">
             <DetailSection icon={LockKeyhole} title="Admin decision">
               <div className="grid gap-2">
-                {adminDecisionLabels.map((item) => {
+                {activeDecisionLabels.map((item) => {
                   const active = decision === item.key;
                   return (
                     <button
@@ -666,6 +727,16 @@ const confirmationCopy: Record<AdminDecisionKey, { title: string; body: string; 
     title: "Hold payout?",
     body: "Payout will be held while RidePod reviews this case.",
     confirm: "Hold payout",
+  },
+  approveVerification: {
+    title: "Approve manual verification?",
+    body: "This marks the account as manually verified for RidePod trust features. No identity document was collected.",
+    confirm: "Approve verification",
+  },
+  rejectVerification: {
+    title: "Reject verification request?",
+    body: "This keeps the account unverified.",
+    confirm: "Reject verification",
   },
 };
 

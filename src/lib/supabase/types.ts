@@ -17,6 +17,10 @@ export type RidePodProfileRow = {
   no_show_count: number | null;
   late_cancel_count: number | null;
   risk_status: string | null;
+  id_verification_status: string | null;
+  id_verified_at: string | null;
+  manual_verification_requested_at: string | null;
+  manually_verified_by: string | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -120,6 +124,7 @@ export type RidePodAdminReviewCaseRow = {
   ride_instance_id: string | null;
   proof_id: string | null;
   settlement_id: string | null;
+  subject_user_id: string | null;
   review_state: string;
   case_type: string;
   severity: string;

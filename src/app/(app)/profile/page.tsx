@@ -15,7 +15,10 @@ import {
 } from "lucide-react";
 import {
   getCurrentProfile,
+  idVerificationStatusLabel,
   mockRidePodProfile,
+  normalizeIdVerificationStatus,
+  requestManualIdVerificationReview,
   updateCurrentProfile,
   type RidePodGenderIdentity,
 } from "@/lib/supabase/auth";
@@ -85,6 +88,8 @@ export default function ProfilePage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [requestReviewOpen, setRequestReviewOpen] = useState(false);
+  const [requestingReview, setRequestingReview] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -132,6 +137,29 @@ export default function ProfilePage() {
     });
 
     setSaving(false);
+    setFallbackNote(result.fallbackNote);
+
+    if (!result.ok) {
+      setSaveError(result.userFacingMessage);
+      return;
+    }
+
+    if (result.profile) {
+      setProfile(result.profile);
+      setForm(formStateFromProfile(result.profile));
+    }
+
+    setSaveMessage(result.userFacingMessage);
+  }
+
+  async function onRequestManualReview() {
+    setRequestingReview(true);
+    setSaveMessage(null);
+    setSaveError(null);
+
+    const result = await requestManualIdVerificationReview();
+    setRequestingReview(false);
+    setRequestReviewOpen(false);
     setFallbackNote(result.fallbackNote);
 
     if (!result.ok) {
@@ -249,8 +277,18 @@ export default function ProfilePage() {
         </div>
 
         <div className="grid gap-4">
-          <VerificationCard profile={profile} hasCommunity={hasCommunity} />
-          <PublicPreviewCard initials={initials} displayName={displayName} hasCommunity={hasCommunity} />
+          <VerificationCard
+            profile={profile}
+            hasCommunity={hasCommunity}
+            requestingReview={requestingReview}
+            onRequestReview={() => setRequestReviewOpen(true)}
+          />
+          <PublicPreviewCard
+            initials={initials}
+            displayName={displayName}
+            hasCommunity={hasCommunity}
+            profile={profile}
+          />
           <ProfileCard>
             <SectionTitle title="Account" icon={Mail} />
             <dl className="mt-4 grid gap-3 text-sm">
@@ -260,6 +298,13 @@ export default function ProfilePage() {
           </ProfileCard>
         </div>
       </div>
+      {requestReviewOpen ? (
+        <RequestManualReviewModal
+          disabled={requestingReview}
+          onCancel={() => setRequestReviewOpen(false)}
+          onConfirm={onRequestManualReview}
+        />
+      ) : null}
     </div>
   );
 }
@@ -276,23 +321,53 @@ function PageHeader() {
   );
 }
 
-function VerificationCard({ profile, hasCommunity }: { profile: RidePodProfileRow | null; hasCommunity: boolean }) {
+function VerificationCard({
+  profile,
+  hasCommunity,
+  requestingReview,
+  onRequestReview,
+}: {
+  profile: RidePodProfileRow | null;
+  hasCommunity: boolean;
+  requestingReview: boolean;
+  onRequestReview: () => void;
+}) {
   const emailVerified = Boolean(profile?.email);
   const phoneStatus = profile?.phone ? "Coming soon" : "Not verified";
   const communityStatus = hasCommunity && profile?.community_verified_at ? "Verified" : hasCommunity ? "Not verified" : "Not verified";
+  const idVerificationStatus = normalizeIdVerificationStatus(profile?.id_verification_status);
+  const canRequestReview = idVerificationStatus === "NOT_REQUESTED" || idVerificationStatus === "REJECTED";
 
   return (
     <ProfileCard>
       <SectionTitle title="Verification" icon={ShieldCheck} />
       <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-        Verification helps RidePod support safer matching. Full ID verification will be added later.
+        Verification helps RidePod support safer matching. ID verification is not required for most pods. It may be used later for higher-trust pods.
       </p>
       <div className="mt-4 grid gap-3">
         <StatusRow icon={Mail} label="Email" status={emailVerified ? "Verified" : "Not verified"} tone={emailVerified ? "success" : "muted"} />
         <StatusRow icon={Phone} label="Phone" status={phoneStatus} tone="muted" />
         <StatusRow icon={UsersRound} label="Community" status={communityStatus} tone={communityStatus === "Verified" ? "success" : "muted"} />
-        <StatusRow icon={IdCard} label="ID verification" status="Not enabled yet" tone="muted" />
+        <StatusRow
+          icon={IdCard}
+          label="ID verification"
+          status={idVerificationStatusLabel(profile?.id_verification_status)}
+          tone={idVerificationStatus === "VERIFIED" ? "success" : "muted"}
+        />
       </div>
+      <p className="mt-3 rounded-2xl bg-[var(--rp-card-soft)] px-4 py-3 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
+        Verification status may be used for eligibility and trust features. Private review details are not shown publicly.
+      </p>
+      {canRequestReview ? (
+        <button
+          type="button"
+          onClick={onRequestReview}
+          disabled={requestingReview}
+          className="mt-3 inline-flex min-h-11 items-center justify-center rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {requestingReview ? "Requesting..." : "Request manual review"}
+        </button>
+      ) : null}
     </ProfileCard>
   );
 }
@@ -325,11 +400,17 @@ function PublicPreviewCard({
   initials,
   displayName,
   hasCommunity,
+  profile,
 }: {
   initials: string;
   displayName: string;
   hasCommunity: boolean;
+  profile: RidePodProfileRow | null;
 }) {
+  const showVerifiedBadge =
+    normalizeIdVerificationStatus(profile?.id_verification_status) === "VERIFIED" ||
+    profile?.verification_status === "ID_VERIFIED";
+
   return (
     <ProfileCard>
       <SectionTitle title="Public pod preview" icon={UserRound} />
@@ -342,10 +423,50 @@ function PublicPreviewCard({
           <span className="mt-2 flex flex-wrap gap-2">
             <Badge>Profile</Badge>
             {hasCommunity ? <Badge>Community</Badge> : null}
+            {showVerifiedBadge ? <Badge>Verified</Badge> : null}
           </span>
         </span>
       </div>
     </ProfileCard>
+  );
+}
+
+function RequestManualReviewModal({
+  disabled,
+  onCancel,
+  onConfirm,
+}: {
+  disabled: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-[rgba(3,7,18,0.62)] px-4 backdrop-blur-sm">
+      <section className="w-full max-w-md rounded-[24px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
+        <h3 className="text-xl font-black text-[var(--rp-text)]">Request ID verification review?</h3>
+        <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+          RidePod is not collecting ID documents yet. This request only asks RidePod to review your account for future higher-trust features.
+        </p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={disabled}
+            className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-text)] disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={disabled}
+            className="min-h-12 rounded-2xl bg-[var(--rp-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] disabled:opacity-60"
+          >
+            {disabled ? "Requesting..." : "Request review"}
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }
 

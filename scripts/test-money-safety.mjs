@@ -554,6 +554,10 @@ const supabaseProfileTrustMigrationSource = readFileSync(
   "supabase/migrations/202605200001_ridepod_profile_trust_fields.sql",
   "utf8",
 );
+const supabaseIdVerificationMigrationSource = readFileSync(
+  "supabase/migrations/202605200002_ridepod_id_verification_placeholder.sql",
+  "utf8",
+);
 const legalCopySource = [
   "src/app/layout.tsx",
   "src/app/invite/[id]/page.tsx",
@@ -1047,6 +1051,11 @@ assert.ok(supabaseProfileTrustMigrationSource.includes("community_id"));
 assert.ok(supabaseProfileTrustMigrationSource.includes("no_show_count"));
 assert.ok(supabaseProfileTrustMigrationSource.includes("late_cancel_count"));
 assert.ok(supabaseProfileTrustMigrationSource.includes("risk_status"));
+assert.ok(supabaseIdVerificationMigrationSource.includes("id_verification_status"));
+assert.ok(supabaseIdVerificationMigrationSource.includes("manual_verification_requested_at"));
+assert.ok(supabaseIdVerificationMigrationSource.includes("subject_user_id"));
+assert.ok(supabaseIdVerificationMigrationSource.includes("ID_VERIFICATION_REQUEST"));
+assert.ok(supabaseIdVerificationMigrationSource.includes("No identity document is collected"));
 assert.ok(profilePageSource.includes("Manage your RidePod identity and trust settings."));
 assert.ok(profilePageSource.includes("Display name"));
 assert.ok(profilePageSource.includes("Phone number"));
@@ -1054,17 +1063,43 @@ assert.ok(profilePageSource.includes("Gender identity"));
 assert.ok(profilePageSource.includes("Community"));
 assert.ok(profilePageSource.includes("Verification"));
 assert.ok(profilePageSource.includes("ID verification"));
-assert.ok(profilePageSource.includes("Not enabled yet"));
+assert.ok(profilePageSource.includes("idVerificationStatusLabel"));
+assert.ok(supabaseAuthSource.includes("Not requested"));
+assert.ok(profilePageSource.includes("ID verification is not required for most pods. It may be used later for higher-trust pods."));
+assert.ok(profilePageSource.includes("Request manual review"));
+assert.ok(profilePageSource.includes("Request ID verification review?"));
+assert.ok(profilePageSource.includes("RidePod is not collecting ID documents yet. This request only asks RidePod to review your account for future higher-trust features."));
+assert.ok(profilePageSource.includes("Verification status may be used for eligibility and trust features. Private review details are not shown publicly."));
 assert.ok(profilePageSource.includes("Trust status"));
 assert.ok(profilePageSource.includes("Public pod preview"));
 assert.ok(profilePageSource.includes("Private details are used for eligibility and safety checks. They are not shown publicly."));
 assert.ok(supabaseAuthSource.includes("Profile saved."));
 assert.ok(supabaseAuthSource.includes("Couldn't save profile. Try again later."));
+assert.ok(supabaseAuthSource.includes("requestManualIdVerificationReview"));
+assert.ok(supabaseAuthSource.includes("ID_VERIFICATION_REQUEST"));
+assert.ok(supabaseAdminReviewCasesSource.includes("ID verification request"));
+assert.ok(supabaseAdminReviewActionsSource.includes("APPROVE_VERIFICATION"));
+assert.ok(supabaseAdminReviewActionsSource.includes("REJECT_VERIFICATION"));
+assert.ok(supabaseAdminReviewActionsSource.includes("Manual verification approved."));
+assert.ok(adminReviewClientSource.includes("Approve manual verification?"));
+assert.ok(adminReviewClientSource.includes("Reject verification request?"));
+assert.ok(adminReviewClientSource.includes("Approve verification"));
+assert.ok(adminReviewClientSource.includes("Reject verification"));
 assert.equal(profilePageSource.includes("official ID checked"), false);
 assert.equal(profilePageSource.includes("KYC approved"), false);
 assert.equal(profilePageSource.includes("verified identity guaranteed"), false);
 assert.equal(profilePageSource.includes("100% safe"), false);
 assert.equal(profilePageSource.includes("100% verified"), false);
+for (const forbiddenIdentityCopy of [
+  "official government ID verified",
+  "upload HKID",
+  "upload passport",
+  "selfie verification",
+  "face scan",
+]) {
+  assert.equal(profilePageSource.toLowerCase().includes(forbiddenIdentityCopy.toLowerCase()), false);
+  assert.equal(adminReviewClientSource.toLowerCase().includes(forbiddenIdentityCopy.toLowerCase()), false);
+}
 assert.ok(supabaseQueriesSource.includes("unwrapSupabaseResult"));
 assert.ok(supabaseQueriesSource.includes("getMyPods"));
 assert.ok(supabaseQueriesSource.includes("getRideInstancesForPod"));

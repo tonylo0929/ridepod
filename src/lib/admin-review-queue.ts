@@ -10,7 +10,8 @@ export type AdminReviewCaseType =
   | "Host cancellation after booking"
   | "No-show dispute"
   | "Receipt needs more info"
-  | "Quote / receipt mismatch";
+  | "Quote / receipt mismatch"
+  | "ID verification request";
 
 export type AdminReviewCase = {
   id: string;
@@ -20,7 +21,7 @@ export type AdminReviewCase = {
   reviewState: AdminReviewState;
   rideDateTime: string;
   route: string;
-  rideOption: "Ride app / fixed quote" | "Taxi meter";
+  rideOption: "Ride app / fixed quote" | "Taxi meter" | "Account review";
   host: string;
   reporter?: string;
   guestsLocked: string;
@@ -45,6 +46,11 @@ export type AdminReviewCase = {
   fileUrl?: string | null;
   evidenceTimeline?: AdminEvidenceTimelineItem[];
   disputeEvidenceTimeline?: AdminDisputeEvidenceTimelineItem[];
+  isIdVerificationCase?: boolean;
+  subjectUserLabel?: string;
+  subjectUserEmail?: string | null;
+  idVerificationStatus?: string | null;
+  caseDescription?: string | null;
   statusLabel: string;
   primaryAction: "Review case" | "View resolution";
 };
@@ -93,6 +99,8 @@ export const adminReviewDecisionCopy = {
   releasePayout: "Payout can be processed.",
   resolveDispute: "Dispute marked resolved. Settlement can continue according to the admin decision.",
   restrictAccount: "Account restriction placeholder recorded for manual follow-up.",
+  approveVerification: "Manual verification approved. No identity document was collected.",
+  rejectVerification: "Manual verification rejected. The account remains unverified.",
 } as const;
 
 export type AdminDecisionKey = keyof typeof adminReviewDecisionCopy;

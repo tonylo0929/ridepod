@@ -4,12 +4,19 @@ import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type {
   RidePodAdminReviewCaseRow,
   RidePodEventRow,
+  RidePodProfileRow,
   RidePodProofRow,
   RidePodRideInstanceRow,
   RidePodSettlementRow,
 } from "@/lib/supabase/types";
 
-export type AdminReviewAction = "APPROVE_PROOF" | "REQUEST_MORE_INFO" | "REJECT_PROOF" | "HOLD_PAYOUT";
+export type AdminReviewAction =
+  | "APPROVE_PROOF"
+  | "REQUEST_MORE_INFO"
+  | "REJECT_PROOF"
+  | "HOLD_PAYOUT"
+  | "APPROVE_VERIFICATION"
+  | "REJECT_VERIFICATION";
 
 export type ApplyAdminReviewActionInput = {
   caseId: string;
@@ -26,12 +33,13 @@ export type ApplyAdminReviewActionResult = {
   updatedProof: RidePodProofRow | null;
   updatedRideInstance: RidePodRideInstanceRow | null;
   updatedSettlement: RidePodSettlementRow | null;
+  updatedProfile: RidePodProfileRow | null;
   auditEvent: RidePodEventRow | null;
   userFacingMessage: string;
   fallbackNote: string | null;
 };
 
-const requiredNotesActions = new Set<AdminReviewAction>(["REQUEST_MORE_INFO", "REJECT_PROOF", "HOLD_PAYOUT"]);
+const requiredNotesActions = new Set<AdminReviewAction>(["REQUEST_MORE_INFO", "REJECT_PROOF", "HOLD_PAYOUT", "REJECT_VERIFICATION"]);
 
 function notesAreMissing(input: ApplyAdminReviewActionInput) {
   return requiredNotesActions.has(input.action) && !input.adminNotes?.trim();
@@ -114,17 +122,19 @@ function eventTypeForAction(action: AdminReviewAction) {
   if (action === "APPROVE_PROOF") return "ADMIN_PROOF_APPROVED";
   if (action === "REQUEST_MORE_INFO") return "ADMIN_MORE_INFO_REQUESTED";
   if (action === "REJECT_PROOF") return "ADMIN_PROOF_REJECTED";
+  if (action === "APPROVE_VERIFICATION") return "ADMIN_ID_VERIFICATION_APPROVED";
+  if (action === "REJECT_VERIFICATION") return "ADMIN_ID_VERIFICATION_REJECTED";
   return "ADMIN_PAYOUT_HELD";
 }
 
 function mockActionResult(input: ApplyAdminReviewActionInput, fallbackNote: string): ApplyAdminReviewActionResult {
   const timestamp = nowIso();
   const reviewState =
-    input.action === "APPROVE_PROOF"
+    input.action === "APPROVE_PROOF" || input.action === "APPROVE_VERIFICATION"
       ? "APPROVED"
       : input.action === "REQUEST_MORE_INFO"
         ? "NEEDS_MORE_INFO"
-        : input.action === "REJECT_PROOF"
+        : input.action === "REJECT_PROOF" || input.action === "REJECT_VERIFICATION"
           ? "REJECTED"
           : "UNDER_REVIEW";
 
@@ -137,21 +147,33 @@ function mockActionResult(input: ApplyAdminReviewActionInput, fallbackNote: stri
       ride_instance_id: null,
       proof_id: null,
       settlement_id: null,
+      subject_user_id: null,
       review_state: reviewState,
       case_type: "MOCK_ADMIN_ACTION",
       severity: "MEDIUM",
       title: "Mock admin action",
       description: null,
       created_at: timestamp,
-      resolved_at: input.action === "APPROVE_PROOF" || input.action === "REJECT_PROOF" ? timestamp : null,
+      resolved_at:
+        input.action === "APPROVE_PROOF" ||
+        input.action === "REJECT_PROOF" ||
+        input.action === "APPROVE_VERIFICATION" ||
+        input.action === "REJECT_VERIFICATION"
+          ? timestamp
+          : null,
       admin_notes: input.adminNotes?.trim() || null,
     },
     updatedProof: null,
     updatedRideInstance: null,
     updatedSettlement: null,
+    updatedProfile: null,
     auditEvent: null,
     userFacingMessage:
-      input.action === "APPROVE_PROOF"
+      input.action === "APPROVE_VERIFICATION"
+        ? "Manual verification approved."
+        : input.action === "REJECT_VERIFICATION"
+          ? "Manual verification rejected."
+          : input.action === "APPROVE_PROOF"
         ? "Proof approved. Settlement can continue."
         : input.action === "REQUEST_MORE_INFO"
           ? "More information is required before settlement can continue."
@@ -212,6 +234,7 @@ export async function applyAdminReviewAction(
       updatedProof: null,
       updatedRideInstance: null,
       updatedSettlement: null,
+      updatedProfile: null,
       auditEvent: null,
       userFacingMessage: "Couldn't apply admin action. Try again later.",
       fallbackNote: null,
@@ -227,6 +250,7 @@ export async function applyAdminReviewAction(
       updatedProof: null,
       updatedRideInstance: null,
       updatedSettlement: null,
+      updatedProfile: null,
       auditEvent: null,
       userFacingMessage: "Admin notes are required for this action.",
       fallbackNote: null,
@@ -252,6 +276,7 @@ export async function applyAdminReviewAction(
         updatedProof: null,
         updatedRideInstance: null,
         updatedSettlement: null,
+        updatedProfile: null,
         auditEvent: null,
         userFacingMessage: "Couldn't apply admin action. Try again later.",
         fallbackNote: null,
@@ -259,6 +284,126 @@ export async function applyAdminReviewAction(
     }
 
     const reviewCase = reviewResult.data;
+    if (reviewCase.case_type === "ID_VERIFICATION_REQUEST") {
+      if (!["APPROVE_VERIFICATION", "REJECT_VERIFICATION", "REQUEST_MORE_INFO"].includes(input.action)) {
+        return {
+          ok: false,
+          source: "supabase",
+          validationError: "This action is not available for ID verification requests.",
+          updatedReviewCase: null,
+          updatedProof: null,
+          updatedRideInstance: null,
+          updatedSettlement: null,
+          updatedProfile: null,
+          auditEvent: null,
+          userFacingMessage: "Couldn't apply admin action. Try again later.",
+          fallbackNote: null,
+        };
+      }
+
+      if (!reviewCase.subject_user_id) {
+        return {
+          ok: false,
+          source: "supabase",
+          validationError: "Verification request user is required.",
+          updatedReviewCase: null,
+          updatedProof: null,
+          updatedRideInstance: null,
+          updatedSettlement: null,
+          updatedProfile: null,
+          auditEvent: null,
+          userFacingMessage: "Couldn't apply admin action. Try again later.",
+          fallbackNote: null,
+        };
+      }
+
+      const reviewPatch: Partial<RidePodAdminReviewCaseRow> = {
+        admin_notes: adminNotes,
+        review_state:
+          input.action === "APPROVE_VERIFICATION"
+            ? "APPROVED"
+            : input.action === "REJECT_VERIFICATION"
+              ? "REJECTED"
+              : "NEEDS_MORE_INFO",
+        resolved_at:
+          input.action === "APPROVE_VERIFICATION" || input.action === "REJECT_VERIFICATION"
+            ? timestamp
+            : null,
+      };
+
+      const updatedReviewCaseResult = await client
+        .from("admin_review_cases")
+        .update(reviewPatch)
+        .eq("id", input.caseId)
+        .select("*")
+        .maybeSingle();
+
+      if (updatedReviewCaseResult.error || !updatedReviewCaseResult.data) {
+        throw new Error("Review case update failed.");
+      }
+
+      const profilePatch: Partial<RidePodProfileRow> =
+        input.action === "APPROVE_VERIFICATION"
+          ? {
+              id_verification_status: "VERIFIED",
+              id_verified_at: timestamp,
+              verification_status: "ID_VERIFIED",
+              manually_verified_by: input.adminUserId ?? null,
+              updated_at: timestamp,
+            }
+          : input.action === "REJECT_VERIFICATION"
+            ? {
+                id_verification_status: "REJECTED",
+                updated_at: timestamp,
+              }
+            : {
+                id_verification_status: "UNDER_REVIEW",
+                updated_at: timestamp,
+              };
+
+      const updatedProfileResult = await client
+        .from("profiles")
+        .update(profilePatch)
+        .eq("id", reviewCase.subject_user_id)
+        .select("*")
+        .maybeSingle();
+
+      if (updatedProfileResult.error || !updatedProfileResult.data) {
+        throw new Error("Profile update failed.");
+      }
+
+      const auditEvent = await maybeWriteAdminEvent({
+        caseId: input.caseId,
+        action: input.action,
+        adminNotes,
+        adminUserId: input.adminUserId,
+        previousState: reviewCase.review_state,
+        newState: updatedReviewCaseResult.data.review_state,
+        rideInstance: null,
+        reviewCase: updatedReviewCaseResult.data,
+        proof: null,
+      });
+
+      return {
+        ok: true,
+        source: "supabase",
+        validationError: null,
+        updatedReviewCase: updatedReviewCaseResult.data,
+        updatedProof: null,
+        updatedRideInstance: null,
+        updatedSettlement: null,
+        updatedProfile: updatedProfileResult.data,
+        auditEvent,
+        userFacingMessage:
+          input.action === "APPROVE_VERIFICATION"
+            ? "Manual verification approved."
+            : input.action === "REJECT_VERIFICATION"
+              ? "Manual verification rejected."
+              : "More information is required before verification can continue.",
+        fallbackNote: null,
+      };
+    }
+
     const [proofResult, rideInstanceResult] = await Promise.all([
       reviewCase.proof_id
         ? client.from("proofs").select("*").eq("id", reviewCase.proof_id).maybeSingle()
@@ -390,6 +535,7 @@ export async function applyAdminReviewAction(
       updatedProof,
       updatedRideInstance,
       updatedSettlement,
+      updatedProfile: null,
       auditEvent,
       userFacingMessage:
         input.action === "APPROVE_PROOF" || input.action === "REQUEST_MORE_INFO" || input.action === "REJECT_PROOF"
