@@ -6,11 +6,11 @@ Decision options:
 - GO WITH LIMITATIONS
 - NO-GO
 
-Current recommendation: “Pending final QA”
+Current recommendation: GO WITH LIMITATIONS
 
-Decision date: [fill later]
+Decision date: 2026-05-20
 
-Reviewer: [fill later]
+Reviewer: Codex QA pass
 
 ## 1. Closed Beta Scope
 
@@ -80,7 +80,33 @@ These are not enabled in closed beta unless explicitly stated:
 | ID verification | UI only / Manual review | Placeholder/manual review only; no documents collected. | Yes, if presented as placeholder. |
 | Safety report | Mock fallback / Manual review | Report concern flow exists; admin visibility may be mock/Supabase dependent. | Yes, with manual handling. |
 
-## 4. Go Criteria
+## 4. Route Status
+
+Final route smoke was run against the local dev server on 2026-05-20.
+
+| Route | Status | Notes |
+| --- | --- | --- |
+| `/login` | Pass | HTTP 200. |
+| `/register` | Pass | HTTP 200. |
+| `/profile` | Pass | HTTP 200. |
+| `/how-it-works` | Pass | HTTP 200. |
+| `/beta` | Pass | HTTP 200. |
+| `/beta/scenarios` | Guarded / Pass | HTTP 200. Demo scenarios are disabled unless `NEXT_PUBLIC_RIDEPOD_DEMO_MODE=true`. |
+| `/create` | Pass | HTTP 200. Canonical create route. |
+| `/create/scheduled` | Pass | HTTP 200. Scheduled ride app / taxi meter flow entry. |
+| `/create/recurring` | Pass | HTTP 200. Recurring flow entry. |
+| `/pods` | Pass | HTTP 200. Canonical My Pods route. |
+| `/notifications` | Pass | HTTP 200. Canonical Updates route. |
+| `/host` | Pass | HTTP 200. Host dashboard/proof flow entry. |
+| `/pods/usc-lax-001` | Pass | HTTP 200. Pod detail / public member preview entry. |
+| `/pods/usc-lax-001/join` | Pass | HTTP 200. Join flow entry. |
+| `/pods/usc-lax-001/settlement` | Pass | HTTP 200. Settlement details / dispute route. |
+| `/admin/review` | Internal demo / Pass | HTTP 200. Must remain internal/demo-only before production admin auth hardening. |
+| `/create-pod` | Missing alias | HTTP 404. Current route convention is `/create`. |
+| `/my-pods` | Missing alias | HTTP 404. Current route convention is `/pods`. |
+| `/updates` | Missing alias | HTTP 404. Current route convention is `/notifications`. |
+
+## 5. Go Criteria
 
 Closed beta can start only if:
 
@@ -101,14 +127,16 @@ Closed beta can start only if:
 - Settlement screen opens.
 - Admin Review opens or is safely internal/demo-only.
 - No risky payment promises are visible.
-- No “RidePod driver” wording is visible.
-- No “guaranteed refund/reimbursement” wording is visible.
-- No “100% safe / 100% verified” wording is visible.
+- No "RidePod driver" wording is visible.
+- No "guaranteed refund/reimbursement" wording is visible.
+- No "100% safe / 100% verified" wording is visible.
 - Supabase fallback does not crash app.
 - Manual review path is documented.
 - Closed beta limitations are visible to testers.
 
-## 5. No-Go Criteria
+Status: satisfied for GO WITH LIMITATIONS. Missing aliases are documented and not linked by current app navigation.
+
+## 6. No-Go Criteria
 
 Closed beta must not start if any P0 issue exists.
 
@@ -116,7 +144,7 @@ P0 examples:
 
 - App cannot build.
 - Main routes crash.
-- Users can access another user’s private proof/admin data.
+- Users can access another user's private proof/admin data.
 - Service role key is exposed to browser.
 - Ride app flow allows protected booking without quote proof.
 - Taxi meter flow incorrectly requires quote proof before ride.
@@ -126,7 +154,9 @@ P0 examples:
 - Admin Review is publicly exposed without guard/demo intent.
 - Report concern exposes reporter details publicly.
 
-## 6. P1 Issues That May Still Allow Limited Beta
+Status: no P0/P1 beta blockers found in this final QA pass.
+
+## 7. P1 Issues That May Still Allow Limited Beta
 
 These can be acceptable only if testers are clearly told it is closed beta/demo:
 
@@ -138,17 +168,19 @@ These can be acceptable only if testers are clearly told it is closed beta/demo:
 - Settlement calculations are demo values.
 - ID verification is placeholder only.
 
-## 7. Tester Warning Copy
+Status: accepted as limitations for closed beta, not production readiness.
+
+## 8. Tester Warning Copy
 
 Recommended tester copy:
 
-“Closed beta is for testing the workflow and trust model. Real payments, payouts, OCR, provider APIs, and automatic fraud detection are not enabled unless explicitly stated.”
+"Closed beta is for testing the workflow and trust model. Real payments, payouts, OCR, provider APIs, and automatic fraud detection are not enabled unless explicitly stated."
 
-“RidePod does not provide drivers. The host books or takes the external ride outside RidePod.”
+"RidePod does not provide drivers. The host books or takes the external ride outside RidePod."
 
-“Proof and settlement flows may use demo/manual states during beta.”
+"Proof and settlement flows may use demo/manual states during beta."
 
-## 8. Final Go / No-Go Scorecard
+## 9. Final Go / No-Go Scorecard
 
 | Category | Pass / Partial / Fail | Notes |
 | --- | --- | --- |
@@ -169,20 +201,36 @@ Recommended tester copy:
 | Demo scenario readiness | Pass | Registry, guarded switcher, mock reset helper, and reset guide exist. |
 | Beta docs/readiness | Pass | Readiness gate, ops playbook, feedback form, issue tracker, route smoke, and reset docs exist. |
 
-## 9. Final Decision Template
+## 10. Final Decision
 
 Decision:
-[GO / GO WITH LIMITATIONS / NO-GO]
+GO WITH LIMITATIONS
 
 Reason:
 
+- All required commands pass.
+- Core beta routes open under the current route convention.
+- Closed beta limitations are documented and visible in beta/demo materials.
+- No P0/P1 route, build, private-data, service-role, or dangerous payment-promise blocker was found.
+- Payments, payouts, ID verification, admin ops, RLS validation, and proof review remain mock/manual or require target-environment review.
+
 Must-fix before tester session:
+
+- None identified as P0/P1 in this final QA pass.
 
 Can defer:
 
+- Add aliases only if testers expect `/create-pod`, `/my-pods`, or `/updates`.
+- Harden production admin auth before any real users or sensitive data.
+- Validate Supabase RLS/storage policies in the target project with seeded users.
+- Replace mock/local beta access and feedback collection with a real ops workflow if needed.
+- Add real payment/payout architecture only in a separate approved phase.
+
 Next action:
 
-## 10. Command Results
+Start BETA-7 tester session preparation.
+
+## 11. Command Results
 
 Ran on 2026-05-20:
 
@@ -191,4 +239,19 @@ Ran on 2026-05-20:
 - `npm.cmd run lint` - Pass.
 - `npm.cmd run build` - Pass.
 
-No command failures were found during this review slice.
+No command failures were found during this final QA decision slice.
+
+## 12. Security / Copy Checks
+
+High-level security check:
+
+- App builds without printing secrets.
+- No `NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY` use was found.
+- Service-role helper imports are server-only.
+- Admin Review remains documented as internal/demo until production auth hardening.
+- Signed proof URLs and private storage are covered by prior slices; no regression was found in this pass.
+
+Risky wording check:
+
+- No user-facing app copy requiring a P0/P1 fix was found.
+- Remaining risky phrase matches are avoid-lists in docs or test assertions.
