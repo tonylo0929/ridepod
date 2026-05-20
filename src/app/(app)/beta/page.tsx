@@ -56,7 +56,7 @@ const betaLimits = [
   "Manual proof review",
   "No real payout yet",
   "No OCR or AI fraud detection",
-  "No official Uber/DiDi/Lyft integration",
+  "No live provider integration",
 ];
 
 const watchItems = [
