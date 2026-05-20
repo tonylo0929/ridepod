@@ -16,7 +16,7 @@ create index if not exists admin_review_cases_id_verification_request_idx
   where case_type = 'ID_VERIFICATION_REQUEST';
 
 comment on column profiles.id_verification_status is 'Manual RidePod trust review status. No identity document is collected in AUTH-4.';
-comment on column profiles.id_verified_at is 'Timestamp for manual RidePod ID verification approval. This is not official government ID verification.';
+comment on column profiles.id_verified_at is 'Timestamp for manual RidePod ID verification approval. This does not represent external ID verification.';
 comment on column profiles.manual_verification_requested_at is 'Timestamp when the user requested manual review for future higher-trust features.';
 comment on column profiles.manually_verified_by is 'Admin profile id that marked manual verification approved, if available.';
 comment on column admin_review_cases.subject_user_id is 'Account/profile subject for account-level review cases such as ID_VERIFICATION_REQUEST.';

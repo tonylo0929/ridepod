@@ -550,6 +550,8 @@ const supabaseAdminReviewActionsSource = readFileSync("src/lib/supabase/admin-re
 const adminReviewActionsSource = readFileSync("src/app/(app)/admin/review/actions.ts", "utf8");
 const supabaseAuthSource = readFileSync("src/lib/supabase/auth.ts", "utf8");
 const profilePageSource = readFileSync("src/app/(app)/profile/page.tsx", "utf8");
+const loginPageSource = readFileSync("src/app/login/page.tsx", "utf8");
+const registerPageSource = readFileSync("src/app/register/page.tsx", "utf8");
 const supabaseProfileTrustMigrationSource = readFileSync(
   "supabase/migrations/202605200001_ridepod_profile_trust_fields.sql",
   "utf8",
@@ -1046,6 +1048,20 @@ assert.ok(supabaseAuthSource.includes("updateCurrentProfile"));
 assert.ok(supabaseAuthSource.includes("Supabase not configured; using mock profile data."));
 assert.equal(supabaseAuthSource.includes("getSupabaseAdminClient"), false);
 assert.equal(supabaseAuthSource.includes("SUPABASE_SERVICE_ROLE_KEY"), false);
+assert.ok(loginPageSource.includes("Log in"));
+assert.ok(loginPageSource.includes("Email"));
+assert.ok(loginPageSource.includes("Password"));
+assert.ok(loginPageSource.includes("Create account"));
+assert.ok(loginPageSource.includes("signInWithPassword"));
+assert.ok(loginPageSource.includes("Supabase not configured; using mock profile data."));
+assert.ok(registerPageSource.includes("Create account"));
+assert.ok(registerPageSource.includes("Display name"));
+assert.ok(registerPageSource.includes("Email"));
+assert.ok(registerPageSource.includes("Password"));
+assert.ok(registerPageSource.includes("Log in"));
+assert.ok(registerPageSource.includes("signUp"));
+assert.ok(registerPageSource.includes("ensureProfileForUser"));
+assert.ok(registerPageSource.includes("Supabase not configured; using mock profile data."));
 assert.ok(supabaseProfileTrustMigrationSource.includes("gender_identity"));
 assert.ok(supabaseProfileTrustMigrationSource.includes("community_id"));
 assert.ok(supabaseProfileTrustMigrationSource.includes("no_show_count"));
