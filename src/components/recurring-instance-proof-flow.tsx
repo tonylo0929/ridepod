@@ -286,7 +286,7 @@ function SettlementTimelineStep({
   );
 }
 
-const disputeIssueTypes = [
+const defaultDisputeIssueTypes = [
   "Wrong fare",
   "Wrong route",
   "I did not take this ride",
@@ -294,6 +294,20 @@ const disputeIssueTypes = [
   "Host issue",
   "Other",
 ] as const;
+
+const taxiPartnerQuoteDisputeIssueTypes = [
+  "Taxi partner did not arrive",
+  "Wrong pickup point",
+  "Wrong route",
+  "I did not take this ride",
+  "Unsafe or inappropriate behavior",
+  "Fare / quote issue",
+  "Other",
+] as const;
+
+type DisputeIssueType =
+  | (typeof defaultDisputeIssueTypes)[number]
+  | (typeof taxiPartnerQuoteDisputeIssueTypes)[number];
 
 function RideInstanceSettlementSummary({
   rideInstance,
@@ -330,14 +344,23 @@ function RideInstanceSettlementSummary({
 
 function SettlementDetailsScreen({
   rideInstance,
+  isTaxiPartnerQuote,
   onBack,
 }: {
   rideInstance: RecurringRideInstancePreview;
+  isTaxiPartnerQuote: boolean;
   onBack: () => void;
 }) {
+  const disputeIssueTypes = isTaxiPartnerQuote ? taxiPartnerQuoteDisputeIssueTypes : defaultDisputeIssueTypes;
+  const reportIssueTitle = isTaxiPartnerQuote ? "Report taxi partner issue" : "Report an issue";
+  const reportIssueBody = isTaxiPartnerQuote
+    ? "Tell RidePod what happened. Payout may be held while the issue is reviewed."
+    : "Tell RidePod what looks wrong. Our team will review the proof, fare, route, and ride timeline.";
   const [showReportIssue, setShowReportIssue] = useState(false);
   const [disputeSubmitted, setDisputeSubmitted] = useState(Boolean(rideInstance.disputeRaised));
-  const [selectedIssueType, setSelectedIssueType] = useState<(typeof disputeIssueTypes)[number]>("Wrong fare");
+  const [selectedIssueType, setSelectedIssueType] = useState<DisputeIssueType>(disputeIssueTypes[0]);
+  const [localPayoutState, setLocalPayoutState] = useState(rideInstance.payoutState);
+  const [mockTaxiPartnerCaseQueued, setMockTaxiPartnerCaseQueued] = useState(false);
   const providerFareCents = rideInstance.finalFareCents ?? rideInstance.receiptFareCents ?? 29800;
   const bookingFareCapCents = rideInstance.bookingFareCapCents ?? 32000;
   const billableGuestCount = 4;
@@ -348,7 +371,8 @@ function SettlementDetailsScreen({
   const hostReimbursementCents = rideInstance.hostReimbursementCents ?? Math.max(0, providerFareCents - platformFeeCents);
   const proofTypeLabel = rideInstance.proofType === "METER_PROOF" ? "Meter proof / taxi receipt" : "Final receipt";
   const withinCap = providerFareCents <= bookingFareCapCents;
-  const statusLabel = disputeSubmitted ? "Dispute review" : "Settlement ready";
+  const submittedStatusLabel = isTaxiPartnerQuote ? "Dispute under review" : "Dispute review";
+  const statusLabel = disputeSubmitted ? submittedStatusLabel : "Settlement ready";
 
   return (
     <section className="overflow-hidden rounded-[30px] border border-[var(--rp-border-strong)] bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--rp-primary)_12%,transparent),transparent_36%),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)] sm:p-6">
@@ -473,7 +497,7 @@ function SettlementDetailsScreen({
             </p>
           </div>
           <Badge className={disputeSubmitted ? "bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border)]" : "bg-[var(--rp-success-bg)] text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]"}>
-            {disputeSubmitted ? "Dispute review" : "Open"}
+            {disputeSubmitted ? submittedStatusLabel : "Open"}
           </Badge>
         </div>
         <dl className="mt-4 grid gap-2 text-sm">
@@ -488,7 +512,18 @@ function SettlementDetailsScreen({
         </dl>
         {disputeSubmitted ? (
           <div className="mt-4 rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-warning-bg)] p-4 text-sm font-bold leading-6 text-[var(--rp-warning)]">
-            RidePod will review this issue. Payout may be held until the review is complete.
+            <p className="font-black">{isTaxiPartnerQuote ? "Dispute under review" : "RidePod will review this issue."}</p>
+            <p className="mt-1">
+              {isTaxiPartnerQuote
+                ? "RidePod will review this taxi partner issue. Payout held for manual review."
+                : "Payout may be held until the review is complete."}
+            </p>
+            {isTaxiPartnerQuote && localPayoutState === "HELD_FOR_REVIEW" ? (
+              <p className="mt-2 text-xs">Payout status: payout held</p>
+            ) : null}
+            {isTaxiPartnerQuote && mockTaxiPartnerCaseQueued ? (
+              <p className="mt-1 text-xs">Taxi partner case added to manual review.</p>
+            ) : null}
           </div>
         ) : (
           <button
@@ -506,9 +541,9 @@ function SettlementDetailsScreen({
           <section className="w-full max-w-[430px] rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-2xl font-black">Report an issue</h3>
+                <h3 className="text-2xl font-black">{reportIssueTitle}</h3>
                 <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                  Tell RidePod what looks wrong. Our team will review the proof, fare, route, and ride timeline.
+                  {reportIssueBody}
                 </p>
               </div>
               <button
@@ -560,6 +595,10 @@ function SettlementDetailsScreen({
                 type="button"
                 onClick={() => {
                   setDisputeSubmitted(true);
+                  if (isTaxiPartnerQuote) {
+                    setLocalPayoutState("HELD_FOR_REVIEW");
+                    setMockTaxiPartnerCaseQueued(true);
+                  }
                   setShowReportIssue(false);
                 }}
                 className="min-h-12 rounded-2xl bg-[var(--rp-gradient-primary)] text-sm font-black text-[var(--rp-primary-text)]"
@@ -576,8 +615,10 @@ function SettlementDetailsScreen({
 
 function RecurringInstanceSettlementTimeline({
   rideInstance,
+  isTaxiPartnerQuote,
 }: {
   rideInstance: RecurringRideInstancePreview;
+  isTaxiPartnerQuote: boolean;
 }) {
   const [showSettlementDetails, setShowSettlementDetails] = useState(false);
   const settlementState = getSettlementDisplayState(rideInstance);
@@ -591,6 +632,7 @@ function RecurringInstanceSettlementTimeline({
     return (
       <SettlementDetailsScreen
         rideInstance={rideInstance}
+        isTaxiPartnerQuote={isTaxiPartnerQuote}
         onBack={() => setShowSettlementDetails(false)}
       />
     );
@@ -781,6 +823,7 @@ export function RecurringInstanceProofFlow({
   const [selectedProofFiles, setSelectedProofFiles] = useState<Partial<Record<ProofUploadType, ProofUploadFile>>>({});
   const [localProofPreviews, setLocalProofPreviews] = useState<Partial<Record<ProofUploadType, HostProofPreview>>>({});
   const taxiMeter = getRideOptionLabel(pod) === "Taxi meter";
+  const taxiPartnerQuote = pod.rideOption === "taxi_partner_quote" || Boolean(rideInstance.taxiPartnerQuoteRequestId);
   const effectiveRideInstance = {
     ...rideInstance,
     status: localRideStatus ?? rideInstance.status,
@@ -941,7 +984,7 @@ export function RecurringInstanceProofFlow({
   }
 
   if (settlementFlow) {
-    return <RecurringInstanceSettlementTimeline rideInstance={rideInstance} />;
+    return <RecurringInstanceSettlementTimeline rideInstance={rideInstance} isTaxiPartnerQuote={taxiPartnerQuote} />;
   }
 
   if (receiptFlow) {
