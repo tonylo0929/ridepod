@@ -82,6 +82,39 @@ const proofUpload = loadTsModule("src/lib/uploads/proof-upload.ts");
 const supabaseProofMetadata = loadTsModule("src/lib/supabase/proof-metadata.ts");
 const publicProfile = loadTsModule("src/lib/public-profile.ts");
 const memberSafetyReport = loadTsModule("src/lib/member-safety-report.ts");
+const ridePodDemoScenarios = loadTsModule("src/lib/demo/ridepod-demo-scenarios.ts");
+
+assert.deepEqual(ridePodDemoScenarios.RIDE_POD_DEMO_SCENARIO_IDS, [
+  "scheduled_ride_app_quote_needed",
+  "scheduled_ride_app_ready_to_book",
+  "scheduled_ride_app_receipt_needed",
+  "scheduled_taxi_meter_proof_needed",
+  "recurring_back_and_forth",
+  "settlement_ready",
+  "dispute_review",
+  "admin_review_queue",
+  "profile_eligibility",
+  "safety_report",
+]);
+assert.equal(ridePodDemoScenarios.listRidePodDemoScenarios().length, 10);
+assert.equal(
+  ridePodDemoScenarios.getRidePodDemoScenario("scheduled_ride_app_quote_needed").title,
+  "Scheduled Ride App - Quote Needed",
+);
+assert.equal(ridePodDemoScenarios.getRidePodDemoScenario("missing_demo_scenario"), null);
+assert.ok(
+  ridePodDemoScenarios.listRidePodDemoScenarios().every((scenario) =>
+    scenario.id &&
+    scenario.title &&
+    scenario.description &&
+    scenario.role &&
+    scenario.primaryStatus &&
+    scenario.recommendedRoute &&
+    scenario.tags.includes("demo") &&
+    scenario.tags.includes("closed beta") &&
+    scenario.notes
+  ),
+);
 
 assert.deepEqual(moneySafety.POD_LIFECYCLE_STATES, [
   "DRAFT",
