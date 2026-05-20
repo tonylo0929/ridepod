@@ -9,8 +9,9 @@ import {
   Upload,
   UsersRound,
 } from "lucide-react";
-import { Badge, ProgressBar, StatusBadge, cn } from "@/components/ui";
+import { Badge, ProgressBar, StatusBadge, cn, getRideInstanceDisplayStatus } from "@/components/ui";
 import { RecurringInstanceProofFlow } from "@/components/recurring-instance-proof-flow";
+import { TaxiPartnerQuoteRequestCard } from "@/components/taxi-partner-quote-request-card";
 import { currentUserId, formatMoney, getHostedPods, getUser, type RidePod } from "@/lib/mock-data";
 import { HostQuoteUploadPanel } from "@/components/money-safety-ui";
 import { getRideInstanceDetailWithFallback } from "@/lib/supabase/ride-instance-detail";
@@ -24,7 +25,13 @@ function getReadyMembers(pod: RidePod) {
 }
 
 function getHostAction(pod: RidePod) {
+  const isTaxiPartnerQuote = pod.rideOption === "taxi_partner_quote";
   const isTaxiMeter = pod.rideOption === "taxi_meter" || pod.vehicleType === "Taxi";
+  const nextRide = pod.upcomingRideInstances?.[0];
+
+  if (isTaxiPartnerQuote && nextRide) {
+    return getRideInstanceDisplayStatus(nextRide, pod).primaryActionLabel;
+  }
 
   if (pod.moneyStatus === "host_replacement_needed") {
     return "Confirm backup host";
@@ -245,10 +252,17 @@ export default async function HostDashboardPage({
               {selectedRideInstance.fallbackNote}
             </p>
           ) : null}
-          <RecurringInstanceProofFlow
-            pod={selectedRideInstance.pod}
-            rideInstance={selectedRideInstance.rideInstance}
-          />
+          {selectedRideInstance.pod.rideOption === "taxi_partner_quote" ? (
+            <TaxiPartnerQuoteRequestCard
+              pod={selectedRideInstance.pod}
+              rideInstance={selectedRideInstance.rideInstance}
+            />
+          ) : (
+            <RecurringInstanceProofFlow
+              pod={selectedRideInstance.pod}
+              rideInstance={selectedRideInstance.rideInstance}
+            />
+          )}
         </div>
       ) : params.rideInstanceId ? (
         <div className="rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5">

@@ -20,6 +20,11 @@ import {
   WalletCards,
 } from "lucide-react";
 import { formatMoney, getUser, type RecurringRideInstancePreview, type RidePod, type User } from "@/lib/mock-data";
+import {
+  getTaxiPartnerQuoteDisplayStatus,
+  getTaxiPartnerQuoteRequest,
+  type TaxiPartnerQuoteDisplayStatus,
+} from "@/lib/taxi-partner-quote";
 
 export function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
@@ -83,6 +88,8 @@ function getDefaultMoneyStatus(pod: RidePod): NonNullable<RidePod["moneyStatus"]
 }
 
 function getRecurringRideOptionLabel(pod: RidePod) {
+  if (pod.rideOption === "taxi_partner_quote") return "Taxi partner quote";
+
   return pod.rideOption === "taxi_meter" || pod.vehicleType === "Taxi"
     ? "Taxi meter"
     : "Ride app / fixed quote";
@@ -128,12 +135,45 @@ const rideInstanceStatusTones = {
   },
 };
 
+function getTaxiPartnerQuoteTone(tone: TaxiPartnerQuoteDisplayStatus["tone"]) {
+  return rideInstanceStatusTones[tone];
+}
+
+function getTaxiPartnerQuoteBucket(label: string): RideInstanceDisplayStatus["bucket"] {
+  if (label === "Closed") return "closed";
+  if (label === "Payout pending" || label === "Dispute review" || label === "Ride completed") {
+    return "settlement_ready";
+  }
+  if (label === "Ready for taxi partner" || label === "Guests accepting") return "ready_to_book";
+
+  return "quote_needed";
+}
+
 export function getRideInstanceDisplayStatus(
   rideInstance: RecurringRideInstancePreview,
   pod: RidePod,
 ): RideInstanceDisplayStatus {
-  const taxiMeter = getRecurringRideOptionLabel(pod) === "Taxi meter";
+  const rideOptionLabel = getRecurringRideOptionLabel(pod);
+  const taxiMeter = rideOptionLabel === "Taxi meter";
+  const taxiPartnerQuote = rideOptionLabel === "Taxi partner quote";
   const instanceHref = `/host?rideInstanceId=${encodeURIComponent(rideInstance.id)}`;
+
+  if (taxiPartnerQuote) {
+    const quoteDisplayStatus = getTaxiPartnerQuoteDisplayStatus(
+      getTaxiPartnerQuoteRequest(rideInstance.taxiPartnerQuoteRequestId),
+    );
+    const tone = getTaxiPartnerQuoteTone(quoteDisplayStatus.tone);
+
+    return {
+      label: quoteDisplayStatus.label,
+      chipClassName: tone.chip,
+      cardClassName: tone.card,
+      helperText: quoteDisplayStatus.helperText,
+      primaryActionLabel: quoteDisplayStatus.primaryActionLabel,
+      primaryActionTarget: quoteDisplayStatus.primaryActionTarget ?? instanceHref,
+      bucket: getTaxiPartnerQuoteBucket(quoteDisplayStatus.label),
+    };
+  }
 
   if (rideInstance.settlementState === "PAID" || rideInstance.payoutState === "PAID") {
     return {
@@ -286,7 +326,9 @@ export function getRideInstanceDisplayStatus(
 }
 
 function getStatusOverviewItems(pod: RidePod) {
-  const taxiMeter = getRecurringRideOptionLabel(pod) === "Taxi meter";
+  const rideOptionLabel = getRecurringRideOptionLabel(pod);
+  const taxiMeter = rideOptionLabel === "Taxi meter";
+  const taxiPartnerQuote = rideOptionLabel === "Taxi partner quote";
   const counts = {
     quote_needed: 0,
     ready_to_book: 0,
@@ -304,16 +346,20 @@ function getStatusOverviewItems(pod: RidePod) {
     {
       key: "quote_needed",
       count: counts.quote_needed,
-      label: "Quote needed",
-      helper: taxiMeter ? "No upfront quote needed for taxi meter rides." : "Upload a fresh quote before booking.",
+      label: taxiPartnerQuote ? "Partner quote needed" : "Quote needed",
+      helper: taxiPartnerQuote
+        ? "Request a quote from a licensed taxi partner."
+        : taxiMeter ? "No upfront quote needed for taxi meter rides." : "Upload a fresh quote before booking.",
       icon: FileText,
       className: rideInstanceStatusTones.gold.card,
     },
     {
       key: "ready_to_book",
       count: counts.ready_to_book,
-      label: taxiMeter ? "Ready for taxi meter" : "Ready to book",
-      helper: taxiMeter ? "No upfront quote needed." : "Quote approved. Mark the ride as booked.",
+      label: taxiPartnerQuote ? "Ready for taxi partner" : taxiMeter ? "Ready for taxi meter" : "Ready to book",
+      helper: taxiPartnerQuote
+        ? "Guests accept the shared pod quote before the ride proceeds."
+        : taxiMeter ? "No upfront quote needed." : "Quote approved. Mark the ride as booked.",
       icon: CheckCircle2,
       className: rideInstanceStatusTones.green.card,
     },
@@ -328,8 +374,10 @@ function getStatusOverviewItems(pod: RidePod) {
     {
       key: "receipt_needed",
       count: counts.receipt_needed,
-      label: taxiMeter ? "Meter proof needed" : "Receipt needed",
-      helper: taxiMeter ? "Upload meter proof after the ride." : "Upload the final receipt for settlement.",
+      label: taxiPartnerQuote ? "Payout pending" : taxiMeter ? "Meter proof needed" : "Receipt needed",
+      helper: taxiPartnerQuote
+        ? "Payout after dispute window in this future beta prototype."
+        : taxiMeter ? "Upload meter proof after the ride." : "Upload the final receipt for settlement.",
       icon: ReceiptText,
       className: rideInstanceStatusTones.orange.card,
     },

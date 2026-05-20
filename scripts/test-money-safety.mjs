@@ -84,12 +84,14 @@ const publicProfile = loadTsModule("src/lib/public-profile.ts");
 const memberSafetyReport = loadTsModule("src/lib/member-safety-report.ts");
 const ridePodDemoScenarios = loadTsModule("src/lib/demo/ridepod-demo-scenarios.ts");
 const ridePodDemoResetMock = loadTsModule("src/lib/demo/ridepod-demo-reset-mock.ts");
+const taxiPartnerQuote = loadTsModule("src/lib/taxi-partner-quote.ts");
 
 assert.deepEqual(ridePodDemoScenarios.RIDE_POD_DEMO_SCENARIO_IDS, [
   "scheduled_ride_app_quote_needed",
   "scheduled_ride_app_ready_to_book",
   "scheduled_ride_app_receipt_needed",
   "scheduled_taxi_meter_proof_needed",
+  "taxi_partner_quote_mode",
   "recurring_back_and_forth",
   "settlement_ready",
   "dispute_review",
@@ -97,12 +99,17 @@ assert.deepEqual(ridePodDemoScenarios.RIDE_POD_DEMO_SCENARIO_IDS, [
   "profile_eligibility",
   "safety_report",
 ]);
-assert.equal(ridePodDemoScenarios.listRidePodDemoScenarios().length, 10);
+assert.equal(ridePodDemoScenarios.listRidePodDemoScenarios().length, 11);
 assert.equal(
   ridePodDemoScenarios.getRidePodDemoScenario("scheduled_ride_app_quote_needed").title,
   "Scheduled Ride App - Quote Needed",
 );
 assert.equal(ridePodDemoScenarios.getRidePodDemoScenario("missing_demo_scenario"), null);
+assert.equal(ridePodDemoScenarios.getRidePodDemoScenario("taxi_partner_quote_mode").title, "Taxi Partner Quote");
+assert.equal(
+  ridePodDemoScenarios.getRidePodDemoScenario("taxi_partner_quote_mode").primaryStatus,
+  "Future beta prototype",
+);
 assert.ok(
   ridePodDemoScenarios.listRidePodDemoScenarios().every((scenario) =>
     scenario.id &&
@@ -126,6 +133,113 @@ assert.equal(demoResetUnknown.success, false);
 assert.equal(demoResetUnknown.scenario, null);
 assert.equal(demoResetUnknown.routeToOpen, null);
 assert.equal(demoResetUnknown.message, "Couldn't load this demo scenario.");
+assert.deepEqual(taxiPartnerQuote.TAXI_PARTNER_TAXI_TYPES, [
+  "STANDARD",
+  "ELECTRIC",
+  "LUGGAGE_FRIENDLY",
+  "LARGE",
+  "COMFORT",
+  "ACCESSIBLE",
+]);
+assert.deepEqual(taxiPartnerQuote.TAXI_PARTNER_QUOTE_STATUSES, [
+  "QUOTE_NOT_REQUESTED",
+  "QUOTE_REQUESTED",
+  "QUOTE_RECEIVED",
+  "QUOTE_EXPIRED",
+  "QUOTE_REJECTED",
+  "QUOTE_ACCEPTED",
+  "QUOTE_ABOVE_CAP",
+  "ADMIN_REVIEW",
+]);
+assert.deepEqual(taxiPartnerQuote.TAXI_PARTNER_GUEST_ACCEPTANCE_STATUSES, [
+  "WAITING_FOR_GUESTS",
+  "GUESTS_LOCKED",
+  "ACCEPTING_QUOTE",
+  "ALL_ACCEPTED",
+  "SOME_REJECTED",
+  "EXPIRED",
+]);
+assert.deepEqual(taxiPartnerQuote.TAXI_PARTNER_DRIVER_ASSIGNMENT_STATUSES, [
+  "NOT_ASSIGNED",
+  "PARTNER_ACCEPTED",
+  "DRIVER_ASSIGNED",
+  "DRIVER_EN_ROUTE",
+  "ARRIVED",
+  "COMPLETED",
+  "CANCELED",
+]);
+assert.deepEqual(taxiPartnerQuote.TAXI_PARTNER_PAYOUT_STATUSES, [
+  "NOT_READY",
+  "PENDING_DISPUTE_WINDOW",
+  "HELD_FOR_REVIEW",
+  "READY_TO_RELEASE",
+  "RELEASED",
+  "DENIED",
+]);
+assert.equal(taxiPartnerQuote.mockTaxiPartnerQuoteRequests.length, 6);
+assert.deepEqual(
+  taxiPartnerQuote.mockTaxiPartnerQuoteRequests.map((request) => request.id),
+  [
+    "taxi_partner_quote_needed",
+    "taxi_partner_quote_received",
+    "taxi_partner_guests_accepting",
+    "taxi_partner_ready",
+    "taxi_partner_completed_payout_pending",
+    "taxi_partner_dispute_review",
+  ],
+);
+assert.equal(
+  taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
+    taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_quote_needed"),
+  ).label,
+  "Partner quote needed",
+);
+assert.equal(
+  taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
+    taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_quote_received"),
+  ).primaryActionLabel,
+  "Review quote",
+);
+assert.equal(
+  taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
+    taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_guests_accepting"),
+  ).label,
+  "Guests accepting",
+);
+assert.equal(
+  taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
+    taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_ready"),
+  ).label,
+  "Ready for taxi partner",
+);
+assert.equal(
+  taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
+    taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_completed_payout_pending"),
+  ).label,
+  "Payout pending",
+);
+assert.equal(
+  taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
+    taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_dispute_review"),
+  ).helperText,
+  "Payout is held while RidePod reviews the issue.",
+);
+assert.equal(taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(null).primaryActionLabel, "Request quote");
+assert.deepEqual(
+  taxiPartnerQuote.getTaxiPartnerQuoteMoneyDisplay(
+    taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_quote_received"),
+    4,
+  ),
+  {
+    quoteAmountCents: 24000,
+    guestCount: 4,
+    fareShareCents: 6000,
+    platformFeeCents: 600,
+    guestChargeCents: 6600,
+    driverPayoutCents: 24000,
+    currency: "HKD",
+  },
+);
 
 assert.deepEqual(moneySafety.POD_LIFECYCLE_STATES, [
   "DRAFT",
@@ -601,6 +715,8 @@ const registerPageSource = readFileSync("src/app/register/page.tsx", "utf8");
 const publicProfileSource = readFileSync("src/lib/public-profile.ts", "utf8");
 const publicMemberCardSource = readFileSync("src/components/public-member-card.tsx", "utf8");
 const memberSafetyReportSource = readFileSync("src/lib/member-safety-report.ts", "utf8");
+const taxiPartnerQuoteSource = readFileSync("src/lib/taxi-partner-quote.ts", "utf8");
+const taxiPartnerQuoteRequestCardSource = readFileSync("src/components/taxi-partner-quote-request-card.tsx", "utf8");
 const memberReportConcernSource = readFileSync("src/components/member-report-concern.tsx", "utf8");
 const hostPageSource = readFileSync("src/app/(app)/host/page.tsx", "utf8");
 const settingsPageSource = readFileSync("src/app/(app)/settings/page.tsx", "utf8");
@@ -1021,6 +1137,86 @@ assert.ok(mockDataSource.includes("recurringPattern: \"back_and_forth\""));
 assert.ok(mockDataSource.includes("recurringPattern: \"one_way\""));
 assert.ok(mockDataSource.includes("rideOption: \"ride_app_fixed_quote\""));
 assert.ok(mockDataSource.includes("rideOption: \"taxi_meter\""));
+assert.ok(mockDataSource.includes("rideOption: \"taxi_partner_quote\""));
+assert.ok(mockDataSource.includes("taxiPartnerQuoteRequestId?: string"));
+assert.ok(mockDataSource.includes("taxi_partner_quote_needed"));
+assert.ok(mockDataSource.includes("taxi_partner_quote_received"));
+assert.ok(mockDataSource.includes("taxi_partner_guests_accepting"));
+assert.ok(mockDataSource.includes("taxi_partner_ready"));
+assert.ok(mockDataSource.includes("taxi_partner_completed_payout_pending"));
+assert.ok(mockDataSource.includes("taxi_partner_dispute_review"));
+for (const taxiPartnerCopy of [
+  "Taxi partner quote",
+  "Partner quote needed",
+  "Waiting for quote",
+  "Quote received",
+  "Guests accepting",
+  "Ready for taxi partner",
+  "Ride completed",
+  "Payout pending",
+  "Dispute review",
+  "Closed",
+  "Request a quote from a licensed taxi partner.",
+  "Taxi partners can quote one price for this shared pod.",
+  "Guests need to accept the partner quote before the ride proceeds.",
+  "Waiting for all guests to accept the quote.",
+  "The partner quote is accepted. Ride can proceed.",
+  "Dispute window is open before payout release.",
+  "Payout releases after the dispute window if no issue is reported.",
+  "Payout is held while RidePod reviews the issue.",
+  "Ride completed and payout status is closed.",
+  "shared pod quote",
+]) {
+  assert.ok(
+    taxiPartnerQuoteSource.includes(taxiPartnerCopy) ||
+      taxiPartnerQuoteRequestCardSource.includes(taxiPartnerCopy) ||
+      uiSource.includes(taxiPartnerCopy),
+    `Missing Taxi Partner Quote copy: ${taxiPartnerCopy}`,
+  );
+}
+for (const taxiPartnerRequestCardCopy of [
+  "TaxiPartnerQuoteRequestCard",
+  "getTaxiPartnerQuoteDisplayStatus",
+  "Request taxi partner quote",
+  "Submit request",
+  "Quote request created.",
+  "Simulate quote",
+  "NEXT_PUBLIC_RIDEPOD_DEMO_MODE",
+  "Demo Taxi Partner",
+  "HK$240",
+  "Fare share",
+  "Platform fee",
+  "Guest charge",
+  "Driver payout",
+  "Safety modes control who can join the pod. They do not guarantee a specific taxi driver unless supported by the taxi partner.",
+  "Guest acceptance flow comes next.",
+]) {
+  assert.ok(
+    taxiPartnerQuoteRequestCardSource.includes(taxiPartnerRequestCardCopy),
+    `Missing Taxi Partner Quote request card copy: ${taxiPartnerRequestCardCopy}`,
+  );
+}
+assert.ok(hostPageSource.includes("TaxiPartnerQuoteRequestCard"));
+assert.ok(hostPageSource.includes("selectedRideInstance.pod.rideOption === \"taxi_partner_quote\""));
+assert.ok(taxiPartnerQuoteSource.includes("luggageCount?: number"));
+assert.ok(taxiPartnerQuoteSource.includes("acceptedGuestCount?: number"));
+assert.ok(taxiPartnerQuoteSource.includes("extraSpaceNeeded?: boolean"));
+assert.ok(taxiPartnerQuoteSource.includes("wheelchairAccessibleRequested?: boolean"));
+assert.ok(taxiPartnerQuoteSource.includes("stepFreeSupportRequested?: boolean"));
+for (const forbiddenTaxiPartnerCopy of [
+  "RidePod driver",
+  "guaranteed driver",
+  "guaranteed payout",
+  "official taxi dispatch",
+  "female driver guaranteed",
+  "100% safe",
+  "escrow",
+  "real payment",
+]) {
+  assert.equal(taxiPartnerQuoteSource.includes(forbiddenTaxiPartnerCopy), false);
+  assert.equal(taxiPartnerQuoteRequestCardSource.includes(forbiddenTaxiPartnerCopy), false);
+  assert.equal(uiSource.includes(forbiddenTaxiPartnerCopy), false);
+}
 assert.ok(mockDataSource.includes("recurringTemplateId"));
 assert.ok(mockDataSource.includes("proofType: \"QUOTE_SCREENSHOT\""));
 assert.ok(mockDataSource.includes("proofType: \"METER_PROOF\""));
