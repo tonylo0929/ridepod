@@ -348,6 +348,120 @@ function KeyValue({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+function optionalAdminHkd(cents: number | null | undefined, fallback = "Not available") {
+  return typeof cents === "number" ? formatAdminHkd(cents) : fallback;
+}
+
+function optionalCount(count: number | null | undefined, fallback = "Not available") {
+  return typeof count === "number" ? String(count) : fallback;
+}
+
+function TaxiPartnerQuoteDetailSections({ reviewCase }: { reviewCase: AdminReviewCaseViewModel }) {
+  const acceptance = reviewCase.taxiPartnerGuestAcceptance;
+  const timeline = reviewCase.taxiPartnerTimeline ?? [];
+
+  return (
+    <>
+      <DetailSection icon={ClipboardCheck} title="Ride summary">
+        <dl className="grid gap-2 sm:grid-cols-2">
+          <KeyValue label="Route" value={reviewCase.routeLabel} />
+          <KeyValue label="Date/time" value={reviewCase.rideDateLabel} />
+          <KeyValue label="Taxi type" value={reviewCase.taxiPartnerTaxiType ?? "Taxi type unavailable"} />
+          <KeyValue label="Ride option" value="Taxi partner quote" />
+          <KeyValue label="Taxi partner" value={reviewCase.taxiPartnerName ?? "Taxi partner unavailable"} />
+          <KeyValue label="Guests accepted" value={optionalCount(reviewCase.taxiPartnerAcceptedGuestCount)} />
+          <KeyValue label="Ride completion status" value={reviewCase.taxiPartnerRideCompletionStatus ?? "Status unavailable"} />
+          <KeyValue label="Payout status" value={reviewCase.payoutStatusLabel} />
+        </dl>
+      </DetailSection>
+
+      <DetailSection icon={ReceiptText} title="Quote summary">
+        <dl className="grid gap-2 sm:grid-cols-2">
+          <KeyValue label="Taxi partner quote amount" value={optionalAdminHkd(reviewCase.taxiPartnerQuoteAmountCents, "Quote unavailable")} />
+          <KeyValue label="Fare cap" value={reviewCase.bookingFareCapCents > 0 ? formatAdminHkd(reviewCase.bookingFareCapCents) : "Fare cap unavailable"} />
+          <KeyValue label="Fare share per guest" value={optionalAdminHkd(reviewCase.taxiPartnerFareSharePerGuestCents)} />
+          <KeyValue label="Platform fee per guest" value={optionalAdminHkd(reviewCase.taxiPartnerPlatformFeePerGuestCents)} />
+          <KeyValue label="Guest charge" value={optionalAdminHkd(reviewCase.taxiPartnerGuestChargeCents)} />
+          <KeyValue label="Driver payout" value={optionalAdminHkd(reviewCase.taxiPartnerDriverPayoutCents)} />
+        </dl>
+      </DetailSection>
+
+      <DetailSection icon={CheckCircle2} title="Guest acceptance summary">
+        <dl className="grid gap-2 sm:grid-cols-3">
+          <KeyValue label="Accepted" value={optionalCount(acceptance?.acceptedCount)} />
+          <KeyValue label="Declined" value={optionalCount(acceptance?.declinedCount)} />
+          <KeyValue label="Pending" value={optionalCount(acceptance?.pendingCount)} />
+        </dl>
+        <p className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+          Guest acceptance is summarized by count only. Private guest-level details are not shown in this admin queue view.
+        </p>
+      </DetailSection>
+
+      {reviewCase.disputeStatus !== "None" ? (
+        <DetailSection icon={ShieldAlert} title="Dispute / issue summary">
+          <dl className="grid gap-2 sm:grid-cols-2">
+            <KeyValue label="Dispute type" value={reviewCase.disputeIssueType ?? "Dispute under review"} />
+            <KeyValue label="Reporter" value={reviewCase.reporter ?? "Reporter unavailable"} />
+            <KeyValue label="Submitted time" value={reviewCase.createdAtLabel} />
+            <KeyValue label="Attached evidence" value={reviewCase.evidenceLabel ?? "Evidence placeholder"} />
+          </dl>
+          <div className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Issue note</p>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              {reviewCase.disputeNote ?? "Dispute under review."}
+            </p>
+          </div>
+        </DetailSection>
+      ) : null}
+
+      <DetailSection icon={FileSearch} title="Evidence timeline">
+        {timeline.length ? (
+          <div className="grid gap-3">
+            {timeline.map((item) => (
+              <article key={item.id} className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+                <p className="text-sm font-black text-[var(--rp-text)]">{item.title}</p>
+                <p className="mt-1 text-xs font-bold text-[var(--rp-muted)]">{item.timestampLabel}</p>
+                {item.detail ? (
+                  <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{item.detail}</p>
+                ) : null}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+            No Taxi partner timeline events are available yet.
+          </p>
+        )}
+      </DetailSection>
+    </>
+  );
+}
+
+function TaxiPartnerAdminNotes({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (nextValue: string) => void;
+}) {
+  return (
+    <DetailSection icon={LockKeyhole} title="Admin notes">
+      <label className="grid gap-2 text-sm font-black text-[var(--rp-muted-strong)]">
+        Admin notes
+        <textarea
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="min-h-32 rounded-[16px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 py-3 text-sm font-bold text-[var(--rp-text)]"
+          placeholder="Add notes for review and audit trail."
+        />
+      </label>
+      <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+        Notes are local only in this slice. Saving admin notes comes with a later admin actions step.
+      </p>
+    </DetailSection>
+  );
+}
+
 function ReviewCaseModal({
   reviewCase,
   onClose,
@@ -377,6 +491,7 @@ function ReviewCaseModal({
   const selectedDecision = activeDecisionLabels.find((item) => item.key === decision);
   const notesRequired = Boolean(selectedDecision?.requiresNotes);
   const notesMissing = notesRequired && !adminNotes.trim();
+  const isTaxiPartnerQuoteCase = reviewCase.rideOption === "Taxi partner quote";
 
   const applyDecision = (nextDecision: AdminDecisionKey) => {
     const config = adminDecisionLabels.find((item) => item.key === nextDecision);
@@ -415,7 +530,7 @@ function ReviewCaseModal({
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Review detail</p>
-            <h2 className="mt-2 text-2xl font-black">{reviewCase.caseType}</h2>
+            <h2 className="mt-2 text-2xl font-black">{reviewCase.caseTypeLabel}</h2>
             <p className="mt-1 text-sm font-semibold text-[var(--rp-muted-strong)]">{reviewCase.rideDateTime}</p>
           </div>
           <button
@@ -461,6 +576,8 @@ function ReviewCaseModal({
                   {reviewCase.caseDescription ?? "User requested manual ID verification review. No identity document was collected."}
                 </p>
               </DetailSection>
+            ) : isTaxiPartnerQuoteCase ? (
+              <TaxiPartnerQuoteDetailSections reviewCase={reviewCase} />
             ) : (
               <>
             <DetailSection icon={ClipboardCheck} title="Ride instance summary">
@@ -639,7 +756,9 @@ function ReviewCaseModal({
           </div>
 
           <aside className="grid content-start gap-4">
-            {reviewCase.isMemberSafetyReportCase ? (
+            {isTaxiPartnerQuoteCase ? (
+              <TaxiPartnerAdminNotes value={adminNotes} onChange={setAdminNotes} />
+            ) : reviewCase.isMemberSafetyReportCase ? (
               <DetailSection icon={LockKeyhole} title="Manual safety review">
                 <p className="text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
                   Safety report actions are placeholders in this slice. Admin-reviewed user notification and account action should be handled in a later safety ops slice.

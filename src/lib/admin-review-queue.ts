@@ -46,7 +46,16 @@ export type AdminReviewCase = {
   disputeIssueType?: string;
   disputeNote?: string;
   taxiPartnerName?: string | null;
+  taxiPartnerTaxiType?: string | null;
   taxiPartnerQuoteAmountCents?: number | null;
+  taxiPartnerFareSharePerGuestCents?: number | null;
+  taxiPartnerPlatformFeePerGuestCents?: number | null;
+  taxiPartnerGuestChargeCents?: number | null;
+  taxiPartnerDriverPayoutCents?: number | null;
+  taxiPartnerAcceptedGuestCount?: number | null;
+  taxiPartnerRideCompletionStatus?: string | null;
+  taxiPartnerGuestAcceptance?: TaxiPartnerGuestAcceptanceSummary;
+  taxiPartnerTimeline?: TaxiPartnerAdminTimelineItem[];
   evidenceLabel?: string;
   fileUrl?: string | null;
   evidenceTimeline?: AdminEvidenceTimelineItem[];
@@ -98,6 +107,27 @@ export type AdminDisputeEvidenceTimelineItem = {
   proofType?: AdminReviewCase["proofType"];
   adminNotes: string | null;
   tone: "neutral" | "blue" | "amber" | "red" | "green";
+};
+
+export type TaxiPartnerAdminTimelineItem = {
+  id: string;
+  title:
+    | "Pod created"
+    | "Guests locked"
+    | "Partner quote received"
+    | "Guests accepted quote"
+    | "Ride marked completed"
+    | "Dispute opened"
+    | "Payout held"
+    | "Admin decision";
+  timestampLabel: string;
+  detail?: string;
+};
+
+export type TaxiPartnerGuestAcceptanceSummary = {
+  acceptedCount: number | null;
+  declinedCount: number | null;
+  pendingCount: number | null;
 };
 
 export const adminReviewDecisionCopy = {
@@ -320,10 +350,31 @@ export function getAdminReviewCases(): AdminReviewCase[] {
       ridepodEstimateCents: 26000,
       uploadedQuoteCents: 24000,
       taxiPartnerName: "Demo Taxi Partner",
+      taxiPartnerTaxiType: "Electric",
       taxiPartnerQuoteAmountCents: 24000,
+      taxiPartnerFareSharePerGuestCents: 6000,
+      taxiPartnerPlatformFeePerGuestCents: 300,
+      taxiPartnerGuestChargeCents: 6300,
+      taxiPartnerDriverPayoutCents: 22800,
+      taxiPartnerAcceptedGuestCount: 4,
+      taxiPartnerRideCompletionStatus: "Completed",
+      taxiPartnerGuestAcceptance: {
+        acceptedCount: 4,
+        declinedCount: 0,
+        pendingCount: 0,
+      },
       disputeIssueType: "Wrong pickup point",
       disputeNote: "Guest reported pickup confusion. Manual review placeholder only.",
       evidenceLabel: "Taxi partner dispute placeholder",
+      taxiPartnerTimeline: [
+        { id: "taxi-partner-dispute-pod-created", title: "Pod created", timestampLabel: "May 19, 7:10 AM" },
+        { id: "taxi-partner-dispute-guests-locked", title: "Guests locked", timestampLabel: "May 19, 7:36 AM", detail: "4 guests accepted." },
+        { id: "taxi-partner-dispute-quote-received", title: "Partner quote received", timestampLabel: "May 19, 7:42 AM", detail: "Demo Taxi Partner quoted HK$240.00." },
+        { id: "taxi-partner-dispute-guests-accepted", title: "Guests accepted quote", timestampLabel: "May 19, 7:48 AM" },
+        { id: "taxi-partner-dispute-completed", title: "Ride marked completed", timestampLabel: "May 19, 9:15 AM" },
+        { id: "taxi-partner-dispute-opened", title: "Dispute opened", timestampLabel: "May 19, 9:24 AM", detail: "Dispute under review." },
+        { id: "taxi-partner-dispute-payout-held", title: "Payout held", timestampLabel: "May 19, 9:25 AM", detail: "Payout held for manual review." },
+      ],
       statusLabel: "Payout held",
       primaryAction: "Review case",
     },
@@ -354,8 +405,28 @@ export function getAdminReviewCases(): AdminReviewCase[] {
       ridepodEstimateCents: 26000,
       uploadedQuoteCents: 24000,
       taxiPartnerName: "Demo Taxi Partner",
+      taxiPartnerTaxiType: "Electric",
       taxiPartnerQuoteAmountCents: 24000,
+      taxiPartnerFareSharePerGuestCents: 6000,
+      taxiPartnerPlatformFeePerGuestCents: 300,
+      taxiPartnerGuestChargeCents: 6300,
+      taxiPartnerDriverPayoutCents: 22800,
+      taxiPartnerAcceptedGuestCount: 4,
+      taxiPartnerRideCompletionStatus: "Completed",
+      taxiPartnerGuestAcceptance: {
+        acceptedCount: 4,
+        declinedCount: 0,
+        pendingCount: 0,
+      },
       evidenceLabel: "Taxi partner payout hold placeholder",
+      taxiPartnerTimeline: [
+        { id: "taxi-partner-hold-pod-created", title: "Pod created", timestampLabel: "May 20, 6:50 AM" },
+        { id: "taxi-partner-hold-guests-locked", title: "Guests locked", timestampLabel: "May 20, 7:10 AM", detail: "4 guests accepted." },
+        { id: "taxi-partner-hold-quote-received", title: "Partner quote received", timestampLabel: "May 20, 7:16 AM", detail: "Demo Taxi Partner quoted HK$240.00." },
+        { id: "taxi-partner-hold-guests-accepted", title: "Guests accepted quote", timestampLabel: "May 20, 7:20 AM" },
+        { id: "taxi-partner-hold-completed", title: "Ride marked completed", timestampLabel: "May 20, 8:52 AM" },
+        { id: "taxi-partner-hold-payout-held", title: "Payout held", timestampLabel: "May 20, 8:54 AM", detail: "Payout held for manual review." },
+      ],
       statusLabel: "Payout held",
       primaryAction: "Review case",
     },

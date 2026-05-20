@@ -204,6 +204,11 @@ function payoutStatusDisplayLabel(payoutStatus: AdminReviewCase["payoutStatus"])
   return "Pending";
 }
 
+function divideCents(amountCents: number | null | undefined, count: number | null | undefined) {
+  if (typeof amountCents !== "number" || !count || count <= 0) return null;
+  return Math.ceil(amountCents / count);
+}
+
 function payoutStatusLabel(reviewCase: RidePodAdminReviewCaseRow, settlement: RidePodSettlementRow | null) {
   if (reviewCase.review_state === "RESOLVED" || reviewCase.review_state === "APPROVED") return "RELEASED";
   if (settlement?.settlement_state === "PAID") return "RELEASED";
@@ -410,6 +415,85 @@ function isDisputeCase(reviewCase: RidePodAdminReviewCaseRow) {
 
 function isTaxiPartnerCase(reviewCase: RidePodAdminReviewCaseRow) {
   return reviewCase.case_type.includes("TAXI_PARTNER");
+}
+
+function taxiPartnerEventTitle(eventType: string): NonNullable<AdminReviewCase["taxiPartnerTimeline"]>[number]["title"] | null {
+  if (eventType === "POD_CREATED") return "Pod created";
+  if (eventType === "GUESTS_LOCKED" || eventType === "POD_LOCKED") return "Guests locked";
+  if (eventType === "TAXI_PARTNER_QUOTE_RECEIVED") return "Partner quote received";
+  if (eventType === "TAXI_PARTNER_QUOTE_ACCEPTED" || eventType === "TAXI_PARTNER_GUESTS_ACCEPTED") {
+    return "Guests accepted quote";
+  }
+  if (eventType === "TAXI_PARTNER_RIDE_COMPLETED" || eventType === "RIDE_COMPLETED") return "Ride marked completed";
+  if (eventType === "DISPUTE_REPORTED" || eventType === "RIDEPOD_DISPUTE_OPENED") return "Dispute opened";
+  if (eventType === "PAYOUT_HELD" || eventType === "ADMIN_PAYOUT_HELD") return "Payout held";
+  if (eventType === "ADMIN_DISPUTE_RESOLVED" || eventType === "ADMIN_DECISION") return "Admin decision";
+  return null;
+}
+
+function buildTaxiPartnerTimeline(
+  reviewCase: RidePodAdminReviewCaseRow,
+  related: AdminReviewRelatedRows,
+): AdminReviewCase["taxiPartnerTimeline"] {
+  if (!isTaxiPartnerCase(reviewCase)) return undefined;
+
+  const items: NonNullable<AdminReviewCase["taxiPartnerTimeline"]> = [];
+  const pushItem = (
+    id: string,
+    title: NonNullable<AdminReviewCase["taxiPartnerTimeline"]>[number]["title"],
+    timestamp: string | null | undefined,
+    detail?: string,
+  ) => {
+    if (!timestamp) return;
+    items.push({
+      id,
+      title,
+      timestampLabel: formatCreatedAt(timestamp),
+      detail,
+    });
+  };
+
+  pushItem("taxi-partner-pod-created", "Pod created", related.pod?.created_at);
+  pushItem(
+    "taxi-partner-guests-locked",
+    "Guests locked",
+    related.rideInstance?.created_at,
+    related.rideInstance?.guests_locked_count ? `${related.rideInstance.guests_locked_count} guests accepted.` : undefined,
+  );
+  pushItem(
+    "taxi-partner-quote-received",
+    "Partner quote received",
+    related.proof?.submitted_at ?? reviewCase.created_at,
+    related.proof?.amount_cents ? `Taxi partner quote: ${formatHkd(related.proof.amount_cents)}.` : undefined,
+  );
+
+  if (related.rideInstance?.guests_locked_count) {
+    pushItem("taxi-partner-guests-accepted", "Guests accepted quote", related.rideInstance.created_at);
+  }
+
+  if (related.rideInstance?.instance_status === "COMPLETED" || related.rideInstance?.instance_status === "completed") {
+    pushItem("taxi-partner-ride-completed", "Ride marked completed", related.rideInstance.updated_at ?? related.rideInstance.created_at);
+  }
+
+  if (isDisputeCase(reviewCase)) {
+    pushItem("taxi-partner-dispute-opened", "Dispute opened", reviewCase.created_at, "Dispute under review.");
+  }
+
+  if (payoutStatusLabel(reviewCase, related.settlement) === "HELD_FOR_REVIEW") {
+    pushItem("taxi-partner-payout-held", "Payout held", reviewCase.created_at, "Payout held for manual review.");
+  }
+
+  if (reviewCase.resolved_at || ["APPROVED", "REJECTED", "RESOLVED"].includes(reviewCase.review_state)) {
+    pushItem("taxi-partner-admin-decision", "Admin decision", reviewCase.resolved_at ?? reviewCase.created_at);
+  }
+
+  related.events?.forEach((event) => {
+    const title = taxiPartnerEventTitle(event.event_type);
+    if (!title) return;
+    pushItem(`taxi-partner-event-${event.id}`, title, event.created_at, eventPayloadText(event, "description") ?? undefined);
+  });
+
+  return items;
 }
 
 function disputeIssueType(reviewCase: RidePodAdminReviewCaseRow): string {
@@ -644,6 +728,19 @@ export function mapSupabaseAdminReviewCaseToViewModel(
   const isIdVerificationCase = reviewCase.case_type === "ID_VERIFICATION_REQUEST";
   const isMemberSafetyReportCase = reviewCase.case_type === "MEMBER_SAFETY_REPORT";
   const isTaxiPartnerReviewCase = isTaxiPartnerCase(reviewCase);
+  const taxiPartnerAcceptedGuestCount = isTaxiPartnerReviewCase ? rideInstance?.guests_locked_count ?? null : null;
+  const taxiPartnerFareSharePerGuestCents = isTaxiPartnerReviewCase
+    ? settlement?.fare_share_cents ?? divideCents(proof?.amount_cents ?? settlement?.verified_fare_cents, taxiPartnerAcceptedGuestCount)
+    : undefined;
+  const taxiPartnerPlatformFeePerGuestCents = isTaxiPartnerReviewCase
+    ? divideCents(settlement?.platform_fee_cents, settlement?.billable_guest_count ?? taxiPartnerAcceptedGuestCount)
+    : undefined;
+  const taxiPartnerGuestChargeCents =
+    isTaxiPartnerReviewCase && typeof taxiPartnerFareSharePerGuestCents === "number"
+      ? taxiPartnerFareSharePerGuestCents + (taxiPartnerPlatformFeePerGuestCents ?? 0)
+      : undefined;
+  const taxiPartnerQuoteAmountCents =
+    proof?.amount_cents ?? settlement?.verified_fare_cents ?? rideInstance?.booking_fare_cap_cents ?? null;
   const accountLabel = subjectUserLabel(related.subjectProfile, reviewCase.subject_user_id);
 
   if (isMemberSafetyReportCase) {
@@ -799,8 +896,23 @@ export function mapSupabaseAdminReviewCaseToViewModel(
     uploadedQuoteCents: proof?.proof_type === "QUOTE_SCREENSHOT" ? proof.amount_cents ?? undefined : undefined,
     finalProofCents: proof?.proof_type !== "QUOTE_SCREENSHOT" ? proof?.amount_cents ?? undefined : undefined,
     taxiPartnerQuoteAmountCents:
-      isTaxiPartnerReviewCase ? proof?.amount_cents ?? settlement?.verified_fare_cents ?? rideInstance?.booking_fare_cap_cents ?? null : undefined,
+      isTaxiPartnerReviewCase ? taxiPartnerQuoteAmountCents : undefined,
     taxiPartnerName: isTaxiPartnerReviewCase ? proof?.provider_name ?? "Taxi partner unavailable" : undefined,
+    taxiPartnerTaxiType: isTaxiPartnerReviewCase ? "Taxi type unavailable" : undefined,
+    taxiPartnerFareSharePerGuestCents,
+    taxiPartnerPlatformFeePerGuestCents,
+    taxiPartnerGuestChargeCents,
+    taxiPartnerDriverPayoutCents: isTaxiPartnerReviewCase ? settlement?.host_reimbursement_cents ?? taxiPartnerQuoteAmountCents : undefined,
+    taxiPartnerAcceptedGuestCount: isTaxiPartnerReviewCase ? taxiPartnerAcceptedGuestCount : undefined,
+    taxiPartnerRideCompletionStatus: isTaxiPartnerReviewCase ? reviewStateDisplayLabel(rideInstance?.instance_status) : undefined,
+    taxiPartnerGuestAcceptance: isTaxiPartnerReviewCase
+      ? {
+          acceptedCount: taxiPartnerAcceptedGuestCount,
+          declinedCount: null,
+          pendingCount: null,
+        }
+      : undefined,
+    taxiPartnerTimeline: buildTaxiPartnerTimeline(reviewCase, related),
     evidenceLabel: proof?.file_url ?? "Proof preview placeholder",
     fileUrl: proof?.file_url ?? null,
     evidenceTimeline,
