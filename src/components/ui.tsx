@@ -140,8 +140,14 @@ function getTaxiPartnerQuoteTone(tone: TaxiPartnerQuoteDisplayStatus["tone"]) {
 }
 
 function getTaxiPartnerQuoteBucket(label: string): RideInstanceDisplayStatus["bucket"] {
-  if (label === "Closed") return "closed";
-  if (label === "Payout pending" || label === "Dispute review" || label === "Ride completed") {
+  if (label === "Closed" || label === "Payout denied") return "closed";
+  if (
+    label === "Payout pending" ||
+    label === "Payout ready" ||
+    label === "Dispute review" ||
+    label === "More info needed" ||
+    label === "Ride completed"
+  ) {
     return "settlement_ready";
   }
   if (label === "Ready for taxi partner" || label === "Guests accepting") return "ready_to_book";

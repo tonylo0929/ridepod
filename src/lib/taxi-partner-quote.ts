@@ -73,9 +73,12 @@ export const TAXI_PARTNER_PAYOUT_STATUSES = [
   "READY_TO_RELEASE",
   "RELEASED",
   "DENIED",
+  "DENIED_MOCK",
 ] as const;
 
 export type TaxiPartnerPayoutStatus = (typeof TAXI_PARTNER_PAYOUT_STATUSES)[number];
+
+export type TaxiPartnerReviewState = "OPEN" | "UNDER_REVIEW" | "NEEDS_MORE_INFO" | "APPROVED" | "REJECTED" | "RESOLVED";
 
 export type TaxiPartnerQuoteRequest = {
   id: string;
@@ -94,6 +97,7 @@ export type TaxiPartnerQuoteRequest = {
   guestAcceptanceStatus: TaxiPartnerGuestAcceptanceStatus;
   driverAssignmentStatus: TaxiPartnerDriverAssignmentStatus;
   payoutStatus: TaxiPartnerPayoutStatus;
+  reviewState?: TaxiPartnerReviewState;
   luggageCount?: number;
   extraSpaceNeeded?: boolean;
   wheelchairAccessibleRequested?: boolean;
@@ -296,6 +300,33 @@ export function getTaxiPartnerQuoteDisplayStatus(
       tone: "gold",
       helperText: "Taxi partners can quote one price for this shared pod.",
       primaryActionLabel: "View request",
+    };
+  }
+
+  if (request.reviewState === "NEEDS_MORE_INFO") {
+    return {
+      label: "More info needed",
+      tone: "orange",
+      helperText: "RidePod needs more information before resolving this case.",
+      primaryActionLabel: "View review",
+    };
+  }
+
+  if (request.payoutStatus === "READY_TO_RELEASE") {
+    return {
+      label: "Payout ready",
+      tone: "green",
+      helperText: "Review is complete. Payout can be processed in demo mode.",
+      primaryActionLabel: "View payout",
+    };
+  }
+
+  if (request.payoutStatus === "DENIED_MOCK") {
+    return {
+      label: "Payout denied",
+      tone: "gray",
+      helperText: "Payout was denied in demo review.",
+      primaryActionLabel: "View review",
     };
   }
 

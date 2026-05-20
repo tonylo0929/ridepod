@@ -62,6 +62,11 @@ export function TaxiPartnerCompletionCard({
   const isPayoutPending = activeRequest?.payoutStatus === "PENDING_DISPUTE_WINDOW";
   const isDisputeReview = activeRequest?.payoutStatus === "HELD_FOR_REVIEW";
   const completed = activeRequest?.driverAssignmentStatus === "COMPLETED";
+  const activeStatusLabel = isPayoutPending || completed || isDisputeReview ? displayStatus.label : "Ready for taxi partner";
+  const activeStatusHelper =
+    isPayoutPending || completed || isDisputeReview
+      ? displayStatus.helperText
+      : "Guests accepted the quote. In the live version, the taxi partner would complete the ride here.";
 
   if (!isCompletionRelevant(activeRequest) || !moneyDisplay || !activeRequest?.quoteAmountCents) return null;
 
@@ -82,12 +87,10 @@ export function TaxiPartnerCompletionCard({
             Taxi partner completion
           </p>
           <h2 className="mt-2 text-2xl font-black leading-tight text-[var(--rp-text)]">
-            {isPayoutPending || completed ? "Payout pending" : "Ready for taxi partner"}
+            {activeStatusLabel}
           </h2>
           <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
-            {isPayoutPending || completed
-              ? "The ride is completed. Payout releases after the dispute window if no issue is reported."
-              : "Guests accepted the quote. In the live version, the taxi partner would complete the ride here."}
+            {activeStatusHelper}
           </p>
         </div>
         <Badge
@@ -99,7 +102,7 @@ export function TaxiPartnerCompletionCard({
                 : "bg-[var(--rp-success-bg)] text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]",
           )}
         >
-          {isDisputeReview ? "Dispute review" : isPayoutPending || completed ? "Payout pending" : displayStatus.label}
+          {activeStatusLabel}
         </Badge>
       </div>
 
@@ -148,11 +151,9 @@ export function TaxiPartnerCompletionCard({
 
       {isPayoutPending || completed || isDisputeReview ? (
         <div className="mt-5 rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
-          <h3 className="text-lg font-black text-[var(--rp-text)]">Payout pending</h3>
+          <h3 className="text-lg font-black text-[var(--rp-text)]">{displayStatus.label}</h3>
           <p className="mt-1 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
-            {isDisputeReview
-              ? "Payout is held while RidePod reviews the issue."
-              : "The ride is completed. Payout releases after the dispute window if no issue is reported."}
+            {displayStatus.helperText}
           </p>
           <dl className="mt-4">
             <SummaryRow label="Taxi partner quote" value={formatHkdCents(moneyDisplay.quoteAmountCents)} />
