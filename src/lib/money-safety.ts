@@ -742,11 +742,11 @@ export function checkPodEligibility(
   }
 
   if (user.riskStatus === "SUSPENDED") {
-    return blocked("Your account is suspended for protected pods.", "CONTACT_SUPPORT");
+    return blocked("Your account cannot join protected pods right now.", "CONTACT_SUPPORT");
   }
 
   if (user.riskStatus === "RESTRICTED") {
-    return blocked("Your account is restricted for protected pods.", "CONTACT_SUPPORT");
+    return blocked("Your account has limited access to protected pods.", "CONTACT_SUPPORT");
   }
 
   if (pod.genderMode === "WOMEN_ONLY") {
@@ -759,7 +759,7 @@ export function checkPodEligibility(
 
     if (!user.genderVerifiedAt) {
       return blocked(
-        "This Women-only pod requires gender verification before payment.",
+        "This pod requires gender verification before joining.",
         "GENDER_VERIFICATION_REQUIRED",
       );
     }
@@ -784,7 +784,7 @@ export function checkPodEligibility(
   if (pod.accessMode === "HIGH_TRUST_ONLY") {
     const threshold = pod.minTrustScore ?? 4.5;
     if (user.trustScore < threshold || user.noShowCount > 0 || user.riskStatus !== "NORMAL") {
-      return blocked("This pod requires a higher trust score.", "TRUST_SCORE_TOO_LOW");
+      return blocked("This pod requires a higher trust level.", "TRUST_SCORE_TOO_LOW");
     }
   }
 
@@ -823,11 +823,11 @@ export function checkHostPodCreationEligibility(
     }
 
     if (host.riskStatus === "SUSPENDED") {
-      return blocked("Your account is suspended for protected pods.", "CONTACT_SUPPORT");
+      return blocked("Your account cannot join protected pods right now.", "CONTACT_SUPPORT");
     }
 
     if (host.riskStatus === "RESTRICTED") {
-      return blocked("Your account is restricted for protected pods.", "CONTACT_SUPPORT");
+      return blocked("Your account has limited access to protected pods.", "CONTACT_SUPPORT");
     }
 
     return {

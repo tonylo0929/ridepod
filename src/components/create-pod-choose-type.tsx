@@ -2701,7 +2701,7 @@ function SafetyTrustPanel({
           </div>
           {genderMode === "women_only" ? (
             <p className="mt-3 rounded-xl bg-[var(--rp-card-soft)] p-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-              Women-only pods are designed for safer matching. Eligible female users can join. RidePod does not guarantee safety; report concerns immediately.
+              Women-only pods are designed for safer matching. Eligible female users can join. Women-only pods require the host profile to be eligible too. RidePod does not guarantee safety; report concerns immediately.
             </p>
           ) : null}
         </div>

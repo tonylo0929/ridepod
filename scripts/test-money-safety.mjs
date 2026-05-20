@@ -526,6 +526,7 @@ const createPodChooseTypeSource = readFileSync("src/components/create-pod-choose
 const createPodFormSource = readFileSync("src/components/create-pod-form.tsx", "utf8");
 const joinFlowSource = readFileSync("src/components/join-flow.tsx", "utf8");
 const joinPodMapFirstSource = readFileSync("src/components/join-pod-map-first-screen.tsx", "utf8");
+const podEligibilitySource = readFileSync("src/lib/pod-eligibility.ts", "utf8");
 const supabaseEnvSource = readFileSync("src/lib/supabase/env.ts", "utf8");
 const supabaseClientSource = readFileSync("src/lib/supabase/client.ts", "utf8");
 const supabaseServerSource = readFileSync("src/lib/supabase/server.ts", "utf8");
@@ -547,6 +548,12 @@ const supabaseProofStorageSanitySource = readFileSync(
 const supabaseAdminReviewCasesSource = readFileSync("src/lib/supabase/admin-review-cases.ts", "utf8");
 const supabaseAdminReviewActionsSource = readFileSync("src/lib/supabase/admin-review-actions.ts", "utf8");
 const adminReviewActionsSource = readFileSync("src/app/(app)/admin/review/actions.ts", "utf8");
+const supabaseAuthSource = readFileSync("src/lib/supabase/auth.ts", "utf8");
+const profilePageSource = readFileSync("src/app/(app)/profile/page.tsx", "utf8");
+const supabaseProfileTrustMigrationSource = readFileSync(
+  "supabase/migrations/202605200001_ridepod_profile_trust_fields.sql",
+  "utf8",
+);
 const legalCopySource = [
   "src/app/layout.tsx",
   "src/app/invite/[id]/page.tsx",
@@ -1028,6 +1035,36 @@ assert.ok(supabaseEnvSource.includes("SUPABASE_SERVICE_ROLE_KEY"));
 assert.ok(supabaseAdminSource.includes("getSupabaseAdminEnv"));
 assert.ok(supabaseAdminSource.includes("Do not import this helper into client components."));
 assert.ok(supabaseAdminSource.includes('import "server-only"'));
+assert.ok(supabaseAuthSource.includes("getCurrentUser"));
+assert.ok(supabaseAuthSource.includes("getCurrentProfile"));
+assert.ok(supabaseAuthSource.includes("ensureProfileForUser"));
+assert.ok(supabaseAuthSource.includes("updateCurrentProfile"));
+assert.ok(supabaseAuthSource.includes("Supabase not configured; using mock profile data."));
+assert.equal(supabaseAuthSource.includes("getSupabaseAdminClient"), false);
+assert.equal(supabaseAuthSource.includes("SUPABASE_SERVICE_ROLE_KEY"), false);
+assert.ok(supabaseProfileTrustMigrationSource.includes("gender_identity"));
+assert.ok(supabaseProfileTrustMigrationSource.includes("community_id"));
+assert.ok(supabaseProfileTrustMigrationSource.includes("no_show_count"));
+assert.ok(supabaseProfileTrustMigrationSource.includes("late_cancel_count"));
+assert.ok(supabaseProfileTrustMigrationSource.includes("risk_status"));
+assert.ok(profilePageSource.includes("Manage your RidePod identity and trust settings."));
+assert.ok(profilePageSource.includes("Display name"));
+assert.ok(profilePageSource.includes("Phone number"));
+assert.ok(profilePageSource.includes("Gender identity"));
+assert.ok(profilePageSource.includes("Community"));
+assert.ok(profilePageSource.includes("Verification"));
+assert.ok(profilePageSource.includes("ID verification"));
+assert.ok(profilePageSource.includes("Not enabled yet"));
+assert.ok(profilePageSource.includes("Trust status"));
+assert.ok(profilePageSource.includes("Public pod preview"));
+assert.ok(profilePageSource.includes("Private details are used for eligibility and safety checks. They are not shown publicly."));
+assert.ok(supabaseAuthSource.includes("Profile saved."));
+assert.ok(supabaseAuthSource.includes("Couldn't save profile. Try again later."));
+assert.equal(profilePageSource.includes("official ID checked"), false);
+assert.equal(profilePageSource.includes("KYC approved"), false);
+assert.equal(profilePageSource.includes("verified identity guaranteed"), false);
+assert.equal(profilePageSource.includes("100% safe"), false);
+assert.equal(profilePageSource.includes("100% verified"), false);
 assert.ok(supabaseQueriesSource.includes("unwrapSupabaseResult"));
 assert.ok(supabaseQueriesSource.includes("getMyPods"));
 assert.ok(supabaseQueriesSource.includes("getRideInstancesForPod"));
@@ -2519,6 +2556,7 @@ assert.equal(
 assert.equal(unknownWomenOnly.eligible, false);
 assert.equal(unverifiedFemaleWomenOnly.eligible, false);
 assert.equal(unverifiedFemaleWomenOnly.requiredAction, "GENDER_VERIFICATION_REQUIRED");
+assert.equal(unverifiedFemaleWomenOnly.blockingReason, "This pod requires gender verification before joining.");
 assert.equal(eligibleWomenOnly.eligible, true);
 
 assert.equal(
@@ -2562,6 +2600,13 @@ assert.equal(
   moneySafety.checkPodEligibility(
     user({ trustScore: 4.1, noShowCount: 1 }),
     pod({ accessMode: "HIGH_TRUST_ONLY", minTrustScore: 4.5 }),
+  ).blockingReason,
+  "This pod requires a higher trust level.",
+);
+assert.equal(
+  moneySafety.checkPodEligibility(
+    user({ trustScore: 4.1, noShowCount: 1 }),
+    pod({ accessMode: "HIGH_TRUST_ONLY", minTrustScore: 4.5 }),
   ).eligible,
   false,
 );
@@ -2589,7 +2634,7 @@ const suspendedEligibility = moneySafety.checkPodEligibility(
 );
 assert.equal(suspendedEligibility.eligible, false);
 assert.equal(suspendedEligibility.requiredAction, "CONTACT_SUPPORT");
-assert.equal(suspendedEligibility.blockingReason, "Your account is suspended for protected pods.");
+assert.equal(suspendedEligibility.blockingReason, "Your account cannot join protected pods right now.");
 
 const restrictedEligibility = moneySafety.checkPodEligibility(
   user({ riskStatus: "RESTRICTED" }),
@@ -2597,7 +2642,7 @@ const restrictedEligibility = moneySafety.checkPodEligibility(
 );
 assert.equal(restrictedEligibility.eligible, false);
 assert.equal(restrictedEligibility.requiredAction, "CONTACT_SUPPORT");
-assert.equal(restrictedEligibility.blockingReason, "Your account is restricted for protected pods.");
+assert.equal(restrictedEligibility.blockingReason, "Your account has limited access to protected pods.");
 
 assert.equal(
   moneySafety.checkHostPodCreationEligibility(
@@ -2651,6 +2696,37 @@ assert.equal(
   }).eligible,
   true,
 );
+const profileEligibilityUser = podEligibility.profileToProtectedUser({
+  id: "profile-user",
+  display_name: "Profile User",
+  email: "profile@example.com",
+  gender_identity: "FEMALE",
+  gender_verified_at: "2026-05-20T00:00:00.000Z",
+  verification_status: "PHONE_VERIFIED",
+  community_id: "usc",
+  trust_score: 4.8,
+  no_show_count: 0,
+  late_cancel_count: 0,
+  risk_status: "NORMAL",
+});
+assert.equal(profileEligibilityUser.genderIdentity, "FEMALE");
+assert.equal(profileEligibilityUser.verificationStatus, "PHONE_VERIFIED");
+assert.equal(profileEligibilityUser.riskStatus, "NORMAL");
+assert.equal(
+  podEligibility.profileToProtectedUser({ id: "fallback-profile" }).genderIdentity,
+  "UNKNOWN",
+);
+assert.equal(
+  podEligibility.profileToProtectedUser({ id: "fallback-profile" }).verificationStatus,
+  "NONE",
+);
+assert.equal(
+  podEligibility.checkProfilePodEligibility(
+    { id: "supabase-profile", gender_identity: "FEMALE", gender_verified_at: "2026-05-20T00:00:00.000Z", verification_status: "PHONE_VERIFIED" },
+    pod({ genderMode: "WOMEN_ONLY", accessMode: "VERIFIED_ONLY" }),
+  ).eligible,
+  true,
+);
 
 const ineligibleRequest = podJoin.requestJoinPod("u2", "women-only-demo");
 assert.equal(ineligibleRequest.ok, false);
@@ -2662,6 +2738,23 @@ assert.equal(
   false,
 );
 assert.equal((await podJoin.authorizeSeat("u2", "women-only-demo")).ok, false);
+assert.ok(joinPodMapFirstSource.includes("You&rsquo;re eligible to join this pod."));
+assert.ok(joinPodMapFirstSource.includes("You can&rsquo;t join this pod yet."));
+assert.ok(joinPodMapFirstSource.includes("Update profile"));
+assert.ok(joinPodMapFirstSource.includes("Verify account"));
+assert.ok(joinPodMapFirstSource.includes("Enter invite code"));
+assert.ok(joinPodMapFirstSource.includes("Contact support"));
+assert.ok(joinPodMapFirstSource.includes("disabled={!isEligible || pending || authorized}"));
+assert.ok(joinFlowSource.includes("requiredAction={eligibility.requiredAction}"));
+assert.ok(createPodChooseTypeSource.includes("Women-only pods require the host profile to be eligible too."));
+assert.ok(createPodFormSource.includes("Women-only pods require the host profile to be eligible too."));
+assert.ok(podEligibilitySource.includes("profileToProtectedUser"));
+assert.ok(podEligibilitySource.includes("gender_identity"));
+assert.ok(podEligibilitySource.includes("verification_status"));
+assert.ok(podEligibilitySource.includes("risk_status"));
+assert.equal(joinPodMapFirstSource.includes("riskStatus"), false);
+assert.equal(joinPodMapFirstSource.includes("genderIdentity"), false);
+assert.equal(joinPodMapFirstSource.includes("admin notes"), false);
 
 const singleLockPod = pod({
   id: "join-single-lock",

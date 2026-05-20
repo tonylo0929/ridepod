@@ -2,6 +2,25 @@
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
+export type RidePodProfileRow = {
+  id: string;
+  display_name: string | null;
+  email: string | null;
+  phone: string | null;
+  gender_identity: "FEMALE" | "MALE" | "NON_BINARY" | "PREFER_NOT_TO_SAY" | "UNKNOWN" | string | null;
+  gender_verified_at: string | null;
+  verification_status: string | null;
+  community_id: string | null;
+  community_verified_at: string | null;
+  safety_note: string | null;
+  trust_score: number | null;
+  no_show_count: number | null;
+  late_cancel_count: number | null;
+  risk_status: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
 export type RidePodPodRow = {
   id: string;
   host_user_id: string | null;
@@ -131,6 +150,7 @@ type TableDefinition<Row> = {
 export type Database = {
   public: {
     Tables: {
+      profiles: TableDefinition<RidePodProfileRow>;
       pods: TableDefinition<RidePodPodRow>;
       ride_instances: TableDefinition<RidePodRideInstanceRow>;
       pod_members: TableDefinition<RidePodMemberRow>;

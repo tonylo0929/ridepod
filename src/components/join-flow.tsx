@@ -59,7 +59,8 @@ export function JoinFlow({ pod }: { pod: RidePod }) {
       genderMode={pod.genderMode === "mixed" ? "MIXED" : "WOMEN_ONLY"}
       maxChargeCents={maxChargeCents}
       isEligible={eligibility.eligible}
-      blockingReason={eligibility.blockingReason ?? eligibility.requiredAction}
+      blockingReason={eligibility.blockingReason}
+      requiredAction={eligibility.requiredAction}
       backHref={`/pods/${pod.id}`}
     />
   );

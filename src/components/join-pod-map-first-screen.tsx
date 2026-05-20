@@ -33,6 +33,7 @@ export type JoinPodMapFirstScreenProps = {
   isEligible?: boolean;
   isAuthorized?: boolean;
   blockingReason?: string | null;
+  requiredAction?: string | null;
   themeVariant?: ThemeVariant;
   backHref?: string;
   onAuthorize?: () => Promise<boolean> | boolean;
@@ -45,6 +46,24 @@ function formatDollars(cents: number) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(cents / 100);
+}
+
+function getEligibilityCta(requiredAction?: string | null) {
+  switch (requiredAction) {
+    case "PROFILE_REQUIRED":
+    case "TRUST_SCORE_TOO_LOW":
+      return { label: "Update profile", href: "/profile" };
+    case "GENDER_VERIFICATION_REQUIRED":
+    case "PHONE_VERIFICATION_REQUIRED":
+    case "COMMUNITY_VERIFICATION_REQUIRED":
+      return { label: "Verify account", href: "/profile" };
+    case "VALID_INVITE_REQUIRED":
+      return { label: "Enter invite code", href: "#invite-code" };
+    case "CONTACT_SUPPORT":
+      return { label: "Contact support", href: "mailto:support@ridepod.local" };
+    default:
+      return { label: "Update profile", href: "/profile" };
+  }
 }
 
 function Chip({
@@ -189,6 +208,7 @@ export function JoinPodMapFirstScreen({
   isEligible = true,
   isAuthorized = false,
   blockingReason,
+  requiredAction,
   themeVariant,
   backHref = "/pods",
   onAuthorize,
@@ -197,6 +217,7 @@ export function JoinPodMapFirstScreen({
   const [pending, setPending] = useState(false);
   const genderLabel = genderMode === "WOMEN_ONLY" ? "Women-only" : "Mixed pod";
   const displayRoute = routeLabel ?? `${originLabel} \u2192 ${destinationLabel}`;
+  const eligibilityCta = getEligibilityCta(requiredAction);
 
   async function handleAuthorize() {
     if (!isEligible || pending || authorized) return;
@@ -292,11 +313,26 @@ export function JoinPodMapFirstScreen({
           </div>
         </div>
 
-        {!isEligible ? (
-          <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] p-4 text-sm font-bold leading-6 text-[var(--rp-warning)]">
-            {blockingReason ?? "This pod is not available for your profile."}
+        {isEligible ? (
+          <div className="rounded-2xl border border-[var(--rp-success)]/25 bg-[var(--rp-success)]/10 p-4 text-sm font-bold leading-6 text-[var(--rp-success)]">
+            You&rsquo;re eligible to join this pod.
           </div>
-        ) : null}
+        ) : (
+          <div className="grid gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] p-4 text-sm font-bold leading-6 text-[var(--rp-warning)]">
+            <div>
+              <p className="text-base font-black">You can&rsquo;t join this pod yet.</p>
+              <p className="mt-1 font-semibold">
+                {blockingReason ?? "This pod is not available for your profile."}
+              </p>
+            </div>
+            <Link
+              href={eligibilityCta.href}
+              className="inline-flex min-h-11 w-fit items-center justify-center rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card)] px-4 text-sm font-black text-[var(--rp-text)] transition hover:bg-[var(--rp-card-soft)]"
+            >
+              {eligibilityCta.label}
+            </Link>
+          </div>
+        )}
 
         <button
           type="button"
