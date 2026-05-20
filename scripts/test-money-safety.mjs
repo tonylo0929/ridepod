@@ -2430,14 +2430,26 @@ for (const recurringInstanceCopy of [
   "Other",
   "Report taxi partner issue",
   "Tell RidePod what happened. Payout may be held while the issue is reviewed.",
+  "Do not use this form for emergencies. Contact local emergency services immediately.",
   "Taxi partner did not arrive",
   "Wrong pickup point",
   "Unsafe or inappropriate behavior",
   "Fare / quote issue",
   "Dispute under review",
-  "RidePod will review this taxi partner issue. Payout held for manual review.",
+  "RidePod will review this taxi partner ride. Payout may be held during review.",
+  "Payout is held while RidePod reviews the issue.",
   "Payout status: payout held",
-  "Taxi partner case added to manual review.",
+  "Taxi partner case added to manual review",
+  "View dispute",
+  "Share what happened. Include useful details like pickup time, route, or fare issue.",
+  "Choose an issue type.",
+  "Add a short description.",
+  "TAXI_PARTNER_GUEST_DISPUTE",
+  "TAXI_PARTNER_PICKUP_ISSUE",
+  "TAXI_PARTNER_COMPLETION_DISPUTE",
+  "TAXI_PARTNER_SAFETY_CONCERN",
+  "HELD_FOR_REVIEW",
+  "Wire Taxi Partner Quote disputes to Admin Review persistence later.",
   "Describe the issue",
   "Add screenshot or proof",
   "Submit issue",
@@ -2448,6 +2460,20 @@ for (const recurringInstanceCopy of [
     recurringInstanceProofFlowSource.includes(recurringInstanceCopy),
     `Missing recurring ride instance proof copy: ${recurringInstanceCopy}`,
   );
+}
+for (const forbiddenTaxiPartnerDisputeCopy of [
+  "RidePod driver",
+  "guaranteed refund",
+  "guaranteed payout",
+  "official taxi dispatch",
+  "fraud confirmed",
+  "crime",
+  "forever banned",
+  "100% safe",
+  "real payout sent",
+  "escrow",
+]) {
+  assert.equal(recurringInstanceProofFlowSource.includes(forbiddenTaxiPartnerDisputeCopy), false);
 }
 assert.equal(`${uiSource}\n${moneySafetyUiSource}`.includes("gal only"), false);
 assert.equal(`${uiSource}\n${moneySafetyUiSource}`.includes("boy and gal"), false);

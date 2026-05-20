@@ -309,6 +309,26 @@ type DisputeIssueType =
   | (typeof defaultDisputeIssueTypes)[number]
   | (typeof taxiPartnerQuoteDisputeIssueTypes)[number];
 
+const taxiPartnerQuoteDisputeCaseTypeMap: Record<
+  (typeof taxiPartnerQuoteDisputeIssueTypes)[number],
+  {
+    caseType:
+      | "TAXI_PARTNER_GUEST_DISPUTE"
+      | "TAXI_PARTNER_PICKUP_ISSUE"
+      | "TAXI_PARTNER_COMPLETION_DISPUTE"
+      | "TAXI_PARTNER_SAFETY_CONCERN";
+    severity: "HIGH" | "MEDIUM";
+  }
+> = {
+  "Taxi partner did not arrive": { caseType: "TAXI_PARTNER_PICKUP_ISSUE", severity: "HIGH" },
+  "Wrong pickup point": { caseType: "TAXI_PARTNER_PICKUP_ISSUE", severity: "MEDIUM" },
+  "Wrong route": { caseType: "TAXI_PARTNER_COMPLETION_DISPUTE", severity: "MEDIUM" },
+  "I did not take this ride": { caseType: "TAXI_PARTNER_COMPLETION_DISPUTE", severity: "HIGH" },
+  "Unsafe or inappropriate behavior": { caseType: "TAXI_PARTNER_SAFETY_CONCERN", severity: "HIGH" },
+  "Fare / quote issue": { caseType: "TAXI_PARTNER_GUEST_DISPUTE", severity: "MEDIUM" },
+  Other: { caseType: "TAXI_PARTNER_GUEST_DISPUTE", severity: "MEDIUM" },
+};
+
 function RideInstanceSettlementSummary({
   rideInstance,
   statusLabel,
@@ -358,9 +378,12 @@ function SettlementDetailsScreen({
     : "Tell RidePod what looks wrong. Our team will review the proof, fare, route, and ride timeline.";
   const [showReportIssue, setShowReportIssue] = useState(false);
   const [disputeSubmitted, setDisputeSubmitted] = useState(Boolean(rideInstance.disputeRaised));
-  const [selectedIssueType, setSelectedIssueType] = useState<DisputeIssueType>(disputeIssueTypes[0]);
+  const [selectedIssueType, setSelectedIssueType] = useState<DisputeIssueType | null>(null);
+  const [issueDescription, setIssueDescription] = useState("");
+  const [reportIssueError, setReportIssueError] = useState<string | null>(null);
   const [localPayoutState, setLocalPayoutState] = useState(rideInstance.payoutState);
   const [mockTaxiPartnerCaseQueued, setMockTaxiPartnerCaseQueued] = useState(false);
+  const [mockTaxiPartnerCaseType, setMockTaxiPartnerCaseType] = useState<string | null>(null);
   const providerFareCents = rideInstance.finalFareCents ?? rideInstance.receiptFareCents ?? 29800;
   const bookingFareCapCents = rideInstance.bookingFareCapCents ?? 32000;
   const billableGuestCount = 4;
@@ -371,8 +394,36 @@ function SettlementDetailsScreen({
   const hostReimbursementCents = rideInstance.hostReimbursementCents ?? Math.max(0, providerFareCents - platformFeeCents);
   const proofTypeLabel = rideInstance.proofType === "METER_PROOF" ? "Meter proof / taxi receipt" : "Final receipt";
   const withinCap = providerFareCents <= bookingFareCapCents;
-  const submittedStatusLabel = isTaxiPartnerQuote ? "Dispute under review" : "Dispute review";
+  const submittedStatusLabel = "Dispute review";
   const statusLabel = disputeSubmitted ? submittedStatusLabel : "Settlement ready";
+
+  function submitReportIssue() {
+    setReportIssueError(null);
+
+    if (!selectedIssueType) {
+      setReportIssueError("Choose an issue type.");
+      return;
+    }
+
+    if (issueDescription.trim().length < 10) {
+      setReportIssueError("Add a short description.");
+      return;
+    }
+
+    setDisputeSubmitted(true);
+
+    if (isTaxiPartnerQuote && taxiPartnerQuoteDisputeIssueTypes.includes(selectedIssueType as (typeof taxiPartnerQuoteDisputeIssueTypes)[number])) {
+      const mappedCase = taxiPartnerQuoteDisputeCaseTypeMap[selectedIssueType as (typeof taxiPartnerQuoteDisputeIssueTypes)[number]];
+      setLocalPayoutState("HELD_FOR_REVIEW");
+      setMockTaxiPartnerCaseQueued(true);
+      setMockTaxiPartnerCaseType(mappedCase.caseType);
+      // TODO: Wire Taxi Partner Quote disputes to Admin Review persistence later.
+      // Mock payload fields: rideInstanceId, reporterUserId, reportedSubject = TAXI_PARTNER, taxiPartnerName,
+      // quoteAmountCents, payoutStatus = HELD_FOR_REVIEW, issueType, issueDescription, createdAt, severity.
+    }
+
+    setShowReportIssue(false);
+  }
 
   return (
     <section className="overflow-hidden rounded-[30px] border border-[var(--rp-border-strong)] bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--rp-primary)_12%,transparent),transparent_36%),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)] sm:p-6">
@@ -515,14 +566,27 @@ function SettlementDetailsScreen({
             <p className="font-black">{isTaxiPartnerQuote ? "Dispute under review" : "RidePod will review this issue."}</p>
             <p className="mt-1">
               {isTaxiPartnerQuote
-                ? "RidePod will review this taxi partner issue. Payout held for manual review."
+                ? "RidePod will review this taxi partner ride. Payout may be held during review."
                 : "Payout may be held until the review is complete."}
             </p>
             {isTaxiPartnerQuote && localPayoutState === "HELD_FOR_REVIEW" ? (
               <p className="mt-2 text-xs">Payout status: payout held</p>
             ) : null}
             {isTaxiPartnerQuote && mockTaxiPartnerCaseQueued ? (
-              <p className="mt-1 text-xs">Taxi partner case added to manual review.</p>
+              <p className="mt-1 text-xs">
+                Taxi partner case added to manual review{mockTaxiPartnerCaseType ? ` as ${mockTaxiPartnerCaseType.replaceAll("_", " ").toLowerCase()}` : ""}.
+              </p>
+            ) : null}
+            {isTaxiPartnerQuote ? (
+              <p className="mt-2 text-xs font-black text-[var(--rp-warning)]">Payout is held while RidePod reviews the issue.</p>
+            ) : null}
+            {isTaxiPartnerQuote ? (
+              <button
+                type="button"
+                className="mt-3 inline-flex min-h-10 items-center justify-center rounded-[14px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] px-4 text-xs font-black text-[var(--rp-primary)]"
+              >
+                View dispute
+              </button>
             ) : null}
           </div>
         ) : (
@@ -545,6 +609,11 @@ function SettlementDetailsScreen({
                 <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
                   {reportIssueBody}
                 </p>
+                {isTaxiPartnerQuote ? (
+                  <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-warning)]">
+                    Do not use this form for emergencies. Contact local emergency services immediately.
+                  </p>
+                ) : null}
               </div>
               <button
                 type="button"
@@ -560,7 +629,10 @@ function SettlementDetailsScreen({
                 <button
                   key={issueType}
                   type="button"
-                  onClick={() => setSelectedIssueType(issueType)}
+                  onClick={() => {
+                    setSelectedIssueType(issueType);
+                    setReportIssueError(null);
+                  }}
                   className={[
                     "min-h-11 rounded-[14px] border px-3 text-left text-xs font-black",
                     selectedIssueType === issueType
@@ -575,14 +647,24 @@ function SettlementDetailsScreen({
             <label className="mt-4 grid gap-2 text-sm font-bold text-[var(--rp-muted-strong)]">
               Describe the issue
               <textarea
+                value={issueDescription}
+                onChange={(event) => {
+                  setIssueDescription(event.target.value);
+                  setReportIssueError(null);
+                }}
                 className="min-h-28 rounded-[16px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 py-3 text-sm font-bold text-[var(--rp-text)]"
-                placeholder="Describe the issue"
+                placeholder={isTaxiPartnerQuote ? "Share what happened. Include useful details like pickup time, route, or fare issue." : "Describe the issue"}
               />
             </label>
             <label className="mt-4 grid min-h-20 cursor-pointer place-items-center rounded-[16px] border border-dashed border-[var(--rp-primary)] bg-[var(--rp-card-soft)] p-4 text-center text-sm font-black text-[var(--rp-primary)]">
               <input className="sr-only" type="file" />
               Add screenshot or proof
             </label>
+            {reportIssueError ? (
+              <p className="mt-4 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-warning)]">
+                {reportIssueError}
+              </p>
+            ) : null}
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -593,14 +675,7 @@ function SettlementDetailsScreen({
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  setDisputeSubmitted(true);
-                  if (isTaxiPartnerQuote) {
-                    setLocalPayoutState("HELD_FOR_REVIEW");
-                    setMockTaxiPartnerCaseQueued(true);
-                  }
-                  setShowReportIssue(false);
-                }}
+                onClick={submitReportIssue}
                 className="min-h-12 rounded-2xl bg-[var(--rp-gradient-primary)] text-sm font-black text-[var(--rp-primary-text)]"
               >
                 Submit issue
