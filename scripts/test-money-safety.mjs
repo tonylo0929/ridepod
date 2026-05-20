@@ -159,6 +159,17 @@ assert.deepEqual(taxiPartnerQuote.TAXI_PARTNER_GUEST_ACCEPTANCE_STATUSES, [
   "SOME_REJECTED",
   "EXPIRED",
 ]);
+assert.deepEqual(taxiPartnerQuote.TAXI_PARTNER_QUOTE_ACCEPTANCE_STATUSES, [
+  "PENDING",
+  "ACCEPTED",
+  "DECLINED",
+]);
+assert.deepEqual(taxiPartnerQuote.TAXI_PARTNER_MOCK_PAYMENT_STATES, [
+  "NOT_STARTED",
+  "MOCK_AUTHORIZING",
+  "MOCK_AUTHORIZED",
+  "MOCK_FAILED",
+]);
 assert.deepEqual(taxiPartnerQuote.TAXI_PARTNER_DRIVER_ASSIGNMENT_STATUSES, [
   "NOT_ASSIGNED",
   "PARTNER_ACCEPTED",
@@ -235,9 +246,37 @@ assert.deepEqual(
     guestCount: 4,
     fareShareCents: 6000,
     platformFeeCents: 600,
+    platformFeeTotalCents: 2400,
     guestChargeCents: 6600,
     driverPayoutCents: 24000,
     currency: "HKD",
+  },
+);
+const completedTaxiPartnerQuote = taxiPartnerQuote.completeTaxiPartnerQuoteRequestMock(
+  taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_ready"),
+  new Date("2026-05-20T10:00:00.000Z"),
+);
+assert.equal(completedTaxiPartnerQuote.driverAssignmentStatus, "COMPLETED");
+assert.equal(completedTaxiPartnerQuote.payoutStatus, "PENDING_DISPUTE_WINDOW");
+assert.equal(completedTaxiPartnerQuote.guestAcceptanceStatus, "ALL_ACCEPTED");
+assert.equal(completedTaxiPartnerQuote.quoteStatus, "QUOTE_ACCEPTED");
+assert.equal(completedTaxiPartnerQuote.disputeWindowEndsAt, "2026-05-21T10:00:00.000Z");
+assert.deepEqual(
+  taxiPartnerQuote.createPendingTaxiPartnerQuoteAcceptance({
+    quoteRequestId: "taxi_partner_quote_received",
+    rideInstanceId: "taxi-partner-quote-demo-received",
+    guestUserId: "u6",
+  }),
+  {
+    id: "taxi_partner_quote_received-u6",
+    quoteRequestId: "taxi_partner_quote_received",
+    rideInstanceId: "taxi-partner-quote-demo-received",
+    guestUserId: "u6",
+    acceptanceStatus: "PENDING",
+    mockPaymentState: "NOT_STARTED",
+    acceptedAt: null,
+    declinedAt: null,
+    acceptedHigherQuote: false,
   },
 );
 
@@ -717,6 +756,8 @@ const publicMemberCardSource = readFileSync("src/components/public-member-card.t
 const memberSafetyReportSource = readFileSync("src/lib/member-safety-report.ts", "utf8");
 const taxiPartnerQuoteSource = readFileSync("src/lib/taxi-partner-quote.ts", "utf8");
 const taxiPartnerQuoteRequestCardSource = readFileSync("src/components/taxi-partner-quote-request-card.tsx", "utf8");
+const taxiPartnerQuoteAcceptanceCardSource = readFileSync("src/components/taxi-partner-quote-acceptance-card.tsx", "utf8");
+const taxiPartnerCompletionCardSource = readFileSync("src/components/taxi-partner-completion-card.tsx", "utf8");
 const memberReportConcernSource = readFileSync("src/components/member-report-concern.tsx", "utf8");
 const hostPageSource = readFileSync("src/app/(app)/host/page.tsx", "utf8");
 const settingsPageSource = readFileSync("src/app/(app)/settings/page.tsx", "utf8");
@@ -1160,7 +1201,7 @@ for (const taxiPartnerCopy of [
   "Taxi partners can quote one price for this shared pod.",
   "Guests need to accept the partner quote before the ride proceeds.",
   "Waiting for all guests to accept the quote.",
-  "The partner quote is accepted. Ride can proceed.",
+  "Guests accepted the quote. Ride can proceed in demo mode.",
   "Dispute window is open before payout release.",
   "Payout releases after the dispute window if no issue is reported.",
   "Payout is held while RidePod reviews the issue.",
@@ -1170,6 +1211,8 @@ for (const taxiPartnerCopy of [
   assert.ok(
     taxiPartnerQuoteSource.includes(taxiPartnerCopy) ||
       taxiPartnerQuoteRequestCardSource.includes(taxiPartnerCopy) ||
+      taxiPartnerQuoteAcceptanceCardSource.includes(taxiPartnerCopy) ||
+      taxiPartnerCompletionCardSource.includes(taxiPartnerCopy) ||
       uiSource.includes(taxiPartnerCopy),
     `Missing Taxi Partner Quote copy: ${taxiPartnerCopy}`,
   );
@@ -1196,13 +1239,85 @@ for (const taxiPartnerRequestCardCopy of [
     `Missing Taxi Partner Quote request card copy: ${taxiPartnerRequestCardCopy}`,
   );
 }
+for (const taxiPartnerAcceptanceCardCopy of [
+  "TaxiPartnerQuoteAcceptanceCard",
+  "getTaxiPartnerQuoteMoneyDisplay",
+  "Taxi partner quote",
+  "Accept quote",
+  "Decline",
+  "Accept taxi partner quote?",
+  "Decline quote?",
+  "I understand this is a beta mock payment state.",
+  "Quote accepted",
+  "Quote declined",
+  "Guest acceptance",
+  "Ready for taxi partner",
+  "Quote above fare cap",
+  "Accept higher quote",
+  "No live payment or taxi dispatch happens yet.",
+  "Next: guests accept the partner quote.",
+  "Mock payment state",
+]) {
+  assert.ok(
+    taxiPartnerQuoteAcceptanceCardSource.includes(taxiPartnerAcceptanceCardCopy),
+    `Missing Taxi Partner Quote acceptance card copy: ${taxiPartnerAcceptanceCardCopy}`,
+  );
+}
+for (const taxiPartnerCompletionCardCopy of [
+  "TaxiPartnerCompletionCard",
+  "completeTaxiPartnerQuoteRequestMock",
+  "Ready for taxi partner",
+  "Guests accepted the quote. In the live version, the taxi partner would complete the ride here.",
+  "Guests accepted",
+  "Beta prototype",
+  "No real payout yet",
+  "Simulate ride completed",
+  "This only updates the demo state. No real taxi payout is sent.",
+  "Mark ride completed?",
+  "This demo action marks the taxi partner ride as completed and starts the dispute window. No real payout is sent.",
+  "I understand this is a beta mock completion.",
+  "Mark completed",
+  "Ride completed",
+  "Payout is pending until the dispute window ends.",
+  "Payout pending",
+  "Taxi partner quote",
+  "Driver payout",
+  "Platform fee total",
+  "Dispute window",
+  "View settlement",
+  "View dispute window",
+  "No real payout is sent in beta.",
+  "Report an issue before the dispute window ends.",
+  "Payout is held while RidePod reviews the issue.",
+]) {
+  assert.ok(
+    taxiPartnerCompletionCardSource.includes(taxiPartnerCompletionCardCopy),
+    `Missing Taxi Partner Quote completion card copy: ${taxiPartnerCompletionCardCopy}`,
+  );
+}
+assert.ok(podDetailSource.includes("TaxiPartnerQuoteAcceptanceCard"));
+assert.ok(podDetailSource.includes("taxiPartnerQuoteRide"));
+assert.ok(uiSource.includes("guestTaxiPartnerHref"));
+assert.ok(rideInstanceNotificationsSource.includes("taxi_partner_quote_received"));
+assert.ok(rideInstanceNotificationsSource.includes("Taxi partner quote received"));
+assert.ok(rideInstanceNotificationsSource.includes("Review and accept the shared taxi quote."));
 assert.ok(hostPageSource.includes("TaxiPartnerQuoteRequestCard"));
+assert.ok(hostPageSource.includes("TaxiPartnerCompletionCard"));
 assert.ok(hostPageSource.includes("selectedRideInstance.pod.rideOption === \"taxi_partner_quote\""));
 assert.ok(taxiPartnerQuoteSource.includes("luggageCount?: number"));
 assert.ok(taxiPartnerQuoteSource.includes("acceptedGuestCount?: number"));
+assert.ok(taxiPartnerQuoteSource.includes("disputeWindowEndsAt?: string | null"));
 assert.ok(taxiPartnerQuoteSource.includes("extraSpaceNeeded?: boolean"));
 assert.ok(taxiPartnerQuoteSource.includes("wheelchairAccessibleRequested?: boolean"));
 assert.ok(taxiPartnerQuoteSource.includes("stepFreeSupportRequested?: boolean"));
+assert.ok(taxiPartnerQuoteSource.includes("TaxiPartnerQuoteAcceptance"));
+assert.ok(taxiPartnerQuoteSource.includes("acceptedHigherQuote"));
+assert.ok(taxiPartnerQuoteSource.includes("platformFeeTotalCents"));
+assert.ok(taxiPartnerQuoteSource.includes("completeTaxiPartnerQuoteRequestMock"));
+assert.ok(rideInstanceNotificationsSource.includes("taxi_partner_ride_completed"));
+assert.ok(rideInstanceNotificationsSource.includes("taxi_partner_payout_pending"));
+assert.ok(rideInstanceNotificationsSource.includes("Review the ride before the dispute window ends."));
+assert.ok(rideInstanceNotificationsSource.includes("Payout is pending until the dispute window ends."));
 for (const forbiddenTaxiPartnerCopy of [
   "RidePod driver",
   "guaranteed driver",
@@ -1212,9 +1327,12 @@ for (const forbiddenTaxiPartnerCopy of [
   "100% safe",
   "escrow",
   "real payment",
+  "real payout sent",
 ]) {
   assert.equal(taxiPartnerQuoteSource.includes(forbiddenTaxiPartnerCopy), false);
   assert.equal(taxiPartnerQuoteRequestCardSource.includes(forbiddenTaxiPartnerCopy), false);
+  assert.equal(taxiPartnerQuoteAcceptanceCardSource.includes(forbiddenTaxiPartnerCopy), false);
+  assert.equal(taxiPartnerCompletionCardSource.includes(forbiddenTaxiPartnerCopy), false);
   assert.equal(uiSource.includes(forbiddenTaxiPartnerCopy), false);
 }
 assert.ok(mockDataSource.includes("recurringTemplateId"));

@@ -78,6 +78,10 @@ const notificationIcons: Record<RideInstanceNotificationType, typeof Bell> = {
   proof_more_info_needed: FileWarning,
   proof_rejected: AlertTriangle,
   payout_held: AlertTriangle,
+  taxi_partner_quote_received: WalletCards,
+  taxi_partner_guests_accepting: Clock3,
+  taxi_partner_ride_completed: CheckCircle2,
+  taxi_partner_payout_pending: WalletCards,
 };
 
 function isNotificationRead(notification: RideInstanceNotification, readKeys: Set<string>) {

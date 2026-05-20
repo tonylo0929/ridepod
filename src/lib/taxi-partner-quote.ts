@@ -34,6 +34,25 @@ export const TAXI_PARTNER_GUEST_ACCEPTANCE_STATUSES = [
 export type TaxiPartnerGuestAcceptanceStatus =
   (typeof TAXI_PARTNER_GUEST_ACCEPTANCE_STATUSES)[number];
 
+export const TAXI_PARTNER_QUOTE_ACCEPTANCE_STATUSES = [
+  "PENDING",
+  "ACCEPTED",
+  "DECLINED",
+] as const;
+
+export type TaxiPartnerQuoteAcceptanceStatus =
+  (typeof TAXI_PARTNER_QUOTE_ACCEPTANCE_STATUSES)[number];
+
+export const TAXI_PARTNER_MOCK_PAYMENT_STATES = [
+  "NOT_STARTED",
+  "MOCK_AUTHORIZING",
+  "MOCK_AUTHORIZED",
+  "MOCK_FAILED",
+] as const;
+
+export type TaxiPartnerMockPaymentState =
+  (typeof TAXI_PARTNER_MOCK_PAYMENT_STATES)[number];
+
 export const TAXI_PARTNER_DRIVER_ASSIGNMENT_STATUSES = [
   "NOT_ASSIGNED",
   "PARTNER_ACCEPTED",
@@ -80,6 +99,7 @@ export type TaxiPartnerQuoteRequest = {
   wheelchairAccessibleRequested?: boolean;
   stepFreeSupportRequested?: boolean;
   acceptedGuestCount?: number;
+  disputeWindowEndsAt?: string | null;
   notes?: string;
 };
 
@@ -96,9 +116,22 @@ export type TaxiPartnerQuoteMoneyDisplay = {
   guestCount: number;
   fareShareCents: number;
   platformFeeCents: number;
+  platformFeeTotalCents: number;
   guestChargeCents: number;
   driverPayoutCents: number;
   currency: "HKD";
+};
+
+export type TaxiPartnerQuoteAcceptance = {
+  id: string;
+  quoteRequestId: string;
+  rideInstanceId: string;
+  guestUserId: string;
+  acceptanceStatus: TaxiPartnerQuoteAcceptanceStatus;
+  mockPaymentState: TaxiPartnerMockPaymentState;
+  acceptedAt: string | null;
+  declinedAt: string | null;
+  acceptedHigherQuote: boolean;
 };
 
 export const taxiPartnerTaxiTypeLabels: Record<TaxiPartnerTaxiType, string> = {
@@ -212,6 +245,7 @@ export const mockTaxiPartnerQuoteRequests: TaxiPartnerQuoteRequest[] = [
     payoutStatus: "PENDING_DISPUTE_WINDOW",
     luggageCount: 2,
     acceptedGuestCount: 4,
+    disputeWindowEndsAt: "2026-07-01T07:45:00.000Z",
     notes: "Ride completed. Payout waits for the dispute window.",
   },
   {
@@ -233,6 +267,7 @@ export const mockTaxiPartnerQuoteRequests: TaxiPartnerQuoteRequest[] = [
     payoutStatus: "HELD_FOR_REVIEW",
     luggageCount: 2,
     acceptedGuestCount: 4,
+    disputeWindowEndsAt: "2026-07-08T07:45:00.000Z",
     notes: "A guest raised an issue. Payout is held for manual review.",
   },
 ];
@@ -313,8 +348,8 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Ready for taxi partner",
       tone: "green",
-      helperText: "The partner quote is accepted. Ride can proceed.",
-      primaryActionLabel: "View ride",
+      helperText: "Guests accepted the quote. Ride can proceed in demo mode.",
+      primaryActionLabel: "Mark completed",
     };
   }
 
@@ -353,14 +388,53 @@ export function getTaxiPartnerQuoteMoneyDisplay(
   const guestCount = Math.max(1, Math.floor(lockedGuestCount));
   const fareShareCents = Math.ceil(request.quoteAmountCents / guestCount);
   const platformFeeCents = Math.max(Math.ceil(fareShareCents * 0.1), 600);
+  const platformFeeTotalCents = platformFeeCents * guestCount;
 
   return {
     quoteAmountCents: request.quoteAmountCents,
     guestCount,
     fareShareCents,
     platformFeeCents,
+    platformFeeTotalCents,
     guestChargeCents: fareShareCents + platformFeeCents,
     driverPayoutCents: request.quoteAmountCents,
     currency: request.currency,
+  };
+}
+
+export function createPendingTaxiPartnerQuoteAcceptance(input: {
+  quoteRequestId: string;
+  rideInstanceId: string;
+  guestUserId: string;
+}): TaxiPartnerQuoteAcceptance {
+  return {
+    id: `${input.quoteRequestId}-${input.guestUserId}`,
+    quoteRequestId: input.quoteRequestId,
+    rideInstanceId: input.rideInstanceId,
+    guestUserId: input.guestUserId,
+    acceptanceStatus: "PENDING",
+    mockPaymentState: "NOT_STARTED",
+    acceptedAt: null,
+    declinedAt: null,
+    acceptedHigherQuote: false,
+  };
+}
+
+export function completeTaxiPartnerQuoteRequestMock(
+  request: TaxiPartnerQuoteRequest,
+  now = new Date(),
+): TaxiPartnerQuoteRequest {
+  const completedAt = Number.isNaN(now.getTime()) ? new Date() : now;
+  const disputeWindowEndsAt = new Date(completedAt.getTime() + 24 * 60 * 60 * 1000).toISOString();
+
+  return {
+    ...request,
+    quoteStatus: "QUOTE_ACCEPTED",
+    guestAcceptanceStatus: "ALL_ACCEPTED",
+    driverAssignmentStatus: "COMPLETED",
+    payoutStatus: "PENDING_DISPUTE_WINDOW",
+    acceptedGuestCount: request.acceptedGuestCount ?? 0,
+    disputeWindowEndsAt,
+    notes: "Ride completed. Payout is pending until the dispute window ends.",
   };
 }

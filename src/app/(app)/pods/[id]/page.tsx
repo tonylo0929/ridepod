@@ -13,6 +13,7 @@ import {
 import { currentUserId, formatMoney, getPod, getUser } from "@/lib/mock-data";
 import { PremiumPodDetailPage } from "@/components/premium-pod-detail";
 import { PublicMemberCard } from "@/components/public-member-card";
+import { TaxiPartnerQuoteAcceptanceCard } from "@/components/taxi-partner-quote-acceptance-card";
 import {
   MoneySafetyTimeline,
   PodChatSafetyPanel,
@@ -40,6 +41,16 @@ export default async function PodDetailPage({
   const progress = (pod.seatsFilled / pod.seatsTotal) * 100;
   const isFull = pod.seatsFilled >= pod.seatsTotal;
   const protectedPod = getProtectedPod(pod.id);
+  const taxiPartnerQuoteRide =
+    pod.rideOption === "taxi_partner_quote"
+      ? pod.upcomingRideInstances?.find((ride) =>
+          [
+            "taxi_partner_quote_received",
+            "taxi_partner_guests_accepting",
+            "taxi_partner_ready",
+          ].includes(ride.taxiPartnerQuoteRequestId ?? ""),
+        ) ?? null
+      : null;
   const confirmedRiders = pod.members.filter(
     (member) => member.role === "member" && ["authorized", "charged"].includes(member.paymentStatus),
   );
@@ -138,6 +149,13 @@ export default async function PodDetailPage({
           </div>
 
           <Timeline status={pod.status} />
+          {taxiPartnerQuoteRide ? (
+            <TaxiPartnerQuoteAcceptanceCard
+              pod={pod}
+              rideInstance={taxiPartnerQuoteRide}
+              currentUserId={currentUserId}
+            />
+          ) : null}
           {protectedPod ? (
             <>
               <PodDetailMoneyLockPanel podId={pod.id} />

@@ -157,6 +157,7 @@ export function getRideInstanceDisplayStatus(
   const taxiMeter = rideOptionLabel === "Taxi meter";
   const taxiPartnerQuote = rideOptionLabel === "Taxi partner quote";
   const instanceHref = `/host?rideInstanceId=${encodeURIComponent(rideInstance.id)}`;
+  const guestTaxiPartnerHref = `/pods/${pod.id}?rideInstanceId=${encodeURIComponent(rideInstance.id)}`;
 
   if (taxiPartnerQuote) {
     const quoteDisplayStatus = getTaxiPartnerQuoteDisplayStatus(
@@ -170,7 +171,11 @@ export function getRideInstanceDisplayStatus(
       cardClassName: tone.card,
       helperText: quoteDisplayStatus.helperText,
       primaryActionLabel: quoteDisplayStatus.primaryActionLabel,
-      primaryActionTarget: quoteDisplayStatus.primaryActionTarget ?? instanceHref,
+      primaryActionTarget:
+        quoteDisplayStatus.primaryActionTarget ??
+        (["Quote received", "Guests accepting", "Ready for taxi partner"].includes(quoteDisplayStatus.label)
+          ? guestTaxiPartnerHref
+          : instanceHref),
       bucket: getTaxiPartnerQuoteBucket(quoteDisplayStatus.label),
     };
   }

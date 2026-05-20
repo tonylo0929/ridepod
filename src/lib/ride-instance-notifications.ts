@@ -1,5 +1,6 @@
 import type { RecurringRideInstancePreview, RidePod } from "@/lib/mock-data";
 import type { RidePodAdminReviewCaseRow, RidePodProofRow, RidePodSettlementRow } from "@/lib/supabase/types";
+import { getTaxiPartnerQuoteDisplayStatus, getTaxiPartnerQuoteRequest } from "@/lib/taxi-partner-quote";
 
 export type RideInstanceNotificationTone = "gold" | "green" | "orange" | "amber" | "red" | "purple" | "blue" | "neutral";
 export type RideInstanceNotificationGroup = "Today" | "This week" | "Earlier";
@@ -16,7 +17,11 @@ export type RideInstanceNotificationType =
   | "proof_approved"
   | "proof_more_info_needed"
   | "proof_rejected"
-  | "payout_held";
+  | "payout_held"
+  | "taxi_partner_quote_received"
+  | "taxi_partner_guests_accepting"
+  | "taxi_partner_ride_completed"
+  | "taxi_partner_payout_pending";
 export type RideInstanceNotificationViewerRole = "HOST" | "GUEST";
 export type RideInstanceNotificationAudience = "HOST" | "GUEST" | "LOCKED_GUESTS" | "ALL";
 export type AdminActionNotificationEventType =
@@ -55,6 +60,12 @@ function routeLabel(rideInstance: RecurringRideInstancePreview) {
 
 function hostTarget(rideInstance: RecurringRideInstancePreview) {
   return `/host?rideInstanceId=${encodeURIComponent(rideInstance.id)}`;
+}
+
+function guestTarget(rideInstance: RecurringRideInstancePreview) {
+  return rideInstance.recurringTemplateId
+    ? `/pods/${rideInstance.recurringTemplateId}?rideInstanceId=${encodeURIComponent(rideInstance.id)}`
+    : hostTarget(rideInstance);
 }
 
 function notification(
@@ -260,8 +271,78 @@ export function getRideInstanceNotifications(
   viewerRole: RideInstanceNotificationViewerRole,
 ): RideInstanceNotification[] {
   const target = hostTarget(rideInstance);
+  const guestRideTarget = guestTarget(rideInstance);
   const host = viewerRole === "HOST";
   const items: RideInstanceNotification[] = [];
+
+  if (rideInstance.taxiPartnerQuoteRequestId) {
+    const taxiQuoteStatus = getTaxiPartnerQuoteDisplayStatus(
+      getTaxiPartnerQuoteRequest(rideInstance.taxiPartnerQuoteRequestId),
+    );
+
+    if (taxiQuoteStatus.label === "Quote received") {
+      items.push(
+        notification(rideInstance, {
+          stableKey: `taxi_partner_quote_received:${rideInstance.id}`,
+          type: "taxi_partner_quote_received",
+          title: "Taxi partner quote received",
+          body: host
+            ? "Guests can review and accept the shared taxi quote."
+            : "Review and accept the shared taxi quote.",
+          timeAgo: "10m",
+          group: "Today",
+          tone: "green",
+          ctaLabel: host ? "View quote" : "Review quote",
+          ctaTarget: host ? target : guestRideTarget,
+          createdAt: "2026-05-18T09:55:00.000Z",
+          read: false,
+          audience: host ? "HOST" : "LOCKED_GUESTS",
+        }),
+      );
+    }
+
+    if (taxiQuoteStatus.label === "Guests accepting") {
+      items.push(
+        notification(rideInstance, {
+          stableKey: `taxi_partner_guests_accepting:${rideInstance.id}`,
+          type: "taxi_partner_guests_accepting",
+          title: "Guests accepting quote",
+          body: "Waiting for guests to accept the taxi partner quote.",
+          timeAgo: "20m",
+          group: "Today",
+          tone: "purple",
+          ctaLabel: host ? "View acceptances" : "Review quote",
+          ctaTarget: host ? target : guestRideTarget,
+          createdAt: "2026-05-18T09:45:00.000Z",
+          read: false,
+          audience: host ? "HOST" : "LOCKED_GUESTS",
+        }),
+      );
+    }
+
+    if (taxiQuoteStatus.label === "Payout pending" || taxiQuoteStatus.label === "Ride completed") {
+      items.push(
+        notification(rideInstance, {
+          stableKey: host
+            ? `taxi_partner_payout_pending:${rideInstance.id}`
+            : `taxi_partner_ride_completed:${rideInstance.id}`,
+          type: host ? "taxi_partner_payout_pending" : "taxi_partner_ride_completed",
+          title: host ? "Payout pending" : "Ride completed",
+          body: host
+            ? "Payout is pending until the dispute window ends."
+            : "Review the ride before the dispute window ends.",
+          timeAgo: "15m",
+          group: "Today",
+          tone: "blue",
+          ctaLabel: host ? "View payout" : "View settlement",
+          ctaTarget: host ? target : guestRideTarget,
+          createdAt: "2026-05-18T10:10:00.000Z",
+          read: false,
+          audience: host ? "HOST" : "LOCKED_GUESTS",
+        }),
+      );
+    }
+  }
 
   if (rideInstance.status === "quote_needed") {
     items.push(

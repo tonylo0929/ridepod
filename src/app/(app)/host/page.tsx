@@ -12,6 +12,7 @@ import {
 import { Badge, ProgressBar, StatusBadge, cn, getRideInstanceDisplayStatus } from "@/components/ui";
 import { RecurringInstanceProofFlow } from "@/components/recurring-instance-proof-flow";
 import { TaxiPartnerQuoteRequestCard } from "@/components/taxi-partner-quote-request-card";
+import { TaxiPartnerCompletionCard } from "@/components/taxi-partner-completion-card";
 import { currentUserId, formatMoney, getHostedPods, getUser, type RidePod } from "@/lib/mock-data";
 import { HostQuoteUploadPanel } from "@/components/money-safety-ui";
 import { getRideInstanceDetailWithFallback } from "@/lib/supabase/ride-instance-detail";
@@ -253,10 +254,16 @@ export default async function HostDashboardPage({
             </p>
           ) : null}
           {selectedRideInstance.pod.rideOption === "taxi_partner_quote" ? (
-            <TaxiPartnerQuoteRequestCard
-              pod={selectedRideInstance.pod}
-              rideInstance={selectedRideInstance.rideInstance}
-            />
+            <>
+              <TaxiPartnerQuoteRequestCard
+                pod={selectedRideInstance.pod}
+                rideInstance={selectedRideInstance.rideInstance}
+              />
+              <TaxiPartnerCompletionCard
+                pod={selectedRideInstance.pod}
+                rideInstance={selectedRideInstance.rideInstance}
+              />
+            </>
           ) : (
             <RecurringInstanceProofFlow
               pod={selectedRideInstance.pod}
