@@ -18,7 +18,7 @@ const settings = [
   {
     icon: Lock,
     title: "Privacy",
-    body: "Show only first name, verification badges, trust score, and pod history.",
+    body: "Show only public profile details, verification badges, and pod membership context.",
     value: "Standard",
   },
   {

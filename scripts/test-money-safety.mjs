@@ -80,6 +80,8 @@ const fareEstimates = loadTsModule("src/lib/fare-estimates.ts");
 const joinMoney = loadTsModule("src/lib/join-money.ts");
 const proofUpload = loadTsModule("src/lib/uploads/proof-upload.ts");
 const supabaseProofMetadata = loadTsModule("src/lib/supabase/proof-metadata.ts");
+const publicProfile = loadTsModule("src/lib/public-profile.ts");
+const memberSafetyReport = loadTsModule("src/lib/member-safety-report.ts");
 
 assert.deepEqual(moneySafety.POD_LIFECYCLE_STATES, [
   "DRAFT",
@@ -552,6 +554,12 @@ const supabaseAuthSource = readFileSync("src/lib/supabase/auth.ts", "utf8");
 const profilePageSource = readFileSync("src/app/(app)/profile/page.tsx", "utf8");
 const loginPageSource = readFileSync("src/app/login/page.tsx", "utf8");
 const registerPageSource = readFileSync("src/app/register/page.tsx", "utf8");
+const publicProfileSource = readFileSync("src/lib/public-profile.ts", "utf8");
+const publicMemberCardSource = readFileSync("src/components/public-member-card.tsx", "utf8");
+const memberSafetyReportSource = readFileSync("src/lib/member-safety-report.ts", "utf8");
+const memberReportConcernSource = readFileSync("src/components/member-report-concern.tsx", "utf8");
+const hostPageSource = readFileSync("src/app/(app)/host/page.tsx", "utf8");
+const settingsPageSource = readFileSync("src/app/(app)/settings/page.tsx", "utf8");
 const supabaseProfileTrustMigrationSource = readFileSync(
   "supabase/migrations/202605200001_ridepod_profile_trust_fields.sql",
   "utf8",
@@ -2806,6 +2814,186 @@ assert.ok(podEligibilitySource.includes("risk_status"));
 assert.equal(joinPodMapFirstSource.includes("riskStatus"), false);
 assert.equal(joinPodMapFirstSource.includes("genderIdentity"), false);
 assert.equal(joinPodMapFirstSource.includes("admin notes"), false);
+
+const publicHostMember = publicProfile.mapMemberToPublicProfileViewModel(
+  { userId: "public-host", role: "HOST", paymentStatus: "authorized" },
+  {
+    id: "public-host",
+    name: "Maya Chen",
+    avatarUrl: "/avatars/maya.png",
+    email: "maya@example.com",
+    phone: "+12135550101",
+    gender_identity: "FEMALE",
+    id_verification_status: "VERIFIED",
+    verification_status: "ID_VERIFIED",
+    community_id: "usc",
+    risk_status: "NORMAL",
+    trust_score: 4.9,
+    no_show_count: 0,
+    late_cancel_count: 0,
+    safety_note: "private",
+  },
+);
+assert.equal(publicHostMember.displayName, "Maya Chen");
+assert.equal(publicHostMember.roleLabel, "Host");
+assert.equal(publicHostMember.memberStateLabel, "Seat locked");
+assert.ok(publicHostMember.badges.includes("Verified"));
+assert.ok(publicHostMember.badges.includes("Community"));
+assert.equal(Object.hasOwn(publicHostMember, "email"), false);
+assert.equal(Object.hasOwn(publicHostMember, "phone"), false);
+assert.equal(Object.hasOwn(publicHostMember, "gender_identity"), false);
+assert.equal(Object.hasOwn(publicHostMember, "risk_status"), false);
+assert.equal(Object.hasOwn(publicHostMember, "trust_score"), false);
+assert.equal(Object.hasOwn(publicHostMember, "no_show_count"), false);
+assert.equal(Object.hasOwn(publicHostMember, "late_cancel_count"), false);
+assert.equal(Object.hasOwn(publicHostMember, "safety_note"), false);
+assert.equal(
+  JSON.stringify(publicHostMember).includes("maya@example.com") ||
+    JSON.stringify(publicHostMember).includes("+12135550101") ||
+    JSON.stringify(publicHostMember).includes("FEMALE") ||
+    JSON.stringify(publicHostMember).includes("NORMAL") ||
+    JSON.stringify(publicHostMember).includes("private"),
+  false,
+);
+assert.equal(
+  publicProfile.mapMemberToPublicProfileViewModel({ userId: "guest", role: "RIDER" }, { name: "Guest User" }).roleLabel,
+  "Guest",
+);
+assert.equal(
+  publicProfile.mapMemberToPublicProfileViewModel({ userId: "guest", role: "GUEST" }, { name: "Guest User" }).roleLabel,
+  "Guest",
+);
+assert.equal(
+  publicProfile.mapMemberToPublicProfileViewModel({ userId: "replacement", role: "REPLACEMENT_HOST" }, { name: "Backup User" }).roleLabel,
+  "Replacement host",
+);
+assert.equal(
+  publicProfile.mapMemberToPublicProfileViewModel({ userId: "backup", role: "backup_host" }, { name: "Backup User" }).roleLabel,
+  "Replacement host",
+);
+assert.equal(
+  publicProfile.mapMemberToPublicProfileViewModel({ userId: "requested", member_state: "REQUESTED" }, { name: "Requested User" }).memberStateLabel,
+  "Requested",
+);
+assert.equal(
+  publicProfile.mapMemberToPublicProfileViewModel({ userId: "waitlisted", member_state: "WAITLISTED" }, { name: "Waitlisted User" }).memberStateLabel,
+  "Waitlisted",
+);
+assert.equal(
+  publicProfile.mapMemberToPublicProfileViewModel({ userId: "unverified", role: "RIDER" }, { name: "Unverified User", verification_status: "EMAIL_VERIFIED" }).badges.includes("Verified"),
+  false,
+);
+assert.ok(publicMemberCardSource.includes("Private details like phone, email, gender identity, and ID review are not shown publicly."));
+assert.ok(publicMemberCardSource.includes("Verified badges help RidePod support safer matching."));
+assert.ok(publicMemberCardSource.includes("PublicProfilePreview"));
+assert.ok(publicMemberCardSource.includes("PublicMemberCard"));
+assert.ok(publicProfileSource.includes("mapMemberToPublicProfileViewModel"));
+assert.ok(publicProfileSource.includes("Host"));
+assert.ok(publicProfileSource.includes("Guest"));
+assert.ok(publicProfileSource.includes("Replacement host"));
+assert.ok(publicProfileSource.includes("Verified"));
+assert.ok(publicProfileSource.includes("Community"));
+assert.ok(publicProfileSource.includes("High-trust"));
+assert.ok(publicProfileSource.includes("Seat locked"));
+assert.ok(podDetailSource.includes("PublicMemberCard"));
+assert.ok(podDetailSource.includes("mapMemberToPublicProfileViewModel"));
+assert.equal(podDetailSource.includes("Trust {user.trustScore}"), false);
+assert.ok(hostPageSource.includes("PublicMemberCard"));
+assert.ok(hostPageSource.includes("mapMemberToPublicProfileViewModel"));
+assert.equal(settingsPageSource.includes("trust score"), false);
+for (const forbiddenPublicProfileCopy of [
+  "KYC approved",
+  "Official ID checked",
+  "100% verified",
+  "100% safe",
+  "Female verified",
+  "Gender verified",
+  "Risk score",
+  "Clean record",
+  "gal only",
+  "boy and gal",
+]) {
+  assert.equal(publicMemberCardSource.includes(forbiddenPublicProfileCopy), false);
+  assert.equal(publicProfileSource.includes(forbiddenPublicProfileCopy), false);
+}
+assert.deepEqual(
+  memberSafetyReport.MEMBER_SAFETY_CONCERN_TYPES,
+  [
+    "SAFETY_CONCERN",
+    "HARASSMENT_OR_INAPPROPRIATE_BEHAVIOR",
+    "WRONG_PROFILE_OR_ELIGIBILITY_CONCERN",
+    "NO_SHOW_OR_UNRELIABLE_BEHAVIOR",
+    "OFF_APP_PAYMENT_REQUEST",
+    "OTHER",
+  ],
+);
+assert.equal(
+  memberSafetyReport.validateMemberSafetyReport(
+    { concernType: "SAFETY_CONCERN", description: "This is a clear report." },
+    "u1",
+  ),
+  "Member is required.",
+);
+assert.equal(
+  memberSafetyReport.validateMemberSafetyReport(
+    { reportedUserId: "u2", description: "This is a clear report." },
+    "u1",
+  ),
+  "Choose a concern type.",
+);
+assert.equal(
+  memberSafetyReport.validateMemberSafetyReport(
+    { reportedUserId: "u2", concernType: "SAFETY_CONCERN", description: "short" },
+    "u1",
+  ),
+  "Add a short description.",
+);
+assert.equal(
+  memberSafetyReport.validateMemberSafetyReport(
+    { reportedUserId: "u1", concernType: "SAFETY_CONCERN", description: "This is a clear report." },
+    "u1",
+  ),
+  "You cannot report yourself.",
+);
+const memberSafetyReportResult = await memberSafetyReport.submitMemberSafetyReport({
+  reporterUserId: "u1",
+  reportedUserId: "u2",
+  reportedMemberDisplayName: "Andre Lee",
+  concernType: "OFF_APP_PAYMENT_REQUEST",
+  description: "The member asked for payment outside RidePod.",
+  podId: "usc-lax-001",
+  podRoute: "USC to LAX",
+});
+assert.equal(memberSafetyReportResult.ok, true);
+assert.equal(memberSafetyReportResult.userFacingMessage, "Report submitted");
+assert.equal(memberSafetyReportResult.confirmationBody, "RidePod will review this concern. Reports are private.");
+assert.ok(publicMemberCardSource.includes("Report concern"));
+assert.ok(publicMemberCardSource.includes("ReportConcernModal"));
+assert.ok(memberReportConcernSource.includes("Report a concern"));
+assert.ok(memberReportConcernSource.includes("Tell RidePod what happened. Reports are private and reviewed manually."));
+assert.ok(memberReportConcernSource.includes("Submit report"));
+assert.ok(memberReportConcernSource.includes("Evidence upload coming later."));
+assert.ok(memberReportConcernSource.includes("Do not use this form for emergencies. Contact local emergency services immediately."));
+assert.ok(memberReportConcernSource.includes("RidePod will review this concern. Reports are private."));
+assert.ok(memberSafetyReportSource.includes("MEMBER_SAFETY_REPORT"));
+assert.ok(supabaseAdminReviewCasesSource.includes("MEMBER_SAFETY_REPORT"));
+assert.ok(adminReviewClientSource.includes("Member safety concern"));
+assert.ok(adminReviewClientSource.includes("Admin-reviewed user notification and account action should be handled in a later safety ops slice."));
+for (const forbiddenReportCopy of [
+  "Guaranteed action",
+  "guaranteed action",
+  "guaranteed safety",
+  "We will ban them",
+  "police report",
+  "AI reviewed",
+  "forever banned",
+  "Verified guilty",
+  "verified guilty",
+]) {
+  assert.equal(memberSafetyReportSource.includes(forbiddenReportCopy), false);
+  assert.equal(memberReportConcernSource.includes(forbiddenReportCopy), false);
+  assert.equal(publicMemberCardSource.includes(forbiddenReportCopy), false);
+}
 
 const singleLockPod = pod({
   id: "join-single-lock",

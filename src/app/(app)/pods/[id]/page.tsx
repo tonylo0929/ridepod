@@ -10,14 +10,16 @@ import {
   StatusBadge,
   Timeline,
 } from "@/components/ui";
-import { formatMoney, getPod, getUser } from "@/lib/mock-data";
+import { currentUserId, formatMoney, getPod, getUser } from "@/lib/mock-data";
 import { PremiumPodDetailPage } from "@/components/premium-pod-detail";
+import { PublicMemberCard } from "@/components/public-member-card";
 import {
   MoneySafetyTimeline,
   PodChatSafetyPanel,
   PodDetailMoneyLockPanel,
 } from "@/components/money-safety-ui";
 import { getProtectedPod } from "@/lib/money-safety-mock";
+import { mapMemberToPublicProfileViewModel } from "@/lib/public-profile";
 
 export default async function PodDetailPage({
   params,
@@ -104,21 +106,22 @@ export default async function PodDetailPage({
             <div className="mt-4 grid gap-3">
               {pod.members.map((member) => {
                 const user = getUser(member.userId);
+                const publicMember = mapMemberToPublicProfileViewModel(member, user);
+
                 return (
-                  <div key={member.userId} className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar user={user} />
-                      <div>
-                        <p className="text-sm font-bold text-zinc-950">{user.name}</p>
-                        <p className="text-xs text-zinc-500">
-                          {member.role.replace("_", " ")} - {member.paymentStatus.replace("_", " ")}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge className="bg-emerald-50 text-emerald-800 ring-emerald-200">
-                      Trust {user.trustScore}
-                    </Badge>
-                  </div>
+                  <PublicMemberCard
+                    key={member.userId}
+                    member={publicMember}
+                    reportContext={{
+                      reporterUserId: currentUserId,
+                      reporterRole: pod.hostUserId === currentUserId ? "Host" : "Guest",
+                      reportedUserId: member.userId,
+                      reportedMemberDisplayName: user.name,
+                      podId: pod.id,
+                      podRoute: `${pod.fromLabel} to ${pod.toLabel}`,
+                      rideDateTime: `${pod.date}, ${pod.time}`,
+                    }}
+                  />
                 );
               })}
             </div>

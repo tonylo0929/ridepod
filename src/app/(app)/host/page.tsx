@@ -9,11 +9,13 @@ import {
   Upload,
   UsersRound,
 } from "lucide-react";
-import { Avatar, Badge, ProgressBar, StatusBadge, cn } from "@/components/ui";
+import { Badge, ProgressBar, StatusBadge, cn } from "@/components/ui";
 import { RecurringInstanceProofFlow } from "@/components/recurring-instance-proof-flow";
-import { formatMoney, getHostedPods, getUser, type RidePod } from "@/lib/mock-data";
+import { currentUserId, formatMoney, getHostedPods, getUser, type RidePod } from "@/lib/mock-data";
 import { HostQuoteUploadPanel } from "@/components/money-safety-ui";
 import { getRideInstanceDetailWithFallback } from "@/lib/supabase/ride-instance-detail";
+import { PublicMemberCard } from "@/components/public-member-card";
+import { mapMemberToPublicProfileViewModel } from "@/lib/public-profile";
 
 function getReadyMembers(pod: RidePod) {
   return pod.members.filter(
@@ -67,26 +69,27 @@ function HostMetric({
   );
 }
 
-function MemberPaymentRow({
-  pod,
-  member,
-}: {
-  pod: RidePod;
-  member: RidePod["members"][number];
-}) {
+function MemberPaymentRow({ pod, member }: { pod: RidePod; member: RidePod["members"][number] }) {
   const user = getUser(member.userId);
   const ready = member.paymentStatus === "authorized" || member.paymentStatus === "charged";
-  const isHost = member.userId === pod.hostUserId;
-  const isBackup = member.userId === pod.backupHostUserId;
+  const publicMember = mapMemberToPublicProfileViewModel(member, user);
 
   return (
-    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-3 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-      <Avatar user={user} size="sm" />
+    <div className="grid grid-cols-[1fr_auto] items-center gap-3 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
       <div className="min-w-0">
-        <p className="truncate text-sm font-black text-[var(--rp-text)]">{user.name}</p>
-        <p className="mt-0.5 text-xs font-bold text-[var(--rp-muted)]">
-          {isHost ? "Host" : isBackup ? "Backup host" : "Member"}
-        </p>
+        <PublicMemberCard
+          member={publicMember}
+          reportContext={{
+            reporterUserId: currentUserId,
+            reporterRole: pod.hostUserId === currentUserId ? "Host" : "Replacement host",
+            reportedUserId: member.userId,
+            reportedMemberDisplayName: user.name,
+            podId: pod.id,
+            podRoute: `${pod.fromLabel} to ${pod.toLabel}`,
+            rideDateTime: `${pod.date}, ${pod.time}`,
+          }}
+          className="border-0 bg-transparent p-0 shadow-none hover:bg-transparent"
+        />
       </div>
       <Badge
         className={cn(

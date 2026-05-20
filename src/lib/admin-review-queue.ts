@@ -11,7 +11,8 @@ export type AdminReviewCaseType =
   | "No-show dispute"
   | "Receipt needs more info"
   | "Quote / receipt mismatch"
-  | "ID verification request";
+  | "ID verification request"
+  | "Member safety concern";
 
 export type AdminReviewCase = {
   id: string;
@@ -47,9 +48,14 @@ export type AdminReviewCase = {
   evidenceTimeline?: AdminEvidenceTimelineItem[];
   disputeEvidenceTimeline?: AdminDisputeEvidenceTimelineItem[];
   isIdVerificationCase?: boolean;
+  isMemberSafetyReportCase?: boolean;
   subjectUserLabel?: string;
   subjectUserEmail?: string | null;
   idVerificationStatus?: string | null;
+  safetyConcernType?: string | null;
+  safetyReportDescription?: string | null;
+  reportedMemberLabel?: string | null;
+  reporterLabel?: string | null;
   caseDescription?: string | null;
   statusLabel: string;
   primaryAction: "Review case" | "View resolution";

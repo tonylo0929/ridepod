@@ -276,7 +276,14 @@ function ReviewCaseCard({ reviewCase, onOpen }: { reviewCase: AdminReviewCaseVie
           <h2 className="mt-3 text-xl font-black text-[var(--rp-text)]">{reviewCase.caseType}</h2>
           <p className="mt-2 text-sm font-bold text-[var(--rp-muted-strong)]">{reviewCase.rideDateTime}</p>
           <p className="mt-1 text-sm font-black text-[var(--rp-text)]">{reviewCase.route}</p>
-          {reviewCase.isIdVerificationCase ? (
+          {reviewCase.isMemberSafetyReportCase ? (
+            <dl className="mt-4 grid gap-2 text-sm min-[560px]:grid-cols-2">
+              <KeyValue label="Concern type" value={reviewCase.safetyConcernType ?? "Safety concern"} />
+              <KeyValue label="Reported member" value={reviewCase.reportedMemberLabel ?? reviewCase.host} />
+              <KeyValue label="Reporter" value={reviewCase.reporterLabel ?? "Reporter private"} />
+              <KeyValue label="Created" value={reviewCase.createdTime} />
+            </dl>
+          ) : reviewCase.isIdVerificationCase ? (
             <dl className="mt-4 grid gap-2 text-sm min-[560px]:grid-cols-2">
               <KeyValue label="User" value={reviewCase.subjectUserLabel ?? reviewCase.host} />
               <KeyValue label="Email" value={reviewCase.subjectUserEmail ?? "Not available"} />
@@ -405,7 +412,24 @@ function ReviewCaseModal({
 
         <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
           <div className="grid gap-4">
-            {reviewCase.isIdVerificationCase ? (
+            {reviewCase.isMemberSafetyReportCase ? (
+              <DetailSection icon={ShieldAlert} title="Member safety concern">
+                <dl className="grid gap-2 sm:grid-cols-2">
+                  <KeyValue label="Concern type" value={reviewCase.safetyConcernType ?? "Safety concern"} />
+                  <KeyValue label="Reported member" value={reviewCase.reportedMemberLabel ?? reviewCase.host} />
+                  <KeyValue label="Reporter" value={reviewCase.reporterLabel ?? "Reporter private"} />
+                  <KeyValue label="Review status" value={reviewCase.reviewState.replaceAll("_", " ")} />
+                  <KeyValue label="Created" value={reviewCase.createdTime} />
+                  <KeyValue label="Evidence" value="Evidence upload coming later." />
+                </dl>
+                <p className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                  {reviewCase.safetyReportDescription ?? "Member safety concern submitted for manual review."}
+                </p>
+                <p className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] p-3 text-sm font-bold leading-6 text-[var(--rp-warning)]">
+                  This is a manual review placeholder. Report details are private and should not be shown to other pod members.
+                </p>
+              </DetailSection>
+            ) : reviewCase.isIdVerificationCase ? (
               <DetailSection icon={IdCard} title="ID verification request">
                 <dl className="grid gap-2 sm:grid-cols-2">
                   <KeyValue label="User" value={reviewCase.subjectUserLabel ?? reviewCase.host} />
@@ -597,6 +621,21 @@ function ReviewCaseModal({
           </div>
 
           <aside className="grid content-start gap-4">
+            {reviewCase.isMemberSafetyReportCase ? (
+              <DetailSection icon={LockKeyhole} title="Manual safety review">
+                <p className="text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                  Safety report actions are placeholders in this slice. Admin-reviewed user notification and account action should be handled in a later safety ops slice.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Badge className="bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-badge-neutral-text)] ring-[var(--rp-border)]">
+                    Request more info later
+                  </Badge>
+                  <Badge className="bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-badge-neutral-text)] ring-[var(--rp-border)]">
+                    Account action later
+                  </Badge>
+                </div>
+              </DetailSection>
+            ) : (
             <DetailSection icon={LockKeyhole} title="Admin decision">
               <div className="grid gap-2">
                 {activeDecisionLabels.map((item) => {
@@ -656,6 +695,7 @@ function ReviewCaseModal({
                 Admin actions update proof, review, ride, and settlement hold state only. Real payouts are handled later.
               </p>
             </DetailSection>
+            )}
 
             <DetailSection icon={FileSearch} title="Audit behavior">
               <p className="text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">

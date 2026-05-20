@@ -156,12 +156,14 @@ function caseTypeLabel(caseType: string) {
   if (caseType === "PAYOUT_HOLD") return "Payout hold";
   if (caseType === "QUOTE_RECEIPT_MISMATCH") return "Quote / receipt mismatch";
   if (caseType === "ID_VERIFICATION_REQUEST") return "ID verification request";
+  if (caseType === "MEMBER_SAFETY_REPORT") return "Member safety concern";
   return caseType.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function caseFilter(caseType: string, reviewState: string): Exclude<AdminReviewFilter, "All"> {
   if (reviewState === "RESOLVED") return "Resolved";
   if (caseType === "ID_VERIFICATION_REQUEST") return "Proof";
+  if (caseType === "MEMBER_SAFETY_REPORT") return "Disputes";
   if (caseType.includes("ABOVE_CAP") || caseType.toLowerCase().includes("above cap")) return "Above cap";
   if (caseType.includes("DISPUTE") || caseType.toLowerCase().includes("dispute")) return "Disputes";
   if (caseType.includes("PAYOUT") || caseType.toLowerCase().includes("payout")) return "Payout holds";
@@ -208,6 +210,7 @@ function payoutStatusLabel(reviewCase: RidePodAdminReviewCaseRow, settlement: Ri
 
 function statusLabel(reviewCase: RidePodAdminReviewCaseRow, payoutStatus: AdminReviewCase["payoutStatus"]) {
   if (reviewCase.case_type === "ID_VERIFICATION_REQUEST") return reviewStateDisplayLabel(reviewCase.review_state);
+  if (reviewCase.case_type === "MEMBER_SAFETY_REPORT") return "Manual review";
   if (reviewCase.review_state === "RESOLVED") return "Resolved";
   if (payoutStatus === "HELD_FOR_REVIEW") return "Payout held";
   if (reviewCase.review_state === "NEEDS_MORE_INFO") return "Needs more info";
@@ -591,6 +594,14 @@ function subjectUserLabel(profile: RidePodProfileRow | null | undefined, fallbac
   return "User unavailable";
 }
 
+function safetyConcernTypeFromDescription(description: string | null | undefined) {
+  return description?.match(/^Concern type:\s*(.+)$/m)?.[1]?.trim() ?? "Safety concern";
+}
+
+function safetyReportBodyFromDescription(description: string | null | undefined) {
+  return description?.split("\n\nDescription:\n")[1]?.trim() ?? description ?? "Member safety concern submitted for manual review.";
+}
+
 export function mapSupabaseAdminReviewCaseToViewModel(
   reviewCase: RidePodAdminReviewCaseRow,
   related: AdminReviewRelatedRows,
@@ -617,7 +628,65 @@ export function mapSupabaseAdminReviewCaseToViewModel(
   const rideDateTime = formatRideDateTime(rideInstance?.departure_at, rideInstance?.leg_type);
   const route = rideInstance?.route_label ?? pod?.route_label ?? "Route unavailable";
   const isIdVerificationCase = reviewCase.case_type === "ID_VERIFICATION_REQUEST";
+  const isMemberSafetyReportCase = reviewCase.case_type === "MEMBER_SAFETY_REPORT";
   const accountLabel = subjectUserLabel(related.subjectProfile, reviewCase.subject_user_id);
+
+  if (isMemberSafetyReportCase) {
+    return {
+      id: reviewCase.id,
+      caseType: "Member safety concern",
+      caseTypeLabel: "Member safety concern",
+      filter: caseFilter(reviewCase.case_type, reviewCase.review_state),
+      severity,
+      severityLabel: severity,
+      severityTone: severityTone(severity),
+      reviewState: reviewCase.review_state as AdminReviewCase["reviewState"],
+      reviewStateLabel: titleCaseEnum(reviewCase.review_state),
+      rideDateTime: rideInstance ? rideDateTime : formatCreatedAt(reviewCase.created_at),
+      rideDateLabel: rideInstance ? rideDateTime : formatCreatedAt(reviewCase.created_at),
+      route: route === "Route unavailable" ? "Member safety report" : route,
+      routeLabel: route === "Route unavailable" ? "Member safety report" : route,
+      rideOption: rideInstance ? rideOptionLabel(pod) : "Account review",
+      rideOptionLabel: rideInstance ? rideOptionLabel(pod) : "Account review",
+      host: accountLabel,
+      reporter: "Reporter private",
+      guestsLocked,
+      fareLabel: "Manual review",
+      fareAmountCents: 0,
+      fareAmountLabel: "None",
+      bookingFareCapCents: 0,
+      bookingFareCapLabel: "None",
+      maxChargePerGuestCents: 0,
+      proofType: "final receipt",
+      proofTypeLabel: "final receipt",
+      proofStatus: "UNDER_REVIEW",
+      proofStatusLabel: "Manual review",
+      disputeStatus: "Submitted",
+      payoutStatus,
+      payoutStatusLabel: titleCaseEnum(payoutStatus),
+      createdTime: formatCreatedAt(reviewCase.created_at),
+      createdAtLabel: formatCreatedAt(reviewCase.created_at),
+      submittedBy: "Reporter private",
+      submittedAt: formatCreatedAt(reviewCase.created_at),
+      certificationAccepted: false,
+      ridepodEstimateCents: 0,
+      evidenceLabel: "Evidence upload coming later.",
+      fileUrl: null,
+      evidenceTimeline: [],
+      disputeEvidenceTimeline: [],
+      statusLabel: statusLabel(reviewCase, payoutStatus),
+      primaryAction: reviewCase.review_state === "RESOLVED" ? "View resolution" : "Review case",
+      primaryActionLabel: reviewCase.review_state === "RESOLVED" ? "View resolution" : "Review case",
+      differenceLabel: "None",
+      isIdVerificationCase: false,
+      isMemberSafetyReportCase: true,
+      safetyConcernType: safetyConcernTypeFromDescription(reviewCase.description),
+      safetyReportDescription: safetyReportBodyFromDescription(reviewCase.description),
+      reportedMemberLabel: accountLabel,
+      reporterLabel: "Reporter private",
+      caseDescription: reviewCase.description,
+    };
+  }
 
   if (isIdVerificationCase) {
     return {
