@@ -10,6 +10,7 @@ import {
   UsersRound,
   WalletCards,
 } from "lucide-react";
+import { BetaAccessForm } from "@/components/beta-access-form";
 import { Badge, Card, PrimaryButton, SecondaryButton, cn } from "@/components/ui";
 
 const betaFlows = [
@@ -197,6 +198,8 @@ export default function BetaPage() {
           </ul>
         </Card>
       </section>
+
+      <BetaAccessForm />
 
       <div id="feedback">
         <Card className="grid gap-4 border-[var(--rp-border-strong)] bg-[var(--rp-card-elevated)] p-5">
