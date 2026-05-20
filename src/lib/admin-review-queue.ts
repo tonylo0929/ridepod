@@ -7,6 +7,8 @@ export type AdminReviewCaseType =
   | "Meter proof above cap"
   | "Suspicious receipt"
   | "Guest dispute"
+  | "Taxi partner guest dispute"
+  | "Taxi partner payout hold"
   | "Host cancellation after booking"
   | "No-show dispute"
   | "Receipt needs more info"
@@ -22,7 +24,7 @@ export type AdminReviewCase = {
   reviewState: AdminReviewState;
   rideDateTime: string;
   route: string;
-  rideOption: "Ride app / fixed quote" | "Taxi meter" | "Account review";
+  rideOption: "Ride app / fixed quote" | "Taxi meter" | "Taxi partner quote" | "Account review";
   host: string;
   reporter?: string;
   guestsLocked: string;
@@ -43,6 +45,8 @@ export type AdminReviewCase = {
   finalProofCents?: number;
   disputeIssueType?: string;
   disputeNote?: string;
+  taxiPartnerName?: string | null;
+  taxiPartnerQuoteAmountCents?: number | null;
   evidenceLabel?: string;
   fileUrl?: string | null;
   evidenceTimeline?: AdminEvidenceTimelineItem[];
@@ -287,6 +291,72 @@ export function getAdminReviewCases(): AdminReviewCase[] {
       disputeNote: "Guest says the route included an unapproved extra stop.",
       evidenceLabel: "Guest screenshot placeholder",
       statusLabel: "Dispute review",
+      primaryAction: "Review case",
+    },
+    {
+      id: "review-taxi-partner-guest-dispute",
+      caseType: "Taxi partner guest dispute",
+      filter: "Disputes",
+      severity: "High",
+      reviewState: "UNDER_REVIEW",
+      rideDateTime: "Tue May 19 - 8:00 AM",
+      route: "USC Village -> LAX Terminal 3",
+      rideOption: "Taxi partner quote",
+      host: "Maya Chen",
+      reporter: "Tony Wong",
+      guestsLocked: "4 / 4",
+      fareLabel: "Quote",
+      fareAmountCents: 24000,
+      bookingFareCapCents: 28000,
+      maxChargePerGuestCents: 7000,
+      proofType: "quote screenshot",
+      proofStatus: "VERIFIED",
+      disputeStatus: "Submitted",
+      payoutStatus: "HELD_FOR_REVIEW",
+      createdTime: "18m ago",
+      submittedBy: "Demo Taxi Partner",
+      submittedAt: "May 19, 8:00 AM",
+      certificationAccepted: true,
+      ridepodEstimateCents: 26000,
+      uploadedQuoteCents: 24000,
+      taxiPartnerName: "Demo Taxi Partner",
+      taxiPartnerQuoteAmountCents: 24000,
+      disputeIssueType: "Wrong pickup point",
+      disputeNote: "Guest reported pickup confusion. Manual review placeholder only.",
+      evidenceLabel: "Taxi partner dispute placeholder",
+      statusLabel: "Payout held",
+      primaryAction: "Review case",
+    },
+    {
+      id: "review-taxi-partner-payout-hold",
+      caseType: "Taxi partner payout hold",
+      filter: "Payout holds",
+      severity: "Medium",
+      reviewState: "OPEN",
+      rideDateTime: "Wed May 20 - 7:45 AM",
+      route: "Central -> HKUST",
+      rideOption: "Taxi partner quote",
+      host: "Maya Chen",
+      reporter: "System",
+      guestsLocked: "4 / 4",
+      fareLabel: "Quote",
+      fareAmountCents: 24000,
+      bookingFareCapCents: 28000,
+      maxChargePerGuestCents: 7000,
+      proofType: "quote screenshot",
+      proofStatus: "VERIFIED",
+      disputeStatus: "None",
+      payoutStatus: "HELD_FOR_REVIEW",
+      createdTime: "42m ago",
+      submittedBy: "Demo Taxi Partner",
+      submittedAt: "May 20, 7:45 AM",
+      certificationAccepted: true,
+      ridepodEstimateCents: 26000,
+      uploadedQuoteCents: 24000,
+      taxiPartnerName: "Demo Taxi Partner",
+      taxiPartnerQuoteAmountCents: 24000,
+      evidenceLabel: "Taxi partner payout hold placeholder",
+      statusLabel: "Payout held",
       primaryAction: "Review case",
     },
     {

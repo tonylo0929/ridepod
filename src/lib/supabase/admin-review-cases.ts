@@ -153,6 +153,9 @@ function caseTypeLabel(caseType: string) {
   if (caseType === "METER_PROOF_ABOVE_CAP") return "Meter proof above fare cap";
   if (caseType === "SUSPICIOUS_PROOF") return "Suspicious proof";
   if (caseType === "GUEST_DISPUTE") return "Guest dispute";
+  if (caseType === "TAXI_PARTNER_GUEST_DISPUTE") return "Taxi partner guest dispute";
+  if (caseType === "TAXI_PARTNER_PAYOUT_HOLD") return "Taxi partner payout hold";
+  if (caseType === "TAXI_PARTNER_QUOTE_REVIEW") return "Taxi partner quote review";
   if (caseType === "PAYOUT_HOLD") return "Payout hold";
   if (caseType === "QUOTE_RECEIPT_MISMATCH") return "Quote / receipt mismatch";
   if (caseType === "ID_VERIFICATION_REQUEST") return "ID verification request";
@@ -192,6 +195,13 @@ function proofTypeLabel(proofType: RidePodProofRow["proof_type"] | null | undefi
 
 function rideOptionLabel(pod: RidePodPodRow | null): AdminReviewCase["rideOption"] {
   return pod?.ride_option === "TAXI_METER" ? "Taxi meter" : "Ride app / fixed quote";
+}
+
+function payoutStatusDisplayLabel(payoutStatus: AdminReviewCase["payoutStatus"]) {
+  if (payoutStatus === "HELD_FOR_REVIEW") return "Payout held";
+  if (payoutStatus === "RELEASED") return "Released";
+  if (payoutStatus === "DENIED") return "Denied";
+  return "Pending";
 }
 
 function payoutStatusLabel(reviewCase: RidePodAdminReviewCaseRow, settlement: RidePodSettlementRow | null) {
@@ -396,6 +406,10 @@ function buildEvidenceTimeline(
 
 function isDisputeCase(reviewCase: RidePodAdminReviewCaseRow) {
   return reviewCase.case_type.includes("DISPUTE") || reviewCase.case_type.toLowerCase().includes("dispute");
+}
+
+function isTaxiPartnerCase(reviewCase: RidePodAdminReviewCaseRow) {
+  return reviewCase.case_type.includes("TAXI_PARTNER");
 }
 
 function disputeIssueType(reviewCase: RidePodAdminReviewCaseRow): string {
@@ -629,6 +643,7 @@ export function mapSupabaseAdminReviewCaseToViewModel(
   const route = rideInstance?.route_label ?? pod?.route_label ?? "Route unavailable";
   const isIdVerificationCase = reviewCase.case_type === "ID_VERIFICATION_REQUEST";
   const isMemberSafetyReportCase = reviewCase.case_type === "MEMBER_SAFETY_REPORT";
+  const isTaxiPartnerReviewCase = isTaxiPartnerCase(reviewCase);
   const accountLabel = subjectUserLabel(related.subjectProfile, reviewCase.subject_user_id);
 
   if (isMemberSafetyReportCase) {
@@ -663,7 +678,7 @@ export function mapSupabaseAdminReviewCaseToViewModel(
       proofStatusLabel: "Manual review",
       disputeStatus: "Submitted",
       payoutStatus,
-      payoutStatusLabel: titleCaseEnum(payoutStatus),
+      payoutStatusLabel: payoutStatusDisplayLabel(payoutStatus),
       createdTime: formatCreatedAt(reviewCase.created_at),
       createdAtLabel: formatCreatedAt(reviewCase.created_at),
       submittedBy: "Reporter private",
@@ -720,7 +735,7 @@ export function mapSupabaseAdminReviewCaseToViewModel(
       proofStatusLabel: "Manual review",
       disputeStatus: "None",
       payoutStatus,
-      payoutStatusLabel: titleCaseEnum(payoutStatus),
+      payoutStatusLabel: payoutStatusDisplayLabel(payoutStatus),
       createdTime: formatCreatedAt(reviewCase.created_at),
       createdAtLabel: formatCreatedAt(reviewCase.created_at),
       submittedBy: accountLabel,
@@ -757,8 +772,8 @@ export function mapSupabaseAdminReviewCaseToViewModel(
     rideDateLabel: rideDateTime,
     route,
     routeLabel: route,
-    rideOption: rideOptionLabel(pod),
-    rideOptionLabel: rideOptionLabel(pod),
+    rideOption: isTaxiPartnerReviewCase ? "Taxi partner quote" : rideOptionLabel(pod),
+    rideOptionLabel: isTaxiPartnerReviewCase ? "Taxi partner quote" : rideOptionLabel(pod),
     host: pod?.host_user_id ? `Host ${pod.host_user_id.slice(0, 8)}` : "Host unavailable",
     reporter: isDisputeCase(reviewCase) ? "Guest" : "System",
     guestsLocked,
@@ -774,7 +789,7 @@ export function mapSupabaseAdminReviewCaseToViewModel(
     proofStatusLabel: titleCaseEnum(proof?.proof_status ?? "SUBMITTED"),
     disputeStatus: isDisputeCase(reviewCase) ? "Submitted" : "None",
     payoutStatus,
-    payoutStatusLabel: titleCaseEnum(payoutStatus),
+    payoutStatusLabel: payoutStatusDisplayLabel(payoutStatus),
     createdTime: formatCreatedAt(reviewCase.created_at),
     createdAtLabel: formatCreatedAt(reviewCase.created_at),
     submittedBy: proof?.uploaded_by_user_id ? `User ${proof.uploaded_by_user_id.slice(0, 8)}` : "Host",
@@ -783,6 +798,9 @@ export function mapSupabaseAdminReviewCaseToViewModel(
     ridepodEstimateCents: pod?.current_estimate_cents ?? 0,
     uploadedQuoteCents: proof?.proof_type === "QUOTE_SCREENSHOT" ? proof.amount_cents ?? undefined : undefined,
     finalProofCents: proof?.proof_type !== "QUOTE_SCREENSHOT" ? proof?.amount_cents ?? undefined : undefined,
+    taxiPartnerQuoteAmountCents:
+      isTaxiPartnerReviewCase ? proof?.amount_cents ?? settlement?.verified_fare_cents ?? rideInstance?.booking_fare_cap_cents ?? null : undefined,
+    taxiPartnerName: isTaxiPartnerReviewCase ? proof?.provider_name ?? "Taxi partner unavailable" : undefined,
     evidenceLabel: proof?.file_url ?? "Proof preview placeholder",
     fileUrl: proof?.file_url ?? null,
     evidenceTimeline,
@@ -896,7 +914,7 @@ function mockCases(filters?: AdminReviewCaseFilters): AdminReviewCaseViewModel[]
         fareAmountLabel: formatHkd(reviewCase.fareAmountCents),
         bookingFareCapLabel: formatHkd(reviewCase.bookingFareCapCents),
         differenceLabel: differenceLabel(reviewCase.fareAmountCents, reviewCase.bookingFareCapCents),
-        payoutStatusLabel: titleCaseEnum(reviewCase.payoutStatus),
+        payoutStatusLabel: payoutStatusDisplayLabel(reviewCase.payoutStatus),
         primaryActionLabel: reviewCase.primaryAction,
         createdAtLabel: reviewCase.createdTime,
         evidenceTimeline,

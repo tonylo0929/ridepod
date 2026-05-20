@@ -261,6 +261,14 @@ function getDecisionCaseUpdate(
 
 function ReviewCaseCard({ reviewCase, onOpen }: { reviewCase: AdminReviewCaseViewModel; onOpen: () => void }) {
   const aboveCap = reviewCase.fareAmountCents > reviewCase.bookingFareCapCents;
+  const isTaxiPartnerQuoteCase = reviewCase.rideOption === "Taxi partner quote";
+  const taxiPartnerQuoteLabel =
+    typeof reviewCase.taxiPartnerQuoteAmountCents === "number"
+      ? `Quote: ${formatAdminHkd(reviewCase.taxiPartnerQuoteAmountCents)}`
+      : "Quote unavailable";
+  const taxiPartnerFareCapLabel =
+    reviewCase.bookingFareCapCents > 0 ? formatAdminHkd(reviewCase.bookingFareCapCents) : "Fare cap unavailable";
+  const disputeStatusLabel = reviewCase.disputeStatus === "None" ? "No dispute" : reviewCase.disputeStatus;
 
   return (
     <article className="rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
@@ -268,12 +276,12 @@ function ReviewCaseCard({ reviewCase, onOpen }: { reviewCase: AdminReviewCaseVie
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={severityClass(reviewCase.severity)}>{reviewCase.severity}</Badge>
-            <Badge className={reviewStateClass(reviewCase.reviewState)}>{reviewCase.reviewState.replaceAll("_", " ")}</Badge>
+            <Badge className={reviewStateClass(reviewCase.reviewState)}>{reviewCase.reviewStateLabel}</Badge>
             {aboveCap ? (
               <Badge className="bg-orange-400/10 text-orange-300 ring-orange-400/25">Above cap</Badge>
             ) : null}
           </div>
-          <h2 className="mt-3 text-xl font-black text-[var(--rp-text)]">{reviewCase.caseType}</h2>
+          <h2 className="mt-3 text-xl font-black text-[var(--rp-text)]">{reviewCase.caseTypeLabel}</h2>
           <p className="mt-2 text-sm font-bold text-[var(--rp-muted-strong)]">{reviewCase.rideDateTime}</p>
           <p className="mt-1 text-sm font-black text-[var(--rp-text)]">{reviewCase.route}</p>
           {reviewCase.isMemberSafetyReportCase ? (
@@ -290,6 +298,16 @@ function ReviewCaseCard({ reviewCase, onOpen }: { reviewCase: AdminReviewCaseVie
               <KeyValue label="Review status" value={reviewCase.reviewState.replaceAll("_", " ")} />
               <KeyValue label="Description" value="No identity document was collected." />
             </dl>
+          ) : isTaxiPartnerQuoteCase ? (
+            <dl className="mt-4 grid gap-2 text-sm min-[560px]:grid-cols-2">
+              <KeyValue label="Ride option" value={reviewCase.rideOptionLabel} />
+              <KeyValue label="Taxi partner" value={reviewCase.taxiPartnerName ?? "Taxi partner unavailable"} />
+              <KeyValue label="Fare" value={taxiPartnerQuoteLabel} />
+              <KeyValue label="Booking fare cap" value={taxiPartnerFareCapLabel} />
+              <KeyValue label="Payout status" value={reviewCase.payoutStatusLabel} />
+              <KeyValue label="Dispute status" value={disputeStatusLabel} />
+              <KeyValue label="Created" value={reviewCase.createdAtLabel} />
+            </dl>
           ) : (
             <dl className="mt-4 grid gap-2 text-sm min-[560px]:grid-cols-2">
               <KeyValue label="Ride option" value={reviewCase.rideOption} />
@@ -298,8 +316,8 @@ function ReviewCaseCard({ reviewCase, onOpen }: { reviewCase: AdminReviewCaseVie
               <KeyValue label="Created" value={reviewCase.createdTime} />
               <KeyValue label={reviewCase.fareLabel} value={formatAdminHkd(reviewCase.fareAmountCents)} />
               <KeyValue label="Booking fare cap" value={formatAdminHkd(reviewCase.bookingFareCapCents)} />
-              <KeyValue label="Proof status" value={reviewCase.proofStatus.replaceAll("_", " ")} />
-              <KeyValue label="Payout status" value={reviewCase.payoutStatus.replaceAll("_", " ")} />
+              <KeyValue label="Proof status" value={reviewCase.proofStatusLabel} />
+              <KeyValue label="Payout status" value={reviewCase.payoutStatusLabel} />
             </dl>
           )}
         </div>
@@ -313,7 +331,7 @@ function ReviewCaseCard({ reviewCase, onOpen }: { reviewCase: AdminReviewCaseVie
             onClick={onOpen}
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_16px_34px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
           >
-            {reviewCase.primaryAction} <ArrowRight className="h-4 w-4" />
+            {reviewCase.primaryActionLabel} <ArrowRight className="h-4 w-4" />
           </button>
         </div>
       </div>
