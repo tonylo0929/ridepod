@@ -228,7 +228,7 @@ Can defer:
 
 Next action:
 
-Start BETA-7 tester session preparation.
+Use `docs/ridepod-closed-beta-tester-session-prep.md` to run BETA-7 tester session preparation.
 
 ## 11. Command Results
 

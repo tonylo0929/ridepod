@@ -39,6 +39,13 @@ npm run screenshots
 
 The script writes PNGs to `screenshots/`. If Playwright has not installed a browser on this machine yet, run `npx playwright install chromium` first.
 
+## Closed Beta Docs
+
+- `docs/ridepod-closed-beta-go-no-go-review.md` records the current GO WITH LIMITATIONS decision.
+- `docs/ridepod-closed-beta-tester-session-prep.md` is the BETA-7 runbook for preparing and running tester sessions.
+- `docs/ridepod-closed-beta-ops-playbook.md` covers manual review, support, and escalation rules.
+- `docs/ridepod-beta-feedback-form.md` and `docs/ridepod-beta-issue-tracker.md` capture session feedback and triage.
+
 ## Data
 
 Mock users, ride pods, payment states, attendance states, waitlists, and helpers live in `src/lib/mock-data.ts`. There is no Stripe, Supabase, or native app dependency in this phase.
