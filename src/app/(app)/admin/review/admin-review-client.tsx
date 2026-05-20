@@ -464,63 +464,104 @@ function optionalCount(count: number | null | undefined, fallback = "Not availab
   return typeof count === "number" ? String(count) : fallback;
 }
 
+function taxiPartnerRideStatusLabel(reviewCase: AdminReviewCaseViewModel) {
+  if (reviewCase.reviewState === "RESOLVED" || reviewCase.payoutStatus === "RELEASED") return "Closed";
+  if (reviewCase.payoutStatus === "HELD_FOR_REVIEW" || reviewCase.disputeStatus !== "None") return "Dispute review";
+  if (reviewCase.payoutStatus === "PENDING") return "Payout pending";
+  if (reviewCase.taxiPartnerRideCompletionStatus?.toLowerCase().includes("completed")) return "Ride completed";
+  return reviewCase.taxiPartnerRideCompletionStatus ?? "Ready for taxi partner";
+}
+
+function aboveCapDifferenceLabel(quoteCents: number | null | undefined, fareCapCents: number | null | undefined) {
+  if (typeof quoteCents !== "number" || typeof fareCapCents !== "number" || fareCapCents <= 0 || quoteCents <= fareCapCents) {
+    return "Not above cap";
+  }
+
+  return `${formatAdminHkd(quoteCents - fareCapCents)} above cap`;
+}
+
 function TaxiPartnerQuoteDetailSections({ reviewCase }: { reviewCase: AdminReviewCaseViewModel }) {
   const acceptance = reviewCase.taxiPartnerGuestAcceptance;
-  const timeline = reviewCase.taxiPartnerTimeline ?? [];
+  const timeline = (reviewCase.taxiPartnerTimeline ?? []).filter((item) => item.title && (item.timestampLabel || item.detail));
+  const acceptedGuestsLabel =
+    typeof reviewCase.taxiPartnerAcceptedGuestCount === "number"
+      ? `${reviewCase.taxiPartnerAcceptedGuestCount} guests accepted`
+      : "Guest acceptance unavailable";
+  const hasProofFile = Boolean(reviewCase.fileUrl);
 
   return (
     <>
+      <DetailSection icon={ClipboardCheck} title="Case summary">
+        <dl className="grid gap-2 sm:grid-cols-2">
+          <KeyValue label="Title" value={reviewCase.caseTypeLabel} />
+          <KeyValue label="Case type" value={reviewCase.caseTypeLabel} />
+          <KeyValue label="Severity" value={reviewCase.severityLabel} />
+          <KeyValue label="Status" value={reviewCase.statusLabel} />
+          <KeyValue label="Created" value={reviewCase.createdAtLabel} />
+        </dl>
+      </DetailSection>
+
       <DetailSection icon={ClipboardCheck} title="Ride summary">
         <dl className="grid gap-2 sm:grid-cols-2">
-          <KeyValue label="Route" value={reviewCase.routeLabel} />
-          <KeyValue label="Date/time" value={reviewCase.rideDateLabel} />
-          <KeyValue label="Taxi type" value={reviewCase.taxiPartnerTaxiType ?? "Taxi type unavailable"} />
           <KeyValue label="Ride option" value="Taxi partner quote" />
-          <KeyValue label="Taxi partner" value={reviewCase.taxiPartnerName ?? "Taxi partner unavailable"} />
-          <KeyValue label="Guests accepted" value={optionalCount(reviewCase.taxiPartnerAcceptedGuestCount)} />
-          <KeyValue label="Ride completion status" value={reviewCase.taxiPartnerRideCompletionStatus ?? "Status unavailable"} />
+          <KeyValue label="Route" value={reviewCase.routeLabel || "Ride details unavailable"} />
+          <KeyValue label="Date/time" value={reviewCase.rideDateLabel || "Ride details unavailable"} />
+          <KeyValue label="Taxi type" value={reviewCase.taxiPartnerTaxiType ? `${reviewCase.taxiPartnerTaxiType} taxi` : "Taxi type not specified"} />
+          <KeyValue label="Taxi partner" value={reviewCase.taxiPartnerName ?? "Taxi partner pending"} />
+          <KeyValue label="Guests" value={acceptedGuestsLabel} />
+          <KeyValue label="Ride status" value={taxiPartnerRideStatusLabel(reviewCase)} />
           <KeyValue label="Payout status" value={reviewCase.payoutStatusLabel} />
         </dl>
       </DetailSection>
 
       <DetailSection icon={ReceiptText} title="Quote summary">
         <dl className="grid gap-2 sm:grid-cols-2">
-          <KeyValue label="Taxi partner quote amount" value={optionalAdminHkd(reviewCase.taxiPartnerQuoteAmountCents, "Quote unavailable")} />
-          <KeyValue label="Fare cap" value={reviewCase.bookingFareCapCents > 0 ? formatAdminHkd(reviewCase.bookingFareCapCents) : "Fare cap unavailable"} />
-          <KeyValue label="Fare share per guest" value={optionalAdminHkd(reviewCase.taxiPartnerFareSharePerGuestCents)} />
-          <KeyValue label="Platform fee per guest" value={optionalAdminHkd(reviewCase.taxiPartnerPlatformFeePerGuestCents)} />
+          <KeyValue label="Taxi partner quote" value={optionalAdminHkd(reviewCase.taxiPartnerQuoteAmountCents, "Quote pending.")} />
+          <KeyValue label="Booking fare cap" value={reviewCase.bookingFareCapCents > 0 ? formatAdminHkd(reviewCase.bookingFareCapCents) : "Fare cap unavailable"} />
+          <KeyValue label="Above-cap difference" value={aboveCapDifferenceLabel(reviewCase.taxiPartnerQuoteAmountCents, reviewCase.bookingFareCapCents)} />
+          <KeyValue label="Fare share" value={typeof reviewCase.taxiPartnerFareSharePerGuestCents === "number" ? `${formatAdminHkd(reviewCase.taxiPartnerFareSharePerGuestCents)} / guest` : "Not available"} />
+          <KeyValue label="Platform fee" value={typeof reviewCase.taxiPartnerPlatformFeePerGuestCents === "number" ? `${formatAdminHkd(reviewCase.taxiPartnerPlatformFeePerGuestCents)} / guest` : "Not available"} />
           <KeyValue label="Guest charge" value={optionalAdminHkd(reviewCase.taxiPartnerGuestChargeCents)} />
-          <KeyValue label="Driver payout" value={optionalAdminHkd(reviewCase.taxiPartnerDriverPayoutCents)} />
+          <KeyValue label="Taxi partner payout" value={optionalAdminHkd(reviewCase.taxiPartnerDriverPayoutCents)} />
         </dl>
+        <p className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+          No real payout is sent in beta.
+        </p>
       </DetailSection>
 
       <DetailSection icon={CheckCircle2} title="Guest acceptance summary">
         <dl className="grid gap-2 sm:grid-cols-3">
-          <KeyValue label="Accepted" value={optionalCount(acceptance?.acceptedCount)} />
-          <KeyValue label="Declined" value={optionalCount(acceptance?.declinedCount)} />
-          <KeyValue label="Pending" value={optionalCount(acceptance?.pendingCount)} />
+          <KeyValue label="Accepted guests" value={optionalCount(acceptance?.acceptedCount, "Guest acceptance unavailable")} />
+          <KeyValue label="Pending guests" value={optionalCount(acceptance?.pendingCount, "Guest acceptance unavailable")} />
+          <KeyValue label="Declined guests" value={optionalCount(acceptance?.declinedCount, "Guest acceptance unavailable")} />
         </dl>
         <p className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
           Guest acceptance is summarized by count only. Private guest-level details are not shown in this admin queue view.
         </p>
       </DetailSection>
 
-      {reviewCase.disputeStatus !== "None" ? (
-        <DetailSection icon={ShieldAlert} title="Dispute / issue summary">
-          <dl className="grid gap-2 sm:grid-cols-2">
-            <KeyValue label="Dispute type" value={reviewCase.disputeIssueType ?? "Dispute under review"} />
-            <KeyValue label="Reporter" value={reviewCase.reporter ?? "Reporter unavailable"} />
-            <KeyValue label="Submitted time" value={reviewCase.createdAtLabel} />
-            <KeyValue label="Attached evidence" value={reviewCase.evidenceLabel ?? "Evidence placeholder"} />
-          </dl>
-          <div className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-            <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Issue note</p>
-            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              {reviewCase.disputeNote ?? "Dispute under review."}
-            </p>
-          </div>
-        </DetailSection>
-      ) : null}
+      <DetailSection icon={ShieldAlert} title="Dispute / issue summary">
+        {reviewCase.disputeStatus !== "None" ? (
+          <>
+            <dl className="grid gap-2 sm:grid-cols-2">
+              <KeyValue label="Dispute type" value={reviewCase.disputeIssueType ?? "Dispute under review"} />
+              <KeyValue label="Reporter" value={reviewCase.reporter ?? "Reporter unavailable"} />
+              <KeyValue label="Submitted" value={reviewCase.createdAtLabel} />
+              <KeyValue label="Attached evidence" value={reviewCase.evidenceLabel ?? "Evidence placeholder"} />
+            </dl>
+            <div className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+              <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Issue note</p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                {reviewCase.disputeNote ?? "Dispute under review."}
+              </p>
+            </div>
+          </>
+        ) : (
+          <p className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+            No dispute reported.
+          </p>
+        )}
+      </DetailSection>
 
       <DetailSection icon={FileSearch} title="Evidence timeline">
         {timeline.length ? (
@@ -538,6 +579,20 @@ function TaxiPartnerQuoteDetailSections({ reviewCase }: { reviewCase: AdminRevie
         ) : (
           <p className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
             No Taxi partner timeline events are available yet.
+          </p>
+        )}
+      </DetailSection>
+
+      <DetailSection icon={FileSearch} title="Proof / evidence preview">
+        {hasProofFile ? (
+          <ProofPreviewButton
+            fileUrlOrStoragePath={reviewCase.fileUrl}
+            proofType={reviewCase.proofType}
+            fileName={reviewCase.evidenceLabel ?? undefined}
+          />
+        ) : (
+          <p className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+            No proof file available.
           </p>
         )}
       </DetailSection>
@@ -610,7 +665,7 @@ function TaxiPartnerAdminNotes({
         </p>
       ) : null}
       <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-        These actions update mock state only. No real payout is sent and no real money moves.
+        Admin actions are handled in the next slice. These controls update mock state only. No real payout is sent and no real money moves.
       </p>
     </DetailSection>
   );
