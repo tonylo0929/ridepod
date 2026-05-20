@@ -1,5 +1,5 @@
-import Link from "next/link";
-import { ArrowRight, CircleAlert, Route, ShieldCheck } from "lucide-react";
+import { CircleAlert, Route, ShieldCheck } from "lucide-react";
+import { BetaScenarioActions } from "@/components/beta-scenario-actions";
 import { Badge, Card, cn } from "@/components/ui";
 import { listRidePodDemoScenarios, type RidePodDemoScenario } from "@/lib/demo/ridepod-demo-scenarios";
 
@@ -61,18 +61,7 @@ function ScenarioCard({ scenario }: { scenario: RidePodDemoScenario }) {
         <p className="text-xs font-semibold leading-5 text-[var(--rp-muted)]">{scenario.notes}</p>
       </div>
 
-      {routeReady ? (
-        <Link
-          href={scenario.recommendedRoute}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_rgba(0,124,137,0.18)] transition hover:brightness-105"
-        >
-          Open scenario <ArrowRight className="h-4 w-4" />
-        </Link>
-      ) : (
-        <div className="rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-center text-sm font-bold text-[var(--rp-muted)]">
-          Scenario route coming soon.
-        </div>
-      )}
+      <BetaScenarioActions scenarioId={scenario.id} routeReady={routeReady} />
     </Card>
   );
 }

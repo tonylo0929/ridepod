@@ -83,6 +83,7 @@ const supabaseProofMetadata = loadTsModule("src/lib/supabase/proof-metadata.ts")
 const publicProfile = loadTsModule("src/lib/public-profile.ts");
 const memberSafetyReport = loadTsModule("src/lib/member-safety-report.ts");
 const ridePodDemoScenarios = loadTsModule("src/lib/demo/ridepod-demo-scenarios.ts");
+const ridePodDemoResetMock = loadTsModule("src/lib/demo/ridepod-demo-reset-mock.ts");
 
 assert.deepEqual(ridePodDemoScenarios.RIDE_POD_DEMO_SCENARIO_IDS, [
   "scheduled_ride_app_quote_needed",
@@ -115,6 +116,16 @@ assert.ok(
     scenario.notes
   ),
 );
+const demoResetKnown = ridePodDemoResetMock.resetRidePodDemoScenarioMock("settlement_ready");
+assert.equal(demoResetKnown.success, true);
+assert.equal(demoResetKnown.scenario.id, "settlement_ready");
+assert.equal(demoResetKnown.routeToOpen, "/pods/usc-lax-001/settlement");
+assert.equal(demoResetKnown.message, "Scenario opened with current demo data.");
+const demoResetUnknown = ridePodDemoResetMock.resetRidePodDemoScenarioMock("unknown_scenario");
+assert.equal(demoResetUnknown.success, false);
+assert.equal(demoResetUnknown.scenario, null);
+assert.equal(demoResetUnknown.routeToOpen, null);
+assert.equal(demoResetUnknown.message, "Couldn't load this demo scenario.");
 
 assert.deepEqual(moneySafety.POD_LIFECYCLE_STATES, [
   "DRAFT",
@@ -594,6 +605,10 @@ const memberReportConcernSource = readFileSync("src/components/member-report-con
 const hostPageSource = readFileSync("src/app/(app)/host/page.tsx", "utf8");
 const settingsPageSource = readFileSync("src/app/(app)/settings/page.tsx", "utf8");
 const betaScenariosPageSource = readFileSync("src/app/(app)/beta/scenarios/page.tsx", "utf8");
+const betaScenarioActionsSource = readFileSync("src/components/beta-scenario-actions.tsx", "utf8");
+const ridePodDemoResetMockSource = readFileSync("src/lib/demo/ridepod-demo-reset-mock.ts", "utf8");
+const ridePodDemoDataResetScriptSource = readFileSync("scripts/reset-ridepod-demo-data.mjs", "utf8");
+const ridePodDemoDataResetDocSource = readFileSync("docs/ridepod-demo-data-reset.md", "utf8");
 const supabaseProfileTrustMigrationSource = readFileSync(
   "supabase/migrations/202605200001_ridepod_profile_trust_fields.sql",
   "utf8",
@@ -630,9 +645,26 @@ assert.ok(
 assert.ok(betaScenariosPageSource.includes("NEXT_PUBLIC_RIDEPOD_DEMO_MODE"));
 assert.ok(betaScenariosPageSource.includes("Demo scenarios are not enabled."));
 assert.ok(betaScenariosPageSource.includes("listRidePodDemoScenarios"));
-assert.ok(betaScenariosPageSource.includes("Open scenario"));
-assert.ok(betaScenariosPageSource.includes("Scenario route coming soon."));
+assert.ok(betaScenariosPageSource.includes("BetaScenarioActions"));
+assert.ok(betaScenarioActionsSource.includes("Load demo"));
+assert.ok(betaScenarioActionsSource.includes("resetRidePodDemoScenarioMock"));
+assert.ok(betaScenarioActionsSource.includes("router.push"));
+assert.ok(betaScenarioActionsSource.includes("Opens scenario route"));
+assert.ok(betaScenarioActionsSource.includes("Scenario route coming soon."));
 assert.ok(betaScenariosPageSource.includes("These scenarios use demo or mock states."));
+assert.equal(ridePodDemoResetMockSource.includes("supabase"), false);
+assert.equal(ridePodDemoResetMockSource.includes(".from("), false);
+assert.ok(ridePodDemoResetMockSource.includes("Demo scenario loaded."));
+assert.ok(ridePodDemoResetMockSource.includes("Scenario opened with current demo data."));
+assert.ok(ridePodDemoDataResetScriptSource.includes("RIDEPOD_ALLOW_DEMO_RESET"));
+assert.ok(ridePodDemoDataResetScriptSource.includes("Never run this against production."));
+assert.ok(ridePodDemoDataResetScriptSource.includes("supabase/seed.sql"));
+assert.ok(ridePodDemoDataResetScriptSource.includes("ridepod_e2e_seed_checks.sql"));
+assert.ok(ridePodDemoDataResetScriptSource.includes("supabaseCommand, [\"db\", \"reset\"]"));
+assert.equal(ridePodDemoDataResetScriptSource.includes("SUPABASE_SERVICE_ROLE_KEY"), false);
+assert.ok(ridePodDemoDataResetDocSource.includes("Never Run This Against Production"));
+assert.ok(ridePodDemoDataResetDocSource.includes("Scheduled ride app quote needed"));
+assert.ok(ridePodDemoDataResetDocSource.includes("Safety report"));
 assert.equal(
   moneySafetyUiSource.includes("Host reimbursement is based on the verified final receipt and approved max fare."),
   false,
