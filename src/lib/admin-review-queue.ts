@@ -7,8 +7,12 @@ export type AdminReviewCaseType =
   | "Meter proof above cap"
   | "Suspicious receipt"
   | "Guest dispute"
+  | "Partner quote above fare cap"
   | "Taxi partner guest dispute"
+  | "Completion dispute"
+  | "Pickup issue"
   | "Taxi partner payout hold"
+  | "Taxi partner safety concern"
   | "Host cancellation after booking"
   | "No-show dispute"
   | "Receipt needs more info"
@@ -321,6 +325,56 @@ export function getAdminReviewCases(): AdminReviewCase[] {
       disputeNote: "Guest says the route included an unapproved extra stop.",
       evidenceLabel: "Guest screenshot placeholder",
       statusLabel: "Dispute review",
+      primaryAction: "Review case",
+    },
+    {
+      id: "review-taxi-partner-quote-above-cap",
+      caseType: "Partner quote above fare cap",
+      filter: "Above cap",
+      severity: "High",
+      reviewState: "OPEN",
+      rideDateTime: "Tue May 19 - 8:00 AM",
+      route: "USC Village -> LAX Terminal 3",
+      rideOption: "Taxi partner quote",
+      host: "Maya Chen",
+      reporter: "System",
+      guestsLocked: "4 / 4",
+      fareLabel: "Quote",
+      fareAmountCents: 24000,
+      bookingFareCapCents: 22000,
+      maxChargePerGuestCents: 6200,
+      proofType: "quote screenshot",
+      proofStatus: "UNDER_REVIEW",
+      disputeStatus: "None",
+      payoutStatus: "HELD_FOR_REVIEW",
+      createdTime: "12m ago",
+      submittedBy: "Demo Taxi Partner",
+      submittedAt: "May 19, 7:42 AM",
+      certificationAccepted: true,
+      ridepodEstimateCents: 22000,
+      uploadedQuoteCents: 24000,
+      taxiPartnerName: "Demo Taxi Partner",
+      taxiPartnerTaxiType: "Electric",
+      taxiPartnerQuoteAmountCents: 24000,
+      taxiPartnerFareSharePerGuestCents: 6000,
+      taxiPartnerPlatformFeePerGuestCents: 300,
+      taxiPartnerGuestChargeCents: 6300,
+      taxiPartnerDriverPayoutCents: 22800,
+      taxiPartnerAcceptedGuestCount: 4,
+      taxiPartnerRideCompletionStatus: "Quote under manual review",
+      taxiPartnerGuestAcceptance: {
+        acceptedCount: 0,
+        declinedCount: 0,
+        pendingCount: 4,
+      },
+      evidenceLabel: "Taxi partner quote above fare cap placeholder",
+      taxiPartnerTimeline: [
+        { id: "taxi-partner-above-cap-pod-created", title: "Pod created", timestampLabel: "May 19, 7:10 AM" },
+        { id: "taxi-partner-above-cap-guests-locked", title: "Guests locked", timestampLabel: "May 19, 7:36 AM", detail: "4 guests locked." },
+        { id: "taxi-partner-above-cap-quote-received", title: "Partner quote received", timestampLabel: "May 19, 7:42 AM", detail: "Demo Taxi Partner quoted HK$240.00." },
+        { id: "taxi-partner-above-cap-payout-held", title: "Payout held", timestampLabel: "May 19, 7:43 AM", detail: "Partner quote above fare cap. Manual review required." },
+      ],
+      statusLabel: "Open",
       primaryAction: "Review case",
     },
     {

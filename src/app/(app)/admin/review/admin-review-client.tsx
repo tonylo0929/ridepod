@@ -365,12 +365,14 @@ function getDecisionCaseUpdate(
 function ReviewCaseCard({ reviewCase, onOpen }: { reviewCase: AdminReviewCaseViewModel; onOpen: () => void }) {
   const aboveCap = reviewCase.fareAmountCents > reviewCase.bookingFareCapCents;
   const isTaxiPartnerQuoteCase = reviewCase.rideOption === "Taxi partner quote";
+  const rideDateTimeLabel = reviewCase.rideDateTime.trim() || "Ride details unavailable";
+  const routeLabel = reviewCase.route.trim() || "Ride details unavailable";
   const taxiPartnerQuoteLabel =
     typeof reviewCase.taxiPartnerQuoteAmountCents === "number"
       ? `Quote: ${formatAdminHkd(reviewCase.taxiPartnerQuoteAmountCents)}`
-      : "Quote unavailable";
-  const taxiPartnerFareCapLabel =
-    reviewCase.bookingFareCapCents > 0 ? formatAdminHkd(reviewCase.bookingFareCapCents) : "Fare cap unavailable";
+      : "Quote pending.";
+  const hasTaxiPartnerFareCap = reviewCase.bookingFareCapCents > 0;
+  const taxiPartnerFareCapLabel = formatAdminHkd(reviewCase.bookingFareCapCents);
   const disputeStatusLabel = reviewCase.disputeStatus === "None" ? "No dispute" : reviewCase.disputeStatus;
 
   return (
@@ -380,13 +382,16 @@ function ReviewCaseCard({ reviewCase, onOpen }: { reviewCase: AdminReviewCaseVie
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={severityClass(reviewCase.severity)}>{reviewCase.severity}</Badge>
             <Badge className={reviewStateClass(reviewCase.reviewState)}>{reviewCase.reviewStateLabel}</Badge>
+            {isTaxiPartnerQuoteCase ? (
+              <Badge className={reviewStateClass(reviewCase.payoutStatus)}>{reviewCase.statusLabel}</Badge>
+            ) : null}
             {aboveCap ? (
               <Badge className="bg-orange-400/10 text-orange-300 ring-orange-400/25">Above cap</Badge>
             ) : null}
           </div>
           <h2 className="mt-3 text-xl font-black text-[var(--rp-text)]">{reviewCase.caseTypeLabel}</h2>
-          <p className="mt-2 text-sm font-bold text-[var(--rp-muted-strong)]">{reviewCase.rideDateTime}</p>
-          <p className="mt-1 text-sm font-black text-[var(--rp-text)]">{reviewCase.route}</p>
+          <p className="mt-2 text-sm font-bold text-[var(--rp-muted-strong)]">{rideDateTimeLabel}</p>
+          <p className="mt-1 text-sm font-black text-[var(--rp-text)]">{routeLabel}</p>
           {reviewCase.isMemberSafetyReportCase ? (
             <dl className="mt-4 grid gap-2 text-sm min-[560px]:grid-cols-2">
               <KeyValue label="Concern type" value={reviewCase.safetyConcernType ?? "Safety concern"} />
@@ -404,9 +409,9 @@ function ReviewCaseCard({ reviewCase, onOpen }: { reviewCase: AdminReviewCaseVie
           ) : isTaxiPartnerQuoteCase ? (
             <dl className="mt-4 grid gap-2 text-sm min-[560px]:grid-cols-2">
               <KeyValue label="Ride option" value={reviewCase.rideOptionLabel} />
-              <KeyValue label="Taxi partner" value={reviewCase.taxiPartnerName ?? "Taxi partner unavailable"} />
+              <KeyValue label="Taxi partner" value={reviewCase.taxiPartnerName ?? "Taxi partner pending"} />
               <KeyValue label="Fare" value={taxiPartnerQuoteLabel} />
-              <KeyValue label="Booking fare cap" value={taxiPartnerFareCapLabel} />
+              {hasTaxiPartnerFareCap ? <KeyValue label="Fare cap" value={taxiPartnerFareCapLabel} /> : null}
               <KeyValue label="Payout status" value={reviewCase.payoutStatusLabel} />
               <KeyValue label="Dispute status" value={disputeStatusLabel} />
               <KeyValue label="Created" value={reviewCase.createdAtLabel} />

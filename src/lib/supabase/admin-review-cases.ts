@@ -153,8 +153,12 @@ function caseTypeLabel(caseType: string) {
   if (caseType === "METER_PROOF_ABOVE_CAP") return "Meter proof above fare cap";
   if (caseType === "SUSPICIOUS_PROOF") return "Suspicious proof";
   if (caseType === "GUEST_DISPUTE") return "Guest dispute";
+  if (caseType === "TAXI_PARTNER_QUOTE_ABOVE_CAP") return "Partner quote above fare cap";
   if (caseType === "TAXI_PARTNER_GUEST_DISPUTE") return "Taxi partner guest dispute";
+  if (caseType === "TAXI_PARTNER_COMPLETION_DISPUTE") return "Completion dispute";
+  if (caseType === "TAXI_PARTNER_PICKUP_ISSUE") return "Pickup issue";
   if (caseType === "TAXI_PARTNER_PAYOUT_HOLD") return "Taxi partner payout hold";
+  if (caseType === "TAXI_PARTNER_SAFETY_CONCERN") return "Taxi partner safety concern";
   if (caseType === "TAXI_PARTNER_QUOTE_REVIEW") return "Taxi partner quote review";
   if (caseType === "PAYOUT_HOLD") return "Payout hold";
   if (caseType === "QUOTE_RECEIPT_MISMATCH") return "Quote / receipt mismatch";
@@ -230,8 +234,9 @@ function statusLabel(reviewCase: RidePodAdminReviewCaseRow, payoutStatus: AdminR
   if (reviewCase.case_type === "ID_VERIFICATION_REQUEST") return reviewStateDisplayLabel(reviewCase.review_state);
   if (reviewCase.case_type === "MEMBER_SAFETY_REPORT") return "Manual review";
   if (reviewCase.review_state === "RESOLVED") return "Resolved";
-  if (payoutStatus === "HELD_FOR_REVIEW") return "Payout held";
   if (reviewCase.review_state === "NEEDS_MORE_INFO") return "Needs more info";
+  if (payoutStatus === "HELD_FOR_REVIEW") return "Payout held";
+  if (reviewCase.review_state === "OPEN") return "Open";
   return "Manual review";
 }
 
@@ -900,7 +905,7 @@ export function mapSupabaseAdminReviewCaseToViewModel(
     finalProofCents: proof?.proof_type !== "QUOTE_SCREENSHOT" ? proof?.amount_cents ?? undefined : undefined,
     taxiPartnerQuoteAmountCents:
       isTaxiPartnerReviewCase ? taxiPartnerQuoteAmountCents : undefined,
-    taxiPartnerName: isTaxiPartnerReviewCase ? proof?.provider_name ?? "Taxi partner unavailable" : undefined,
+    taxiPartnerName: isTaxiPartnerReviewCase ? proof?.provider_name ?? null : undefined,
     taxiPartnerTaxiType: isTaxiPartnerReviewCase ? "Taxi type unavailable" : undefined,
     taxiPartnerFareSharePerGuestCents,
     taxiPartnerPlatformFeePerGuestCents,

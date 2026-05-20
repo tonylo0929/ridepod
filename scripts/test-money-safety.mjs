@@ -2180,12 +2180,23 @@ for (const adminReviewCopy of [
   "Meter proof above cap",
   "Suspicious receipt",
   "Guest dispute",
+  "Partner quote above fare cap",
   "Taxi partner guest dispute",
+  "Completion dispute",
+  "Pickup issue",
   "Taxi partner payout hold",
+  "Taxi partner safety concern",
   "Taxi partner quote",
   "Taxi partner",
+  "Taxi partner pending",
   "Quote:",
+  "Quote pending.",
+  "Fare cap",
+  "Ride details unavailable",
   "Payout held",
+  "Under review",
+  "Needs more info",
+  "Open",
   "Ride summary",
   "Quote summary",
   "Guest acceptance summary",
@@ -2258,6 +2269,31 @@ for (const adminReviewCopy of [
   );
 }
 assert.equal(`${adminReviewPageSource}\n${adminReviewClientSource}\n${adminReviewQueueSource}`.includes("Proof is guaranteed real"), false);
+for (const taxiPartnerCaseType of [
+  "TAXI_PARTNER_QUOTE_ABOVE_CAP",
+  "TAXI_PARTNER_GUEST_DISPUTE",
+  "TAXI_PARTNER_COMPLETION_DISPUTE",
+  "TAXI_PARTNER_PICKUP_ISSUE",
+  "TAXI_PARTNER_PAYOUT_HOLD",
+  "TAXI_PARTNER_SAFETY_CONCERN",
+]) {
+  assert.ok(
+    supabaseAdminReviewCasesSource.includes(taxiPartnerCaseType),
+    `Missing Taxi Partner Quote admin case type mapping: ${taxiPartnerCaseType}`,
+  );
+}
+for (const forbiddenAdminReviewCopy of [
+  "RidePod driver",
+  "guaranteed driver",
+  "guaranteed payout",
+  "official taxi dispatch",
+  "real payout sent",
+  "fraud confirmed",
+  "crime",
+  "forever banned",
+]) {
+  assert.equal(`${adminReviewPageSource}\n${adminReviewClientSource}\n${adminReviewQueueSource}`.includes(forbiddenAdminReviewCopy), false);
+}
 for (const recurringInstanceCopy of [
   "Ride instance",
   "Upload fresh quote",
