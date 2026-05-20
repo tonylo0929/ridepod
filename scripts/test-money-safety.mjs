@@ -593,6 +593,7 @@ const memberSafetyReportSource = readFileSync("src/lib/member-safety-report.ts",
 const memberReportConcernSource = readFileSync("src/components/member-report-concern.tsx", "utf8");
 const hostPageSource = readFileSync("src/app/(app)/host/page.tsx", "utf8");
 const settingsPageSource = readFileSync("src/app/(app)/settings/page.tsx", "utf8");
+const betaScenariosPageSource = readFileSync("src/app/(app)/beta/scenarios/page.tsx", "utf8");
 const supabaseProfileTrustMigrationSource = readFileSync(
   "supabase/migrations/202605200001_ridepod_profile_trust_fields.sql",
   "utf8",
@@ -626,6 +627,12 @@ const legalCopySource = [
 assert.ok(
   moneySafetyUiSource.includes("Host reimbursement is based on verified final receipt and approved max fare."),
 );
+assert.ok(betaScenariosPageSource.includes("NEXT_PUBLIC_RIDEPOD_DEMO_MODE"));
+assert.ok(betaScenariosPageSource.includes("Demo scenarios are not enabled."));
+assert.ok(betaScenariosPageSource.includes("listRidePodDemoScenarios"));
+assert.ok(betaScenariosPageSource.includes("Open scenario"));
+assert.ok(betaScenariosPageSource.includes("Scenario route coming soon."));
+assert.ok(betaScenariosPageSource.includes("These scenarios use demo or mock states."));
 assert.equal(
   moneySafetyUiSource.includes("Host reimbursement is based on the verified final receipt and approved max fare."),
   false,
