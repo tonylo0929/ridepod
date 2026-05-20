@@ -34,8 +34,8 @@ export type AdminReviewCase = {
   maxChargePerGuestCents: number;
   proofType: "quote screenshot" | "final receipt" | "meter proof";
   proofStatus: "SUBMITTED" | "UNDER_REVIEW" | "VERIFIED" | "NEEDS_MORE_INFO" | "REJECTED" | "FRAUD_SUSPECTED";
-  disputeStatus: "None" | "Submitted" | "Under review" | "Resolved";
-  payoutStatus: "PENDING" | "HELD_FOR_REVIEW" | "RELEASED" | "DENIED";
+  disputeStatus: "None" | "Submitted" | "Under review" | "Resolved" | "RESOLVED";
+  payoutStatus: "PENDING" | "HELD_FOR_REVIEW" | "RELEASED" | "DENIED" | "READY_TO_RELEASE" | "RELEASED_MOCK" | "DENIED_MOCK";
   createdTime: string;
   submittedBy: string;
   submittedAt: string;

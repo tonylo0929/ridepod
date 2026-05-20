@@ -38,6 +38,29 @@ type AdminReviewAction =
   | "APPROVE_VERIFICATION"
   | "REJECT_VERIFICATION";
 type ApplyAdminReviewActionResult = Awaited<ReturnType<typeof applyAdminReviewActionForCase>>;
+type TaxiPartnerMockActionKey =
+  | "holdPayout"
+  | "releasePayoutMock"
+  | "requestMoreInfo"
+  | "resolveDispute"
+  | "denyPayoutMock";
+type TaxiPartnerConfirmableActionKey = Exclude<TaxiPartnerMockActionKey, "requestMoreInfo">;
+
+const taxiPartnerMockActionLabels: Array<{ key: TaxiPartnerMockActionKey; label: string; requiresNotes: boolean }> = [
+  { key: "holdPayout", label: "Hold payout", requiresNotes: true },
+  { key: "releasePayoutMock", label: "Release payout", requiresNotes: false },
+  { key: "requestMoreInfo", label: "Request more info", requiresNotes: true },
+  { key: "resolveDispute", label: "Resolve dispute", requiresNotes: false },
+  { key: "denyPayoutMock", label: "Deny payout", requiresNotes: true },
+];
+
+const taxiPartnerMockActionMessages: Record<TaxiPartnerMockActionKey, string> = {
+  holdPayout: "Payout held for manual review.",
+  releasePayoutMock: "Demo status updated. No real payout is sent.",
+  requestMoreInfo: "More information requested for this taxi partner case.",
+  resolveDispute: "Dispute resolved for this demo case.",
+  denyPayoutMock: "Demo payout denied. No real money moves.",
+};
 
 function severityClass(severity: AdminReviewSeverity) {
   if (severity === "Critical") return "bg-[var(--rp-danger-bg)] text-[var(--rp-danger)] ring-[var(--rp-border)]";
@@ -75,6 +98,63 @@ function differenceLabel(value?: number, compareTo?: number) {
   return `${difference > 0 ? "+" : "-"}${formatAdminHkd(Math.abs(difference))}`;
 }
 
+function getTaxiPartnerMockActionUpdate(
+  actionKey: TaxiPartnerMockActionKey,
+  reviewCase: AdminReviewCaseViewModel,
+): Partial<AdminReviewCaseViewModel> {
+  const timeline = [
+    ...(reviewCase.taxiPartnerTimeline ?? []),
+    {
+      id: `taxi-partner-admin-${actionKey}-${Date.now()}`,
+      title: "Admin decision" as const,
+      timestampLabel: "Just now",
+      detail: taxiPartnerMockActionMessages[actionKey],
+    },
+  ];
+
+  if (actionKey === "holdPayout") {
+    return {
+      payoutStatus: "HELD_FOR_REVIEW",
+      payoutStatusLabel: "Payout held",
+      statusLabel: "Payout held",
+      taxiPartnerTimeline: timeline,
+    };
+  }
+
+  if (actionKey === "releasePayoutMock") {
+    return {
+      payoutStatus: "READY_TO_RELEASE",
+      payoutStatusLabel: "Ready to release",
+      statusLabel: "Ready to release",
+      taxiPartnerTimeline: timeline,
+    };
+  }
+
+  if (actionKey === "requestMoreInfo") {
+    return {
+      reviewState: "NEEDS_MORE_INFO",
+      reviewStateLabel: "Needs more info",
+      statusLabel: "Needs more info",
+      taxiPartnerTimeline: timeline,
+    };
+  }
+
+  if (actionKey === "resolveDispute") {
+    return {
+      disputeStatus: "RESOLVED",
+      statusLabel: reviewCase.payoutStatus === "HELD_FOR_REVIEW" ? "Payout held" : reviewCase.statusLabel,
+      taxiPartnerTimeline: timeline,
+    };
+  }
+
+  return {
+    payoutStatus: "DENIED_MOCK",
+    payoutStatusLabel: "Denied in demo",
+    statusLabel: "Denied in demo",
+    taxiPartnerTimeline: timeline,
+  };
+}
+
 export function AdminReviewClient({
   initialCases,
   source,
@@ -88,7 +168,7 @@ export function AdminReviewClient({
 }) {
   const [selectedFilter, setSelectedFilter] = useState<AdminReviewFilter>("All");
   const [selectedCase, setSelectedCase] = useState<AdminReviewCaseViewModel | null>(null);
-  const [caseUpdates, setCaseUpdates] = useState<Record<string, Partial<AdminReviewCase>>>({});
+  const [caseUpdates, setCaseUpdates] = useState<Record<string, Partial<AdminReviewCaseViewModel>>>({});
   const baseCases = useMemo(() => initialCases, [initialCases]);
   const cases = useMemo(
     () => baseCases.map((reviewCase) => ({ ...reviewCase, ...caseUpdates[reviewCase.id] })),
@@ -116,6 +196,28 @@ export function AdminReviewClient({
     setCaseUpdates((current) => ({ ...current, [caseId]: { ...current[caseId], ...update } }));
     setSelectedCase((current) => (current?.id === caseId ? { ...current, ...update } : current));
     return { ok: true, message: result.userFacingMessage };
+  };
+
+  const handleTaxiPartnerMockActionApplied = async (
+    caseId: string,
+    actionKey: TaxiPartnerMockActionKey,
+    adminNotes: string,
+  ) => {
+    const reviewCase = cases.find((item) => item.id === caseId) ?? selectedCase;
+    if (!reviewCase) {
+      return { ok: false, message: "Could not find this taxi partner case." };
+    }
+
+    const actionConfig = taxiPartnerMockActionLabels.find((item) => item.key === actionKey);
+    if (actionConfig?.requiresNotes && !adminNotes.trim()) {
+      return { ok: false, message: "Admin notes are required for this action." };
+    }
+
+    const update = getTaxiPartnerMockActionUpdate(actionKey, reviewCase);
+    setCaseUpdates((current) => ({ ...current, [caseId]: { ...current[caseId], ...update } }));
+    setSelectedCase((current) => (current?.id === caseId ? { ...current, ...update } : current));
+
+    return { ok: true, message: taxiPartnerMockActionMessages[actionKey] };
   };
 
   return (
@@ -180,6 +282,7 @@ export function AdminReviewClient({
           reviewCase={selectedCase}
           onClose={() => setSelectedCase(null)}
           onDecisionApplied={handleDecisionApplied}
+          onTaxiPartnerMockActionApplied={handleTaxiPartnerMockActionApplied}
         />
       ) : null}
     </div>
@@ -440,12 +543,43 @@ function TaxiPartnerQuoteDetailSections({ reviewCase }: { reviewCase: AdminRevie
 function TaxiPartnerAdminNotes({
   value,
   onChange,
+  selectedAction,
+  actionMessage,
+  actionError,
+  onAction,
 }: {
   value: string;
   onChange: (nextValue: string) => void;
+  selectedAction: TaxiPartnerMockActionKey | null;
+  actionMessage: string | null;
+  actionError: string | null;
+  onAction: (actionKey: TaxiPartnerMockActionKey) => void;
 }) {
+  const selectedConfig = taxiPartnerMockActionLabels.find((item) => item.key === selectedAction);
+  const notesMissing = Boolean(selectedConfig?.requiresNotes && !value.trim());
+
   return (
     <DetailSection icon={LockKeyhole} title="Admin notes">
+      <div className="mb-4 grid gap-2">
+        {taxiPartnerMockActionLabels.map((item) => {
+          const active = selectedAction === item.key;
+          return (
+            <button
+              key={item.key}
+              type="button"
+              onClick={() => onAction(item.key)}
+              className={cn(
+                "min-h-11 rounded-[14px] border px-3 text-left text-sm font-black transition",
+                active
+                  ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                  : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-text)]",
+              )}
+            >
+              {item.label}
+            </button>
+          );
+        })}
+      </div>
       <label className="grid gap-2 text-sm font-black text-[var(--rp-muted-strong)]">
         Admin notes
         <textarea
@@ -455,8 +589,23 @@ function TaxiPartnerAdminNotes({
           placeholder="Add notes for review and audit trail."
         />
       </label>
+      {notesMissing ? (
+        <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-warning)]">
+          Admin notes are required for this action.
+        </p>
+      ) : null}
+      {actionError ? (
+        <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-danger-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-danger)]">
+          {actionError}
+        </p>
+      ) : null}
+      {actionMessage ? (
+        <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-success-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-badge-success-text)]">
+          {actionMessage}
+        </p>
+      ) : null}
       <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-        Notes are local only in this slice. Saving admin notes comes with a later admin actions step.
+        These actions update mock state only. No real payout is sent and no real money moves.
       </p>
     </DetailSection>
   );
@@ -466,6 +615,7 @@ function ReviewCaseModal({
   reviewCase,
   onClose,
   onDecisionApplied,
+  onTaxiPartnerMockActionApplied,
 }: {
   reviewCase: AdminReviewCaseViewModel;
   onClose: () => void;
@@ -474,10 +624,17 @@ function ReviewCaseModal({
     decisionKey: AdminDecisionKey,
     adminNotes: string,
   ) => Promise<{ ok: boolean; message: string }>;
+  onTaxiPartnerMockActionApplied: (
+    caseId: string,
+    actionKey: TaxiPartnerMockActionKey,
+    adminNotes: string,
+  ) => Promise<{ ok: boolean; message: string }>;
 }) {
   const [adminNotes, setAdminNotes] = useState("");
   const [decision, setDecision] = useState<AdminDecisionKey | null>(null);
   const [confirmationDecision, setConfirmationDecision] = useState<AdminDecisionKey | null>(null);
+  const [taxiPartnerAction, setTaxiPartnerAction] = useState<TaxiPartnerMockActionKey | null>(null);
+  const [taxiPartnerConfirmationAction, setTaxiPartnerConfirmationAction] = useState<TaxiPartnerConfirmableActionKey | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -492,6 +649,27 @@ function ReviewCaseModal({
   const notesRequired = Boolean(selectedDecision?.requiresNotes);
   const notesMissing = notesRequired && !adminNotes.trim();
   const isTaxiPartnerQuoteCase = reviewCase.rideOption === "Taxi partner quote";
+
+  const applyTaxiPartnerAction = async (nextAction: TaxiPartnerMockActionKey) => {
+    const config = taxiPartnerMockActionLabels.find((item) => item.key === nextAction);
+    setTaxiPartnerAction(nextAction);
+    setActionMessage(null);
+    setActionError(null);
+
+    if (config?.requiresNotes && !adminNotes.trim()) return;
+
+    if (nextAction === "requestMoreInfo") {
+      const result = await onTaxiPartnerMockActionApplied(reviewCase.id, nextAction, adminNotes);
+      if (!result.ok) {
+        setActionError(result.message);
+        return;
+      }
+      setActionMessage(result.message);
+      return;
+    }
+
+    setTaxiPartnerConfirmationAction(nextAction);
+  };
 
   const applyDecision = (nextDecision: AdminDecisionKey) => {
     const config = adminDecisionLabels.find((item) => item.key === nextDecision);
@@ -515,6 +693,23 @@ function ReviewCaseModal({
     const result = await onDecisionApplied(reviewCase.id, confirmationDecision, adminNotes);
     setIsSubmitting(false);
     setConfirmationDecision(null);
+
+    if (!result.ok) {
+      setActionError(result.message);
+      return;
+    }
+
+    setActionMessage(result.message);
+  };
+
+  const confirmTaxiPartnerAction = async () => {
+    if (!taxiPartnerConfirmationAction) return;
+    setIsSubmitting(true);
+    setActionError(null);
+
+    const result = await onTaxiPartnerMockActionApplied(reviewCase.id, taxiPartnerConfirmationAction, adminNotes);
+    setIsSubmitting(false);
+    setTaxiPartnerConfirmationAction(null);
 
     if (!result.ok) {
       setActionError(result.message);
@@ -757,7 +952,14 @@ function ReviewCaseModal({
 
           <aside className="grid content-start gap-4">
             {isTaxiPartnerQuoteCase ? (
-              <TaxiPartnerAdminNotes value={adminNotes} onChange={setAdminNotes} />
+              <TaxiPartnerAdminNotes
+                value={adminNotes}
+                onChange={setAdminNotes}
+                selectedAction={taxiPartnerAction}
+                actionMessage={actionMessage}
+                actionError={actionError}
+                onAction={applyTaxiPartnerAction}
+              />
             ) : reviewCase.isMemberSafetyReportCase ? (
               <DetailSection icon={LockKeyhole} title="Manual safety review">
                 <p className="text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
@@ -859,6 +1061,14 @@ function ReviewCaseModal({
             onConfirm={confirmDecision}
           />
         ) : null}
+        {taxiPartnerConfirmationAction ? (
+          <TaxiPartnerActionConfirmation
+            action={taxiPartnerConfirmationAction}
+            disabled={isSubmitting}
+            onCancel={() => setTaxiPartnerConfirmationAction(null)}
+            onConfirm={confirmTaxiPartnerAction}
+          />
+        ) : null}
       </section>
     </div>
   );
@@ -917,6 +1127,29 @@ const confirmationCopy: Record<AdminDecisionKey, { title: string; body: string; 
   },
 };
 
+const taxiPartnerConfirmationCopy: Record<TaxiPartnerConfirmableActionKey, { title: string; body: string; confirm: string }> = {
+  holdPayout: {
+    title: "Hold payout?",
+    body: "Payout will stay held while RidePod reviews this taxi partner case.",
+    confirm: "Hold payout",
+  },
+  releasePayoutMock: {
+    title: "Release payout in demo?",
+    body: "This only updates demo status. No real payout is sent.",
+    confirm: "Mark payout ready",
+  },
+  resolveDispute: {
+    title: "Resolve dispute?",
+    body: "This marks the dispute as resolved for this demo case.",
+    confirm: "Resolve dispute",
+  },
+  denyPayoutMock: {
+    title: "Deny payout in demo?",
+    body: "This marks payout denied in demo mode. No real money moves.",
+    confirm: "Deny payout",
+  },
+};
+
 function AdminDecisionConfirmation({
   decision,
   disabled,
@@ -929,6 +1162,47 @@ function AdminDecisionConfirmation({
   onConfirm: () => void;
 }) {
   const copy = confirmationCopy[decision];
+
+  return (
+    <div className="fixed inset-0 z-[100] grid place-items-center bg-[rgba(3,7,18,0.62)] px-4 backdrop-blur-sm">
+      <section className="w-full max-w-md rounded-[24px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
+        <h3 className="text-xl font-black text-[var(--rp-text)]">{copy.title}</h3>
+        <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{copy.body}</p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={disabled}
+            className="min-h-12 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-text)] disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={disabled}
+            className="min-h-12 rounded-[16px] bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] disabled:opacity-60"
+          >
+            {disabled ? "Applying..." : copy.confirm}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TaxiPartnerActionConfirmation({
+  action,
+  disabled,
+  onCancel,
+  onConfirm,
+}: {
+  action: TaxiPartnerConfirmableActionKey;
+  disabled: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const copy = taxiPartnerConfirmationCopy[action];
 
   return (
     <div className="fixed inset-0 z-[100] grid place-items-center bg-[rgba(3,7,18,0.62)] px-4 backdrop-blur-sm">

@@ -199,6 +199,9 @@ function rideOptionLabel(pod: RidePodPodRow | null): AdminReviewCase["rideOption
 
 function payoutStatusDisplayLabel(payoutStatus: AdminReviewCase["payoutStatus"]) {
   if (payoutStatus === "HELD_FOR_REVIEW") return "Payout held";
+  if (payoutStatus === "READY_TO_RELEASE") return "Ready to release";
+  if (payoutStatus === "RELEASED_MOCK") return "Released in demo";
+  if (payoutStatus === "DENIED_MOCK") return "Denied in demo";
   if (payoutStatus === "RELEASED") return "Released";
   if (payoutStatus === "DENIED") return "Denied";
   return "Pending";
