@@ -61,8 +61,9 @@ type RideOptionId =
   | "large_ride"
   | "standard_ride"
   | "taxi_meter"
+  | "taxi_partner_quote"
   | "comfort_premium";
-type ActiveRideOptionId = Extract<RideOptionId, "ride_app_fixed_quote" | "taxi_meter">;
+type ActiveRideOptionId = Extract<RideOptionId, "ride_app_fixed_quote" | "taxi_meter" | "taxi_partner_quote">;
 type DateTimeState = {
   scheduleType: ScheduleType;
   date: string;
@@ -152,6 +153,8 @@ const rideOptions: Array<{
   helper: string;
   recurringHelper: string;
   icon: typeof CarFront;
+  badge?: string;
+  taxiTypeChips?: string[];
 }> = [
   {
     id: "ride_app_fixed_quote",
@@ -168,6 +171,16 @@ const rideOptions: Array<{
     helper: "Meter photo or receipt required after ride.",
     recurringHelper: "Meter proof or taxi receipt required after each ride.",
     icon: CarFront,
+  },
+  {
+    id: "taxi_partner_quote",
+    title: "Taxi partner quote",
+    description: "Licensed taxi partner quotes one price for the shared pod.",
+    helper: "Future beta mode",
+    recurringHelper: "Future beta mode for each ride date.",
+    icon: CarFront,
+    badge: "Beta prototype",
+    taxiTypeChips: ["Standard", "Electric", "Luggage-friendly", "Large", "Comfort", "Accessible"],
   },
 ];
 
@@ -190,10 +203,26 @@ const rideConfirmationCopy: Record<ActiveRideOptionId, { title: string; body: st
     checkbox:
       "I understand the taxi fare is settled from verified meter proof or receipt, within the approved max rules.",
   },
+  taxi_partner_quote: {
+    title: "Confirm Taxi Partner Quote Prototype",
+    body: [
+      "RidePod groups riders first, then a licensed taxi partner can quote one price for the shared pod.",
+      "This is a future beta prototype. It does not dispatch real taxis or release real payouts yet.",
+    ],
+    checkbox:
+      "I understand this is a beta prototype and no real taxi dispatch or payout is enabled.",
+  },
 };
 
 function normalizeRideOptionId(rideOption: RideOptionId): ActiveRideOptionId {
-  return rideOption === "taxi_meter" ? "taxi_meter" : "ride_app_fixed_quote";
+  if (rideOption === "taxi_meter") return "taxi_meter";
+  if (rideOption === "taxi_partner_quote") return "taxi_partner_quote";
+
+  return "ride_app_fixed_quote";
+}
+
+function isDemoModeEnabled() {
+  return process.env.NEXT_PUBLIC_RIDEPOD_DEMO_MODE === "true";
 }
 
 function getRideOption(rideOption: RideOptionId) {
@@ -203,7 +232,32 @@ function getRideOption(rideOption: RideOptionId) {
 }
 
 function getRideProofCopy(rideOption: RideOptionId) {
-  return normalizeRideOptionId(rideOption) === "taxi_meter"
+  const normalizedRideOption = normalizeRideOptionId(rideOption);
+
+  if (normalizedRideOption === "taxi_partner_quote") {
+    return {
+      moneyIntro:
+        "Taxi partner quote is a future beta prototype. Guests accept the partner quote before the ride can proceed.",
+      fareCapHelper: "Partner quote must stay within this before the shared ride proceeds.",
+      bookingProofStatus: "Taxi partner quote required",
+      bookingProofHelper: "Guests accept the partner quote before the ride can proceed.",
+      reviewRows: [
+        { label: "Ride option", value: "Taxi partner quote" },
+        { label: "Quote status", value: "Taxi partner quote required" },
+        {
+          label: "Booking rule",
+          value: "Guests accept the partner quote before the ride can proceed.",
+        },
+        {
+          label: "Settlement rule",
+          value: "Payout is released after ride completion and dispute window review.",
+        },
+        { label: "Helper", value: "Future beta prototype. No real taxi dispatch or payout yet." },
+      ],
+    };
+  }
+
+  return normalizedRideOption === "taxi_meter"
     ? {
         moneyIntro:
           "RidePod uses the taxi baseline to set a fare cap. Guests authorize the max before the ride. Final charge uses verified meter proof or receipt.",
@@ -1909,11 +1963,13 @@ function RideOptionCard({
   option,
   selected,
   helper,
+  disabled,
   onSelect,
 }: {
   option: (typeof rideOptions)[number];
   selected: boolean;
   helper: string;
+  disabled?: boolean;
   onSelect: () => void;
 }) {
   const Icon = option.icon;
@@ -1923,25 +1979,47 @@ function RideOptionCard({
       type="button"
       role="radio"
       aria-checked={selected}
+      aria-disabled={disabled}
+      disabled={disabled}
       onClick={onSelect}
       className={cn(
         "grid w-full grid-cols-[52px_1fr_34px] items-center gap-3 rounded-[14px] border bg-[var(--rp-card)] p-3 text-left shadow-[var(--rp-shadow-soft)] transition",
         selected
           ? "border-[var(--rp-primary)] ring-1 ring-[var(--rp-primary)]"
           : "border-[var(--rp-border)] hover:border-[var(--rp-border-strong)]",
+        disabled && "cursor-not-allowed opacity-70 hover:border-[var(--rp-border)]",
       )}
     >
       <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
         <Icon className="h-7 w-7" />
       </span>
       <span className="min-w-0">
-        <span className="block text-base font-black text-[var(--rp-text)]">{option.title}</span>
+        <span className="flex flex-wrap items-center gap-2 text-base font-black text-[var(--rp-text)]">
+          <span>{option.title}</span>
+          {option.badge ? (
+            <span className="rounded-full border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,var(--rp-card))] px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]">
+              {disabled ? "Coming soon" : option.badge}
+            </span>
+          ) : null}
+        </span>
         <span className="mt-1 block text-xs font-semibold leading-4 text-[var(--rp-muted)]">
           {option.description}
         </span>
         <span className="mt-1 block text-[11px] font-black leading-4 text-[var(--rp-primary)]">
-          {helper}
+          {disabled ? "Coming soon" : helper}
         </span>
+        {option.taxiTypeChips ? (
+          <span className="mt-2 flex flex-wrap gap-1.5" aria-label="Future taxi type options">
+            {option.taxiTypeChips.map((chip) => (
+              <span
+                key={chip}
+                className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-2 py-1 text-[10px] font-black text-[var(--rp-muted-strong)]"
+              >
+                {chip}
+              </span>
+            ))}
+          </span>
+        ) : null}
       </span>
       <span
         aria-hidden="true"
@@ -1968,23 +2046,58 @@ function RideOptionSelector({
   value: RideOptionId;
   onChange: (value: RideOptionId) => void;
 }) {
+  const demoModeEnabled = isDemoModeEnabled();
+  const selectedRideOption = normalizeRideOptionId(value);
+  const selectedTaxiPartnerQuote = selectedRideOption === "taxi_partner_quote";
+
   return (
     <section className="mt-7">
       <h2 className="text-base font-black text-[var(--rp-text)]">Ride option</h2>
       <div className="mt-3 grid gap-3" role="radiogroup" aria-label="Ride option">
-        {rideOptions.map((option) => (
-          <RideOptionCard
-            key={option.id}
-            option={option}
-            selected={normalizeRideOptionId(value) === option.id}
-            helper={podType === "recurring" ? option.recurringHelper : option.helper}
-            onSelect={() => onChange(option.id)}
-          />
-        ))}
+        {rideOptions.map((option) => {
+          const taxiPartnerDisabled = option.id === "taxi_partner_quote" && !demoModeEnabled;
+
+          return (
+            <RideOptionCard
+              key={option.id}
+              option={option}
+              selected={selectedRideOption === option.id}
+              helper={podType === "recurring" ? option.recurringHelper : option.helper}
+              disabled={taxiPartnerDisabled}
+              onSelect={() => {
+                if (taxiPartnerDisabled) return;
+                onChange(option.id);
+              }}
+            />
+          );
+        })}
       </div>
+      {selectedTaxiPartnerQuote ? (
+        <div className="mt-3 rounded-[18px] border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_10%,var(--rp-card))] p-4">
+          <div className="flex items-start gap-3">
+            <Info className="mt-1 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
+            <div>
+              <h3 className="text-sm font-black text-[var(--rp-text)]">Taxi partner quote</h3>
+              <p className="mt-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                RidePod groups riders first. A licensed taxi partner can quote one price for the shared pod. This mode is a future beta prototype and does not dispatch real taxis yet.
+              </p>
+              <p className="mt-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                Future matching can consider luggage, larger vehicles, and accessibility needs, available only when supported by taxi partner.
+              </p>
+              <p className="mt-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner.
+              </p>
+              <span className="mt-3 inline-flex rounded-full bg-[var(--rp-primary)] px-3 py-1 text-xs font-black text-[var(--rp-primary-text)]">
+                Use beta prototype
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted)]">
         RidePod protection applies only when the ride stays within the approved max. Final settlement uses the verified receipt.
       </p>
+      {/* TODO: Add TAXI_PARTNER_QUOTE to Supabase ride_option enum in TAXI-2. */}
     </section>
   );
 }
@@ -2825,27 +2938,39 @@ function CreatePodConfirmationDialog({
   onCancel: () => void;
   onCreate: () => void;
 }) {
+  const normalizedRideOption = normalizeRideOptionId(rideOption);
   const copy =
-    normalizeRideOptionId(rideOption) === "taxi_meter"
+    normalizedRideOption === "taxi_partner_quote"
       ? {
-          title: "Create this taxi meter pod?",
+          title: "Create this taxi partner quote pod?",
           body: [
             "Guests can join and lock their seats after the pod is created.",
-            "No upfront quote is required for taxi meter rides. After the ride, upload a clear meter photo or taxi receipt for settlement.",
+            "Taxi partner quote is a future beta prototype. Guests accept the partner quote before the ride can proceed.",
+            "Future beta prototype. No real taxi dispatch or payout yet.",
           ],
-          checkbox: "I understand meter proof or receipt is required after the ride.",
+          checkbox: "I understand this is a mock beta prototype and no real taxi dispatch or payout is enabled.",
           submitLabel: "Create Pod",
         }
-      : {
-          title: "Create this pod?",
-          body: [
-            "Guests can join and lock their seats after the pod is created.",
-            "Before you book the external ride, RidePod will ask you to upload a fresh quote or fare screenshot. You do not need to upload it now.",
-            "After the ride, final settlement uses the verified receipt.",
-          ],
-          checkbox: "I understand quote proof is required before booking and receipt proof is required after the ride.",
-          submitLabel: "Confirm",
-        };
+      : normalizedRideOption === "taxi_meter"
+        ? {
+            title: "Create this taxi meter pod?",
+            body: [
+              "Guests can join and lock their seats after the pod is created.",
+              "No upfront quote is required for taxi meter rides. After the ride, upload a clear meter photo or taxi receipt for settlement.",
+            ],
+            checkbox: "I understand meter proof or receipt is required after the ride.",
+            submitLabel: "Create Pod",
+          }
+        : {
+            title: "Create this pod?",
+            body: [
+              "Guests can join and lock their seats after the pod is created.",
+              "Before you book the external ride, RidePod will ask you to upload a fresh quote or fare screenshot. You do not need to upload it now.",
+              "After the ride, final settlement uses the verified receipt.",
+            ],
+            checkbox: "I understand quote proof is required before booking and receipt proof is required after the ride.",
+            submitLabel: "Confirm",
+          };
 
   return (
     <div
