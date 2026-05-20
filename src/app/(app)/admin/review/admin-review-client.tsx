@@ -44,7 +44,7 @@ type TaxiPartnerMockActionKey =
   | "requestMoreInfo"
   | "resolveDispute"
   | "denyPayoutMock";
-type TaxiPartnerConfirmableActionKey = Exclude<TaxiPartnerMockActionKey, "requestMoreInfo">;
+type TaxiPartnerConfirmableActionKey = TaxiPartnerMockActionKey;
 
 const taxiPartnerMockActionLabels: Array<{ key: TaxiPartnerMockActionKey; label: string; requiresNotes: boolean }> = [
   { key: "holdPayout", label: "Hold payout", requiresNotes: true },
@@ -56,10 +56,10 @@ const taxiPartnerMockActionLabels: Array<{ key: TaxiPartnerMockActionKey; label:
 
 const taxiPartnerMockActionMessages: Record<TaxiPartnerMockActionKey, string> = {
   holdPayout: "Payout held for manual review.",
-  releasePayoutMock: "Demo status updated. No real payout is sent.",
-  requestMoreInfo: "More information requested for this taxi partner case.",
-  resolveDispute: "Dispute resolved for this demo case.",
-  denyPayoutMock: "Demo payout denied. No real money moves.",
+  releasePayoutMock: "Payout marked ready in demo mode.",
+  requestMoreInfo: "More information requested.",
+  resolveDispute: "Dispute resolved in demo mode.",
+  denyPayoutMock: "Payout denied in demo mode.",
 };
 
 function severityClass(severity: AdminReviewSeverity) {
@@ -115,6 +115,8 @@ function getTaxiPartnerMockActionUpdate(
   if (actionKey === "holdPayout") {
     return {
       payoutStatus: "HELD_FOR_REVIEW",
+      reviewState: "UNDER_REVIEW",
+      reviewStateLabel: "Under review",
       payoutStatusLabel: "Payout held",
       statusLabel: "Payout held",
       taxiPartnerTimeline: timeline,
@@ -124,8 +126,10 @@ function getTaxiPartnerMockActionUpdate(
   if (actionKey === "releasePayoutMock") {
     return {
       payoutStatus: "READY_TO_RELEASE",
-      payoutStatusLabel: "Ready to release",
-      statusLabel: "Ready to release",
+      reviewState: "RESOLVED",
+      reviewStateLabel: "Resolved",
+      payoutStatusLabel: "Payout ready",
+      statusLabel: "Payout ready",
       taxiPartnerTimeline: timeline,
     };
   }
@@ -142,15 +146,19 @@ function getTaxiPartnerMockActionUpdate(
   if (actionKey === "resolveDispute") {
     return {
       disputeStatus: "RESOLVED",
-      statusLabel: reviewCase.payoutStatus === "HELD_FOR_REVIEW" ? "Payout held" : reviewCase.statusLabel,
+      reviewState: "RESOLVED",
+      reviewStateLabel: "Resolved",
+      statusLabel: "Resolved",
       taxiPartnerTimeline: timeline,
     };
   }
 
   return {
     payoutStatus: "DENIED_MOCK",
-    payoutStatusLabel: "Denied in demo",
-    statusLabel: "Denied in demo",
+    reviewState: "RESOLVED",
+    reviewStateLabel: "Resolved",
+    payoutStatusLabel: "Payout denied",
+    statusLabel: "Payout denied",
     taxiPartnerTimeline: timeline,
   };
 }
@@ -619,7 +627,7 @@ function TaxiPartnerAdminNotes({
   const notesMissing = Boolean(selectedConfig?.requiresNotes && !value.trim());
 
   return (
-    <DetailSection icon={LockKeyhole} title="Admin notes">
+    <DetailSection icon={LockKeyhole} title="Admin actions">
       <div className="mb-4 grid gap-2">
         {taxiPartnerMockActionLabels.map((item) => {
           const active = selectedAction === item.key;
@@ -665,7 +673,9 @@ function TaxiPartnerAdminNotes({
         </p>
       ) : null}
       <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-        Admin actions are handled in the next slice. These controls update mock state only. No real payout is sent and no real money moves.
+        These controls update mock state only. No real payout is sent and no real money moves.
+        TODO: Persist Taxi Partner Quote admin actions in later Supabase slice.
+        TODO: Taxi Partner Quote admin action notifications handled in TAXI-6F.
       </p>
     </DetailSection>
   );
@@ -717,16 +727,6 @@ function ReviewCaseModal({
     setActionError(null);
 
     if (config?.requiresNotes && !adminNotes.trim()) return;
-
-    if (nextAction === "requestMoreInfo") {
-      const result = await onTaxiPartnerMockActionApplied(reviewCase.id, nextAction, adminNotes);
-      if (!result.ok) {
-        setActionError(result.message);
-        return;
-      }
-      setActionMessage(result.message);
-      return;
-    }
 
     setTaxiPartnerConfirmationAction(nextAction);
   };
@@ -1197,6 +1197,11 @@ const taxiPartnerConfirmationCopy: Record<TaxiPartnerConfirmableActionKey, { tit
     title: "Release payout in demo?",
     body: "This only updates demo status. No real payout is sent.",
     confirm: "Mark payout ready",
+  },
+  requestMoreInfo: {
+    title: "Request more info?",
+    body: "RidePod needs more information before this case can be resolved.",
+    confirm: "Request more info",
   },
   resolveDispute: {
     title: "Resolve dispute?",

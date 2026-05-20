@@ -2220,15 +2220,26 @@ for (const adminReviewCopy of [
   "Taxi partner payout",
   "No real payout is sent in beta.",
   "Add notes for review and audit trail.",
-  "Admin actions are handled in the next slice.",
+  "Admin actions",
+  "These controls update mock state only. No real payout is sent and no real money moves.",
+  "Persist Taxi Partner Quote admin actions in later Supabase slice.",
+  "Taxi Partner Quote admin action notifications handled in TAXI-6F.",
   "Hold payout",
   "Release payout",
   "Request more info",
   "Resolve dispute",
   "Deny payout",
+  "Payout marked ready in demo mode.",
+  "More information requested.",
+  "Dispute resolved in demo mode.",
+  "Payout denied in demo mode.",
+  "Payout ready",
+  "Payout denied",
   "Release payout in demo?",
   "This only updates demo status. No real payout is sent.",
   "Mark payout ready",
+  "Request more info?",
+  "RidePod needs more information before this case can be resolved.",
   "Deny payout in demo?",
   "This marks payout denied in demo mode. No real money moves.",
   "Resolve dispute?",
@@ -2294,6 +2305,20 @@ for (const taxiPartnerCaseType of [
   assert.ok(
     supabaseAdminReviewCasesSource.includes(taxiPartnerCaseType),
     `Missing Taxi Partner Quote admin case type mapping: ${taxiPartnerCaseType}`,
+  );
+}
+for (const taxiPartnerMockStatusLabel of [
+  "Payout held",
+  "Payout ready",
+  "Payout released in demo",
+  "Payout denied",
+  "Needs more info",
+  "Resolved",
+  "Under review",
+]) {
+  assert.ok(
+    `${adminReviewClientSource}\n${supabaseAdminReviewCasesSource}`.includes(taxiPartnerMockStatusLabel),
+    `Missing Taxi Partner Quote mock status label: ${taxiPartnerMockStatusLabel}`,
   );
 }
 for (const forbiddenAdminReviewCopy of [
