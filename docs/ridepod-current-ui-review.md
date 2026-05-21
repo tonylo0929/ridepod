@@ -865,3 +865,5 @@ Do not change business logic in this slice.
 UI-FIX-1 completed: homepage Taxi-first copy, How RidePod Works Taxi-first positioning, confirmation modal wording, money-lock wording cleanup, and payout-release wording cleanup.
 
 UI-FIX-2 completed: Taxi Partner Quote settlement / payout screens now use selected quote, guest acceptance, mock/test payment state, payout pending, and dispute window language instead of legacy host reimbursement/proof wording.
+
+UI-FIX-3 completed: Admin Review case detail now has a decision header, clearer case summary, improved evidence hierarchy, safer payment/payout copy, and grouped admin actions.
