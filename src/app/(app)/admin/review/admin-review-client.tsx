@@ -6,6 +6,7 @@ import {
   ArrowRight,
   CheckCircle2,
   ClipboardCheck,
+  CreditCard,
   FileSearch,
   IdCard,
   LockKeyhole,
@@ -45,6 +46,23 @@ type TaxiPartnerMockActionKey =
   | "resolveDispute"
   | "denyPayoutMock";
 type TaxiPartnerConfirmableActionKey = TaxiPartnerMockActionKey;
+type AdminPaymentSimulationActionKey =
+  | "captureTestPayment"
+  | "cancelTestAuthorization"
+  | "simulateRefund"
+  | "holdPayment"
+  | "markPayoutReady";
+
+type AdminPaymentSimulationStatus =
+  | "TEST_PAYMENT_INTENT_CREATED"
+  | "TEST_REQUIRES_CAPTURE"
+  | "TEST_CAPTURED"
+  | "TEST_CANCELED"
+  | "TEST_REFUND_SIMULATED"
+  | "TEST_CAPTURE_FAILED"
+  | "TEST_CANCEL_FAILED"
+  | "HELD_FOR_REVIEW"
+  | "CLEARED_FOR_PAYOUT";
 
 const taxiPartnerMockActionLabels: Array<{ key: TaxiPartnerMockActionKey; label: string; requiresNotes: boolean }> = [
   { key: "holdPayout", label: "Hold payout", requiresNotes: true },
@@ -168,11 +186,13 @@ export function AdminReviewClient({
   source,
   fallbackNote,
   userFacingError,
+  stripeTestModeEnabled,
 }: {
   initialCases: AdminReviewCaseViewModel[];
   source: "supabase" | "mock";
   fallbackNote: string | null;
   userFacingError: string | null;
+  stripeTestModeEnabled: boolean;
 }) {
   const [selectedFilter, setSelectedFilter] = useState<AdminReviewFilter>("All");
   const [selectedCase, setSelectedCase] = useState<AdminReviewCaseViewModel | null>(null);
@@ -291,6 +311,7 @@ export function AdminReviewClient({
           onClose={() => setSelectedCase(null)}
           onDecisionApplied={handleDecisionApplied}
           onTaxiPartnerMockActionApplied={handleTaxiPartnerMockActionApplied}
+          stripeTestModeEnabled={stripeTestModeEnabled}
         />
       ) : null}
     </div>
@@ -681,11 +702,312 @@ function TaxiPartnerAdminNotes({
   );
 }
 
+const paymentSimulationActionCopy: Record<AdminPaymentSimulationActionKey, { title: string; body: string; confirm: string }> = {
+  captureTestPayment: {
+    title: "Capture test payment?",
+    body: "This captures the Stripe test-mode authorization. No live money moves.",
+    confirm: "Capture test payment",
+  },
+  cancelTestAuthorization: {
+    title: "Cancel test authorization?",
+    body: "This cancels the test authorization. No live money moves.",
+    confirm: "Cancel test authorization",
+  },
+  simulateRefund: {
+    title: "Simulate refund?",
+    body: "This records a demo refund state. Do not use this for live refunds.",
+    confirm: "Simulate refund",
+  },
+  holdPayment: {
+    title: "Hold payment?",
+    body: "Payment and payout stay held while RidePod reviews this demo case.",
+    confirm: "Hold payment",
+  },
+  markPayoutReady: {
+    title: "Mark payout ready?",
+    body: "This marks the payout ready in demo mode. No payout is sent.",
+    confirm: "Mark payout ready",
+  },
+};
+
+function paymentStatusClass(status: string) {
+  if (["TEST_CAPTURED", "CLEARED_FOR_PAYOUT"].includes(status)) {
+    return "bg-[var(--rp-success-bg)] text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]";
+  }
+  if (["TEST_CANCELED", "TEST_REFUND_SIMULATED"].includes(status)) {
+    return "bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border)]";
+  }
+  if (["TEST_CAPTURE_FAILED", "TEST_CANCEL_FAILED", "HELD_FOR_REVIEW"].includes(status)) {
+    return "bg-[var(--rp-danger-bg)] text-[var(--rp-danger)] ring-[var(--rp-border)]";
+  }
+  return "bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-primary)] ring-[var(--rp-border)]";
+}
+
+function adminPaymentStateLabel(status: AdminPaymentSimulationStatus) {
+  if (status === "TEST_PAYMENT_INTENT_CREATED") return "Test payment created";
+  if (status === "TEST_REQUIRES_CAPTURE") return "Requires capture";
+  if (status === "TEST_CAPTURED") return "Captured in test mode";
+  if (status === "TEST_CANCELED") return "Canceled in test mode";
+  if (status === "TEST_REFUND_SIMULATED") return "Refund simulated";
+  if (status === "TEST_CAPTURE_FAILED") return "Capture failed";
+  if (status === "TEST_CANCEL_FAILED") return "Cancel failed";
+  if (status === "HELD_FOR_REVIEW") return "Payment held";
+  return "Cleared for payout";
+}
+
+function stripeStatusToPaymentState(status: string): AdminPaymentSimulationStatus {
+  if (status === "requires_capture") return "TEST_REQUIRES_CAPTURE";
+  if (status === "succeeded") return "TEST_CAPTURED";
+  if (status === "canceled") return "TEST_CANCELED";
+  return "TEST_PAYMENT_INTENT_CREATED";
+}
+
+type PaymentAdminApiResponse =
+  | {
+      ok: true;
+      paymentIntentId: string;
+      status: string;
+    }
+  | {
+      ok: false;
+      message: string;
+    };
+
+function TaxiPartnerPaymentSimulation({
+  reviewCase,
+  stripeTestModeEnabled,
+  onTaxiPartnerMockActionApplied,
+}: {
+  reviewCase: AdminReviewCaseViewModel;
+  stripeTestModeEnabled: boolean;
+  onTaxiPartnerMockActionApplied: (
+    caseId: string,
+    actionKey: TaxiPartnerMockActionKey,
+    adminNotes: string,
+  ) => Promise<{ ok: boolean; message: string }>;
+}) {
+  const [paymentIntentId, setPaymentIntentId] = useState("");
+  const [stripeStatus, setStripeStatus] = useState("requires_capture");
+  const [paymentState, setPaymentState] = useState<AdminPaymentSimulationStatus>("TEST_REQUIRES_CAPTURE");
+  const [paymentReviewState, setPaymentReviewState] = useState<"OPEN" | "HELD_FOR_REVIEW" | "CLEARED">("OPEN");
+  const [confirmationAction, setConfirmationAction] = useState<AdminPaymentSimulationActionKey | null>(null);
+  const [isApplyingPaymentAction, setIsApplyingPaymentAction] = useState(false);
+  const [paymentActionMessage, setPaymentActionMessage] = useState<string | null>(null);
+  const [paymentActionError, setPaymentActionError] = useState<string | null>(null);
+  const guestPaymentAmountCents = reviewCase.taxiPartnerGuestChargeCents ?? reviewCase.maxChargePerGuestCents;
+  const paymentPurpose = "TAXI_PARTNER_QUOTE_ACCEPTANCE";
+  const disputeWindowStatus = reviewCase.disputeStatus === "None" ? "Open / no issue reported" : reviewCase.disputeStatus;
+  const hasPaymentIntent = paymentIntentId.trim().startsWith("pi_");
+
+  const callPaymentApi = async (endpoint: string): Promise<PaymentAdminApiResponse> => {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        paymentIntentId: paymentIntentId.trim(),
+        rideInstanceId: reviewCase.id,
+        reason: "Admin payment simulation",
+      }),
+    });
+    return (await response.json()) as PaymentAdminApiResponse;
+  };
+
+  const applyPaymentAction = async () => {
+    if (!confirmationAction) return;
+
+    setIsApplyingPaymentAction(true);
+    setPaymentActionError(null);
+    setPaymentActionMessage(null);
+
+    try {
+      if (confirmationAction === "captureTestPayment") {
+        if (!stripeTestModeEnabled) {
+          setPaymentActionError("Stripe test mode is not enabled.");
+          return;
+        }
+        if (hasPaymentIntent && stripeTestModeEnabled) {
+          const result = await callPaymentApi("/api/payments/capture-test-payment-intent");
+          if (!result.ok) {
+            setPaymentState("TEST_CAPTURE_FAILED");
+            setPaymentActionError(result.message || "Couldn't capture test payment.");
+            return;
+          }
+          setStripeStatus(result.status);
+          setPaymentState(stripeStatusToPaymentState(result.status));
+        } else {
+          setStripeStatus("succeeded");
+          setPaymentState("TEST_CAPTURED");
+        }
+        setPaymentActionMessage("Test payment captured.");
+        return;
+      }
+
+      if (confirmationAction === "cancelTestAuthorization") {
+        if (!stripeTestModeEnabled) {
+          setPaymentActionError("Stripe test mode is not enabled.");
+          return;
+        }
+        if (hasPaymentIntent && stripeTestModeEnabled) {
+          const result = await callPaymentApi("/api/payments/cancel-test-payment-intent");
+          if (!result.ok) {
+            setPaymentState("TEST_CANCEL_FAILED");
+            setPaymentActionError(result.message || "Couldn't cancel test authorization.");
+            return;
+          }
+          setStripeStatus(result.status);
+          setPaymentState(stripeStatusToPaymentState(result.status));
+        } else {
+          setStripeStatus("canceled");
+          setPaymentState("TEST_CANCELED");
+        }
+        setPaymentActionMessage("Test authorization canceled.");
+        return;
+      }
+
+      if (confirmationAction === "simulateRefund") {
+        setPaymentState("TEST_REFUND_SIMULATED");
+        setPaymentActionMessage("Refund simulated.");
+        return;
+      }
+
+      if (confirmationAction === "holdPayment") {
+        setPaymentReviewState("HELD_FOR_REVIEW");
+        setPaymentState("HELD_FOR_REVIEW");
+        await onTaxiPartnerMockActionApplied(reviewCase.id, "holdPayout", "Payment held for review in demo mode.");
+        setPaymentActionMessage("Payment held for review.");
+        return;
+      }
+
+      setPaymentReviewState("CLEARED");
+      setPaymentState("CLEARED_FOR_PAYOUT");
+      await onTaxiPartnerMockActionApplied(reviewCase.id, "releasePayoutMock", "Payout marked ready from payment simulation.");
+      setPaymentActionMessage("Payout marked ready in demo mode.");
+    } finally {
+      setIsApplyingPaymentAction(false);
+      setConfirmationAction(null);
+    }
+  };
+
+  return (
+    <DetailSection icon={CreditCard} title="Payment simulation">
+      <div className="grid gap-3">
+        <p className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+          Admin payment simulation is demo-only. Test mode only. No live money moves.
+        </p>
+        {!stripeTestModeEnabled ? (
+          <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-warning)]">
+            Stripe test mode is not enabled. Stripe capture/cancel calls are disabled; mock state controls remain available.
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <Badge className={paymentStatusClass(paymentState)}>{adminPaymentStateLabel(paymentState)}</Badge>
+          <Badge className={paymentStatusClass(reviewCase.payoutStatus)}>{reviewCase.payoutStatusLabel}</Badge>
+          <Badge className="bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-badge-neutral-text)] ring-[var(--rp-border)]">
+            {paymentReviewState === "CLEARED" ? "Review cleared" : paymentReviewState === "HELD_FOR_REVIEW" ? "Payment held" : "Manual review"}
+          </Badge>
+        </div>
+        <dl className="grid gap-2">
+          <KeyValue label="Ride instance" value={reviewCase.id} />
+          <KeyValue label="Payment purpose" value={paymentPurpose} />
+          <KeyValue label="Guest payment amount" value={formatAdminHkd(guestPaymentAmountCents)} />
+          <KeyValue label="Stripe test status" value={stripeStatus.replaceAll("_", " ")} />
+          <KeyValue label="RidePod payment state" value={adminPaymentStateLabel(paymentState)} />
+          <KeyValue label="Dispute window status" value={disputeWindowStatus} />
+          <KeyValue label="Payout status" value={reviewCase.payoutStatusLabel} />
+          <KeyValue label="Admin review state" value={reviewCase.reviewStateLabel} />
+        </dl>
+        <label className="grid gap-2 text-sm font-black text-[var(--rp-muted-strong)]">
+          Test PaymentIntent ID
+          <input
+            value={paymentIntentId}
+            onChange={(event) => setPaymentIntentId(event.target.value)}
+            className="min-h-11 rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-3 text-sm font-bold text-[var(--rp-text)]"
+            placeholder="pi_..."
+          />
+          <span className="text-xs font-bold text-[var(--rp-muted)]">
+            If no test PaymentIntent ID is available, actions update mock state only.
+          </span>
+        </label>
+        <div className="grid gap-2">
+          <button
+            type="button"
+            onClick={() => setConfirmationAction("captureTestPayment")}
+            disabled={!stripeTestModeEnabled}
+            className="min-h-11 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-left text-sm font-black text-[var(--rp-text)] disabled:opacity-55"
+          >
+            Capture test payment
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmationAction("cancelTestAuthorization")}
+            disabled={!stripeTestModeEnabled}
+            className="min-h-11 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-left text-sm font-black text-[var(--rp-text)] disabled:opacity-55"
+          >
+            Cancel test authorization
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmationAction("simulateRefund")}
+            className="min-h-11 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-left text-sm font-black text-[var(--rp-text)]"
+          >
+            Simulate refund
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmationAction("holdPayment")}
+            className="min-h-11 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-left text-sm font-black text-[var(--rp-text)]"
+          >
+            Hold payment
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirmationAction("markPayoutReady")}
+            className="min-h-11 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-left text-sm font-black text-[var(--rp-text)]"
+          >
+            Mark payout ready
+          </button>
+        </div>
+        {reviewCase.disputeStatus === "None" ? (
+          <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-warning)]">
+            Dispute window is still open. Capturing now is for test/demo only.
+          </p>
+        ) : (
+          <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-warning)]">
+            A dispute exists. Prefer hold, cancel, or refund simulation until manual review clears the case.
+          </p>
+        )}
+        {paymentActionError ? (
+          <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-danger-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-danger)]">
+            {paymentActionError}
+          </p>
+        ) : null}
+        {paymentActionMessage ? (
+          <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-success-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-badge-success-text)]">
+            {paymentActionMessage}
+          </p>
+        ) : null}
+        <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+          Refund simulation is mock-only in PAY-4. TODO: Persist payment events in PAY-5.
+        </p>
+      </div>
+      {confirmationAction ? (
+        <AdminPaymentSimulationConfirmation
+          action={confirmationAction}
+          disabled={isApplyingPaymentAction}
+          onCancel={() => setConfirmationAction(null)}
+          onConfirm={applyPaymentAction}
+        />
+      ) : null}
+    </DetailSection>
+  );
+}
+
 function ReviewCaseModal({
   reviewCase,
   onClose,
   onDecisionApplied,
   onTaxiPartnerMockActionApplied,
+  stripeTestModeEnabled,
 }: {
   reviewCase: AdminReviewCaseViewModel;
   onClose: () => void;
@@ -699,6 +1021,7 @@ function ReviewCaseModal({
     actionKey: TaxiPartnerMockActionKey,
     adminNotes: string,
   ) => Promise<{ ok: boolean; message: string }>;
+  stripeTestModeEnabled: boolean;
 }) {
   const [adminNotes, setAdminNotes] = useState("");
   const [decision, setDecision] = useState<AdminDecisionKey | null>(null);
@@ -1012,14 +1335,21 @@ function ReviewCaseModal({
 
           <aside className="grid content-start gap-4">
             {isTaxiPartnerQuoteCase ? (
-              <TaxiPartnerAdminNotes
-                value={adminNotes}
-                onChange={setAdminNotes}
-                selectedAction={taxiPartnerAction}
-                actionMessage={actionMessage}
-                actionError={actionError}
-                onAction={applyTaxiPartnerAction}
-              />
+              <>
+                <TaxiPartnerPaymentSimulation
+                  reviewCase={reviewCase}
+                  stripeTestModeEnabled={stripeTestModeEnabled}
+                  onTaxiPartnerMockActionApplied={onTaxiPartnerMockActionApplied}
+                />
+                <TaxiPartnerAdminNotes
+                  value={adminNotes}
+                  onChange={setAdminNotes}
+                  selectedAction={taxiPartnerAction}
+                  actionMessage={actionMessage}
+                  actionError={actionError}
+                  onAction={applyTaxiPartnerAction}
+                />
+              </>
             ) : reviewCase.isMemberSafetyReportCase ? (
               <DetailSection icon={LockKeyhole} title="Manual safety review">
                 <p className="text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
@@ -1271,6 +1601,47 @@ function TaxiPartnerActionConfirmation({
 
   return (
     <div className="fixed inset-0 z-[100] grid place-items-center bg-[rgba(3,7,18,0.62)] px-4 backdrop-blur-sm">
+      <section className="w-full max-w-md rounded-[24px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
+        <h3 className="text-xl font-black text-[var(--rp-text)]">{copy.title}</h3>
+        <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{copy.body}</p>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={disabled}
+            className="min-h-12 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-text)] disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={disabled}
+            className="min-h-12 rounded-[16px] bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] disabled:opacity-60"
+          >
+            {disabled ? "Applying..." : copy.confirm}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function AdminPaymentSimulationConfirmation({
+  action,
+  disabled,
+  onCancel,
+  onConfirm,
+}: {
+  action: AdminPaymentSimulationActionKey;
+  disabled: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const copy = paymentSimulationActionCopy[action];
+
+  return (
+    <div className="fixed inset-0 z-[110] grid place-items-center bg-[rgba(3,7,18,0.62)] px-4 backdrop-blur-sm">
       <section className="w-full max-w-md rounded-[24px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-5 shadow-[0_24px_70px_rgba(0,0,0,0.42)]">
         <h3 className="text-xl font-black text-[var(--rp-text)]">{copy.title}</h3>
         <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{copy.body}</p>
