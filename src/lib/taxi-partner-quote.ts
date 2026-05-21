@@ -737,10 +737,10 @@ export function getTaxiPartnerQuoteDisplayStatus(
 ): TaxiPartnerQuoteDisplayStatus {
   if (!request || request.quoteStatus === "QUOTE_NOT_REQUESTED") {
     return {
-      label: "Partner quote needed",
+      label: "Taxi quote needed",
       tone: "gold",
-      helperText: "Request a quote from a licensed taxi partner.",
-      primaryActionLabel: "Request quote",
+      helperText: "Request one shared quote from a licensed taxi partner.",
+      primaryActionLabel: "Request taxi quote",
     };
   }
 
@@ -748,7 +748,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Waiting for quote",
       tone: "gold",
-      helperText: "Taxi partners can quote one price for this shared pod.",
+      helperText: "Waiting for a taxi partner quote.",
       primaryActionLabel: "View request",
     };
   }
@@ -757,7 +757,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Dispute review",
       tone: "amber",
-      helperText: "Payout is held while RidePod reviews the issue.",
+      helperText: "RidePod is reviewing the reported issue.",
       primaryActionLabel: "View review",
     };
   }
@@ -775,7 +775,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Closed",
       tone: "gray",
-      helperText: "Payout was marked released in demo mode.",
+      helperText: "Ride completed in demo mode.",
       primaryActionLabel: "View details",
     };
   }
@@ -812,7 +812,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
       label: "Dispute review",
       tone: "amber",
       helperText: "RidePod is reviewing the reported issue.",
-      primaryActionLabel: "View dispute",
+      primaryActionLabel: "View review",
     };
   }
 
@@ -829,7 +829,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Dispute review",
       tone: "amber",
-      helperText: "Payout is held while RidePod reviews the issue.",
+      helperText: "RidePod is reviewing the reported issue.",
       primaryActionLabel: "View review",
     };
   }
@@ -838,7 +838,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Closed",
       tone: "gray",
-      helperText: "Ride completed and payout status is closed.",
+      helperText: "Ride completed in demo mode.",
       primaryActionLabel: "View details",
     };
   }
@@ -850,8 +850,8 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Payout pending",
       tone: "blue",
-      helperText: "Payout releases after the dispute window if no issue is reported.",
-      primaryActionLabel: "View payout",
+      helperText: "Payout waits for dispute window review.",
+      primaryActionLabel: "View settlement",
     };
   }
 
@@ -916,8 +916,8 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Ready for pickup",
       tone: "green",
-      helperText: "Taxi partner accepted the shared pod in demo mode.",
-      primaryActionLabel: "View ride",
+      helperText: "Taxi partner accepted the shared pod.",
+      primaryActionLabel: "View pickup",
     };
   }
 
@@ -926,7 +926,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
       label: "Partner declined",
       tone: "amber",
       helperText: "Organizer may request another quote.",
-      primaryActionLabel: "Request quote",
+      primaryActionLabel: "Request taxi quote",
     };
   }
 
@@ -935,10 +935,10 @@ export function getTaxiPartnerQuoteDisplayStatus(
     request.driverAssignmentStatus === "NOT_ASSIGNED"
   ) {
     return {
-      label: "Ready for taxi partner",
+      label: "Ready for pickup",
       tone: "blue",
-      helperText: "Guests accepted the quote. Waiting for taxi partner to accept.",
-      primaryActionLabel: "View ride",
+      helperText: "Guests accepted the quote. Taxi partner can proceed in demo mode.",
+      primaryActionLabel: "View pickup",
     };
   }
 
@@ -950,7 +950,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Guests accepting",
       tone: "purple",
-      helperText: "Waiting for all guests to accept the quote.",
+      helperText: "Waiting for guests to accept the taxi quote.",
       primaryActionLabel: "View acceptances",
     };
   }
@@ -959,16 +959,16 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Quote received",
       tone: "green",
-      helperText: "Guests need to accept the partner quote before the ride proceeds.",
+      helperText: "Guests need to accept the shared taxi quote.",
       primaryActionLabel: "Review quote",
     };
   }
 
   return {
-    label: "Partner quote needed",
+    label: "Taxi quote needed",
     tone: "gold",
-    helperText: "Request a quote from a licensed taxi partner.",
-    primaryActionLabel: "Request quote",
+    helperText: "Request one shared quote from a licensed taxi partner.",
+    primaryActionLabel: "Request taxi quote",
   };
 }
 

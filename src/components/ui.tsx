@@ -23,6 +23,8 @@ import { formatMoney, getUser, type RecurringRideInstancePreview, type RidePod, 
 import {
   getTaxiPartnerQuoteDisplayStatus,
   getTaxiPartnerQuoteRequest,
+  type TaxiPartnerQuoteRequest,
+  type TaxiPartnerTaxiType,
   type TaxiPartnerQuoteDisplayStatus,
 } from "@/lib/taxi-partner-quote";
 
@@ -63,6 +65,15 @@ const accessModeLabels: Record<NonNullable<RidePod["accessMode"]>, string | null
   community_only: "Community-only",
   high_trust_only: "High-trust-only",
   invite_only: "Invite-only",
+};
+
+const taxiFirstTaxiTypeLabels: Record<TaxiPartnerTaxiType, string> = {
+  STANDARD: "Standard taxi",
+  ELECTRIC: "Electric taxi",
+  LUGGAGE_FRIENDLY: "Luggage-friendly",
+  LARGE: "Large / van",
+  COMFORT: "Comfort",
+  ACCESSIBLE: "Accessible taxi",
 };
 
 const moneyStatusLabels: Record<NonNullable<RidePod["moneyStatus"]>, string> = {
@@ -159,7 +170,13 @@ function getTaxiPartnerQuoteBucket(label: string): RideInstanceDisplayStatus["bu
   ) {
     return "settlement_ready";
   }
-  if (label === "Ready for taxi partner" || label === "Guests accepting") return "ready_to_book";
+  if (
+    label === "Ready for pickup" ||
+    label === "Taxi partner arrived" ||
+    label === "Ride started" ||
+    label === "Guests accepting" ||
+    label === "Quote received"
+  ) return "ready_to_book";
 
   return "quote_needed";
 }
@@ -207,7 +224,7 @@ export function getRideInstanceDisplayStatus(
       primaryActionLabel: quoteDisplayStatus.primaryActionLabel,
       primaryActionTarget:
         quoteDisplayStatus.primaryActionTarget ??
-        (["Quote received", "Guests accepting", "Ready for taxi partner"].includes(quoteDisplayStatus.label)
+        (["Quote received", "Guests accepting", "Ready for pickup", "Taxi partner arrived"].includes(quoteDisplayStatus.label)
           ? guestTaxiPartnerHref
           : instanceHref),
       bucket: getTaxiPartnerQuoteBucket(quoteDisplayStatus.label),
@@ -409,9 +426,9 @@ function getStatusOverviewItems(pod: RidePod): StatusOverviewItem[] {
     {
       key: "quote_needed",
       count: counts.quote_needed,
-      label: taxiPartnerQuote ? "Partner quote needed" : "Quote needed",
+      label: taxiPartnerQuote ? "Taxi quote needed" : "Quote needed",
       helper: taxiPartnerQuote
-        ? "Request a quote from a licensed taxi partner."
+        ? "Request one shared quote from a licensed taxi partner."
         : taxiMeter ? "No upfront quote needed for taxi meter rides." : "Upload a fresh quote before booking.",
       icon: FileText,
       className: rideInstanceStatusTones.gold.card,
@@ -419,9 +436,9 @@ function getStatusOverviewItems(pod: RidePod): StatusOverviewItem[] {
     {
       key: "ready_to_book",
       count: counts.ready_to_book,
-      label: taxiPartnerQuote ? "Ready for taxi partner" : taxiMeter ? "Ready for taxi meter" : "Ready to book",
+      label: taxiPartnerQuote ? "Ready for pickup" : taxiMeter ? "Ready for taxi meter" : "Ready to book",
       helper: taxiPartnerQuote
-        ? "Guests accept the shared pod quote before the ride proceeds."
+        ? "Guests accept the shared taxi quote before the ride proceeds."
         : taxiMeter ? "No upfront quote needed." : "Quote approved. Mark the ride as booked.",
       icon: CheckCircle2,
       className: rideInstanceStatusTones.green.card,
@@ -439,7 +456,7 @@ function getStatusOverviewItems(pod: RidePod): StatusOverviewItem[] {
       count: counts.receipt_needed,
       label: taxiPartnerQuote ? "Payout pending" : taxiMeter ? "Meter proof needed" : "Receipt needed",
       helper: taxiPartnerQuote
-        ? "Payout after dispute window in this future beta prototype."
+        ? "Payout waits for dispute window review."
         : taxiMeter ? "Upload meter proof after the ride." : "Upload the final receipt for settlement.",
       icon: ReceiptText,
       className: rideInstanceStatusTones.orange.card,
@@ -467,10 +484,47 @@ function formatRecurringRideLine(rideInstance: RecurringRideInstancePreview) {
   return rideInstance.displayDate.replace(/^(\w+)\s+(.+)$/, "$2 - $1");
 }
 
+function getTaxiPartnerRequestForPod(pod: RidePod): TaxiPartnerQuoteRequest | null {
+  const rideWithRequest = pod.upcomingRideInstances?.find((ride) => ride.taxiPartnerQuoteRequestId);
+
+  return getTaxiPartnerQuoteRequest(rideWithRequest?.taxiPartnerQuoteRequestId) ?? null;
+}
+
+function getTaxiFirstTaxiTypeLabel(request: TaxiPartnerQuoteRequest | null) {
+  return request ? taxiFirstTaxiTypeLabels[request.requestedTaxiType] : "Standard taxi";
+}
+
+function getTaxiFirstLuggageLabel(request: TaxiPartnerQuoteRequest | null) {
+  if (!request || request.luggageCount == null) return "Not specified";
+
+  const largeBagLabel = request.luggageCount === 1 ? "large luggage" : "large luggage";
+  return `${request.luggageCount} ${largeBagLabel}`;
+}
+
+function getTaxiFirstAccessibilityLabel(request: TaxiPartnerQuoteRequest | null) {
+  const needs = [
+    request?.wheelchairAccessibleRequested ? "Accessible taxi requested" : null,
+    request?.stepFreeSupportRequested ? "Step-free support" : null,
+    request?.extraSpaceNeeded ? "Extra space" : null,
+  ].filter(Boolean);
+
+  return needs.length ? needs.join(", ") : "Not specified";
+}
+
+function getTaxiFirstSafetyChips(pod: RidePod) {
+  return [
+    pod.genderMode === "women_only" ? "Women-only" : "Mixed pod",
+    accessModeLabels[pod.accessMode ?? "open"],
+  ].filter(Boolean);
+}
+
 function RecurringPodCard({ pod, compact = false }: { pod: RidePod; compact?: boolean }) {
   const nextRide = pod.upcomingRideInstances?.[0] ?? null;
   const upcomingRides = pod.upcomingRideInstances?.slice(1, 5) ?? [];
   const nextRideStatus = nextRide ? getRideInstanceDisplayStatus(nextRide, pod) : null;
+  const isTaxiPartnerQuote = pod.rideOption === "taxi_partner_quote";
+  const taxiPartnerRequest = isTaxiPartnerQuote ? getTaxiPartnerRequestForPod(pod) : null;
+  const taxiFirstSafetyChips = getTaxiFirstSafetyChips(pod);
   const scheduleLine =
     pod.recurringScheduleLine ?? `Every ${pod.recurringDays?.join(", ") ?? "Tue"} - Outbound ${pod.outboundTime ?? pod.time}`;
 
@@ -485,17 +539,60 @@ function RecurringPodCard({ pod, compact = false }: { pod: RidePod; compact?: bo
             <div className="flex items-center gap-2">
               <h2 className="truncate text-lg font-black text-[var(--rp-text)]">{getRecurringRouteTitle(pod)}</h2>
               <Badge className="bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border)]">Weekly</Badge>
+              {isTaxiPartnerQuote ? (
+                <Badge className="bg-sky-400/10 text-sky-300 ring-sky-400/25">Shared taxi pod</Badge>
+              ) : null}
             </div>
             <p className="mt-2 text-xs font-bold text-[var(--rp-muted-strong)]">{scheduleLine}</p>
-            <p className="mt-1 text-xs font-bold text-[var(--rp-muted)]">Each ride settles separately</p>
+            <p className="mt-1 text-xs font-bold text-[var(--rp-muted)]">
+              {isTaxiPartnerQuote ? "Taxi partner quote - Licensed taxi partner quotes one shared price." : "Each ride settles separately"}
+            </p>
+            {isTaxiPartnerQuote ? (
+              <p className="mt-1 text-xs font-bold text-[var(--rp-muted)]">
+                {getTaxiFirstTaxiTypeLabel(taxiPartnerRequest)} - Beta prototype. No real taxi dispatch or payout yet.
+              </p>
+            ) : null}
             <p className="mt-2 flex items-center gap-1.5 text-xs font-black text-[var(--rp-muted-strong)]">
               <Users className="h-4 w-4 text-[var(--rp-primary)]" />
               {pod.seatsFilled} / {pod.seatsTotal} seats locked
             </p>
+            {isTaxiPartnerQuote ? (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {taxiFirstSafetyChips.map((chip) => (
+                  <Badge key={chip} className="bg-[var(--rp-card-muted)] text-[var(--rp-muted-strong)] ring-[var(--rp-border)]">
+                    {chip}
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
           </div>
           <ArrowRight className="mt-3 h-5 w-5 text-[var(--rp-muted)] transition group-hover:translate-x-0.5 group-hover:text-[var(--rp-primary)]" />
         </div>
       </Link>
+
+      {isTaxiPartnerQuote ? (
+        <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="text-sm font-black text-[var(--rp-text)]">Taxi needs</h3>
+            <Badge className="bg-sky-400/10 text-sky-300 ring-sky-400/25">Taxi partner quote</Badge>
+          </div>
+          <div className="mt-3 grid gap-2 text-xs font-bold text-[var(--rp-muted-strong)] min-[620px]:grid-cols-2">
+            <p><span className="text-[var(--rp-muted)]">Taxi type:</span> {getTaxiFirstTaxiTypeLabel(taxiPartnerRequest)}</p>
+            <p><span className="text-[var(--rp-muted)]">Luggage:</span> {getTaxiFirstLuggageLabel(taxiPartnerRequest)}</p>
+            <p><span className="text-[var(--rp-muted)]">Accessibility:</span> {getTaxiFirstAccessibilityLabel(taxiPartnerRequest)}</p>
+            <p><span className="text-[var(--rp-muted)]">Pickup point:</span> {pod.pickupHub}</p>
+            <p><span className="text-[var(--rp-muted)]">Dropoff point:</span> {pod.dropoffHub}</p>
+          </div>
+          <p className="mt-3 text-[11px] font-semibold leading-4 text-[var(--rp-muted)]">
+            Taxi type and accessibility requests depend on taxi partner availability.
+          </p>
+          {pod.genderMode === "women_only" ? (
+            <p className="mt-2 text-[11px] font-semibold leading-4 text-[var(--rp-muted)]">
+              Women-only controls who can join the pod. It does not guarantee a female taxi driver.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       <section>
         <div className="mb-3 flex items-center justify-between gap-3">

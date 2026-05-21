@@ -13,11 +13,42 @@ import { Badge, ProgressBar, StatusBadge, cn, getRideInstanceDisplayStatus } fro
 import { RecurringInstanceProofFlow } from "@/components/recurring-instance-proof-flow";
 import { TaxiPartnerQuoteRequestCard } from "@/components/taxi-partner-quote-request-card";
 import { TaxiPartnerCompletionCard } from "@/components/taxi-partner-completion-card";
-import { currentUserId, formatMoney, getHostedPods, getUser, type RidePod } from "@/lib/mock-data";
+import {
+  currentUserId,
+  formatMoney,
+  getHostedPods,
+  getUser,
+  type RecurringRideInstancePreview,
+  type RidePod,
+} from "@/lib/mock-data";
 import { HostQuoteUploadPanel } from "@/components/money-safety-ui";
 import { getRideInstanceDetailWithFallback } from "@/lib/supabase/ride-instance-detail";
 import { PublicMemberCard } from "@/components/public-member-card";
 import { mapMemberToPublicProfileViewModel } from "@/lib/public-profile";
+import {
+  getTaxiPartnerQuoteRequest,
+  type TaxiPartnerQuoteRequest,
+  type TaxiPartnerTaxiType,
+} from "@/lib/taxi-partner-quote";
+
+type HostRideInstanceStatus = ReturnType<typeof getRideInstanceDisplayStatus>;
+
+const taxiFirstTaxiTypeLabels: Record<TaxiPartnerTaxiType, string> = {
+  STANDARD: "Standard taxi",
+  ELECTRIC: "Electric taxi",
+  LUGGAGE_FRIENDLY: "Luggage-friendly",
+  LARGE: "Large / van",
+  COMFORT: "Comfort",
+  ACCESSIBLE: "Accessible taxi",
+};
+
+const accessModeLabels: Record<NonNullable<RidePod["accessMode"]>, string | null> = {
+  open: null,
+  verified_only: "Verified-only",
+  community_only: "Community-only",
+  high_trust_only: "High-trust-only",
+  invite_only: "Invite-only",
+};
 
 function getReadyMembers(pod: RidePod) {
   return pod.members.filter(
@@ -55,6 +86,81 @@ function getHostAction(pod: RidePod) {
   }
 
   return "Monitor payments";
+}
+
+function getTaxiPartnerRequestForRide(pod: RidePod, ride: RecurringRideInstancePreview | null) {
+  const requestFromRide = getTaxiPartnerQuoteRequest(ride?.taxiPartnerQuoteRequestId);
+  if (requestFromRide) return requestFromRide;
+
+  const rideWithRequest = pod.upcomingRideInstances?.find((candidate) => candidate.taxiPartnerQuoteRequestId);
+  return getTaxiPartnerQuoteRequest(rideWithRequest?.taxiPartnerQuoteRequestId) ?? null;
+}
+
+function getTaxiTypeLabel(request: TaxiPartnerQuoteRequest | null) {
+  return request ? taxiFirstTaxiTypeLabels[request.requestedTaxiType] : "Standard taxi";
+}
+
+function getLuggageLabel(request: TaxiPartnerQuoteRequest | null) {
+  if (!request || request.luggageCount == null) return "Not specified";
+  return `${request.luggageCount} large luggage`;
+}
+
+function getAccessibilityLabel(request: TaxiPartnerQuoteRequest | null) {
+  const needs = [
+    request?.wheelchairAccessibleRequested ? "Accessible taxi requested" : null,
+    request?.stepFreeSupportRequested ? "Step-free support" : null,
+    request?.extraSpaceNeeded ? "Extra space" : null,
+  ].filter(Boolean);
+
+  return needs.length ? needs.join(", ") : "Not specified";
+}
+
+function getTaxiPartnerNextActionCopy(status: HostRideInstanceStatus | null) {
+  switch (status?.label) {
+    case "Taxi quote needed":
+    case "Partner declined":
+      return {
+        title: "Next action: Request taxi quote",
+        body: "Guests are locked. Request one shared quote from a licensed taxi partner.",
+      };
+    case "Quote received":
+      return {
+        title: "Next action: Send quote to guests",
+        body: "Taxi partner quoted one shared price. Guests need to accept before the ride proceeds.",
+      };
+    case "Guests accepting":
+      return {
+        title: "Waiting for guests",
+        body: "Guests are reviewing the taxi partner quote.",
+      };
+    case "Ready for pickup":
+    case "Taxi partner arrived":
+    case "Ride started":
+      return {
+        title: "Taxi partner ready",
+        body: "The quote is accepted. Coordinate pickup with the group.",
+      };
+    case "Payout pending":
+    case "Ride completed":
+      return {
+        title: "Payout pending",
+        body: "Ride completed. Payout waits for the dispute window.",
+      };
+    case "Dispute review":
+    case "More info needed":
+    case "Under review":
+      return {
+        title: "Manual review",
+        body: "Payout is held while RidePod reviews the issue.",
+      };
+    default:
+      return status
+        ? {
+            title: status.label,
+            body: status.helperText,
+          }
+        : null;
+  }
 }
 
 function HostMetric({
@@ -137,6 +243,13 @@ function HostPodCard({ pod }: { pod: RidePod }) {
     pod.rideOption === "taxi_partner_quote" && nextRide
       ? getRideInstanceDisplayStatus(nextRide, pod)
       : null;
+  const taxiPartnerRequest =
+    pod.rideOption === "taxi_partner_quote" ? getTaxiPartnerRequestForRide(pod, nextRide) : null;
+  const taxiPartnerNextAction = getTaxiPartnerNextActionCopy(taxiPartnerQuoteStatus);
+  const safetyChips = [
+    pod.genderMode === "women_only" ? "Women-only" : "Mixed pod",
+    accessModeLabels[pod.accessMode ?? "open"],
+  ].filter(Boolean);
   const action = taxiPartnerQuoteStatus?.primaryActionLabel ?? getHostAction(pod);
   const actionHref = taxiPartnerQuoteStatus?.primaryActionTarget ?? `/pods/${pod.id}/settlement`;
 
@@ -153,15 +266,30 @@ function HostPodCard({ pod }: { pod: RidePod }) {
               {taxiPartnerQuoteStatus ? (
                 <Badge className={taxiPartnerQuoteStatus.chipClassName}>{taxiPartnerQuoteStatus.label}</Badge>
               ) : null}
+              {pod.rideOption === "taxi_partner_quote" ? (
+                <Badge className="bg-sky-400/10 text-sky-300 ring-sky-400/25">Shared taxi pod</Badge>
+              ) : null}
             </div>
             <h2 className="mt-4 text-2xl font-black leading-tight text-[var(--rp-text)]">{pod.title}</h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
               {pod.fromLabel} to {pod.toLabel} | {pod.date} at {pod.time}
             </p>
             {taxiPartnerQuoteStatus ? (
-              <p className="mt-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-                {taxiPartnerQuoteStatus.helperText}
-              </p>
+              <div className="mt-2 grid gap-2">
+                <p className="text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                  Taxi partner quote - Licensed taxi partner quotes one shared price.
+                </p>
+                <p className="text-xs font-bold leading-5 text-[var(--rp-muted)]">
+                  {getTaxiTypeLabel(taxiPartnerRequest)} - Beta prototype. No real taxi dispatch or payout yet.
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {safetyChips.map((chip) => (
+                    <Badge key={chip} className="bg-[var(--rp-card-muted)] text-[var(--rp-muted-strong)] ring-[var(--rp-border)]">
+                      {chip}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
             ) : null}
           </div>
           <div className="rounded-[20px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-4 py-3 text-right">
@@ -192,6 +320,45 @@ function HostPodCard({ pod }: { pod: RidePod }) {
       </div>
 
       <div className="grid gap-4 p-5">
+        {taxiPartnerQuoteStatus && taxiPartnerNextAction ? (
+          <section className="rounded-[20px] border border-sky-400/20 bg-sky-400/10 p-4">
+            <p className="text-sm font-black text-sky-200">{taxiPartnerNextAction.title}</p>
+            <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              {taxiPartnerNextAction.body}
+            </p>
+            <Link
+              href={actionHref}
+              className="mt-3 inline-flex min-h-10 items-center justify-center rounded-[14px] border border-sky-400/25 bg-sky-400/10 px-4 text-xs font-black text-sky-200 transition hover:bg-sky-400/15"
+            >
+              {action}
+            </Link>
+          </section>
+        ) : null}
+
+        {taxiPartnerQuoteStatus ? (
+          <section className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-black text-[var(--rp-text)]">Taxi needs</h3>
+              <Badge className="bg-sky-400/10 text-sky-300 ring-sky-400/25">Taxi partner quote</Badge>
+            </div>
+            <div className="mt-3 grid gap-2 text-xs font-bold text-[var(--rp-muted-strong)] min-[620px]:grid-cols-2">
+              <p><span className="text-[var(--rp-muted)]">Taxi type:</span> {getTaxiTypeLabel(taxiPartnerRequest)}</p>
+              <p><span className="text-[var(--rp-muted)]">Luggage:</span> {getLuggageLabel(taxiPartnerRequest)}</p>
+              <p><span className="text-[var(--rp-muted)]">Accessibility:</span> {getAccessibilityLabel(taxiPartnerRequest)}</p>
+              <p><span className="text-[var(--rp-muted)]">Pickup point:</span> {pod.pickupHub}</p>
+              <p><span className="text-[var(--rp-muted)]">Dropoff point:</span> {pod.dropoffHub}</p>
+            </div>
+            <p className="mt-3 text-[11px] font-semibold leading-4 text-[var(--rp-muted)]">
+              Taxi type and accessibility requests depend on taxi partner availability.
+            </p>
+            {pod.genderMode === "women_only" ? (
+              <p className="mt-2 text-[11px] font-semibold leading-4 text-[var(--rp-muted)]">
+                Women-only controls who can join the pod. It does not guarantee a female taxi driver.
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
         <div>
           <div className="mb-2 flex items-center justify-between gap-3 text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">
             <span>Authorization</span>
