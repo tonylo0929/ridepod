@@ -83,6 +83,11 @@ type DateTimeState = {
 type PeopleVehicleState = {
   seatsAvailable: number;
   bags: number;
+  taxiType: TaxiTypeId;
+  largeLuggage: boolean;
+  extraSpaceNeeded: boolean;
+  wheelchairAccessibleRequested: boolean;
+  stepFreeSupportRequested: boolean;
   rideOption: RideOptionId;
   vehicleType: string;
   priceSource: string;
@@ -94,6 +99,7 @@ type PricingState = {
 };
 type GenderMode = "women_only" | "mixed";
 type AccessMode = "open" | "verified_only" | "community_only" | "high_trust_only" | "invite_only";
+type TaxiTypeId = "standard" | "electric" | "luggage_friendly" | "large_van" | "comfort" | "accessible";
 
 const steps = ["Choose Type", "Route & Stops", "Date & Time", "People & Vehicle", "Review", "Success"];
 
@@ -1986,6 +1992,47 @@ const rideCategories: Array<{
   },
 ];
 
+const taxiTypeOptions: Array<{
+  id: TaxiTypeId;
+  title: string;
+  description: string;
+}> = [
+  {
+    id: "standard",
+    title: "Standard taxi",
+    description: "Everyday shared taxi pod.",
+  },
+  {
+    id: "electric",
+    title: "Electric taxi",
+    description: "Cleaner ride when available.",
+  },
+  {
+    id: "luggage_friendly",
+    title: "Luggage-friendly",
+    description: "Best for airport or large bags.",
+  },
+  {
+    id: "large_van",
+    title: "Large / van",
+    description: "More room for groups.",
+  },
+  {
+    id: "comfort",
+    title: "Comfort",
+    description: "Better ride quality when available.",
+  },
+  {
+    id: "accessible",
+    title: "Accessible taxi",
+    description: "For wheelchair or extra access needs when supported.",
+  },
+];
+
+function getTaxiTypeLabel(taxiType: TaxiTypeId) {
+  return taxiTypeOptions.find((option) => option.id === taxiType)?.title ?? "Standard taxi";
+}
+
 function RideCategoryCard({
   category,
   selected,
@@ -2096,6 +2143,137 @@ function RideOptionSelector({
         Existing ride app, taxi meter, and taxi partner quote modes remain available for demo/internal flows.
       </p>
       {/* TODO: Add TAXI_PARTNER_QUOTE to Supabase ride_option enum in TAXI-2. */}
+    </section>
+  );
+}
+
+function TaxiTypeSelector({
+  peopleVehicle,
+  onPeopleVehicleChange,
+}: {
+  peopleVehicle: PeopleVehicleState;
+  onPeopleVehicleChange: (peopleVehicle: PeopleVehicleState) => void;
+}) {
+  const minBags = 0;
+  const maxBags = 8;
+
+  return (
+    <section className="mt-7 rounded-[22px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.12)),var(--rp-card)] p-4 shadow-[0_18px_42px_rgba(14,165,233,0.1)]">
+      <div>
+        <h2 className="text-[26px] font-black leading-tight text-[var(--rp-text)]">
+          What kind of taxi do you need?
+        </h2>
+        <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+          Choose the taxi type that fits your group, luggage, and accessibility needs.
+        </p>
+      </div>
+
+      <div className="mt-4 grid gap-2" role="radiogroup" aria-label="Taxi type">
+        {taxiTypeOptions.map((option) => {
+          const selected = peopleVehicle.taxiType === option.id;
+
+          return (
+            <button
+              key={option.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() =>
+                onPeopleVehicleChange({
+                  ...peopleVehicle,
+                  taxiType: option.id,
+                  vehicleType: option.title,
+                })
+              }
+              className={cn(
+                "grid grid-cols-[1fr_28px] items-center gap-3 rounded-[16px] border p-3 text-left transition",
+                selected
+                  ? "border-sky-400/70 bg-sky-400/10 ring-1 ring-sky-400/45"
+                  : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] hover:border-sky-400/40",
+              )}
+            >
+              <span>
+                <span className="block text-sm font-black text-[var(--rp-text)]">{option.title}</span>
+                <span className="mt-1 block text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                  {option.description}
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "grid h-7 w-7 place-items-center rounded-full border-2",
+                  selected
+                    ? "border-sky-400 bg-sky-500 text-white"
+                    : "border-[var(--rp-muted)] text-transparent",
+                )}
+              >
+                <Check className="h-4 w-4" />
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
+        <div className="flex items-center gap-2">
+          <Luggage className="h-5 w-5 text-sky-300" />
+          <h3 className="text-sm font-black text-[var(--rp-text)]">Luggage and access needs</h3>
+        </div>
+
+        <div className="mt-3 grid gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Luggage count</p>
+            <div className="mt-2 grid grid-cols-[44px_1fr_44px] items-center gap-3">
+              <button
+                type="button"
+                aria-label="Decrease luggage count"
+                disabled={peopleVehicle.bags <= minBags}
+                onClick={() => onPeopleVehicleChange({ ...peopleVehicle, bags: Math.max(minBags, peopleVehicle.bags - 1) })}
+                className="grid h-11 w-11 place-items-center rounded-full border border-sky-400/25 text-sky-300 transition hover:bg-sky-400/10 disabled:opacity-35"
+              >
+                <Minus className="h-5 w-5" />
+              </button>
+              <p className="text-center text-3xl font-black text-sky-300">{peopleVehicle.bags}</p>
+              <button
+                type="button"
+                aria-label="Increase luggage count"
+                disabled={peopleVehicle.bags >= maxBags}
+                onClick={() => onPeopleVehicleChange({ ...peopleVehicle, bags: Math.min(maxBags, peopleVehicle.bags + 1) })}
+                className="grid h-11 w-11 place-items-center rounded-full border border-sky-400/25 text-sky-300 transition hover:bg-sky-400/10 disabled:opacity-35"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          {[
+            ["largeLuggage", "Large luggage"] as const,
+            ["extraSpaceNeeded", "Extra space needed"] as const,
+            ["wheelchairAccessibleRequested", "Wheelchair-accessible taxi requested"] as const,
+            ["stepFreeSupportRequested", "Step-free support requested"] as const,
+          ].map(([key, label]) => (
+            <label
+              key={key}
+              className="flex gap-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]"
+            >
+              <input
+                type="checkbox"
+                checked={peopleVehicle[key]}
+                onChange={(event) => onPeopleVehicleChange({ ...peopleVehicle, [key]: event.target.checked })}
+                className="mt-1 h-4 w-4 accent-sky-500"
+              />
+              <span>{label}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <p className="mt-4 rounded-[16px] border border-sky-400/25 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
+        Taxi type requests depend on taxi partner availability.
+      </p>
+      <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+        Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner.
+      </p>
     </section>
   );
 }
@@ -2274,11 +2452,20 @@ function PeopleVehicleStep({
                   onPeopleVehicleChange({
                     ...peopleVehicle,
                     rideOption,
-                    vehicleType: getRideOption(rideOption).title,
+                    vehicleType:
+                      normalizeRideOptionId(rideOption) === "taxi_partner_quote"
+                        ? getTaxiTypeLabel(peopleVehicle.taxiType)
+                        : getRideOption(rideOption).title,
                   });
                 }
               }
             />
+            {selectedRideOptionId === "taxi_partner_quote" || selectedRideOptionId === "taxi_meter" ? (
+              <TaxiTypeSelector
+                peopleVehicle={peopleVehicle}
+                onPeopleVehicleChange={onPeopleVehicleChange}
+              />
+            ) : null}
             <VehicleLightArt />
           </div>
 
@@ -3055,7 +3242,10 @@ function DetailSummaryCard({
     {
       icon: CarFront,
       label: "Ride option",
-      value: `${rideOption.title} / ${peopleVehicle.bags} bags`,
+      value:
+        normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote"
+          ? `${getTaxiTypeLabel(peopleVehicle.taxiType)} / ${peopleVehicle.bags} bags`
+          : `${rideOption.title} / ${peopleVehicle.bags} bags`,
     },
     {
       icon: MapPin,
@@ -3214,6 +3404,9 @@ function RecurringPodReview({
       <RecurringReviewCard title="Ride option">
         <div className="grid gap-2 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
           <p className="text-[var(--rp-text)]">{rideOption.title}</p>
+          {normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote" ? (
+            <p>Taxi type: {getTaxiTypeLabel(peopleVehicle.taxiType)}</p>
+          ) : null}
           <p>{rideOption.recurringHelper}</p>
         </div>
       </RecurringReviewCard>
@@ -3627,8 +3820,11 @@ function PodCreatedSummaryCard({
     },
     {
       icon: CarFront,
-      label: "Ride option",
-      value: peopleVehicle.vehicleType,
+      label: normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote" ? "Taxi type" : "Ride option",
+      value:
+        normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote"
+          ? getTaxiTypeLabel(peopleVehicle.taxiType)
+          : peopleVehicle.vehicleType,
     },
   ];
 
@@ -3764,8 +3960,13 @@ export function CreatePodChooseType() {
   const [peopleVehicle, setPeopleVehicle] = useState<PeopleVehicleState>({
     seatsAvailable: 4,
     bags: 2,
+    taxiType: "standard",
+    largeLuggage: false,
+    extraSpaceNeeded: false,
+    wheelchairAccessibleRequested: false,
+    stepFreeSupportRequested: false,
     rideOption: "taxi_partner_quote",
-    vehicleType: "Taxi partner quote",
+    vehicleType: "Standard taxi",
     priceSource: "Licensed taxi partner quote for the shared pod",
   });
   const [pricing] = useState<PricingState>({
