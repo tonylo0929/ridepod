@@ -115,7 +115,13 @@ function MemberPaymentRow({ pod, member }: { pod: RidePod; member: RidePod["memb
 function HostPodCard({ pod }: { pod: RidePod }) {
   const readyMembers = getReadyMembers(pod);
   const progress = (readyMembers / pod.members.length) * 100;
-  const action = getHostAction(pod);
+  const nextRide = pod.upcomingRideInstances?.[0] ?? null;
+  const taxiPartnerQuoteStatus =
+    pod.rideOption === "taxi_partner_quote" && nextRide
+      ? getRideInstanceDisplayStatus(nextRide, pod)
+      : null;
+  const action = taxiPartnerQuoteStatus?.primaryActionLabel ?? getHostAction(pod);
+  const actionHref = taxiPartnerQuoteStatus?.primaryActionTarget ?? `/pods/${pod.id}/settlement`;
 
   return (
     <article className="overflow-hidden rounded-[28px] border border-[var(--rp-border)] bg-[var(--rp-card)] shadow-[var(--rp-shadow-soft)]">
@@ -127,11 +133,19 @@ function HostPodCard({ pod }: { pod: RidePod }) {
               <Badge className="bg-[var(--rp-card-muted)] text-[var(--rp-primary)] ring-[var(--rp-border)]">
                 {pod.type === "recurring" ? "Recurring" : "Scheduled"}
               </Badge>
+              {taxiPartnerQuoteStatus ? (
+                <Badge className={taxiPartnerQuoteStatus.chipClassName}>{taxiPartnerQuoteStatus.label}</Badge>
+              ) : null}
             </div>
             <h2 className="mt-4 text-2xl font-black leading-tight text-[var(--rp-text)]">{pod.title}</h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
               {pod.fromLabel} to {pod.toLabel} | {pod.date} at {pod.time}
             </p>
+            {taxiPartnerQuoteStatus ? (
+              <p className="mt-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                {taxiPartnerQuoteStatus.helperText}
+              </p>
+            ) : null}
           </div>
           <div className="rounded-[20px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-4 py-3 text-right">
             <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Max fare</p>
@@ -183,7 +197,7 @@ function HostPodCard({ pod }: { pod: RidePod }) {
             Open pod <ArrowRight className="h-4 w-4" />
           </Link>
           <Link
-            href={`/pods/${pod.id}/settlement`}
+            href={actionHref}
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_16px_34px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)] transition hover:brightness-105"
             style={{ background: "var(--rp-gradient-primary)" }}
           >

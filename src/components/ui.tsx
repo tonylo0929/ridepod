@@ -148,12 +148,13 @@ function getTaxiPartnerQuoteTone(tone: TaxiPartnerQuoteDisplayStatus["tone"]) {
 }
 
 function getTaxiPartnerQuoteBucket(label: string): RideInstanceDisplayStatus["bucket"] {
-  if (label === "Closed" || label === "Payout denied") return "closed";
+  if (label === "Closed" || label === "Payout denied" || label === "Dispute resolved") return "closed";
   if (
     label === "Payout pending" ||
     label === "Payout ready" ||
     label === "Dispute review" ||
     label === "More info needed" ||
+    label === "Under review" ||
     label === "Ride completed"
   ) {
     return "settlement_ready";
@@ -161,6 +162,25 @@ function getTaxiPartnerQuoteBucket(label: string): RideInstanceDisplayStatus["bu
   if (label === "Ready for taxi partner" || label === "Guests accepting") return "ready_to_book";
 
   return "quote_needed";
+}
+
+type StatusOverviewItem = {
+  key: string;
+  count: number;
+  label: string;
+  helper: string;
+  icon: LucideIcon;
+  className: string;
+};
+
+function getTaxiPartnerOverviewIcon(bucket: RideInstanceDisplayStatus["bucket"]) {
+  if (bucket === "ready_to_book") return CheckCircle2;
+  if (bucket === "ride_booked") return Car;
+  if (bucket === "receipt_needed") return ReceiptText;
+  if (bucket === "settlement_ready") return WalletCards;
+  if (bucket === "closed") return ShieldCheck;
+
+  return FileText;
 }
 
 export function getRideInstanceDisplayStatus(
@@ -344,7 +364,7 @@ export function getRideInstanceDisplayStatus(
   };
 }
 
-function getStatusOverviewItems(pod: RidePod) {
+function getStatusOverviewItems(pod: RidePod): StatusOverviewItem[] {
   const rideOptionLabel = getRecurringRideOptionLabel(pod);
   const taxiMeter = rideOptionLabel === "Taxi meter";
   const taxiPartnerQuote = rideOptionLabel === "Taxi partner quote";
@@ -359,6 +379,30 @@ function getStatusOverviewItems(pod: RidePod) {
 
   for (const ride of pod.upcomingRideInstances ?? []) {
     counts[getRideInstanceDisplayStatus(ride, pod).bucket] += 1;
+  }
+
+  if (taxiPartnerQuote) {
+    const groupedStatuses = new Map<string, StatusOverviewItem>();
+
+    for (const ride of pod.upcomingRideInstances ?? []) {
+      const status = getRideInstanceDisplayStatus(ride, pod);
+      const existing = groupedStatuses.get(status.label);
+
+      if (existing) {
+        existing.count += 1;
+      } else {
+        groupedStatuses.set(status.label, {
+          key: status.label,
+          count: 1,
+          label: status.label,
+          helper: status.helperText,
+          icon: getTaxiPartnerOverviewIcon(status.bucket),
+          className: status.cardClassName,
+        });
+      }
+    }
+
+    return Array.from(groupedStatuses.values());
   }
 
   return [
