@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { Badge, Card, cn } from "@/components/ui";
 import {
+  acceptTaxiPartnerMockJob,
+  declineTaxiPartnerMockJob,
   getTaxiPartnerQuoteMoneyDisplay,
   submitTaxiPartnerMockQuote,
   type TaxiPartnerQuoteRequest,
@@ -25,11 +27,13 @@ import {
 type TaxiType = "Standard" | "Electric" | "Luggage-friendly" | "Large" | "Comfort" | "Accessible";
 type RequestStatus = "Quote requested" | "Quote submitted" | "Quote received";
 type ActiveRideStatus =
+  | "Job ready"
   | "Waiting for guests to accept"
   | "Ready for pickup"
   | "Ride completed"
   | "Payout pending"
   | "Dispute review"
+  | "Partner declined"
   | "Closed";
 type PayoutStatus = "Payout pending" | "Payout held" | "Payout ready" | "Payout denied in demo" | "Closed";
 
@@ -112,31 +116,61 @@ const initialRequests: PodRequest[] = [
 
 const initialActiveRides = [
   {
-    id: "active-usc-lax",
+    id: "active-job-ready",
+    requestId: "taxi_partner_guests_accepting",
     route: "USC Village to LAX Terminal 3",
     dateTime: "Tue May 19 - 8:00 AM",
+    pickup: "USC Village rideshare pickup",
+    dropoff: "LAX Terminal 3 departures",
     taxiType: "Electric",
     guestCount: 4,
+    luggageCount: 2,
+    accessibility: "Extra luggage space requested",
+    quoteCents: 24000,
+    status: "Job ready" as ActiveRideStatus,
+    payoutStatus: "Payout pending" as PayoutStatus,
+  },
+  {
+    id: "active-usc-lax",
+    requestId: "taxi_partner_ready",
+    route: "USC Village to LAX Terminal 3",
+    dateTime: "Tue May 19 - 8:00 AM",
+    pickup: "USC Village rideshare pickup",
+    dropoff: "LAX Terminal 3 departures",
+    taxiType: "Electric",
+    guestCount: 4,
+    luggageCount: 2,
+    accessibility: "Extra luggage space requested",
     quoteCents: 24000,
     status: "Ready for pickup" as ActiveRideStatus,
     payoutStatus: "Payout pending" as PayoutStatus,
   },
   {
     id: "active-tst-cwb",
+    requestId: "taxi_partner_quote_received",
     route: "Tsim Sha Tsui to Causeway Bay",
     dateTime: "Today - 6:30 PM",
+    pickup: "Tsim Sha Tsui MTR Exit L5",
+    dropoff: "Times Square taxi stand",
     taxiType: "Standard",
     guestCount: 3,
+    luggageCount: 0,
+    accessibility: "None requested",
     quoteCents: 16800,
     status: "Waiting for guests to accept" as ActiveRideStatus,
     payoutStatus: "Payout pending" as PayoutStatus,
   },
   {
     id: "active-review",
+    requestId: "taxi_partner_dispute_review",
     route: "Central to Airport",
     dateTime: "Fri - 7:15 AM",
+    pickup: "Central ferry pier taxi area",
+    dropoff: "Airport departures",
     taxiType: "Luggage-friendly",
     guestCount: 4,
+    luggageCount: 4,
+    accessibility: "Large luggage space requested",
     quoteCents: 32000,
     status: "Dispute review" as ActiveRideStatus,
     payoutStatus: "Payout held" as PayoutStatus,
@@ -177,7 +211,7 @@ function expiryToMinutes(expiry: string) {
 }
 
 function statusClass(status: string) {
-  if (status === "Ready for pickup" || status === "Ride completed" || status === "Payout ready" || status === "Closed") {
+  if (status === "Ready for pickup" || status === "Ride completed" || status === "Payout ready" || status === "Closed" || status === "Guests accepted") {
     return "bg-emerald-400/10 text-emerald-300 ring-emerald-400/25";
   }
 
@@ -188,6 +222,8 @@ function statusClass(status: string) {
   if (status === "Dispute review" || status === "Payout held") {
     return "bg-orange-400/10 text-orange-300 ring-orange-400/25";
   }
+
+  if (status === "Job ready" || status === "Partner declined") return "bg-sky-400/10 text-sky-300 ring-sky-400/25";
 
   if (status === "Payout denied in demo") return "bg-red-400/10 text-red-300 ring-red-400/25";
 
@@ -224,6 +260,9 @@ export default function TaxiPartnerDashboardPage() {
   const [quoteMessage, setQuoteMessage] = useState<string | null>(null);
   const [submittedQuoteRequest, setSubmittedQuoteRequest] = useState<TaxiPartnerQuoteRequest | null>(null);
   const [activeRides, setActiveRides] = useState(initialActiveRides);
+  const [acceptJobRideId, setAcceptJobRideId] = useState<string | null>(null);
+  const [declineJobRideId, setDeclineJobRideId] = useState<string | null>(null);
+  const [understandsJobAssignment, setUnderstandsJobAssignment] = useState(false);
   const [completionRideId, setCompletionRideId] = useState<string | null>(null);
   const [understandsCompletion, setUnderstandsCompletion] = useState(false);
   const [completionMessage, setCompletionMessage] = useState<string | null>(null);
@@ -239,6 +278,11 @@ export default function TaxiPartnerDashboardPage() {
       selectedRequest?.fareCapCents &&
       submittedQuoteRequest.quoteAmountCents > selectedRequest.fareCapCents,
   );
+  const acceptJobRide = activeRides.find((ride) => ride.id === acceptJobRideId) ?? null;
+  const declineJobRide = activeRides.find((ride) => ride.id === declineJobRideId) ?? null;
+  const acceptJobMoney = acceptJobRide
+    ? getTaxiPartnerQuoteMoneyDisplay({ quoteAmountCents: acceptJobRide.quoteCents, currency: "HKD" }, acceptJobRide.guestCount)
+    : null;
 
   if (!demoModeEnabled) {
     return (
@@ -310,6 +354,39 @@ export default function TaxiPartnerDashboardPage() {
     setCompletionMessage("Ride completed. Payout is pending until the dispute window ends.");
     setCompletionRideId(null);
     setUnderstandsCompletion(false);
+  }
+
+  function acceptJob() {
+    const ride = activeRides.find((activeRide) => activeRide.id === acceptJobRideId);
+    if (!ride || !understandsJobAssignment) return;
+
+    acceptTaxiPartnerMockJob(ride.requestId);
+    setActiveRides((current) =>
+      current.map((activeRide) =>
+        activeRide.id === ride.id
+          ? { ...activeRide, status: "Ready for pickup" }
+          : activeRide,
+      ),
+    );
+    setCompletionMessage("Job accepted. This ride is ready for pickup in demo mode.");
+    setAcceptJobRideId(null);
+    setUnderstandsJobAssignment(false);
+  }
+
+  function declineJob() {
+    const ride = activeRides.find((activeRide) => activeRide.id === declineJobRideId);
+    if (!ride) return;
+
+    declineTaxiPartnerMockJob(ride.requestId);
+    setActiveRides((current) =>
+      current.map((activeRide) =>
+        activeRide.id === ride.id
+          ? { ...activeRide, status: "Partner declined" }
+          : activeRide,
+      ),
+    );
+    setCompletionMessage("Partner declined. Organizer may request another quote.");
+    setDeclineJobRideId(null);
   }
 
   return (
@@ -597,40 +674,120 @@ export default function TaxiPartnerDashboardPage() {
               <Clock3 className="h-6 w-6 text-sky-300" />
             </div>
             <div className="mt-4 grid gap-3">
-              {activeRides.map((ride) => (
-                <article key={ride.id} className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <h3 className="text-base font-black">{ride.route}</h3>
-                      <p className="mt-1 text-sm font-bold text-[var(--rp-muted-strong)]">{ride.dateTime}</p>
+              {activeRides.map((ride) => {
+                const rideMoney = getTaxiPartnerQuoteMoneyDisplay(
+                  { quoteAmountCents: ride.quoteCents, currency: "HKD" },
+                  ride.guestCount,
+                );
+                const jobReady = ride.status === "Job ready";
+                const partnerDeclined = ride.status === "Partner declined";
+
+                return (
+                  <article
+                    key={ride.id}
+                    className={cn(
+                      "rounded-[20px] border bg-[var(--rp-card-soft)] p-4",
+                      jobReady ? "border-sky-400/35" : "border-[var(--rp-border)]",
+                    )}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-base font-black">{jobReady ? "Job ready" : ride.route}</h3>
+                        <p className="mt-1 text-sm font-bold text-[var(--rp-muted-strong)]">
+                          {jobReady
+                            ? "Guests accepted the quote. Accept this shared taxi job to proceed."
+                            : ride.dateTime}
+                        </p>
+                      </div>
+                      <Badge className={statusClass(jobReady ? "Guests accepted" : ride.status)}>
+                        {jobReady ? "Guests accepted" : ride.status}
+                      </Badge>
                     </div>
-                    <Badge className={statusClass(ride.status)}>{ride.status}</Badge>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">{ride.taxiType}</Badge>
-                    <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">{ride.guestCount} guests</Badge>
-                    <Badge className={statusClass(ride.payoutStatus)}>{ride.payoutStatus}</Badge>
-                  </div>
-                  <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-                    Demo only. This does not complete a real taxi ride.
-                  </p>
-                  {ride.status === "Ready for pickup" ? (
-                    <button
-                      type="button"
-                      onClick={() => setCompletionRideId(ride.id)}
-                      className="mt-4 inline-flex min-h-11 items-center justify-center rounded-[14px] bg-sky-500 px-4 text-sm font-black text-white shadow-[0_14px_28px_rgba(14,165,233,0.22)] transition hover:bg-sky-400"
-                    >
-                      Mark completed
-                    </button>
-                  ) : null}
-                </article>
-              ))}
+
+                    <div className="mt-3 grid gap-2 min-[620px]:grid-cols-2">
+                      <FieldRow label="Route" value={ride.route} />
+                      <FieldRow label="Date/time" value={ride.dateTime} />
+                      <FieldRow label="Pickup" value={ride.pickup} />
+                      <FieldRow label="Dropoff" value={ride.dropoff} />
+                      <FieldRow label="Taxi type" value={`${ride.taxiType} taxi`} />
+                      <FieldRow label="Guest count" value={`${ride.guestCount} guests`} />
+                      <FieldRow label="Luggage" value={`${ride.luggageCount} large luggage`} />
+                      <FieldRow label="Accessibility" value={ride.accessibility} />
+                    </div>
+
+                    <div className="mt-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3">
+                      <dl>
+                        <MoneyRow label="Taxi partner quote" value={formatHkdCents(ride.quoteCents)} />
+                        <MoneyRow
+                          label="Taxi partner payout"
+                          value={rideMoney ? formatHkdCents(rideMoney.driverPayoutCents) : formatHkdCents(ride.quoteCents)}
+                        />
+                      </dl>
+                      <p className="mt-2 text-xs font-bold leading-5 text-sky-100">
+                        RidePod platform fee is paid by guests. No real payout is sent in beta.
+                      </p>
+                    </div>
+
+                    {partnerDeclined ? (
+                      <p className="mt-3 rounded-[14px] border border-amber-400/20 bg-amber-400/10 p-3 text-xs font-bold leading-5 text-amber-200">
+                        Organizer may request another quote.
+                      </p>
+                    ) : (
+                      <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                        Demo only. No real taxi dispatch happens.
+                      </p>
+                    )}
+
+                    {jobReady ? (
+                      <div className="mt-4 grid gap-2 min-[520px]:grid-cols-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAcceptJobRideId(ride.id);
+                            setUnderstandsJobAssignment(false);
+                          }}
+                          className="inline-flex min-h-11 items-center justify-center rounded-[14px] bg-sky-500 px-4 text-sm font-black text-white shadow-[0_14px_28px_rgba(14,165,233,0.22)] transition hover:bg-sky-400"
+                        >
+                          Accept job
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeclineJobRideId(ride.id)}
+                          className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-amber-400/30 bg-amber-400/10 px-4 text-sm font-black text-amber-200 transition hover:bg-amber-400/15"
+                        >
+                          Decline job
+                        </button>
+                      </div>
+                    ) : null}
+
+                    {ride.status === "Ready for pickup" ? (
+                      <button
+                        type="button"
+                        onClick={() => setCompletionRideId(ride.id)}
+                        className="mt-4 inline-flex min-h-11 items-center justify-center rounded-[14px] bg-sky-500 px-4 text-sm font-black text-white shadow-[0_14px_28px_rgba(14,165,233,0.22)] transition hover:bg-sky-400"
+                      >
+                        Mark completed
+                      </button>
+                    ) : null}
+                  </article>
+                );
+              })}
             </div>
             {completionMessage ? (
               <div className="mt-4 rounded-[16px] border border-emerald-400/20 bg-emerald-400/10 p-3">
-                <p className="text-sm font-black text-emerald-300">Ride completed</p>
+                <p className="text-sm font-black text-emerald-300">
+                  {completionMessage.startsWith("Job accepted")
+                    ? "Job accepted"
+                    : completionMessage.startsWith("Partner declined")
+                      ? "Partner declined"
+                      : "Ride completed"}
+                </p>
                 <p className="mt-1 text-xs font-bold leading-5 text-emerald-200">
-                  Payout is pending until the dispute window ends.
+                  {completionMessage.startsWith("Job accepted")
+                    ? "This ride is ready for pickup in demo mode."
+                    : completionMessage.startsWith("Partner declined")
+                      ? "Organizer may request another quote."
+                      : "Payout is pending until the dispute window ends."}
                 </p>
               </div>
             ) : null}
@@ -687,6 +844,103 @@ export default function TaxiPartnerDashboardPage() {
           </div>
         </section>
       </div>
+
+      {acceptJobRide ? (
+        <div
+          className="fixed inset-0 z-[80] grid place-items-center bg-[rgba(3,7,18,0.68)] px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="taxi-partner-accept-job-title"
+        >
+          <section className="w-full max-w-[480px] rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
+            <h2 id="taxi-partner-accept-job-title" className="text-2xl font-black leading-tight">
+              Accept this taxi job?
+            </h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              You are accepting this shared taxi pod in demo mode. No real taxi dispatch or payout happens.
+            </p>
+            <dl className="mt-5 rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
+              <MoneyRow label="Route" value={acceptJobRide.route} />
+              <MoneyRow label="Date/time" value={acceptJobRide.dateTime} />
+              <MoneyRow label="Taxi partner quote" value={formatHkdCents(acceptJobRide.quoteCents)} />
+              <MoneyRow label="Taxi type" value={`${acceptJobRide.taxiType} taxi`} />
+              <MoneyRow label="Guest count" value={`${acceptJobRide.guestCount} guests`} />
+              <MoneyRow
+                label="Payout amount"
+                value={acceptJobMoney ? formatHkdCents(acceptJobMoney.driverPayoutCents) : formatHkdCents(acceptJobRide.quoteCents)}
+              />
+            </dl>
+            <label className="mt-4 flex gap-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-sm font-bold leading-6 text-sky-100">
+              <input
+                type="checkbox"
+                checked={understandsJobAssignment}
+                onChange={(event) => setUnderstandsJobAssignment(event.target.checked)}
+                className="mt-1 h-4 w-4 accent-sky-500"
+              />
+              <span>I understand this is a beta mock job assignment.</span>
+            </label>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setAcceptJobRideId(null);
+                  setUnderstandsJobAssignment(false);
+                }}
+                className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!understandsJobAssignment}
+                onClick={acceptJob}
+                className={cn(
+                  "min-h-12 rounded-2xl border text-sm font-black transition",
+                  understandsJobAssignment
+                    ? "border-sky-400 bg-sky-500 text-white hover:bg-sky-400"
+                    : "border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted)]",
+                )}
+              >
+                Accept job
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {declineJobRide ? (
+        <div
+          className="fixed inset-0 z-[80] grid place-items-center bg-[rgba(3,7,18,0.68)] px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="taxi-partner-decline-job-title"
+        >
+          <section className="w-full max-w-[460px] rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
+            <h2 id="taxi-partner-decline-job-title" className="text-2xl font-black leading-tight">
+              Decline this job?
+            </h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              If you decline, the organizer may need to request another taxi partner quote.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setDeclineJobRideId(null)}
+                className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={declineJob}
+                className="min-h-12 rounded-2xl border border-amber-400/30 bg-amber-400/10 text-sm font-black text-amber-200 transition hover:bg-amber-400/15"
+              >
+                Decline job
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {completionRideId ? (
         <div

@@ -56,6 +56,7 @@ export type TaxiPartnerMockPaymentState =
 export const TAXI_PARTNER_DRIVER_ASSIGNMENT_STATUSES = [
   "NOT_ASSIGNED",
   "PARTNER_ACCEPTED",
+  "PARTNER_DECLINED",
   "DRIVER_ASSIGNED",
   "DRIVER_EN_ROUTE",
   "ARRIVED",
@@ -160,6 +161,14 @@ export type TaxiPartnerMockQuoteResult = {
   message: string;
   aboveCap: boolean;
   nextStatus: TaxiPartnerQuoteStatus | null;
+  error?: string;
+};
+
+export type TaxiPartnerMockJobResult = {
+  success: boolean;
+  quoteRequest: TaxiPartnerQuoteRequest | null;
+  message: string;
+  nextStatus: TaxiPartnerDriverAssignmentStatus | null;
   error?: string;
 };
 
@@ -578,6 +587,68 @@ export function submitTaxiPartnerMockQuote(input: TaxiPartnerMockQuoteInput): Ta
   };
 }
 
+export function acceptTaxiPartnerMockJob(requestId: string | null | undefined): TaxiPartnerMockJobResult {
+  const existingRequest = getTaxiPartnerQuoteRequest(requestId);
+
+  if (!existingRequest) {
+    return {
+      success: false,
+      quoteRequest: null,
+      message: "Taxi partner quote request not found.",
+      nextStatus: null,
+      error: "Taxi partner quote request not found.",
+    };
+  }
+
+  const quoteRequest: TaxiPartnerQuoteRequest = {
+    ...existingRequest,
+    quoteStatus: "QUOTE_ACCEPTED",
+    guestAcceptanceStatus: "ALL_ACCEPTED",
+    driverAssignmentStatus: "PARTNER_ACCEPTED",
+    payoutStatus: "NOT_READY",
+    notes: "Taxi partner accepted the shared taxi job in demo mode.",
+  };
+
+  upsertMockTaxiPartnerQuoteRequest(quoteRequest);
+
+  return {
+    success: true,
+    quoteRequest,
+    message: "Job accepted. This ride is ready for pickup in demo mode.",
+    nextStatus: quoteRequest.driverAssignmentStatus,
+  };
+}
+
+export function declineTaxiPartnerMockJob(requestId: string | null | undefined): TaxiPartnerMockJobResult {
+  const existingRequest = getTaxiPartnerQuoteRequest(requestId);
+
+  if (!existingRequest) {
+    return {
+      success: false,
+      quoteRequest: null,
+      message: "Taxi partner quote request not found.",
+      nextStatus: null,
+      error: "Taxi partner quote request not found.",
+    };
+  }
+
+  const quoteRequest: TaxiPartnerQuoteRequest = {
+    ...existingRequest,
+    driverAssignmentStatus: "PARTNER_DECLINED",
+    payoutStatus: "NOT_READY",
+    notes: "Taxi partner declined the shared taxi job in demo mode.",
+  };
+
+  upsertMockTaxiPartnerQuoteRequest(quoteRequest);
+
+  return {
+    success: true,
+    quoteRequest,
+    message: "Partner declined. Organizer may request another quote.",
+    nextStatus: quoteRequest.driverAssignmentStatus,
+  };
+}
+
 export function getTaxiPartnerQuoteDisplayStatus(
   request: TaxiPartnerQuoteRequest | null | undefined,
 ): TaxiPartnerQuoteDisplayStatus {
@@ -711,17 +782,37 @@ export function getTaxiPartnerQuoteDisplayStatus(
   }
 
   if (
-    request.guestAcceptanceStatus === "ALL_ACCEPTED" ||
     request.driverAssignmentStatus === "PARTNER_ACCEPTED" ||
     request.driverAssignmentStatus === "DRIVER_ASSIGNED" ||
     request.driverAssignmentStatus === "DRIVER_EN_ROUTE" ||
     request.driverAssignmentStatus === "ARRIVED"
   ) {
     return {
-      label: "Ready for taxi partner",
+      label: "Ready for pickup",
       tone: "green",
-      helperText: "Guests accepted the quote. Ride can proceed in demo mode.",
-      primaryActionLabel: "Mark completed",
+      helperText: "Taxi partner accepted the shared pod in demo mode.",
+      primaryActionLabel: "View ride",
+    };
+  }
+
+  if (request.driverAssignmentStatus === "PARTNER_DECLINED" || request.driverAssignmentStatus === "CANCELED") {
+    return {
+      label: "Partner declined",
+      tone: "amber",
+      helperText: "Organizer may request another quote.",
+      primaryActionLabel: "Request quote",
+    };
+  }
+
+  if (
+    request.guestAcceptanceStatus === "ALL_ACCEPTED" &&
+    request.driverAssignmentStatus === "NOT_ASSIGNED"
+  ) {
+    return {
+      label: "Ready for taxi partner",
+      tone: "blue",
+      helperText: "Guests accepted the quote. Waiting for taxi partner to accept.",
+      primaryActionLabel: "View ride",
     };
   }
 

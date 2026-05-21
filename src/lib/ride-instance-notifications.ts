@@ -27,6 +27,8 @@ export type RideInstanceNotificationType =
   | "taxi_partner_dispute_resolved"
   | "taxi_partner_quote_received"
   | "taxi_partner_guests_accepting"
+  | "taxi_partner_accepted"
+  | "taxi_partner_declined"
   | "taxi_partner_ride_completed"
   | "taxi_partner_payout_pending";
 export type RideInstanceNotificationViewerRole = "HOST" | "GUEST";
@@ -510,6 +512,46 @@ export function getRideInstanceNotifications(
           createdAt: "2026-05-18T09:45:00.000Z",
           read: false,
           audience: host ? "HOST" : "LOCKED_GUESTS",
+        }),
+      );
+    }
+
+    if (taxiQuoteStatus.label === "Ready for pickup") {
+      items.push(
+        notification(rideInstance, {
+          stableKey: `taxi_partner_accepted:${rideInstance.id}`,
+          type: "taxi_partner_accepted",
+          title: "Taxi partner accepted",
+          body: host
+            ? "The shared taxi job is ready for pickup in demo mode."
+            : "Your shared taxi ride is ready in demo mode.",
+          timeAgo: "5m",
+          group: "Today",
+          tone: "green",
+          ctaLabel: "View ride",
+          ctaTarget: host ? target : guestRideTarget,
+          createdAt: "2026-05-18T10:00:00.000Z",
+          read: false,
+          audience: host ? "HOST" : "LOCKED_GUESTS",
+        }),
+      );
+    }
+
+    if (taxiQuoteStatus.label === "Partner declined" && host) {
+      items.push(
+        notification(rideInstance, {
+          stableKey: `taxi_partner_declined:${rideInstance.id}`,
+          type: "taxi_partner_declined",
+          title: "Taxi partner declined",
+          body: "Request another quote or choose another ride option.",
+          timeAgo: "5m",
+          group: "Today",
+          tone: "amber",
+          ctaLabel: "Request quote",
+          ctaTarget: target,
+          createdAt: "2026-05-18T10:00:00.000Z",
+          read: false,
+          audience: "HOST",
         }),
       );
     }
