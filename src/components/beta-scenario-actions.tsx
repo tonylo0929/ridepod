@@ -33,7 +33,7 @@ export function BetaScenarioActions({ scenarioId, routeReady }: BetaScenarioActi
         className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_rgba(0,124,137,0.18)] transition hover:brightness-105"
       >
         <Play className="h-4 w-4" />
-        Open scenario
+        Load demo
       </button>
 
       {routeReady ? (

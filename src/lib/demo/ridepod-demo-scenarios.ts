@@ -73,7 +73,7 @@ export const RIDE_POD_DEMO_SCENARIOS: readonly RidePodDemoScenario[] = [
     role: "Organizer / Guest",
     primaryStatus: "Future beta prototype",
     recommendedRoute: "/host",
-    tags: ["Taxi partner", "Quote", "Mock payment", "Future beta"],
+    tags: ["demo", "closed beta", "Taxi partner", "Quote", "Mock payment", "Future beta"],
     notes: "Use this demo scenario to test shared pod quote statuses without real taxi dispatch or payout.",
   },
   {

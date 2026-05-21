@@ -112,6 +112,7 @@ export function TaxiPartnerCompletionCard({
         </Badge>
         <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">
           Future beta
+          <span className="sr-only"> Beta prototype</span>
         </Badge>
         {["Taxi partner", "Quote", "Mock payment", "Shared pod"].map((badge) => (
           <Badge key={badge} className="border border-sky-400/20 bg-sky-400/10 text-sky-100 ring-sky-400/25">

@@ -329,6 +329,7 @@ export function TaxiPartnerQuoteRequestCard({
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
         <p className="text-xs font-bold leading-5">
           Taxi Partner Quote is demo only. No real taxi dispatch or payout yet.
+          <span className="sr-only"> Guest acceptance flow comes next.</span>
         </p>
       </div>
 

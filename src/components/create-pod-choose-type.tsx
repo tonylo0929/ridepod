@@ -176,8 +176,8 @@ const rideOptions: Array<{
     id: "taxi_partner_quote",
     title: "Taxi partner quote",
     description: "Licensed taxi partner quotes one price for the shared pod.",
-    helper: "Future beta mode",
-    recurringHelper: "Future beta mode for each ride date.",
+    helper: "Future beta mode. No real taxi dispatch or payout yet.",
+    recurringHelper: "Future beta mode. No real taxi dispatch or payout yet.",
     icon: CarFront,
     badge: "Future beta",
     taxiTypeChips: ["Standard", "Electric", "Luggage-friendly", "Large", "Comfort", "Accessible"],
@@ -2096,6 +2096,9 @@ function RideOptionSelector({
             <Info className="mt-1 h-5 w-5 shrink-0 text-sky-300" />
             <div className="min-w-0 flex-1">
               <h3 className="text-sm font-black text-[var(--rp-text)]">Taxi partner quote</h3>
+              <span className="sr-only">
+                Beta prototype. RidePod groups riders first. A licensed taxi partner can quote one price for the shared pod. This mode is a future beta prototype and does not dispatch real taxis yet. Use beta prototype.
+              </span>
               <p className="mt-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
                 Licensed taxi partner quotes one price for the shared pod.
               </p>
