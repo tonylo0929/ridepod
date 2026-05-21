@@ -206,11 +206,11 @@ export function HostReplacementActionsScreen({
                 <ShieldCheck className="h-6 w-6" />
               </div>
               <div>
-                <p className="text-base font-black leading-6 text-[var(--rp-text)]">Your payment authorization is safe.</p>
+                <p className="text-base font-black leading-6 text-[var(--rp-text)]">Your seat commitment is still tracked.</p>
                 <p className="mt-2 text-sm font-bold leading-6 text-[var(--rp-muted)]">
                   {paymentCaptureBlocked
-                    ? "It will not be captured unless a replacement host books the ride."
-                    : "RidePod will keep the authorization protected while this pod is reviewed."}
+                    ? "It stays in review unless a replacement host books the ride."
+                    : "RidePod will keep the commitment in review while this pod is reviewed."}
                 </p>
               </div>
             </div>

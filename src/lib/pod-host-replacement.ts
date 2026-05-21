@@ -14,7 +14,7 @@ import { mockAuditEvents, mockRiskFlags, protectedPods, protectedUsers } from ".
 import { checkPodEligibility } from "./pod-eligibility";
 
 const hostCanceledParticipantMessage =
-  "Host canceled. Your pod is still active while RidePod looks for a replacement host. Your payment authorization will not be captured unless a replacement host books the external ride.";
+  "Host canceled. Your pod is still active while RidePod looks for a replacement host. Your seat commitment stays in review unless a replacement host books the external ride.";
 
 const beforeBookingCancellationStates: PodLifecycleState[] = [
   "FORMING",

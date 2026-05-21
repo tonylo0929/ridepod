@@ -86,9 +86,9 @@ function MoneySafetyFields({
       <div className="flex items-start gap-3">
         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700" />
         <div>
-          <h2 className="text-base font-bold text-zinc-950">Money Protection</h2>
+          <h2 className="text-base font-bold text-zinc-950">Quote and Review</h2>
           <p className="mt-2 text-sm leading-6 text-zinc-600">
-            Host may preview fare early, but protected booking unlocks only after required participants authorize payment.
+            Host may preview fare early, but reviewed booking unlocks only after required participants accept their seats.
           </p>
         </div>
       </div>
@@ -209,7 +209,7 @@ export function ScheduledPodForm() {
         <CheckCircle2 className="h-10 w-10 text-emerald-700" />
         <h1 className="mt-4 text-2xl font-bold text-zinc-950">Pod created</h1>
         <p className="mt-2 text-sm leading-6 text-zinc-600">
-          Your scheduled pod is now forming. Members can claim seats after mock deposit or payment authorization.
+          Your scheduled pod is now forming. Members can claim seats after quote acceptance.
         </p>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <button className="inline-flex h-12 items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white text-sm font-bold text-zinc-950">

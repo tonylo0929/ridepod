@@ -432,7 +432,7 @@ export function sendChatMessage(
       ok: false,
       blocked: true,
       messageSent: false,
-      message: "Chat unlocks after your seat is payment-authorized.",
+      message: "Chat unlocks after your seat is accepted.",
       warning: null,
       detection: null,
       auditEvents: [],

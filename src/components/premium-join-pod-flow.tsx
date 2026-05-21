@@ -297,7 +297,7 @@ function RulesStep({
   const rules = [
     {
       icon: ShieldCheck,
-      text: "Your seat is held only after payment authorization.",
+      text: "Your seat is held after quote acceptance.",
       tone: "gold",
     },
     {
@@ -370,10 +370,10 @@ function PaymentStep({ authorized }: { authorized: boolean }) {
   return (
     <div className="grid gap-3">
       <PremiumCard className="p-4">
-        <h1 className="text-2xl font-black tracking-tight text-white">Payment authorization</h1>
+        <h1 className="text-2xl font-black tracking-tight text-white">Quote acceptance</h1>
         <div className="mt-3 flex items-center gap-2 text-xs font-bold text-[#8eea7a]">
           <ShieldCheck className="h-4 w-4" />
-          Your max charge is authorized before the host books externally.
+          Your max charge is accepted before the host books externally.
         </div>
 
         <div className="mt-5 divide-y divide-white/10">
@@ -452,7 +452,7 @@ function ConfirmedStep({
           <div className="flex items-start gap-3">
             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#ffd36a]" />
             <div>
-              <p className="text-sm font-black text-[#8eea7a]">Payment authorized</p>
+              <p className="text-sm font-black text-[#8eea7a]">Seat accepted</p>
               <p className="mt-1 text-xs font-semibold text-white">
                 You’re all set. See you on the trip!
               </p>

@@ -158,7 +158,7 @@ export function getPaymentReconciliationWarnings(
     warnings.push("HOST_CAN_BOOK exists without an approved quote.");
   }
   if (pod.lifecycleState === "RIDE_BOOKED" && snapshot.confirmedSeats < pod.minSeatsToBook) {
-    warnings.push("RIDE_BOOKED exists without required payment-authorized participants.");
+    warnings.push("RIDE_BOOKED exists without required accepted participants.");
   }
   if (permission.canBook && snapshot.confirmedSeats < pod.minSeatsToBook) {
     warnings.push("Booking permission is true without required payment locks.");

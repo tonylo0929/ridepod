@@ -142,7 +142,7 @@ export default async function PodDetailPage({
             </div>
             {confirmedRiders.length === 0 ? (
               <div className="mt-4 rounded-lg bg-zinc-50 p-3 text-sm font-semibold text-zinc-600">
-                No confirmed riders yet. Seats lock after payment authorization.
+                No confirmed riders yet. Seats lock after quote acceptance.
               </div>
             ) : null}
             {pod.waitlist.length ? (

@@ -276,7 +276,7 @@ function RideCard({ pod, variant, featured = false }: { pod: RidePod; variant: D
         <div className="mt-3 flex items-center justify-between gap-3">
           <AvatarStack userIds={memberIds.slice(0, 4)} variant={variant} />
           <div className="flex flex-wrap justify-end gap-2">
-            <Pill variant={variant} tone="success">Payment authorized</Pill>
+            <Pill variant={variant} tone="success">Seat accepted</Pill>
             <Pill variant={variant} tone={pod.status === "forming" ? "warning" : "success"}>
               Lock {pod.lockDeadline.split(",")[0]}
             </Pill>
@@ -338,8 +338,8 @@ function DetailScreen({ variant, pod }: { variant: DesignVariant; pod: RidePod }
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className={cn("border p-4", variant.radius, variant.card)}>
           <div className="flex flex-wrap items-center gap-2">
-            <Pill variant={variant} tone="accent">Money lock</Pill>
-            <Pill variant={variant} tone="success">Payment authorized</Pill>
+            <Pill variant={variant} tone="accent">Seat commitment</Pill>
+            <Pill variant={variant} tone="success">Seat accepted</Pill>
             <Pill variant={variant} tone="warning">No-show rules active</Pill>
           </div>
           <h3 className="mt-4 text-3xl font-black tracking-tight">
@@ -413,7 +413,7 @@ function CreateScreen({ variant }: { variant: DesignVariant }) {
           <PlusCircle className={cn("h-8 w-8", variant.accentText)} />
           <h3 className="mt-4 text-xl font-black">Host preference on</h3>
           <p className={cn("mt-2 text-sm leading-6", variant.muted)}>
-            RidePod will show the pod as forming until every seat has a deposit or authorization. Money lock means the host does not book before the payment state is clear.
+            RidePod will show the pod as forming until every seat has a clear commitment. Seat commitment means the host does not book before the quote acceptance state is clear.
           </p>
           <button className={cn("mt-5 h-12 w-full font-black", variant.radius, variant.button)}>
             Preview pod
@@ -435,7 +435,7 @@ function JoinScreen({ variant, pod }: { variant: DesignVariant; pod: RidePod }) 
             You are not charged final fare until the pod is locked and ride is completed.
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
-            <Pill variant={variant} tone="success">Payment authorized</Pill>
+            <Pill variant={variant} tone="success">Seat accepted</Pill>
             <Pill variant={variant} tone="accent">Deposit paid</Pill>
           </div>
         </div>
@@ -575,7 +575,7 @@ export function DesignVariationPage({ variant }: { variant: DesignVariant }) {
           <div className="flex items-start gap-3">
             <Sparkles className={cn("mt-1 h-5 w-5", variant.accentText)} />
             <p className={cn("text-sm leading-6", variant.muted)}>
-              Design-only route. It uses the same RidePod mock data and preserves the MVP logic: planned pods, locked seats, mock deposits, payment authorization, money lock, waitlist replacement, and no-show rules.
+              Design-only route. It uses the same RidePod mock data and preserves the MVP logic: planned pods, locked seats, mock deposits, quote acceptance, seat commitment, waitlist replacement, and no-show rules.
             </p>
           </div>
         </section>

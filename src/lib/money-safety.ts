@@ -742,11 +742,11 @@ export function checkPodEligibility(
   }
 
   if (user.riskStatus === "SUSPENDED") {
-    return blocked("Your account cannot join protected pods right now.", "CONTACT_SUPPORT");
+    return blocked("Your account cannot join shared taxi pods right now.", "CONTACT_SUPPORT");
   }
 
   if (user.riskStatus === "RESTRICTED") {
-    return blocked("Your account has limited access to protected pods.", "CONTACT_SUPPORT");
+    return blocked("Your account has limited access to shared taxi pods.", "CONTACT_SUPPORT");
   }
 
   if (pod.genderMode === "WOMEN_ONLY") {
@@ -823,11 +823,11 @@ export function checkHostPodCreationEligibility(
     }
 
     if (host.riskStatus === "SUSPENDED") {
-      return blocked("Your account cannot join protected pods right now.", "CONTACT_SUPPORT");
+      return blocked("Your account cannot join shared taxi pods right now.", "CONTACT_SUPPORT");
     }
 
     if (host.riskStatus === "RESTRICTED") {
-      return blocked("Your account has limited access to protected pods.", "CONTACT_SUPPORT");
+      return blocked("Your account has limited access to shared taxi pods.", "CONTACT_SUPPORT");
     }
 
     return {
@@ -892,14 +892,14 @@ export function canHostBook(
   if (!bookingAllowedStates.includes(pod.lifecycleState)) reasons.push("Pod lifecycle does not allow booking.");
   if (pod.adminReviewRequired) reasons.push("Pod is on admin review hold.");
   if (confirmedCount < pod.minSeatsToBook) {
-    reasons.push(`Waiting for participants: ${confirmedCount}/${pod.minSeatsToBook} authorized.`);
+    reasons.push(`Waiting for participants: ${confirmedCount}/${pod.minSeatsToBook} accepted.`);
   }
   if (activeMembers.some((member) => !isPaymentAuthorized(member))) {
-    reasons.push("All active participants must be payment-authorized.");
+    reasons.push("All active participants must accept their seat.");
   }
   if (quoteRequired && !latestQuote) reasons.push("Upload a fresh quote screenshot before booking.");
   if (quoteRequired && latestQuote && !["AUTO_APPROVED", "QUOTE_APPROVED"].includes(latestQuote.reviewState)) {
-    reasons.push("Quote needs approval before protected booking.");
+    reasons.push("Quote needs approval before reviewed booking.");
   }
 
   const approvedMax = pod.higherMaxApprovedCents ?? pod.approvedMaxTotalFareCents;
@@ -916,7 +916,7 @@ export function canHostBook(
     reasons,
     warning:
       reasons.length > 0
-        ? "You can book at your own risk, but this ride is not RidePod-protected until participants are payment-authorized. RidePod cannot guarantee reimbursement for unconfirmed seats."
+        ? "You can book at your own risk, but this ride is outside RidePod review until participants accept their seats."
         : null,
     confirmedCount,
     requiredCount: pod.minSeatsToBook,
@@ -1437,18 +1437,18 @@ export function getMoneySafetySnapshot(pod: ProtectedPod) {
     moneyStatus: permission.canBook
       ? "Quote approved - host can book"
       : confirmedSeats >= pod.minSeatsToBook
-        ? "All required participants are authorized"
-        : `${confirmedSeats}/${pod.minSeatsToBook} participants payment-authorized`,
+        ? "All required participants accepted"
+        : `${confirmedSeats}/${pod.minSeatsToBook} participants accepted`,
     hostActionNeeded: permission.canBook
-      ? "Protected booking enabled"
+      ? "Quote and review flow ready"
       : latestQuote
-        ? "Waiting for payment authorization"
+        ? "Waiting for quote acceptance"
         : "Fresh quote screenshot needed",
     chatUnlocked,
     exactDetailsUnlocked: chatUnlocked,
     timeline: [
       { label: "Pod forming", complete: pod.lifecycleState !== "DRAFT" },
-      { label: "Payment locking", complete: confirmedSeats > 0 },
+      { label: "Quote acceptance", complete: confirmedSeats > 0 },
       { label: "Group locked", complete: confirmedSeats >= pod.minSeatsToBook },
       { label: "Quote uploaded", complete: Boolean(latestQuote) },
       { label: "Host can book", complete: permission.canBook },

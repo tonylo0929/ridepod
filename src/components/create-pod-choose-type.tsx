@@ -210,13 +210,13 @@ const rideConfirmationCopy: Record<ActiveRideOptionId, { title: string; body: st
       "I understand the taxi fare is settled from verified meter proof or receipt, within the approved max rules.",
   },
   taxi_partner_quote: {
-    title: "Confirm Taxi Partner Quote Prototype",
+    title: "Confirm shared taxi pod",
     body: [
-      "RidePod groups riders first, then a licensed taxi partner can quote one price for the shared pod.",
-      "This is a future beta prototype. It does not dispatch real taxis or release real payouts yet.",
+      "RidePod will group riders first, then request one shared quote from a licensed taxi partner.",
+      "Guests accept the quote before the ride proceeds.",
     ],
     checkbox:
-      "I understand this is a beta prototype and no real taxi dispatch or payout is enabled.",
+      "I understand guests must accept the taxi quote before the ride proceeds.",
   },
 };
 
@@ -2585,7 +2585,7 @@ const pricingExplanations: Record<string, PricingExplanation> = {
   },
   bookingFareCap: {
     title: "Booking fare cap",
-    body: "This is the maximum total fare allowed for protected booking. The host must upload a quote within this cap before booking. If the quote is higher, guests must approve a higher max before the ride can be RidePod-protected.",
+    body: "This is the maximum total fare allowed for reviewed booking. The host must upload a quote within this cap before booking. If the quote is higher, guests must approve a higher max before the ride continues in RidePod.",
   },
 };
 
@@ -3248,9 +3248,9 @@ function CreatePodConfirmationDialog({
           body: [
             "Guests can join and lock their seats after the pod is created.",
             "RidePod groups riders first, then requests one shared quote from a licensed taxi partner.",
-            "Future beta prototype. No real taxi dispatch or payout yet.",
+            "Demo mode: no live payment or payout.",
           ],
-          checkbox: "I understand this is a mock beta prototype and no real taxi dispatch or payout is enabled.",
+          checkbox: "I understand guests must accept the taxi quote before the ride proceeds.",
           submitLabel: "Create taxi pod",
         }
       : normalizedRideOption === "taxi_meter"

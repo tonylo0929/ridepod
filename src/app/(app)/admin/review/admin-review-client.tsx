@@ -80,7 +80,7 @@ type AdminPaymentHistoryEvent = {
 
 const taxiPartnerMockActionLabels: Array<{ key: TaxiPartnerMockActionKey; label: string; requiresNotes: boolean }> = [
   { key: "holdPayout", label: "Hold payout", requiresNotes: true },
-  { key: "releasePayoutMock", label: "Release payout", requiresNotes: false },
+  { key: "releasePayoutMock", label: "Mark payout ready", requiresNotes: false },
   { key: "requestMoreInfo", label: "Request more info", requiresNotes: true },
   { key: "resolveDispute", label: "Resolve dispute", requiresNotes: false },
   { key: "denyPayoutMock", label: "Deny payout", requiresNotes: true },
@@ -1734,7 +1734,7 @@ const taxiPartnerConfirmationCopy: Record<TaxiPartnerConfirmableActionKey, { tit
     confirm: "Hold payout",
   },
   releasePayoutMock: {
-    title: "Release payout in demo?",
+    title: "Mark payout ready in demo?",
     body: "This only updates demo status. No real payout is sent.",
     confirm: "Mark payout ready",
   },

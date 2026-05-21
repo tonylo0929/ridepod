@@ -253,7 +253,7 @@ export function getHostEstimateWarning({
   }
 
   if (suggestedApprovedMax > 0 && hostEstimate > suggestedApprovedMax) {
-    return "This is higher than RidePod's taxi baseline. Riders may need to approve a higher max before protected booking unlocks.";
+    return "This is higher than RidePod's taxi baseline. Riders may need to approve a higher max before the quote and review flow continues.";
   }
 
   return null;

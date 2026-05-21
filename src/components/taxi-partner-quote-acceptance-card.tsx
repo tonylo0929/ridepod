@@ -246,7 +246,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
     }));
     setMessage(
       result.status === "requires_capture"
-        ? "Test payment authorized. Capture is not implemented in this slice."
+        ? "Test authorization complete. Capture is not implemented in this slice."
         : "Test PaymentIntent created. Enter a Stripe test card to confirm.",
     );
   }
@@ -453,7 +453,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
           </button>
         ) : (
           <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-            Stripe test mode is not configured. Using mock payment state.
+            This records quote acceptance for the demo. No live money is charged.
           </p>
         )}
         {testPaymentIntent ? (
@@ -538,7 +538,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
       {showAcceptModal ? (
         <AcceptanceModal
           title="Accept taxi partner quote?"
-          body="You're accepting this shared taxi quote. In the live version, RidePod would collect or authorize payment before the ride proceeds."
+          body="This records quote acceptance for the demo. No live money is charged."
           confirmLabel={quoteAboveCap ? "Accept higher quote" : "Accept quote"}
           confirmDisabled={!understandsMockPayment}
           onCancel={() => setShowAcceptModal(false)}
@@ -558,7 +558,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
               onChange={(event) => setUnderstandsMockPayment(event.target.checked)}
               className="mt-1 h-4 w-4 accent-sky-500"
             />
-            <span>I understand this is a beta mock payment state.</span>
+            <span>I understand this records quote acceptance for the demo.</span>
           </label>
         </AcceptanceModal>
       ) : null}

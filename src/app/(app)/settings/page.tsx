@@ -24,7 +24,7 @@ const settings = [
   {
     icon: ShieldCheck,
     title: "Community rules",
-    body: "Require payment authorization before confirmation and allow waitlist replacement.",
+    body: "Require seat acceptance before confirmation and allow waitlist replacement.",
     value: "Enabled",
   },
 ];

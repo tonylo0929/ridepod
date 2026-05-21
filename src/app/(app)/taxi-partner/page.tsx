@@ -927,7 +927,7 @@ export default function TaxiPartnerDashboardPage() {
                             <p className="mt-1 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
                               {ride.status === "Dispute review"
                                 ? "Payout is held while RidePod reviews the case."
-                                : "Payout releases after the dispute window if no issue is reported."}
+                                : "Payout stays pending until the dispute window clears."}
                             </p>
                           </div>
                           <Badge className={statusClass(ride.status === "Dispute review" ? "Payout held" : "Payout pending")}>
@@ -948,7 +948,7 @@ export default function TaxiPartnerDashboardPage() {
                           <MoneyRow label="Payout mode" value="Demo only" />
                         </dl>
                         <p className="mt-3 rounded-[14px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
-                          No real payout is sent in beta. Guests can report an issue before payout is released.
+                          No real payout is sent in beta. Guests can report an issue before payout can be marked ready.
                         </p>
                         <div className="mt-4 grid gap-2 min-[520px]:grid-cols-2">
                           <button
@@ -1031,11 +1031,11 @@ export default function TaxiPartnerDashboardPage() {
               </div>
               <div className="mt-4 grid gap-3">
                 {[
-                  ["Payout pending", "Payout releases after the dispute window if no issue is reported.", "View dispute window"],
+                  ["Payout pending", "Payout stays pending until the dispute window clears.", "View dispute window"],
                   ["Payout held", "Payout is held while RidePod reviews the case.", "View review status"],
                   ["Payout ready", "Review is complete. Payout can be processed in demo mode.", "View payout details"],
                   ["Payout denied in demo", "Payout was denied during demo review.", "View review"],
-                  ["Closed", "Payout was marked released in demo mode.", "View details"],
+                  ["Closed", "Payout was closed in demo mode.", "View details"],
                 ].map(([status, body, cta]) => (
                   <div key={status} className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
                     <Badge className={statusClass(status)}>{status}</Badge>

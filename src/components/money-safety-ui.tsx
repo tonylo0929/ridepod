@@ -58,7 +58,7 @@ function getDisplayMoneyStatus({
   requiredSeats: number;
 }) {
   if (canBook) return quoteApprovedCanBookCopy;
-  if (confirmedSeats >= requiredSeats) return "All required participants are authorized";
+  if (confirmedSeats >= requiredSeats) return "All required participants accepted";
   return "Host cannot book yet";
 }
 
@@ -86,7 +86,7 @@ export function MoneyLockStatus({ podId, compact = false }: { podId: string; com
   if (!protectedPod) {
     return (
       <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-semibold text-[var(--rp-muted)]">
-        Money state: payment authorization required before protected booking.
+        Seat commitment required before reviewed booking.
       </div>
     );
   }
@@ -326,7 +326,7 @@ function getHostQuoteActionState(state: ReturnType<typeof getHostQuoteState>) {
   if (state.aboveMax) {
     return {
       title: "Quote above booking fare cap",
-      body: "Guests must approve a higher max before this ride can be RidePod-protected.",
+      body: "Guests must approve a higher max before this ride can continue in RidePod.",
       badge: "Higher max needed",
       cta: "Request higher max approval",
       tone: "warning" as const,
@@ -658,7 +658,7 @@ export function HostQuoteUploadPanel({ pod }: { pod: RidePod }) {
               <p className="mt-2 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">{actionState.body}</p>
               {!state.canBook ? (
                 <div className="mt-3 grid gap-2 text-xs font-bold text-[var(--rp-muted-strong)]">
-                  <p className="flex gap-2"><RefreshCcw className="h-4 w-4 shrink-0 text-[var(--rp-warning)]" /> Wait for riders to authorize payment.</p>
+                  <p className="flex gap-2"><RefreshCcw className="h-4 w-4 shrink-0 text-[var(--rp-warning)]" /> Wait for riders to accept.</p>
                   <p className="flex gap-2"><CarFront className="h-4 w-4 shrink-0 text-[var(--rp-warning)]" /> Choose a lower-cost option or adjust route/time.</p>
                   <p className="flex gap-2"><Route className="h-4 w-4 shrink-0 text-[var(--rp-warning)]" /> Re-upload quote after checking the route.</p>
                 </div>
@@ -670,7 +670,7 @@ export function HostQuoteUploadPanel({ pod }: { pod: RidePod }) {
             disabled={!state.canBook}
             className="mt-4 h-12 w-full rounded-2xl bg-[var(--rp-gradient-primary)] text-sm font-black text-[var(--rp-primary-text)] disabled:cursor-not-allowed disabled:opacity-45"
           >
-            {state.canBook ? "Mark ride as booked" : "Protected booking locked"}
+            {state.canBook ? "Mark ride as booked" : "Reviewed booking locked"}
           </button>
           {!state.canBook ? (
             <p className="mt-3 rounded-2xl bg-[var(--rp-card-soft)] px-3 py-2 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
@@ -684,7 +684,7 @@ export function HostQuoteUploadPanel({ pod }: { pod: RidePod }) {
       {showQuoteCertification ? (
         <ProofCertificationDialog
           title="Confirm quote proof"
-          body="This quote will be used to decide whether the host can book a RidePod-protected ride."
+        body="This quote will be used to decide whether the host can book through the RidePod review flow."
           checkboxText="I confirm this quote screenshot is real, accurate, unaltered, and belongs to this ride."
           warningText="False or misleading proof may lead to booking denial, reimbursement denial, account suspension, and manual review."
           submitLabel="Submit quote"
@@ -728,7 +728,7 @@ export function HostBookingProtectionPanel({ podId }: { podId: string }) {
     : quoteAboveMax
     ? {
         title: "Quote above booking fare cap",
-        body: "Guests must approve a higher max before this ride can be RidePod-protected.",
+          body: "Guests must approve a higher max before this ride can continue in RidePod.",
         badge: "Higher max needed",
         cta: "Request higher max approval",
         canAct: true,
@@ -918,7 +918,7 @@ export function HostReplacementActiveScreen({
             RidePod is looking for a replacement host.
           </p>
           <p className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] px-5 py-4 text-sm font-semibold leading-6 text-[var(--rp-muted)] shadow-[var(--rp-shadow-soft)]">
-            Your payment authorization will not be captured unless a replacement host books the ride.
+            Your seat commitment stays in review unless a replacement host books the ride.
           </p>
         </section>
 
@@ -971,7 +971,7 @@ export function HostReplacementActiveScreen({
               <ShieldCheck className="h-6 w-6" />
             </div>
             <p className="text-base font-black leading-6 text-[var(--rp-text)]">
-              Your payment authorization is safe with RidePod.
+              Your seat commitment is still tracked in RidePod.
             </p>
           </div>
         </section>

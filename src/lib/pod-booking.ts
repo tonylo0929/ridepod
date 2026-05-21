@@ -41,7 +41,7 @@ export type ExternalBookingResult = {
 };
 
 const protectedBookingWarning =
-  "You can book at your own risk, but this ride is not RidePod-protected until participants are payment-authorized. RidePod cannot guarantee reimbursement for unconfirmed seats.";
+  "You can book at your own risk, but this ride is outside RidePod review until participants accept their seats.";
 const quoteProofCertificationTextVersion = "quote-proof-certification-v1";
 
 const quoteUploadAllowedStates: PodLifecycleState[] = [
@@ -105,26 +105,26 @@ function buildBookingPermission(
 
   if (hostUserId !== currentHostId) reasons.push("Only the current host can book.");
   if (!bookingAllowedStates.includes(pod.lifecycleState)) {
-    reasons.push("Pod lifecycle does not allow protected booking.");
+    reasons.push("Pod lifecycle does not allow reviewed booking.");
   }
   if (pod.lifecycleState === "HOST_REPLACEMENT_NEEDED" && !pod.replacementHostUserId) {
-    reasons.push("A replacement host must accept before protected booking.");
+    reasons.push("A replacement host must accept before reviewed booking.");
   }
   if (["CANCELED", "EXPIRED"].includes(pod.lifecycleState)) reasons.push("Pod is not active.");
   if (pod.adminReviewRequired || ["ADMIN_REVIEW", "DISPUTE_HOLD"].includes(pod.lifecycleState)) {
     reasons.push("Pod is on admin review or dispute hold.");
   }
   if (confirmedCount < pod.minSeatsToBook) {
-    reasons.push(`Waiting for participants: ${confirmedCount}/${pod.minSeatsToBook} payment-authorized.`);
+    reasons.push(`Waiting for participants: ${confirmedCount}/${pod.minSeatsToBook} accepted.`);
   }
   if (activeMembers.some((member) => !isMemberPaymentConfirmed(member))) {
-    reasons.push("All active participants must be payment-authorized.");
+    reasons.push("All active participants must accept their seat.");
   }
   if (quoteRequired && !latestQuote) {
-    reasons.push("Upload a fresh quote screenshot before protected booking.");
+    reasons.push("Upload a fresh quote screenshot before reviewed booking.");
   } else if (quoteRequired && latestQuote) {
     if (!["AUTO_APPROVED", "QUOTE_APPROVED"].includes(latestQuote.reviewState)) {
-      reasons.push("Quote needs approval before protected booking.");
+      reasons.push("Quote needs approval before reviewed booking.");
     }
     if (latestQuote.quotedFareCents > approvedMaxCents) {
       reasons.push("Quote is above approved max. Riders or admin must approve a higher max.");

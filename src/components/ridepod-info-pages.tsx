@@ -187,7 +187,7 @@ const faqItems = [
   {
     question: "What happens if the host cancels before booking?",
     answer:
-      "The pod can stay active in Host Replacement Mode. Confirmed participants can stay together, and an eligible participant may become the replacement host. A replacement host must upload a fresh quote before protected booking unlocks.",
+      "The pod can stay active in Host Replacement Mode. Confirmed participants can stay together, and an eligible participant may become the replacement host. A replacement host must upload a fresh quote before reviewed booking unlocks.",
   },
   {
     question: "What happens if I cancel or no-show?",

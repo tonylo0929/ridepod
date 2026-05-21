@@ -1823,7 +1823,7 @@ export function RecurringInstanceProofFlow({
             ) : quoteResult === "above_cap" ? (
               <ProofResultCard
                 title="Quote above booking fare cap"
-                body="Guests must approve a higher max before this ride can be RidePod-protected."
+                body="Guests must approve a higher max before this ride can continue in RidePod."
                 action="Request higher max approval"
                 preview={renderHostProofPreview("QUOTE_SCREENSHOT")}
                 tone="warning"

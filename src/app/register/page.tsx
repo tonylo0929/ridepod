@@ -64,7 +64,7 @@ export default function RegisterPage() {
           </span>
           <h1 className="text-3xl font-black text-[var(--rp-text)]">Create account</h1>
           <p className="text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-            Create a RidePod account before joining protected ride pods.
+            Create a RidePod account before joining shared taxi pods.
           </p>
         </div>
 

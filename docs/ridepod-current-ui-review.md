@@ -861,3 +861,5 @@ Scope:
 - Keep legacy Ride app / Taxi meter modes available only where explicitly demo/internal/fallback.
 
 Do not change business logic in this slice.
+
+UI-FIX-1 completed: homepage Taxi-first copy, How RidePod Works Taxi-first positioning, confirmation modal wording, money-lock wording cleanup, and payout-release wording cleanup.
