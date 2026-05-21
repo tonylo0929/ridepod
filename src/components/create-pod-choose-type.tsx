@@ -9,7 +9,6 @@ import {
   CalendarPlus,
   CalendarDays,
   CarFront,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Check,
@@ -1288,42 +1287,6 @@ function parseDisplayTime(value: string) {
   return { hour, minute, period };
 }
 
-function FlexibilityField({
-  value,
-  onChange,
-  helper,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  helper?: string;
-}) {
-  return (
-    <label className="block">
-      <span className="text-base font-bold text-[var(--rp-muted-strong)]">Flexibility</span>
-      <span className="mt-3 grid h-16 grid-cols-[1fr_66px] items-center rounded-[12px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] shadow-[var(--rp-shadow-soft)] focus-within:border-[var(--rp-primary)]">
-        <select
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          className="h-full min-w-0 appearance-none rounded-l-[12px] border-0 bg-transparent px-5 text-lg font-black text-[var(--rp-text)] outline-none"
-        >
-          <option value={"\u00b1 5 min"}>&plusmn; 5 min</option>
-          <option value={"\u00b1 10 min"}>&plusmn; 10 min</option>
-          <option value={"\u00b1 15 min"}>&plusmn; 15 min</option>
-          <option value={"\u00b1 30 min"}>&plusmn; 30 min</option>
-        </select>
-        <span className="grid h-full place-items-center border-l border-[var(--rp-input-border)] text-[var(--rp-primary)]">
-          <ChevronDown className="h-6 w-6" />
-        </span>
-      </span>
-      {helper ? (
-        <span className="mt-2 block text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-          {helper}
-        </span>
-      ) : null}
-    </label>
-  );
-}
-
 function buildPreviewTemplate({
   dateTime,
   pickupAddress,
@@ -1707,11 +1670,6 @@ function RecurringScheduleFields({
             ) : null}
           </fieldset>
 
-          <FlexibilityField
-            value={dateTime.flexibility}
-            onChange={(flexibility) => onDateTimeChange({ ...dateTime, flexibility })}
-            helper="Guests see this pickup time window before locking their seat."
-          />
         </>
       ) : null}
 
@@ -1877,10 +1835,6 @@ function DateTimeStep({
               <TimeField
                 value={dateTime.time}
                 onChange={(time) => onDateTimeChange({ ...dateTime, time })}
-              />
-              <FlexibilityField
-                value={dateTime.flexibility}
-                onChange={(flexibility) => onDateTimeChange({ ...dateTime, flexibility })}
               />
             </section>
           </>
@@ -2154,9 +2108,6 @@ function TaxiTypeSelector({
   peopleVehicle: PeopleVehicleState;
   onPeopleVehicleChange: (peopleVehicle: PeopleVehicleState) => void;
 }) {
-  const minBags = 0;
-  const maxBags = 8;
-
   return (
     <section className="mt-7 rounded-[22px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.12)),var(--rp-card)] p-4 shadow-[0_18px_42px_rgba(14,165,233,0.1)]">
       <div>
@@ -2214,62 +2165,84 @@ function TaxiTypeSelector({
         })}
       </div>
 
-      <div className="mt-4 rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
+      <p className="mt-4 rounded-[16px] border border-sky-400/25 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
+        Taxi type requests depend on taxi partner availability.
+      </p>
+    </section>
+  );
+}
+
+function TaxiNeedsSelector({
+  peopleVehicle,
+  onPeopleVehicleChange,
+}: {
+  peopleVehicle: PeopleVehicleState;
+  onPeopleVehicleChange: (peopleVehicle: PeopleVehicleState) => void;
+}) {
+  const minBags = 0;
+  const maxBags = 8;
+
+  return (
+    <section className="mt-7 rounded-[22px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.12)),var(--rp-card)] p-4 shadow-[0_18px_42px_rgba(14,165,233,0.1)]">
+      <div>
         <div className="flex items-center gap-2">
           <Luggage className="h-5 w-5 text-sky-300" />
-          <h3 className="text-sm font-black text-[var(--rp-text)]">Luggage and access needs</h3>
+          <h2 className="text-[26px] font-black leading-tight text-[var(--rp-text)]">Luggage and access needs</h2>
         </div>
+        <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+          Add bags, extra space, and accessibility requests before the taxi partner quotes.
+        </p>
+      </div>
 
-        <div className="mt-3 grid gap-3">
-          <div>
-            <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Luggage count</p>
-            <div className="mt-2 grid grid-cols-[44px_1fr_44px] items-center gap-3">
-              <button
-                type="button"
-                aria-label="Decrease luggage count"
-                disabled={peopleVehicle.bags <= minBags}
-                onClick={() => onPeopleVehicleChange({ ...peopleVehicle, bags: Math.max(minBags, peopleVehicle.bags - 1) })}
-                className="grid h-11 w-11 place-items-center rounded-full border border-sky-400/25 text-sky-300 transition hover:bg-sky-400/10 disabled:opacity-35"
-              >
-                <Minus className="h-5 w-5" />
-              </button>
-              <p className="text-center text-3xl font-black text-sky-300">{peopleVehicle.bags}</p>
-              <button
-                type="button"
-                aria-label="Increase luggage count"
-                disabled={peopleVehicle.bags >= maxBags}
-                onClick={() => onPeopleVehicleChange({ ...peopleVehicle, bags: Math.min(maxBags, peopleVehicle.bags + 1) })}
-                className="grid h-11 w-11 place-items-center rounded-full border border-sky-400/25 text-sky-300 transition hover:bg-sky-400/10 disabled:opacity-35"
-              >
-                <Plus className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
-          {[
-            ["largeLuggage", "Large luggage"] as const,
-            ["extraSpaceNeeded", "Extra space needed"] as const,
-            ["wheelchairAccessibleRequested", "Wheelchair-accessible taxi requested"] as const,
-            ["stepFreeSupportRequested", "Step-free support requested"] as const,
-          ].map(([key, label]) => (
-            <label
-              key={key}
-              className="flex gap-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]"
+      <div className="mt-4 grid gap-3">
+        <div className="rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
+          <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Luggage count</p>
+          <div className="mt-2 grid grid-cols-[44px_1fr_44px] items-center gap-3">
+            <button
+              type="button"
+              aria-label="Decrease luggage count"
+              disabled={peopleVehicle.bags <= minBags}
+              onClick={() => onPeopleVehicleChange({ ...peopleVehicle, bags: Math.max(minBags, peopleVehicle.bags - 1) })}
+              className="grid h-11 w-11 place-items-center rounded-full border border-sky-400/25 text-sky-300 transition hover:bg-sky-400/10 disabled:opacity-35"
             >
-              <input
-                type="checkbox"
-                checked={peopleVehicle[key]}
-                onChange={(event) => onPeopleVehicleChange({ ...peopleVehicle, [key]: event.target.checked })}
-                className="mt-1 h-4 w-4 accent-sky-500"
-              />
-              <span>{label}</span>
-            </label>
-          ))}
+              <Minus className="h-5 w-5" />
+            </button>
+            <p className="text-center text-3xl font-black text-sky-300">{peopleVehicle.bags}</p>
+            <button
+              type="button"
+              aria-label="Increase luggage count"
+              disabled={peopleVehicle.bags >= maxBags}
+              onClick={() => onPeopleVehicleChange({ ...peopleVehicle, bags: Math.min(maxBags, peopleVehicle.bags + 1) })}
+              className="grid h-11 w-11 place-items-center rounded-full border border-sky-400/25 text-sky-300 transition hover:bg-sky-400/10 disabled:opacity-35"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+          </div>
         </div>
+
+        {[
+          ["largeLuggage", "Large luggage"] as const,
+          ["extraSpaceNeeded", "Extra space needed"] as const,
+          ["wheelchairAccessibleRequested", "Wheelchair-accessible taxi requested"] as const,
+          ["stepFreeSupportRequested", "Step-free support requested"] as const,
+        ].map(([key, label]) => (
+          <label
+            key={key}
+            className="flex gap-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]"
+          >
+            <input
+              type="checkbox"
+              checked={peopleVehicle[key]}
+              onChange={(event) => onPeopleVehicleChange({ ...peopleVehicle, [key]: event.target.checked })}
+              className="mt-1 h-4 w-4 accent-sky-500"
+            />
+            <span>{label}</span>
+          </label>
+        ))}
       </div>
 
       <p className="mt-4 rounded-[16px] border border-sky-400/25 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
-        Taxi type requests depend on taxi partner availability.
+        Taxi type and accessibility requests depend on taxi partner availability.
       </p>
       <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
         Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner.
@@ -2405,11 +2378,18 @@ function PeopleVehicleStep({
   onContinue: () => void;
 }) {
   const selectedRideOptionId = normalizeRideOptionId(peopleVehicle.rideOption);
+  const isTaxiFlow = selectedRideOptionId === "taxi_partner_quote" || selectedRideOptionId === "taxi_meter";
+  const [taxiDetailsPage, setTaxiDetailsPage] = useState<"type" | "needs">("type");
   const [showRideConfirm, setShowRideConfirm] = useState(false);
   const [rideConfirmChecked, setRideConfirmChecked] = useState(false);
   const [confirmedRideOption, setConfirmedRideOption] = useState<ActiveRideOptionId | null>(null);
 
   function handleContinue() {
+    if (isTaxiFlow && taxiDetailsPage === "type") {
+      setTaxiDetailsPage("needs");
+      return;
+    }
+
     if (confirmedRideOption !== selectedRideOptionId) {
       setRideConfirmChecked(false);
       setShowRideConfirm(true);
@@ -2421,7 +2401,17 @@ function PeopleVehicleStep({
 
   return (
     <>
-      <CreatePodTopBar currentStep={3} onBack={onBack} />
+      <CreatePodTopBar
+        currentStep={3}
+        onBack={() => {
+          if (isTaxiFlow && taxiDetailsPage === "needs") {
+            setTaxiDetailsPage("type");
+            return;
+          }
+
+          onBack();
+        }}
+      />
 
       <main className="people-vehicle-layout scrollbar-hide min-h-0 flex-1 overflow-y-auto">
         <VehicleDarkPanel />
@@ -2429,44 +2419,56 @@ function PeopleVehicleStep({
           <div className="text-center">
             <ScheduleTypeEyebrow podType={podType} />
             <h1 className="text-[30px] font-black leading-tight text-[var(--rp-text)]">
-              How do you want to ride?
+              {isTaxiFlow && taxiDetailsPage === "needs" ? "Luggage and access needs" : "How do you want to ride?"}
             </h1>
             <p className="mt-2 text-base font-medium text-[var(--rp-muted)]">
-              RidePod groups riders first, then helps the group request the right ride.
+              {isTaxiFlow && taxiDetailsPage === "needs"
+                ? "Tell taxi partners what your group needs before they quote."
+                : "RidePod groups riders first, then helps the group request the right ride."}
             </p>
           </div>
 
           <div className="mt-7">
-            <SeatCounter
-              value={peopleVehicle.seatsAvailable}
-              onChange={(seatsAvailable) =>
-                onPeopleVehicleChange({ ...peopleVehicle, seatsAvailable })
-              }
-            />
-            <RideOptionSelector
-              value={peopleVehicle.rideOption}
-              onChange={(rideOption) =>
-                {
-                  setRideConfirmChecked(false);
-                  setConfirmedRideOption(null);
-                  onPeopleVehicleChange({
-                    ...peopleVehicle,
-                    rideOption,
-                    vehicleType:
-                      normalizeRideOptionId(rideOption) === "taxi_partner_quote"
-                        ? getTaxiTypeLabel(peopleVehicle.taxiType)
-                        : getRideOption(rideOption).title,
-                  });
-                }
-              }
-            />
-            {selectedRideOptionId === "taxi_partner_quote" || selectedRideOptionId === "taxi_meter" ? (
-              <TaxiTypeSelector
+            {isTaxiFlow && taxiDetailsPage === "needs" ? (
+              <TaxiNeedsSelector
                 peopleVehicle={peopleVehicle}
                 onPeopleVehicleChange={onPeopleVehicleChange}
               />
-            ) : null}
-            <VehicleLightArt />
+            ) : (
+              <>
+                <SeatCounter
+                  value={peopleVehicle.seatsAvailable}
+                  onChange={(seatsAvailable) =>
+                    onPeopleVehicleChange({ ...peopleVehicle, seatsAvailable })
+                  }
+                />
+                <RideOptionSelector
+                  value={peopleVehicle.rideOption}
+                  onChange={(rideOption) =>
+                    {
+                      setTaxiDetailsPage("type");
+                      setRideConfirmChecked(false);
+                      setConfirmedRideOption(null);
+                      onPeopleVehicleChange({
+                        ...peopleVehicle,
+                        rideOption,
+                        vehicleType:
+                          normalizeRideOptionId(rideOption) === "taxi_partner_quote"
+                            ? getTaxiTypeLabel(peopleVehicle.taxiType)
+                            : getRideOption(rideOption).title,
+                      });
+                    }
+                  }
+                />
+                {isTaxiFlow ? (
+                  <TaxiTypeSelector
+                    peopleVehicle={peopleVehicle}
+                    onPeopleVehicleChange={onPeopleVehicleChange}
+                  />
+                ) : null}
+                <VehicleLightArt />
+              </>
+            )}
           </div>
 
           <div className="mt-auto pt-7">
@@ -2554,9 +2556,6 @@ function ReviewHeroCard({
             <span className="truncate">{peopleVehicle.bags} bags</span>
           </div>
         </dl>
-        <p className="mt-3 text-xs font-bold text-[var(--rp-muted-strong)]">
-          Flexibility {dateTime.flexibility}
-        </p>
       </div>
     </section>
   );
@@ -3493,7 +3492,6 @@ function RecurringPodReview({
           <p>{getRecurringWeekdaySummary(dateTime)}</p>
           <p>Starts {formatReviewDate(dateTime.recurringStartDate)}</p>
           <p>{getRecurringEndRuleSummary(dateTime)}</p>
-          <p>Flexibility: {dateTime.flexibility}</p>
         </div>
       </RecurringReviewCard>
 

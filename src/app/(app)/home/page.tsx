@@ -159,7 +159,7 @@ export default function HomePage() {
           Not the risk.
         </h1>
         <p className="mt-4 text-lg font-medium text-[var(--rp-muted-strong)]">
-          Locked seats. Protected payments. Fair splits.
+          Shared taxi pods. Taxi partner quotes. Review steps.
         </p>
         <SearchFilterBar />
       </section>

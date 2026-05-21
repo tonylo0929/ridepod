@@ -263,7 +263,7 @@ function SafetyCard() {
 
   return (
     <PremiumCard className="p-4">
-      <h2 className="text-base font-black text-white">RidePod money lock</h2>
+      <h2 className="text-base font-black text-white">RidePod seat commitment</h2>
       <div className="mt-3 grid gap-2">
         {items.map((item) => (
           <div key={item} className="flex items-center gap-2 text-sm font-semibold text-[#d7dee8]">

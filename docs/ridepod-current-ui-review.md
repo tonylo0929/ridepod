@@ -2,102 +2,110 @@
 
 ## 1. Executive Summary
 
-Overall rating: **Mostly ready** for guided closed beta, **needs cleanup** before unguided beta testing.
+Overall rating: **Needs cleanup before broader beta**.
 
-RidePod's current UI is strong on intent: the core product positioning is visible, Taxi Partner Quote is consistently framed as future beta/demo in most places, and safety/payment caveats are much better than earlier versions. The app now has enough surface area to run moderated tester sessions across Create Pod, join/lock, Taxi Partner Quote, settlement, admin review, and taxi partner dashboard flows.
+RidePod is now pointed in the right product direction. The main Create Pod flow is Taxi-first, Ride app is framed as Coming soon, and the Taxi Partner Quote flow now consistently uses shared taxi pod, licensed taxi partner, mock payment state, payout pending, dispute window, and manual review language.
 
-The biggest clarity risk is cognitive load. Many screens explain several concepts at once: max charge, fare cap, mock payment state, Stripe test mode, quote proof, receipt proof, payout pending, dispute window, and admin review. This is workable in a founder-led demo, but ordinary beta users may not know which action matters next.
+The biggest clarity risk is that older education, homepage, join, and money-protection surfaces still teach the previous RidePod model: money lock, protected payments, payment-authorized participants, Ride app / fixed quote, Taxi meter, and host reimbursement. Those legacy concepts are still valid fallback/internal modes, but they should not feel like the primary beta path now that Taxi is the main flow.
 
-The biggest trust risk is money wording that can sound more live than intended. Most high-risk wording has been removed, but phrases like "money lock", "protected payments", "payment-authorized", "payout is released", and "payout marked complete" still need careful treatment before a broader beta.
+The biggest trust risk is live-sounding money language. Most Taxi Partner Quote screens say no real dispatch/payment/payout, but global pages still use phrases such as money lock, protected payments, payment-authorized, and keep payment inside RidePod. Those may imply live payments before the legal/payment readiness gate is complete.
 
-No P0 beta blocker was found in this static review. The main P1 issues are navigation clarity, money terminology, dense create/settlement/admin screens, and making mock/test/live boundaries unmistakable on every money-related screen.
+No P0 blocker was found in this static review. The main P1 issues are legacy money wording, old mode education competing with Taxi-first positioning, dense Create Pod/settlement/admin screens, and a mobile nav hierarchy where Create is available but not always the dominant next action.
 
 Screens that should be simplified first:
+- Homepage / beta landing
+- How RidePod Works
+- Create Pod Review Pod
+- Guest quote acceptance
+- Settlement / dispute window
+- Admin Review
 
-1. Mobile app shell / navigation
-2. Create Pod
-3. Guest quote acceptance
-4. Settlement / dispute window
-5. Admin Review
-
-Recommended next implementation slice: **UI-FIX-1 — Navigation and money-copy cleanup**. It should address the duplicate sidebar/menu affordance, make Create the primary mobile action, and replace live-sounding payment/payout copy without changing business logic.
+Recommended next implementation slice: **UI-FIX-1 - Taxi-first copy and navigation cleanup**. Focus on replacing live-sounding payment language, making Taxi the single mental model on public/education surfaces, and keeping legacy Ride app / Taxi meter language behind demo/internal contexts.
 
 ## 2. Screen-by-screen Review
 
 ### Homepage / Beta Landing
 
-Purpose: Explain RidePod quickly and route users into create/join/demo paths.
+Purpose:
+Introduce RidePod and move users into the app.
 
 What works:
-- Clear first-position signal that RidePod is for planned shared rides, not instant ride-hailing.
-- "RidePod does not provide drivers" is present on info/beta pages.
-- Primary CTAs are visible and short.
+- Clearly states RidePod does not provide drivers.
+- Scheduled pods, not instant ride-hailing is helpful.
+- Create and find actions are visible.
 
 What is confusing:
-- "Planned ride pods with money lock" is memorable, but may sound like RidePod already holds money or provides escrow-like protection.
-- "Protected payments" and "payment-authorized" may imply live payment readiness.
+- The headline `Planned ride pods with money lock` does not match the current Taxi-first beta positioning.
+- The preview card says `Money lock ready` and `No booking until each seat is authorized`, which can imply live payment authorization.
+- Taxi-first is not the first-viewport story.
 
 Wording to shorten:
-- Replace repeated money-protection phrasing with a shorter beta-safe line: "Guests approve a max before the ride proceeds."
+- Current: `Planned ride pods with money lock.`
+- Suggested: `Shared taxi pods for planned rides.`
 
 CTA issues:
-- "Find a Ride Pod" and "Create Pod" are clear, but the mobile app shell later makes "Updates" more prominent than "Create".
+- `Find a Ride Pod` is fine, but `Create Pod` should become the primary Taxi-first CTA for founder-led beta.
 
 Trust / safety issues:
-- Payment protection copy needs tighter distinction between current mock/test state and future live payment.
+- Needs a short beta line: `Taxi-first beta. No real dispatch or payment yet.`
 
 Visual hierarchy issues:
-- Hero is readable, but money-protection claims compete with the core concept.
+- The old money-lock concept gets more visual weight than Taxi-first.
 
-Priority: P1
+Priority:
+P1
 
 Recommended fix:
-- Rename "money lock" language to "seat commitment" or "max-charge approval" until live payment terms are final.
+Make the hero Taxi-first and replace money-lock wording with mock/max-charge language.
 
 ### How RidePod Works
 
-Purpose: Explain RidePod roles, ride options, max charge, proof, and safety modes.
+Purpose:
+Explain roles, ride flow, money rules, safety modes, and beta limits.
 
 What works:
-- Strong explanation that RidePod does not provide drivers.
-- Ride app / fixed quote, Taxi meter, and Taxi partner quote are separated.
-- FAQ answers many likely beta questions.
+- Says RidePod does not provide drivers.
+- FAQ covers max charge, proof, disputes, refunds, and Taxi Partner Quote limits.
+- Taxi Partner Quote is described as beta and not live taxi dispatch.
 
 What is confusing:
-- The page is long and mixes product education with legal/risk disclaimers.
-- "What happens if proof is false or altered?" includes strong enforcement language that may feel legal-heavy for general users.
+- The page still presents Ride app / fixed quote, Taxi meter, and Taxi partner quote as equal options.
+- `Protected payments` and `payment-authorized` sound more live than current beta.
+- Legal/risk content is mixed with basic product education.
 
 Wording to shorten:
-- "RidePod helps users coordinate planned shared rides and manage the protected payment and settlement flow" can become "RidePod helps groups coordinate planned rides, approve max charges, and settle fairly."
+- Current: `RidePod helps users organize planned ride pods and manage the protected payment, coordination, and settlement flow.`
+- Suggested: `RidePod helps groups coordinate shared taxi pods and review quote/payment states in beta.`
 
 CTA issues:
-- Education page likely needs one clear next CTA at the end: Create, Join, or Try demo.
+- Needs one clear end CTA: `Create taxi pod`.
 
 Trust / safety issues:
-- Good caveats overall. Avoid making verification sound like safety assurance.
+- Strong enforcement wording around false proof should be softened for public education.
 
 Visual hierarchy issues:
-- FAQ density is high on mobile.
+- FAQ is dense on mobile and the Taxi-first path is not visually dominant.
 
-Priority: P2
+Priority:
+P1
 
 Recommended fix:
-- Split founder/legal FAQ content from beta-user quick education later. For now, keep but add a short "Start here" summary.
+Rewrite this page around the Taxi-first flow, with legacy modes moved to a future/internal modes section.
 
 ### Login / Register
 
-Purpose: Let users access protected RidePod actions.
+Purpose:
+Allow beta users to enter the app.
 
 What works:
-- Simple forms with clear error states.
-- Supabase fallback messaging is safe for local/demo mode.
+- Forms are short.
+- Register copy frames account creation before joining protected pods.
 
 What is confusing:
-- "Protected RidePod actions" is accurate but abstract.
-- Register does not explain whether this is beta/demo or whether email confirmation is required.
+- `Protected ride pods` may imply payment protection is live.
 
 Wording to shorten:
-- "Create a RidePod account before joining protected ride pods" can become "Create an account to join or create pods."
+- Suggested: `Create a RidePod account before joining beta ride pods.`
 
 CTA issues:
 - CTAs are clear.
@@ -106,636 +114,750 @@ Trust / safety issues:
 - No major issue found.
 
 Visual hierarchy issues:
-- Forms are clean and mobile readable.
+- Simple enough for beta.
 
-Priority: P3
+Priority:
+P2
 
 Recommended fix:
-- Add beta-safe auth helper copy later, if auth becomes part of tester onboarding.
+Swap protected for beta or shared taxi until live payment policy is ready.
 
 ### Profile / Verification / Safety Fields
 
-Purpose: Let users manage public identity, eligibility, verification, and trust settings.
+Purpose:
+Let users manage profile, eligibility, and public preview.
 
 What works:
-- Private/public split is explained.
-- Phone, gender identity, community, ID review, and safety notes are contextualized.
-- Public preview says private details are not shown publicly.
+- Private details are clearly marked as not public.
+- ID verification review says RidePod is not collecting ID documents yet.
+- Public preview is separated from private profile data.
 
 What is confusing:
-- "Gender identity" as a field may raise trust concerns unless users understand exactly how it affects Women-only eligibility.
-- "Request manual review" may sound like ID collection even though no ID document is collected in this slice.
+- Gender identity is used for eligibility but may need more explanation for Women-only mode.
+- Verification language should avoid feeling like a safety guarantee.
 
 Wording to shorten:
-- "Used only for safety eligibility, such as Women-only pods" is good but should be repeated near Women-only join gates.
+- Current: `Verification helps RidePod support safer matching. ID verification is not required for most pods. It may be used later for higher-trust pods.`
+- Suggested: `Manual verification is optional and may support future higher-trust pods.`
 
 CTA issues:
-- "Request manual review" is clear to internal testers, less clear to normal users.
+- `Request manual review` is clear.
 
 Trust / safety issues:
-- Good privacy note. Keep emphasizing that private details are not public.
+- Good: no upload HKID/passport/selfie copy found.
 
 Visual hierarchy issues:
-- Profile has many panels but is understandable.
+- Profile, trust, public preview, and debug source compete slightly.
 
-Priority: P1
+Priority:
+P2
 
 Recommended fix:
-- Add a short "What others can see" summary above sensitive fields in a future cleanup.
+Keep private/public distinction, but add one concise line explaining Women-only eligibility is about riders joining the pod.
 
 ### Create Pod
 
-Purpose: Create one-time or recurring shared ride pods.
+Purpose:
+Create a planned shared ride pod.
 
 What works:
-- Ride option cards are clear.
-- Taxi Partner Quote card correctly says future beta and no real taxi dispatch or payout yet.
-- Confirmation modal for Taxi Partner Quote is safety-aware.
+- Taxi-first flow is now present.
+- Route, schedule, people, taxi type, safety mode, money/review steps are organized.
+- Review tabs help chunk a long flow.
 
 What is confusing:
-- The flow asks users to understand pod type, route, time, ride option, max fare, safety mode, recurring setup, and payment/proof model in one creation path.
-- Some labels are product-internal: "booking fare cap", "protected booking", "host replacement", "minimum locked guests".
+- Legacy internal ride option constants and confirmation copy remain in the file; they are preserved, but future reviewers may mistake them for active primary flow.
+- The flow still contains many concepts: schedule, seats, taxi type, luggage, accessibility, safety, quote, payment status, and review.
 
 Wording to shorten:
-- "Payout is released after ride completion and dispute window review" should be future/demo phrased.
+- Current Review Pod supporting copy is good but repeated beta/payment notes could be reduced.
+- Suggested: one persistent beta note per screen rather than several repeated notes.
 
 CTA issues:
-- Next-step CTA is generally clear, but the amount of setup before value is visible may cause drop-off.
+- `Continue` is generic across multiple steps.
+- Final `Create taxi pod` is strong.
 
 Trust / safety issues:
-- Avoid live-sounding payout/payment phrases in review cards.
+- Good: Taxi Partner Quote review says no real dispatch/payout.
 
 Visual hierarchy issues:
-- Dense forms and explanatory cards may be heavy on mobile.
+- Review Pod is still dense on mobile, especially money and safety sections.
 
-Priority: P1
+Priority:
+P1
 
 Recommended fix:
-- Create a simplified beta Create Pod path that highlights one primary next action per step and moves deeper explanations into collapsible help.
+Keep the flow, but simplify Review Pod into a one-screen Taxi summary with quote process, taxi needs, who can join, and create CTA.
 
-### Ride Option Selection
+### Ride Category Selection
 
-Purpose: Let organizers choose ride app / fixed quote, taxi meter, or taxi partner quote.
+Purpose:
+Choose the main ride category.
 
 What works:
-- Three modes are distinct.
-- Taxi Partner Quote says licensed taxi partner and future beta.
+- Main flow shows only Taxi and Ride app.
+- Taxi is selectable.
+- Ride app is disabled/Coming soon.
+- Copy says RidePod groups riders first, then helps request the right ride.
 
 What is confusing:
-- Users may not understand why "Ride app / fixed quote" needs quote screenshot while Taxi Partner Quote uses partner quote.
-- Taxi meter's "no upfront quote" needs a stronger explanation of fare cap/max charge.
+- No major issue found.
 
 Wording to shorten:
-- "Ride app / fixed quote" may become "Ride app quote" for user-facing surfaces, with fixed quote as helper text.
+- Current copy is already short.
 
 CTA issues:
-- Selection CTA is clear.
+- Taxi card is clear; disabled Ride app state is understandable.
 
 Trust / safety issues:
-- Good driver/provider separation.
+- Good: Ride app does not appear live.
 
 Visual hierarchy issues:
-- Strong enough.
+- Good: two-card choice is simple.
 
-Priority: P2
+Priority:
+P3
 
 Recommended fix:
-- Add a compact comparison row: who quotes, who books, what proof is needed.
+No immediate fix. Consider adding `Taxi-first beta` as a tiny page badge.
 
-### Ride App / Fixed Quote Flow
+### Taxi Type Selection
 
-Purpose: Host uploads quote before booking and receipt after ride.
+Purpose:
+Collect taxi type, luggage, and accessibility needs.
 
 What works:
-- The app consistently frames external booking by host.
-- Receipt verification and fare-cap language are present.
+- Six taxi types are clear: Standard, Electric, Luggage-friendly, Large / van, Comfort, Accessible taxi.
+- Helper says taxi type requests depend on taxi partner availability.
+- Luggage/accessibility controls are practical and compact.
+- Women-only note avoids female driver guarantee.
 
 What is confusing:
-- Quote screenshot vs final receipt proof may blur for users.
-- "Protected booking unlocks" is product-heavy.
+- `Accessible taxi` can still be interpreted as guaranteed unless the availability note stays visible.
 
 Wording to shorten:
-- Use "Upload quote before booking" and "Upload receipt after ride" wherever possible.
+- Current helper is good.
 
 CTA issues:
-- "Upload quote" and "Upload receipt" are clear.
+- Continue is acceptable.
 
 Trust / safety issues:
-- Proof certification copy is strong; keep it but avoid terms like "fake" in user-facing enforcement copy.
+- Good: no exact vehicle or female driver guarantee.
 
 Visual hierarchy issues:
-- Settlement/proof screens are dense.
+- Taxi type cards plus luggage controls may feel long but acceptable.
 
-Priority: P2
+Priority:
+P2
 
 Recommended fix:
-- Add one-line proof lifecycle on quote/receipt screens.
+Keep availability helper near selected taxi type on mobile.
 
-### Taxi Meter Flow
+### Luggage / Accessibility
 
-Purpose: Support rides without upfront quote, using meter proof after ride.
+Purpose:
+Capture operational needs for the taxi quote.
 
 What works:
-- "No upfront quote. Meter proof after ride" is crisp.
-- Meter proof status labels are readable.
+- Luggage count, large luggage, extra space, wheelchair-accessible taxi, and step-free support are understandable.
+- Values feed later summaries.
 
 What is confusing:
-- How fare cap is chosen may not be obvious.
-- Users may not know what happens if meter fare exceeds cap.
+- `Wheelchair-accessible taxi requested` may need a when-supported suffix.
 
 Wording to shorten:
-- "Meter proof submitted. RidePod will review it before settlement" is clear enough.
+- Suggested: `Wheelchair-accessible taxi, if supported.`
 
 CTA issues:
-- "Upload meter proof" is clear.
+- No separate CTA issue.
 
 Trust / safety issues:
-- Needs explicit "no automatic above-cap charge" wherever cap is shown.
+- Needs consistent `depends on taxi partner availability` wherever accessible taxi is displayed.
 
 Visual hierarchy issues:
-- Similar density risk as fixed quote.
+- Fields are clear enough.
 
-Priority: P2
+Priority:
+P2
 
 Recommended fix:
-- Add a short max-charge helper to Taxi Meter cards.
+Add availability wording to accessibility rows in every summary surface.
+
+### Safety / Access Mode
+
+Purpose:
+Control who can join the shared pod.
+
+What works:
+- Safety/access chips include Women-only, Mixed pod, Verified-only, Community-only, High-trust-only, and Invite-only.
+- Taxi-first screens avoid gender identity exposure.
+- Women-only copy correctly says it controls who can join the pod and does not guarantee a female taxi driver.
+
+What is confusing:
+- How Verified-only differs from ID verification/manual review may not be obvious.
+
+Wording to shorten:
+- Suggested: `Trust modes control rider eligibility only.`
+
+CTA issues:
+- No major issue.
+
+Trust / safety issues:
+- Avoid safer-matching wording becoming a safety guarantee on public pages.
+
+Visual hierarchy issues:
+- Too many chips can become noisy.
+
+Priority:
+P2
+
+Recommended fix:
+Use one Who can join row with chips and one short note.
+
+### Review Pod
+
+Purpose:
+Confirm the pod before creation.
+
+What works:
+- Taxi-first wording appears: Shared taxi pod, Taxi partner quote, Taxi needs, How quote works, Payment status.
+- Copy says no real taxi dispatch/payout.
+- CTA uses `Create taxi pod`.
+
+What is confusing:
+- Payment status may feel early before quote request/payment acceptance.
+- Legacy Money Protection copy remains for fallback modes, which is fine but should stay hidden in Taxi-first.
+
+Wording to shorten:
+- Current: `RidePod groups riders first, then requests one shared quote from a licensed taxi partner.`
+- Suggested: `RidePod requests one shared quote after guests join.`
+
+CTA issues:
+- Final CTA is good.
+
+Trust / safety issues:
+- Good: mock payment/no live payout language is present.
+
+Visual hierarchy issues:
+- Cards are useful but could be shorter.
+
+Priority:
+P1
+
+Recommended fix:
+Make Payment status a smaller beta note until quote exists.
 
 ### Taxi Partner Quote Flow
 
-Purpose: Organizer requests one shared pod quote from a licensed taxi partner.
+Purpose:
+Let organizer request quote, receive quote, send guests to accept, and proceed to pickup.
 
 What works:
-- Copy repeatedly says Taxi Partner Quote is demo only.
-- Quote received, guest acceptance, above-cap, and payout math are visible.
-- "No real taxi dispatch or payout yet" appears in the organizer quote card.
+- `Taxi quote needed`, `Waiting for quote`, `Taxi quote received`, `Guests accepting`, and `Ready for pickup` labels are clear.
+- Quote breakdown shows fare share, platform fee, guest charge, and taxi partner payout.
+- Demo/no real dispatch/payout language appears.
 
 What is confusing:
-- "Mock payment" badge may be too technical for guests.
-- Organizer may not know whether "Request quote" sends anything real.
+- `Simulate quote` is useful for demo but should be hidden from non-demo users.
+- The organizer may need clearer separation between request quote and send quote to guests.
 
 Wording to shorten:
-- "Display/mock only. No real charge or payout is created" is good. Repeat similar phrasing wherever quote action appears.
+- Suggested: `Request quote` can stay `Request taxi quote` in main CTA.
 
 CTA issues:
-- "Simulate quote" is good in demo mode, but should stay hidden outside founder/tester sessions.
+- Good overall. `Simulate quote` should remain demo-only.
 
 Trust / safety issues:
-- Strong overall. Watch "Taxi partner payout" amount labels because they can imply money movement.
+- Good: no real payout/payment promises.
 
 Visual hierarchy issues:
-- Money breakdown is useful but visually dense.
+- Quote card is fairly dense but scannable.
 
-Priority: P1
+Priority:
+P2
 
 Recommended fix:
-- Add a compact beta banner above every Taxi Partner Quote action: "Demo action. No provider is contacted."
+Add a demo badge next to any simulation action.
 
 ### Guest Quote Acceptance
 
-Purpose: Let guests review and accept/decline a taxi partner quote.
+Purpose:
+Let guests review and accept/decline a taxi partner quote.
 
 What works:
-- Money breakdown is clear.
-- Above-cap warning is visible.
-- Stripe test mode says no live money.
-- Mock fallback remains available.
+- Shows quote, fare share, platform fee, guest charge, and accepted guest count.
+- Stripe test mode copy clearly says no live money.
+- Mock fallback says beta mock payment state.
 
 What is confusing:
-- Guests can see both "Accept quote with test card" and "Accept quote" mock path. That is useful for development but confusing for testers.
-- "Mock payment state: Authorized" can sound like money was actually authorized.
+- Stripe test mode and mock payment state are developer/demo concepts; real beta testers may not understand why both exist.
+- `Accept higher quote` requires careful explanation.
 
 Wording to shorten:
-- Replace "Mock payment state: Authorized" with "Demo acceptance recorded" for user-facing mode.
+- Suggested: `Accept quote in demo` for mock mode.
 
 CTA issues:
-- Two acceptance paths create uncertainty.
+- `Accept quote` is clear; test-card CTA should only appear when test mode is deliberately enabled.
 
 Trust / safety issues:
-- Ensure testers know Stripe test mode uses test cards only and no live money.
+- Good: no real money charged in test mode copy.
 
 Visual hierarchy issues:
-- Test payment section is detailed; good for PAY testing, too much for regular guest beta.
+- Money rows are strong; payment-state explanation could be shorter.
 
-Priority: P1
+Priority:
+P1
 
 Recommended fix:
-- Gate Stripe test payment UI behind a payment-test scenario and show only one primary accept path to normal beta testers.
+Use one of two modes per session: mock accept or Stripe test accept, not both visibly.
 
 ### My Pods / Host Dashboard
 
-Purpose: Show active pods, recurring instances, and next actions.
+Purpose:
+Show pod state and next action.
 
 What works:
-- Status overview and next action cards are useful.
-- Recurring rides show each instance separately.
-- Taxi Partner Quote statuses avoid raw enum names.
+- Taxi-first cards show Shared taxi pod, Taxi partner quote, Taxi type, Taxi needs, and beta note.
+- Next action cards use specific CTA labels such as Request taxi quote, Review quote, View pickup, View settlement.
+- Status labels are human-friendly.
 
 What is confusing:
-- Status overview can show many abstract states at once.
-- "Payout after dispute window in this future beta prototype" is close but should say no real payout.
+- Host Dashboard still includes broader payment/proof/reconciliation concepts that can distract from Taxi-first.
+- Old fallback modes are visible in mock data and admin fixtures.
 
 Wording to shorten:
-- "Settlement complete. Payout marked complete" should be changed to demo-safe closed wording.
+- Suggested: keep each card to one status line and one next action.
 
 CTA issues:
-- "View ride", "Upload quote", "View settlement", and "Open chat" are understandable.
+- Good: CTAs are action-specific.
 
 Trust / safety issues:
-- Payout status copy must avoid implying real transfer.
+- Good: no RidePod driver or real payout wording found.
 
 Visual hierarchy issues:
-- Status cards may be visually busy for recurring pods.
+- Host Dashboard is information-rich; key next action should stay at top.
 
-Priority: P1
+Priority:
+P2
 
 Recommended fix:
-- Normalize recurring status helper text and make "next action" visually dominant.
+Create a Taxi-first dashboard filter or default grouping.
 
 ### Taxi Partner Dashboard
 
-Purpose: Demo how a licensed taxi partner could quote, accept, coordinate, complete, and view payout state.
+Purpose:
+Show mock partner profile, incoming requests, quote form, accepted jobs, pickup, completion, and payout status.
 
 What works:
-- Route `/taxi-partner` has clear title and subtitle.
-- Demo mode guard is present.
-- Partner profile is clearly mock and does not collect license, plate, ID, or bank details.
-- Incoming requests and active rides expose safe operational fields only.
-- Accept, decline, mark arrived, start ride, and completion flows include demo/no-payout copy.
+- Very clear demo framing: Future beta prototype, RidePod does not provide drivers, taxi partners are external licensed providers, no real dispatch/payout.
+- Mock profile avoids license, plate, ID, and bank collection.
+- Incoming requests are scannable.
+- Quote form and pickup checklist are clear.
+- Live GPS copy says it is not enabled.
 
 What is confusing:
-- Dashboard shows many states at once; first-time taxi partner testers may not know which scenario to inspect.
-- "Release payout" action label in admin/mock contexts can sound live unless always paired with demo mode.
+- The page is large and acts like several flows at once: queue, quote, active rides, pickup, payout, review.
+- `Payout releases after the dispute window` appears in a demo payout card and may sound automatic.
 
 Wording to shorten:
-- Keep partner tester copy focused: "Review request", "Submit quote", "Accept job", "Mark arrived", "Start ride", "Complete ride".
+- Current: `Payout releases after the dispute window if no issue is reported.`
+- Suggested: `Payout stays pending until review clears.`
 
 CTA issues:
-- Partner dashboard CTAs are clear but numerous.
+- CTAs are clear: Quote this pod, View details, Mark arrived, Start ride, Mark completed, View payout.
 
 Trust / safety issues:
-- Good external licensed provider framing.
+- Good: no phone/email/private profile exposure found.
 
 Visual hierarchy issues:
-- Desktop/tablet layout is fine; mobile may be long.
+- Active ride cards are crowded but demo-friendly.
 
-Priority: P2
+Priority:
+P1
 
 Recommended fix:
-- For demos, add a moderator sequence in docs or scenario cards rather than changing UI immediately.
+Replace release wording with stays pending / can be marked ready in demo, and split dashboard sections with stronger headings.
 
 ### Pickup Coordination Placeholder
 
-Purpose: Show post-acceptance pickup status without GPS.
+Purpose:
+Coordinate pickup without GPS.
 
 What works:
-- "No live GPS is shared" is explicit.
-- Pickup status, pickup point, taxi type, guest count, and "I'm here" are simple.
+- Shows pickup/dropoff, time, guest count, taxi type, luggage/accessibility.
+- Status chips and actions are clear.
+- Helper says live GPS is not enabled.
+- Contact organizer is a placeholder with no phone number exposure.
 
 What is confusing:
-- "Contact organizer" placeholder on partner side should not imply phone or real messaging if not wired.
+- `Contact organizer placeholder` is clearly demo but may feel unfinished to testers.
 
 Wording to shorten:
-- "Future: show taxi partner location and pickup progress here" is clear.
+- Suggested: `Contact organizer - placeholder.`
 
 CTA issues:
-- "I'm here" is understandable, but users may wonder who sees it.
+- Mark arrived and Start ride are clear.
 
 Trust / safety issues:
-- No GPS permission is requested.
+- Good: no GPS permission or live tracking promise.
 
 Visual hierarchy issues:
-- Good.
+- Good enough.
 
-Priority: P2
+Priority:
+P2
 
 Recommended fix:
-- Add "local demo only" helper near "I'm here" if testers misunderstand it.
+Add a short demo label to the contact placeholder button.
 
 ### Completion / Payout Pending
 
-Purpose: Mark taxi partner ride completed in demo and show payout pending/dispute window.
+Purpose:
+Let taxi partner mark ride completed and see payout status.
 
 What works:
-- Completion modal requires a checkbox.
-- "No real payout is sent" appears in the modal and payout card.
-- Dispute window is explained.
+- Complete ride card says demo mode and no real payout.
+- Confirmation modal requires checkbox.
+- Payout pending, held, ready, denied, closed states exist.
 
 What is confusing:
-- "Driver payout amount" appears in one modal even though product copy prefers Taxi partner, not driver.
-- Organizer/guest screens may not always distinguish payout status from actual payout.
+- Some payout copy uses releases, which sounds automated/live.
+- Closed and released in demo mode need careful distinction from real payout.
 
 Wording to shorten:
-- Use "Taxi partner payout amount" instead of "Driver payout amount".
+- Suggested: `Payout pending until dispute window/manual review clears.`
 
 CTA issues:
-- "Simulate ride completed" is clear for demo but less natural for a partner tester. "Mark completed" is better on partner dashboard.
+- `Mark completed` is clear.
 
 Trust / safety issues:
-- One "Driver payout amount" label conflicts with copy rules.
+- Must avoid implying clicking complete sends payout.
 
 Visual hierarchy issues:
-- Money rows are useful but many.
+- Money rows are clear.
 
-Priority: P1
+Priority:
+P1
 
 Recommended fix:
-- Replace remaining "Driver payout" user-facing labels with "Taxi partner payout" in a future copy cleanup.
+Replace payout-release language with pending/demo-ready language.
 
 ### Settlement / Dispute Window
 
-Purpose: Upload final receipt/meter proof, view split, and understand dispute window.
+Purpose:
+Show final split, proof status, dispute window, and issue reporting.
 
 What works:
-- Receipt and meter proof verification are separated.
-- Final share and fare breakdown are visible.
-- Dispute window exists as a concept across settlement states.
+- Dispute window is explained.
+- Guests can report issues.
+- Money rows are detailed.
 
 What is confusing:
-- Settlement combines proof upload, fare editing, split math, dispute, and payout/reimbursement concepts.
-- "Host reimbursement" may need a short beta note that live reimbursement is not enabled unless stated.
+- Legacy settlement surfaces focus on host reimbursement/receipt proof rather than Taxi-first quote acceptance.
+- `Settlement final. Payout can be processed.` is better than payout completed, but still sounds near-live.
 
 Wording to shorten:
-- Keep "Upload final receipt" and "Review final split" as primary language.
+- Suggested: `Case closed in app state` for demo states.
 
 CTA issues:
-- CTAs are mostly clear.
+- `Report an issue` and `View settlement details` are clear.
 
 Trust / safety issues:
-- Any payout/reimbursement wording should be reviewed for live-money implication.
+- Needs a visible no-live-payment note in Taxi-first settlement views.
 
 Visual hierarchy issues:
-- Dense on mobile due to editable money fields plus split cards.
+- Settlement details are dense on mobile.
 
-Priority: P1
+Priority:
+P1
 
 Recommended fix:
-- Make dispute window and "no live money" status visibly attached to settlement summary.
+Create a Taxi Partner Quote settlement variant with quote, accepted guests, dispute window, and mock payment only.
 
 ### Admin Review
 
-Purpose: Let internal/admin users review proof, disputes, above-cap cases, ID review, taxi partner payouts, payment simulation, and evidence packages.
+Purpose:
+Let admin review proof/disputes/payment simulation/evidence.
 
 What works:
-- "Internal queue" framing is good.
-- Filters and case cards are practical.
-- Manual review and payout hold language is mostly safe.
-- Evidence package integration is visible.
+- Queue and case detail are robust.
+- Payment simulation says Stripe test mode and no real money.
+- Evidence package, payment event history, and manual review controls are clear.
+- Admin actions avoid harsh language.
 
 What is confusing:
-- Admin Review has many powerful actions in one modal: proof decisions, taxi partner actions, payment simulation, evidence package.
-- Some status values are still close to internal model language.
+- The case detail has many sections and can be hard to scan.
+- Admin review mixes proof review, ID verification, payout review, payment simulation, and evidence package.
 
 Wording to shorten:
-- Use "Demo payout ready" instead of "Release payout" or "Payout ready" where no real payout exists.
+- Suggested: `Demo-only action. No money moves.`
 
 CTA issues:
-- Multiple admin actions need grouping by outcome: proof, payment, payout, dispute.
+- Actions are clear but numerous.
 
 Trust / safety issues:
-- Admin route must be protected before real ops. For closed demo, keep "Internal/demo only" framing.
+- Good: no raw card/clientSecret display found in UI scan.
 
 Visual hierarchy issues:
-- High density; acceptable for internal tool but not for untrained users.
+- Needs stronger order: case summary, risk, evidence, payment state, actions.
 
-Priority: P1
+Priority:
+P2
 
 Recommended fix:
-- Add a small admin mode banner and group actions by category in a later UI cleanup.
+Add a compact case header with what admin must decide.
 
 ### Updates / Notifications
 
-Purpose: Show ride-instance notifications and next actions.
+Purpose:
+Show derived/mock ride notifications and next actions.
 
 What works:
-- Notification cards are compact and actionable.
-- Unread/all tabs are clear.
-- Derived taxi partner notifications have human labels.
+- Taxi-first notification copy is aligned: Taxi quote needed/requested/received, Guests accepting quote, Payout pending, Payout held, Payout ready.
+- CTAs are specific.
 
 What is confusing:
-- In the current mobile screenshots, the page appears to show both the global menu button and an extra page/menu control, creating a double-sidebar impression.
-- User feedback says "Updates shall be Create", suggesting the bottom nav priority is wrong for beta.
-- The page title "Updates" may not be as central as "Create" in the main tab bar.
+- Page may show many mock notifications at once, which can overwhelm testers.
+- Earlier UI screenshots showed duplicate menu affordances and many unread updates; that could distract from the flow.
 
 Wording to shorten:
-- "Supabase updates are unavailable; using mock ride notifications" is accurate but developer-like.
+- Current notification copy is short enough.
 
 CTA issues:
-- Notification CTAs are good; navigation CTA hierarchy needs review.
+- Good, assuming targets are valid/placeholders.
 
 Trust / safety issues:
-- Mock fallback note should be demo-only and less alarming to testers.
+- Good: no private details in notification copy found.
 
 Visual hierarchy issues:
-- Double menu affordance is the clearest visual issue found from screenshot review.
+- Unread count can dominate the screen.
 
-Priority: P1
+Priority:
+P2
 
 Recommended fix:
-- Make Create the primary mobile nav action if that is the product direction, and remove duplicate sidebar/menu affordance on Updates.
+For beta sessions, filter notifications by selected scenario/current role.
 
 ### Public Member Preview
 
-Purpose: Show safe public member information and allow concern reporting.
+Purpose:
+Show what other pod members can see.
 
 What works:
-- Private fields are explicitly hidden.
-- Report concern is available.
-- No phone/email/gender identity is exposed in the preview.
+- Explicitly states private details like phone, email, gender identity, and ID review are not public.
+- Report concern action is present.
 
 What is confusing:
-- "Verified badges help RidePod support safer matching" is safe but may still be over-trusted by users.
+- Public/private distinction is good; no major issue.
 
 Wording to shorten:
-- Good as-is.
+- Current privacy line is good.
 
 CTA issues:
-- "Report concern" is clear.
+- `Report concern` is clear.
 
 Trust / safety issues:
-- Good privacy stance.
+- Good privacy posture.
 
 Visual hierarchy issues:
-- Good.
+- Public preview is readable.
 
-Priority: P2
+Priority:
+P3
 
 Recommended fix:
-- Keep current privacy copy; test whether users understand what public badges mean.
+No urgent fix.
 
 ### Report Concern Flow
 
-Purpose: Let users submit private safety/member concerns for manual review.
+Purpose:
+Let members report safety/member concerns privately.
 
 What works:
-- Reports are private and manually reviewed.
+- Says reports are private and reviewed manually.
 - Emergency disclaimer is present.
-- The form avoids criminal/fraud wording.
+- The copy avoids crime/fraud conclusions.
 
 What is confusing:
-- "Evidence upload coming later" may be fine for beta but could frustrate users after an actual concern.
+- Users may not know what happens after submission.
 
 Wording to shorten:
-- "Tell RidePod what happened" is good.
+- Suggested: `RidePod reviews reports manually. Use emergency services for emergencies.`
 
 CTA issues:
-- "Submit report" is clear.
+- Submit issue / report action is understandable.
 
 Trust / safety issues:
-- Good emergency disclaimer.
+- Good: no emergency-service overpromise.
 
 Visual hierarchy issues:
-- Good modal structure.
+- Form is direct.
 
-Priority: P2
+Priority:
+P2
 
 Recommended fix:
-- For beta, make sure moderators explain that report flow is not emergency support.
+Add a simple post-submit state expectation: `We may ask for more info.`
 
 ### Beta Scenario Switcher
 
-Purpose: Let founder/testers jump into prepared flows.
+Purpose:
+Let founder/demo moderator jump through demo routes.
 
 What works:
-- Demo mode guard is clear.
-- Scenario cards show route, role, primary status, and notes.
-- "Closed beta only" says mock states and no live payments/payouts.
+- Demo mode guard exists.
+- Lists useful routes for beta testing.
 
 What is confusing:
-- Route paths are shown in developer style, which is okay for founder/moderator but not general testers.
+- It is operator-facing, so not a major user concern.
 
 Wording to shorten:
-- "Recommended route" could be "Demo route" for non-technical users.
+- No urgent issue.
 
 CTA issues:
-- Scenario actions are likely clear.
+- Route buttons are fine.
 
 Trust / safety issues:
-- Good demo-only framing.
+- Should stay hidden unless demo mode is enabled.
 
 Visual hierarchy issues:
-- Good for internal/demo use.
+- Good enough for internal tool.
 
-Priority: P3
+Priority:
+P3
 
 Recommended fix:
-- Keep as internal demo tooling.
+Keep demo-mode gate.
 
 ## 3. Key UX Questions
 
 1. Does user understand RidePod does not provide drivers?
-   - Mostly yes. This is clear on info, beta, Taxi Partner Dashboard, and Taxi Partner Quote copy. It should also be visible near create/join decision points.
+   - Mostly yes. It is clear on landing/info/taxi partner pages, but should be repeated once in Taxi-first create/review for new users.
 
 2. Does user understand organizer vs taxi partner?
-   - Partly. Taxi Partner Dashboard is clear. Organizer/guest flows may still need a compact role explainer: organizer forms pod, taxi partner quotes/accepts job, RidePod coordinates state.
+   - Mostly. Host/organizer and taxi partner roles are visible, but older host-books-externally language competes with Taxi Partner Quote.
 
-3. Does user understand ride app / fixed quote vs taxi meter vs taxi partner quote?
-   - Mostly yes in the ride option cards. The proof difference needs more reinforcement.
+3. Does user understand Taxi is the main flow?
+   - Yes in Create Pod. Not yet across homepage/how-it-works.
 
-4. Does user understand quote vs receipt/meter proof?
-   - Partly. The terms are present, but first-time users may not understand the sequence without a one-line lifecycle.
+4. Does user understand Ride app is coming soon?
+   - Yes in the ride category screen. It is less clear in older info/demo pages where Ride app / fixed quote still appears as a peer mode.
 
-5. Does user understand max charge / fare cap?
-   - Partly. Max charge and fare cap appear often, but the distinction between approved max, quote amount, final fare, and above-cap approval is heavy.
+5. Does user understand taxi type selection?
+   - Yes. The options are concrete and the availability caveat is present.
 
-6. Does user understand Taxi Partner Quote is demo-only?
-   - Yes in most Taxi Partner Quote and Taxi Partner Dashboard surfaces.
+6. Does user understand taxi partner quote?
+   - Mostly. The quote process is clear in Review Pod and Dashboard; How RidePod Works should be updated to match.
 
-7. Does user understand no real payout/payment yet where relevant?
-   - Mostly. Stripe test mode and taxi partner cards are explicit. Some generic settlement/host dashboard phrasing should be tightened.
+7. Does user understand guests must accept the quote?
+   - Yes in Review Pod, notifications, and quote acceptance surfaces.
 
-8. Does user understand dispute window?
-   - Partly. The concept is present, but needs a clearer "what can happen during this window" summary on settlement and payout screens.
+8. Does user understand max charge / fare cap?
+   - Partly. Legacy money screens explain it, but the concept is still dense and may distract from Taxi Partner Quote.
 
-9. Does user know next action on each screen?
-   - Usually yes, but Create Pod, Admin Review, and Guest Quote Acceptance have too many competing actions/states.
+9. Does user understand no real payment / payout yet?
+   - Yes on Taxi Partner Quote screens. Less clear on older money-lock/protected-payment surfaces.
 
-10. Does admin understand what to review and why?
-    - Moderated/admin users likely can. Untrained admins need clearer grouping by proof, dispute, payment, and payout action.
+10. Does user understand dispute window?
+    - Mostly. It appears in completion/settlement/payout screens, but first-time users may need one shorter explanation.
 
-11. Does taxi partner dashboard feel clearly mock/demo?
-    - Yes. It says Future beta prototype, Demo mode, no real dispatch, and no real payout.
+11. Does user know next action on each screen?
+    - Mostly. Create/quote/dashboard CTAs are now specific; notifications may overwhelm when too many mock updates exist.
 
-12. Does profile/member preview hide private data?
-    - Yes. Public preview hides phone, email, gender identity, ID review, and private safety notes.
+12. Does admin understand what to review and why?
+    - Mostly. Admin Review has the evidence, but needs a stronger case-decision hierarchy.
+
+13. Does taxi partner dashboard feel clearly mock/demo?
+    - Yes. It repeatedly says future beta, demo, no real dispatch, no real payout, and no GPS.
+
+14. Does profile/member preview hide private data?
+    - Yes. Public preview explicitly excludes phone, email, gender identity, and ID review.
 
 ## 4. Priority Fix Table
 
 | Priority | Screen | Issue | Why it matters | Suggested fix | Estimated effort |
-| --- | --- | --- | --- | --- | --- |
-| P1 | Mobile navigation / Updates | User feedback indicates Updates should be Create; screenshots show duplicate menu/sidebar affordance. | Main beta action may be hidden, and duplicate menu controls reduce trust. | Make Create the primary mobile nav action if confirmed; remove duplicate menu control on Updates. | Medium |
-| P1 | Homepage / beta landing | "Money lock", "protected payments", and "payment-authorized" sound live/payment-heavy. | Can imply payment custody before legal/payment readiness. | Replace with "seat commitment", "max-charge approval", or "mock/test payment state" where relevant. | Small |
-| P1 | Create Pod | Too many concepts in one path. | Testers may abandon before understanding value. | Reduce visible helper text per step; make one primary next action dominant. | Medium |
-| P1 | Guest quote acceptance | Test card and mock accept paths appear together. | Users may not know which acceptance path to use. | Show one acceptance path per scenario: mock beta or Stripe test mode. | Medium |
-| P1 | Settlement / Host Dashboard | "Payout marked complete" and similar copy can imply real payout. | Live-money confusion is a trust/legal risk. | Replace with "Settlement closed in demo state" or "Payout status closed". | Small |
-| P1 | Taxi Partner completion | "Driver payout amount" appears in a taxi partner flow. | Conflicts with "Do not call taxi partners RidePod drivers" positioning. | Rename to "Taxi partner payout amount". | Small |
-| P1 | Admin Review | Too many admin/payment/payout actions in one modal. | Increases risk of wrong demo action and reviewer confusion. | Group actions by Proof, Dispute, Payment simulation, Payout demo. | Medium |
-| P2 | How RidePod Works | Long FAQ mixes user education and legal-risk content. | Mobile users may not find the key answer. | Add a short "Start here" summary or split advanced FAQ later. | Medium |
-| P2 | Taxi meter | Fare cap / above-cap result is not instantly obvious. | Users need to trust meter mode before joining. | Add "You cannot be charged above approved max unless you approve more." | Small |
-| P2 | Public profile | Verified badges could be over-trusted. | Verification should not imply safety guarantee. | Test comprehension; add "badges do not guarantee safety" only if needed. | Small |
+|---|---|---|---|---|---|
+| P1 | Homepage / beta landing | Money lock is still the headline. | It implies live money custody and does not reflect Taxi-first. | Change hero to shared taxi pod / Taxi-first beta language. | Small |
+| P1 | How RidePod Works | Old three-mode model still reads like the main product. | Users may think Ride app and Taxi meter are current primary flows. | Make Taxi-first the main story; move old modes to future/internal section. | Medium |
+| P1 | Guest quote acceptance | Mock payment and Stripe test mode can both appear conceptually. | Testers may confuse mock/test/live payment. | Pick one session mode and label it clearly. | Medium |
+| P1 | Taxi Partner Dashboard payout | Payout releases copy sounds automatic/live. | Could imply real payout or payout guarantee. | Use `Payout stays pending until review clears.` | Small |
+| P1 | Settlement / dispute | Legacy host reimbursement/proof flow dominates settlement language. | Taxi-first users may not understand quote/dispute/payout path. | Add Taxi Partner Quote settlement variant. | Medium |
+| P2 | Create Pod Review | Too much explanatory copy. | Mobile users may miss the final action. | Reduce to one Taxi summary, one quote rule card, one beta note. | Medium |
+| P2 | Admin Review | Case detail has many dense sections. | Admin may not know the decision needed first. | Add compact decision-needed header. | Medium |
+| P2 | Updates | Many mock updates and unread count can dominate. | Testers may be pulled away from the main flow. | Filter by scenario/role during beta sessions. | Small |
+| P2 | Profile / safety | Verification and Women-only eligibility need careful distinction. | Avoid implying verification guarantees safety. | Add concise rider-eligibility language. | Small |
+| P3 | Beta scenario switcher | Internal route list is operator-facing but broad. | Low risk. | Keep demo-mode gated. | Small |
 
 ## 5. Risky Wording Table
 
-Static search covered `src` and `docs` for high-risk terms. Most exact risky phrases now appear only in docs as "avoid" lists or QA checklists, not active app copy.
-
 | File / screen | Current wording | Risk | Suggested replacement | Priority |
-| --- | --- | --- | --- | --- |
-| `src/components/landing-page.tsx` / Homepage | "money lock" | Can sound like escrow or live payment custody. | "seat commitment" or "max-charge approval" | P1 |
-| `src/components/ridepod-info-pages.tsx` / How it works | "Protected payments" | Can imply live money protection. | "Max-charge approval" for beta copy | P1 |
-| `src/components/ridepod-info-pages.tsx` / FAQ | "payment-authorized" | Can imply real authorization in closed beta. | "accepted in mock/test payment state" where beta-specific | P2 |
-| `src/components/create-pod-choose-type.tsx` / Create review | "Payout is released after ride completion and dispute window review." | Sounds like live payout behavior. | "In a future live version, payout would be reviewed after completion and the dispute window." | P1 |
-| `src/components/ui.tsx` / Host Dashboard status | "Settlement complete. Payout marked complete." | Can imply real payout completed. | "Settlement closed in app state." | P1 |
-| `src/components/ui.tsx` / recurring overview | "Payout after dispute window in this future beta prototype." | Missing "no real payout" caveat. | "No real payout yet; payout status follows dispute window in demo." | P1 |
-| `src/components/taxi-partner-completion-card.tsx` / Completion modal | "Driver payout amount" | Uses driver wording in Taxi Partner flow. | "Taxi partner payout amount" | P1 |
-| `src/components/settlement-page.tsx` / Settlement | "Host reimbursement is based on verified..." | Accurate, but may imply real reimbursement is enabled. | "Future host reimbursement is based on verified..." or add beta no-live-money note. | P2 |
-| `src/components/money-safety-ui.tsx` / Proof certification | "quote screenshot is real, accurate, unaltered" | "Real" is okay but legal-heavy; could invite adversarial proof framing. | "accurate, unaltered, and belongs to this ride" | P2 |
-| `src/app/(app)/notifications/notifications-client.tsx` / Updates fallback | "Supabase updates are unavailable; using mock ride notifications." | Developer-like copy for testers. | "Demo notifications are being shown." | P2 |
-| Docs avoid lists | "RidePod driver", "guaranteed payout", "escrow", "fraud confirmed", etc. | Present as forbidden examples, not active UI risk. | Keep in docs as avoid-list context. | P3 |
-| `docs/ridepod-taxi-partner-quote-go-no-go-roadmap.md` | "host fake screenshot problem" | Internal doc wording is blunt. | "unverified host screenshot risk" | P3 |
+|---|---|---|---|---|
+| `src/components/landing-page.tsx` / Homepage | `Planned ride pods with money lock.` | Sounds like live payment custody. | `Shared taxi pods for planned rides.` | P1 |
+| `src/components/landing-page.tsx` / Homepage | `Money lock ready` | Sounds like payment/escrow is live. | `Seat commitment ready` or `Mock payment state ready` | P1 |
+| `src/app/layout.tsx` / metadata | `money lock and verified receipt settlement` | Public metadata may overstate live payment readiness. | `shared taxi pod coordination and beta settlement review` | P1 |
+| `src/components/ridepod-info-pages.tsx` / How it works | `Protected payments` | Can imply live money protection. | `Max charge preview` or `Mock payment state` | P1 |
+| `src/components/ridepod-info-pages.tsx` / How it works | `payment-authorized` | Sounds like real payment authorization. | `accepted in beta` or `mock-authorized` | P1 |
+| `src/components/money-safety-ui.tsx` / Join/payment UI | `participants payment-authorized` | Sounds live. | `participants accepted / mock-authorized` | P1 |
+| `src/components/premium-join-pod-flow.tsx` / Join | `RidePod money lock` | Sounds like escrow/custody. | `RidePod seat commitment` | P1 |
+| `src/components/payment-reconciliation-dashboard.tsx` / Admin/reconciliation | `Money lock` / `payment-authorized` | Admin/internal but still live-sounding. | `Mock authorization state` | P2 |
+| `src/app/(app)/taxi-partner/page.tsx` / Payout status | `Payout releases after the dispute window if no issue is reported.` | Sounds automatic or guaranteed. | `Payout stays pending until review clears.` | P1 |
+| `src/components/ridepod-info-pages.tsx` / FAQ | `false, altered, AI-generated...` | Public copy feels accusatory/legal-heavy. | `misleading or unsupported proof may go to manual review.` | P2 |
+| Docs avoid-list files | forbidden-risk phrases | Present as forbidden examples, not active UI risk. | Keep only in docs/avoid-list context. | P3 |
 
-No active app copy found for these exact high-risk phrases in the static scan: "RidePod driver", "guaranteed driver", "guaranteed payout", "official taxi dispatch", "real payout sent", "real payment captured", "escrow", "100% safe", "100% verified", "female driver guaranteed", "forever banned", "upload HKID", "upload passport", "selfie verification", "face scan".
+No active app-source matches were found for these exact high-risk phrases as affirmative user-facing copy: `RidePod driver`, `guaranteed driver`, `guaranteed payout`, `official taxi dispatch`, `real payout sent`, `real payment captured`, `escrow`, `100% safe`, `100% verified`, `female driver guaranteed`, `forever banned`, `upload HKID`, `upload passport`, `selfie verification`, `face scan`, `gal only`, `boy and gal`, `Wait at`, `Min seats to book`, `Target seats`, or `Host is riding?`.
 
 ## 6. CTA Audit Table
 
 | Screen | Current CTA | Issue | Suggested CTA | Priority |
-| --- | --- | --- | --- | --- |
-| Homepage | Find a Ride Pod | Clear, but create may be more important in beta. | Keep, pair with Create as equal primary. | P3 |
-| Mobile navigation | Updates | User expects Create; Updates is less central. | Create | P1 |
-| Create Pod | Create Pod / Continue style actions | Too many helper concepts around CTA. | Keep CTA but reduce surrounding copy. | P1 |
-| Ride option selection | Select Taxi Partner Quote | Clear, but demo action must stay framed. | Select Taxi Partner Quote beta | P2 |
-| Taxi Partner Quote organizer | Request quote | May imply real partner contact. | Request demo quote or Request quote in demo | P1 |
-| Taxi Partner Quote organizer | Simulate quote | Clear for demo mode. | Keep hidden outside demo mode. | P2 |
-| Guest quote acceptance | Accept quote with test card | Good for PAY test, too technical for regular beta. | Confirm test payment in payment test scenario only. | P1 |
-| Guest quote acceptance | Accept quote | Competes with test-card CTA. | Show only one acceptance path per scenario. | P1 |
-| Taxi Partner Dashboard | Quote this pod | Clear. | Keep. | P3 |
-| Taxi Partner Dashboard | Accept job | Clear and demo guarded. | Keep. | P3 |
-| Taxi Partner Dashboard | Mark arrived / Start ride | Clear. | Keep. | P3 |
-| Taxi Partner Dashboard | Mark completed | Clear. | Keep. | P3 |
-| Settlement | Upload final receipt | Clear. | Keep. | P3 |
-| Settlement | Edit | Could be risky if users can alter fare freely in demo. | Edit demo fare or Adjust amount | P2 |
-| Admin Review | Release payout | Can sound live depending context. | Mark payout ready in demo | P1 |
-| Admin Review | Capture test payment | Clear test-mode language. | Keep. | P3 |
-| Updates | Notification CTAs | Generally clear. | Keep; fix nav priority. | P2 |
-| Public member preview | Report concern | Clear. | Keep. | P3 |
+|---|---|---|---|---|
+| Homepage | Find a Ride Pod | Fine, but Taxi-first beta should lead with creation/demo. | Create taxi pod | P2 |
+| Homepage | Create Pod | Good but secondary visual weight. | Make primary CTA | P2 |
+| Ride category | Continue after Taxi selection | Clear enough. | Continue | P3 |
+| Taxi type | Continue | Generic but acceptable. | Continue to pod details | P3 |
+| Review Pod | Create taxi pod | Good. | Keep | P3 |
+| Taxi quote request | Request taxi quote | Good. | Keep | P3 |
+| Taxi quote request demo | Simulate quote | Demo-only; risky if visible to testers. | Simulate quote (demo) | P2 |
+| Guest quote acceptance | Accept quote | Good. | Keep; use `Accept quote in demo` if mock-only. | P2 |
+| Guest quote acceptance | Accept quote with test card | Clear for internal test mode only. | Keep only in Stripe test sessions. | P2 |
+| Taxi Partner Dashboard | Quote this pod | Good. | Keep | P3 |
+| Taxi Partner Dashboard | Contact organizer placeholder | Clearly unfinished. | Contact organizer (demo) | P2 |
+| Completion | Mark completed | Good. | Keep | P3 |
+| Payout status | View dispute window | Good, but depends on route/placeholder. | Keep | P3 |
+| Admin Review | Mark payout ready | Clear, but must remain demo. | Mark payout ready in demo | P2 |
+| Admin Review | Generate evidence package | Good. | Keep | P3 |
+| Public member preview | Report concern | Good. | Keep | P3 |
 
 ## 7. Mock vs Real Clarity Table
 
 | Screen | Is mock/demo clear? | Risk | Suggested improvement |
-| --- | --- | --- | --- |
-| Homepage / landing | Partly | Money protection copy can sound live. | Add beta-safe payment line or reduce payment claims. |
-| Beta page | Yes | None major. | Keep footer: real payments/payouts not enabled unless stated. |
-| Beta scenarios | Yes | Route names are technical. | Keep internal. |
-| Create Pod | Mostly | Taxi Partner Quote is clear; general payment/booking terms can sound live. | Review money copy in final step. |
-| Ride app / fixed quote | Partly | Host reimbursement can sound live. | Add no-live-payment note in beta/demo mode. |
-| Taxi meter | Partly | Fare cap/max charge needs more clarity. | Add short cap rule. |
-| Taxi Partner Quote organizer | Yes | "Request quote" may imply real provider. | Label demo request if no integration exists. |
-| Guest quote acceptance | Mostly | Mock/test payment states are technical. | Show one payment mode at a time. |
-| Host Dashboard / My Pods | Partly | Payout complete wording can sound live. | Replace "payout marked complete." |
-| Taxi Partner Dashboard | Yes | Many demo actions can overwhelm. | Keep demo banner sticky or repeated per section if needed. |
-| Pickup coordination | Yes | "I'm here" visibility not clear. | Add local/demo helper. |
-| Completion / payout pending | Mostly | One driver/payout label conflict. | Use Taxi partner payout and no-real-payout wording. |
-| Settlement | Partly | Reimbursement/payout/settlement can sound real. | Add beta no-live-money callout. |
-| Admin Review | Mostly | Internal actions can look production-like. | Add internal/demo-only banner to modal sections. |
-| Updates | Partly | Mock fallback note is developer-like. | Use tester-friendly demo copy. |
-| Public member preview | Yes | Verification may be over-trusted. | Keep privacy copy; test comprehension. |
-| Report concern | Yes | Evidence upload coming later means limited live support. | For beta, keep emergency disclaimer prominent. |
+|---|---|---|---|
+| Homepage / beta landing | Partly | Money-lock language sounds live. | Add `Closed beta uses mock payment state.` |
+| How RidePod Works | Partly | Protected/payment-authorized language sounds live. | Rewrite around mock/test mode and future live payments. |
+| Create ride category | Yes | Low. | Keep Ride app disabled. |
+| Taxi type selection | Mostly | Accessible taxi may feel guaranteed. | Keep availability note near selected taxi type. |
+| Review Pod | Yes | Low, but dense. | One beta note instead of repeated notes. |
+| Taxi Partner Quote request | Yes | Simulation action can feel productized. | Add demo label to simulation CTA. |
+| Guest quote acceptance | Mostly | Stripe test mode vs mock fallback may confuse. | Show only one payment path per beta session. |
+| My Pods / Host Dashboard | Mostly | Legacy proof/payment widgets compete with Taxi-first. | Default to Taxi-first status/action card. |
+| Taxi Partner Dashboard | Yes | Payout releases sounds live. | Use pending until review clears. |
+| Pickup coordination | Yes | Placeholder contact action may feel incomplete. | Label as demo placeholder. |
+| Completion / payout | Mostly | Ready/released states can sound real. | Use demo-only ready/closed labels. |
+| Settlement / dispute | Partly | Legacy host reimbursement language dominates. | Add Taxi Partner Quote settlement variant. |
+| Admin Review | Yes | Many admin actions can overwhelm. | Add decision summary. |
+| Updates / Notifications | Mostly | Many mock items can overwhelm. | Filter by scenario/current role. |
+| Profile / public preview | Yes | Low. | Keep private/public copy. |
+| Report concern | Yes | Low. | Add post-submit expectation. |
+| Beta scenario switcher | Yes | Low if gated. | Keep demo guard. |
 
+## 8. Recommended Next Slice
+
+Recommended next slice: **UI-FIX-1 - Taxi-first public copy and money-language cleanup**.
+
+Scope:
+- Update homepage headline and preview card to Taxi-first.
+- Update How RidePod Works so Taxi is primary and Ride app is clearly coming soon.
+- Replace money lock / protected payments / payment-authorized wording in user-facing surfaces with mock-safe language.
+- Replace payout releases with payout pending / marked ready in demo.
+- Keep legacy Ride app / Taxi meter modes available only where explicitly demo/internal/fallback.
+
+Do not change business logic in this slice.

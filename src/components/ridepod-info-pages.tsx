@@ -16,17 +16,17 @@ import {
 } from "lucide-react";
 import { Badge, Card, PrimaryButton, SecondaryButton, cn } from "@/components/ui";
 
-const proofPoints = ["Locked seats", "Protected payments", "Fair splits"];
+const proofPoints = ["Shared taxi pods", "Taxi partner quotes", "Review steps"];
 
 const featureCards = [
   {
-    title: "Locked seats",
-    body: "Participants are not confirmed until their seat is payment-authorized.",
+    title: "Shared taxi pods",
+    body: "Riders join first, then the group requests one shared taxi partner quote.",
     icon: LockKeyhole,
   },
   {
-    title: "Protected payments",
-    body: "Riders see their max charge before locking a seat.",
+    title: "Quote and review flow",
+    body: "Guests review the taxi quote, accept it, and see mock payment state during beta.",
     icon: ShieldCheck,
   },
   {
@@ -40,8 +40,8 @@ const featureCards = [
     icon: CircleDollarSign,
   },
   {
-    title: "Host protection",
-    body: "Hosts can book with more confidence once required participants are authorized.",
+    title: "Taxi-first beta",
+    body: "Ride app support is coming later. Taxi Partner Quote is the main beta path.",
     icon: UsersRound,
   },
   {
@@ -53,44 +53,54 @@ const featureCards = [
 
 const cleanHowSteps = [
   {
-    title: "Create pod",
-    body: "Host starts a pod and adds guests.",
+    title: "Create taxi pod",
+    body: "Organizer starts a shared taxi pod.",
     icon: UsersRound,
   },
   {
-    title: "Guests lock",
-    body: "Guests join and lock their share.",
+    title: "Guests join",
+    body: "Riders join before the quote request.",
     icon: LockKeyhole,
   },
   {
-    title: "Take the ride",
-    body: "Ride happens with the group.",
+    title: "Request quote",
+    body: "A licensed taxi partner quotes one price.",
     icon: CarFront,
   },
   {
-    title: "Settle fairly",
-    body: "Costs split fairly with proof.",
+    title: "Review status",
+    body: "Quote acceptance, dispute, and payout states stay visible.",
     icon: Scale,
   },
 ];
 
 const cleanRideOptions = [
   {
+    title: "Taxi",
+    body: "Create a shared taxi pod, choose taxi type, let guests join, then request one shared taxi partner quote.",
+    icon: CarFront,
+    badge: "Available in beta",
+    helper: "No real taxi dispatch or payout yet.",
+  },
+  {
+    title: "Ride app",
+    body: "Group ride app bookings are coming later.",
+    icon: Smartphone,
+    badge: "Coming soon",
+    helper: "Start with taxi pods first.",
+  },
+];
+
+const fallbackRideOptions = [
+  {
     title: "Ride app / fixed quote",
-    body: "Quote before booking. Receipt after ride.",
+    body: "Legacy beta / coming later.",
     icon: Smartphone,
   },
   {
     title: "Taxi meter",
-    body: "No upfront quote. Meter proof after ride.",
+    body: "Fallback beta mode.",
     icon: CarFront,
-  },
-  {
-    title: "Taxi partner quote",
-    body: "Licensed taxi partner quote. Future beta prototype.",
-    icon: CarFront,
-    badge: "Future beta prototype",
-    helper: "No real taxi dispatch or payout yet.",
   },
 ];
 
@@ -112,17 +122,17 @@ const faqItems = [
   {
     question: "What is RidePod?",
     answer:
-      "RidePod helps users coordinate planned shared ride pods, lock seats, and split ride costs fairly. RidePod does not provide drivers. The host books the external ride through a third-party ride app, taxi, or similar provider.",
+      "RidePod helps groups coordinate shared taxi pods. Riders join first, then the group requests one shared quote from a licensed taxi partner. RidePod does not provide drivers.",
   },
   {
     question: "Is RidePod a ride-hailing company?",
     answer:
-      "No. RidePod does not provide drivers or operate the ride. RidePod helps users organize planned ride pods and manage the protected payment, coordination, and settlement flow.",
+      "No. RidePod does not provide drivers or operate the ride. RidePod helps users organize shared taxi pods and manage quote acceptance, mock payment state, coordination, and review steps.",
   },
   {
     question: "Who books the actual ride?",
     answer:
-      "The host books the external ride through Uber, Lyft, DiDi, taxi, private van, or another provider. RidePod helps confirm that participants are payment-authorized before protected booking.",
+      "For Taxi Partner Quote, a licensed taxi partner is the external provider. Older ride app and taxi meter flows remain fallback beta modes.",
   },
   {
     question: "What is Taxi partner quote?",
@@ -142,7 +152,7 @@ const faqItems = [
   {
     question: "When is my seat confirmed?",
     answer:
-      "Your seat is confirmed only after payment authorization. Before that, you may be interested or requested, but you are not fully confirmed.",
+      "In the Taxi-first beta, your seat moves forward after you accept the shared taxi quote. Payment is mock/test mode unless clearly stated.",
   },
   {
     question: "What is max charge?",
@@ -152,7 +162,7 @@ const faqItems = [
   {
     question: "Can the host book before everyone confirms?",
     answer:
-      "The host can preview the fare early, but protected booking unlocks only after the required participants authorize payment and the quote is within the approved max.",
+      "For Taxi Partner Quote, the ride proceeds only after guests accept the shared taxi quote. Ride app support is coming later.",
   },
   {
     question: "Why does the host upload a quote screenshot?",
@@ -160,9 +170,9 @@ const faqItems = [
       "The quote screenshot helps RidePod check whether the expected fare is within the approved max before the host books. The final settlement still uses the verified final receipt.",
   },
   {
-    question: "What happens if proof is false or altered?",
+    question: "What happens if proof is misleading or unsupported?",
     answer:
-      "Submitting false, altered, AI-generated, or misleading proof may result in temporary or permanent account suspension, loss of reimbursement, charge reversal, and reporting to payment providers or authorities where required by law.",
+      "Misleading or unsupported proof may go to manual review. RidePod may request more information or take account action if needed.",
   },
   {
     question: "What happens if the final receipt is lower than expected?",
@@ -195,14 +205,14 @@ const faqItems = [
       "These are trust settings that help hosts control who can join a pod. For example, a pod may be limited to verified users, people from the same community, users with strong trust history, or invited members only.",
   },
   {
-    question: "Why should I keep payment inside RidePod?",
+    question: "Why should I keep the quote and review flow in RidePod?",
     answer:
-      "Off-app payments are not protected. RidePod cannot help with refunds, max-charge disputes, receipt verification, or host reimbursement if payment happens outside the app.",
+      "Off-app arrangements are not part of RidePod review. RidePod can only help with quote, dispute, and settlement review when the flow stays in RidePod.",
   },
   {
     question: "Can I pay with Venmo, Zelle, PayPal, or cash?",
     answer:
-      "Direct payments outside RidePod are not protected. To keep your seat, max charge, receipt settlement, and dispute support protected, keep payment inside RidePod.",
+      "Direct payments outside RidePod are not part of the beta quote and review flow. Keep the quote and review flow in RidePod.",
   },
   {
     question: "Does RidePod guarantee safety?",
@@ -217,7 +227,7 @@ const faqItems = [
   {
     question: "When does chat unlock?",
     answer:
-      "Chat unlocks after your seat is payment-authorized. Exact pickup details may also unlock only after seat lock.",
+      "Chat unlocks after your seat is accepted for the pod. Exact pickup details may also unlock only after seat lock.",
   },
   {
     question: "What if the receipt cannot be verified?",
@@ -297,7 +307,10 @@ export function HowRidePodWorksPage() {
           How RidePod Works
         </h1>
         <p className="text-base font-black text-[var(--rp-primary)]">
-          Split the ride. Not the risk.
+          RidePod helps groups coordinate shared taxi pods.
+        </p>
+        <p className="text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+          Riders join first, then the group requests one shared quote from a licensed taxi partner. Ride app support is coming later.
         </p>
       </section>
 
@@ -340,7 +353,7 @@ export function HowRidePodWorksPage() {
       <Card className="p-4">
         <div className="flex items-center gap-2">
           <ShieldCheck className="h-5 w-5 text-[var(--rp-primary)]" />
-          <h2 className="text-base font-black text-[var(--rp-text)]">Money Protection</h2>
+          <h2 className="text-base font-black text-[var(--rp-text)]">Quote and review flow</h2>
         </div>
         <div className="mt-3 grid gap-2">
           {cleanMoneyItems.map((item) => (
@@ -351,9 +364,28 @@ export function HowRidePodWorksPage() {
           ))}
         </div>
         <p className="mt-3 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
-          Guests see their cap before the ride. Final charge may be lower.
+          Closed beta uses mock payment state. No live payment or payout is enabled.
         </p>
       </Card>
+
+      <section className="grid gap-2">
+        <h2 className="text-sm font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
+          Other beta / fallback modes
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {fallbackRideOptions.map(({ title, body, icon: Icon }) => (
+            <Card key={title} className="grid grid-cols-[34px_1fr] items-center gap-3 p-3 opacity-85">
+              <span className="grid h-9 w-9 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-muted-strong)]">
+                <Icon className="h-5 w-5" />
+              </span>
+              <span>
+                <span className="block text-sm font-black leading-4 text-[var(--rp-text)]">{title}</span>
+                <span className="mt-1 block text-[11px] font-semibold text-[var(--rp-muted)]">{body}</span>
+              </span>
+            </Card>
+          ))}
+        </div>
+      </section>
 
       <Card className="p-4">
         <div className="flex items-center justify-between gap-3">
@@ -393,7 +425,7 @@ export function HowRidePodWorksPage() {
               RidePod does not provide drivers.
             </h2>
             <p className="mt-1 text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
-              The host books or takes the external ride.
+              Taxi partners are external licensed providers.
             </p>
           </div>
         </div>
@@ -408,7 +440,7 @@ export function RidePodFaqPage() {
       <PageIntro
         eyebrow="FAQ"
         title="Straight answers for riders and hosts."
-        body="RidePod is built around planned shared rides, seat locks, max-charge protection, verified receipts, and fair split settlement."
+        body="RidePod is built around shared taxi pods, taxi partner quotes, guest acceptance, mock payment state, and review steps."
       />
       <div className="grid gap-3">
         {faqItems.map((item, index) => (
@@ -456,13 +488,12 @@ function HeroSection() {
             Not the risk.
           </h1>
           <p className="mt-4 text-xl font-black text-[var(--rp-primary)]">
-            Locked seats. Protected payments. Fair splits.
+            Shared taxi pods. Taxi partner quotes. Review steps.
           </p>
           <p className="mt-4 max-w-3xl text-sm font-semibold leading-7 text-[var(--rp-muted)] sm:text-base">
-            RidePod helps people form planned shared ride pods, lock seats, coordinate pickup, and
-            split costs fairly. The host books the external ride through Uber, Lyft, DiDi, taxi,
-            private van, or another ride app. RidePod helps protect the group with payment
-            authorization, max-charge rules, receipt-based settlement, and trust tools.
+            RidePod helps groups create shared taxi pods, choose taxi needs, coordinate pickup, and
+            request one shared quote from a licensed taxi partner. Closed beta uses mock payment
+            state and review steps. Ride app support is coming later.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
@@ -490,10 +521,10 @@ function TwoColumnInfo() {
       </Card>
       <Card className="p-5">
         <ShieldCheck className="h-6 w-6 text-[var(--rp-primary)]" />
-        <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">Keep the pod protected.</h2>
+        <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">Keep the review flow in RidePod.</h2>
         <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-          Off-app payments are not protected. RidePod cannot help with refunds, max-charge disputes,
-          receipt verification, or host reimbursement if payment happens outside the app.
+          Off-app arrangements are not part of RidePod review. RidePod can only help with quote,
+          dispute, and settlement review when the flow stays in RidePod.
         </p>
       </Card>
     </section>

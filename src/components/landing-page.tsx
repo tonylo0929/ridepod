@@ -10,20 +10,20 @@ import { RidePodLogo } from "@/components/ridepod-logo";
 
 const steps = [
   {
-    title: "Create or join a ride pod",
-    body: "Pick a future route for airport, campus, commute, or event rides.",
+    title: "Create a shared taxi pod",
+    body: "Pick a planned route for airport, campus, commute, or event rides.",
   },
   {
-    title: "Lock seats before the ride",
-    body: "Every seat gets a financial owner before anyone books a car.",
+    title: "Guests join first",
+    body: "Riders join the pod before the group requests one shared taxi quote.",
   },
   {
-    title: "Host books externally",
-    body: "RidePod does not provide drivers. The host books the external ride under the approved max.",
+    title: "Taxi partner quotes",
+    body: "RidePod does not provide drivers. Taxi partners are external licensed providers.",
   },
   {
-    title: "Everyone splits fairly",
-    body: "Receipt upload and settlement keep reimbursement simple.",
+    title: "Review before payout",
+    body: "Guests accept the quote, then RidePod tracks mock payment and review states.",
   },
 ];
 
@@ -50,23 +50,26 @@ export function LandingPage() {
               Scheduled pods, not instant ride-hailing
             </div>
             <h1 className="mt-5 max-w-3xl text-5xl font-black leading-[1.02] tracking-tight text-zinc-950 sm:text-6xl lg:text-7xl">
-              Planned ride pods with money lock.
+              Shared taxi pods for planned rides.
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-8 text-zinc-700">
-              RidePod helps users coordinate planned ride pods. RidePod does not provide drivers. The host books the external ride.
+              RidePod helps groups create shared taxi pods, request a taxi partner quote, and split the ride with clear quote, acceptance, and review steps. RidePod does not provide drivers. Taxi partners are external licensed providers.
+            </p>
+            <p className="mt-3 max-w-xl text-sm font-bold leading-6 text-zinc-600">
+              Taxi-first beta. No real taxi dispatch or payment yet.
             </p>
             <div className="mt-7 grid gap-3 sm:flex">
               <Link
-                href="/home"
+                href="/create"
                 className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-zinc-950 px-5 text-sm font-bold text-white"
               >
-                Find a Ride Pod <ArrowRight className="h-4 w-4" />
+                Create taxi pod <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
-                href="/create"
+                href="/how-it-works"
                 className="inline-flex h-12 items-center justify-center rounded-lg border border-zinc-300 bg-white px-5 text-sm font-bold text-zinc-950"
               >
-                Create Pod
+                How RidePod works
               </Link>
             </div>
           </div>
@@ -95,9 +98,9 @@ export function LandingPage() {
                   </div>
                 </div>
                 <div className="rounded-lg bg-emerald-500 p-3 text-zinc-950">
-                  <p className="text-xs font-bold uppercase">Money lock ready</p>
+                  <p className="text-xs font-bold uppercase">Taxi quote flow ready</p>
                   <p className="mt-1 text-sm font-semibold">
-                    No booking until each seat is authorized.
+                    No taxi quote proceeds until guests accept.
                   </p>
                 </div>
               </div>
@@ -127,9 +130,9 @@ export function LandingPage() {
       <section className="border-t border-zinc-200 bg-white px-5 py-10">
         <div className="mx-auto grid max-w-6xl gap-4 sm:grid-cols-3">
           {[
-            ["Seat commitments", UsersRound],
-            ["Max fare approval", CircleDollarSign],
-            ["Host booking workflow", CarFront],
+            ["Shared taxi pods", UsersRound],
+            ["Taxi partner quote", CircleDollarSign],
+            ["Review before payout", CarFront],
           ].map(([label, Icon]) => (
             <div key={label as string} className="flex items-center gap-3 rounded-lg bg-[#f7f5f0] p-4">
               <Icon className="h-5 w-5 text-emerald-700" />

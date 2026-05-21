@@ -106,7 +106,7 @@ export function MoneyLockStatus({ podId, compact = false }: { podId: string; com
         <div>
           <p className="text-sm font-black text-[var(--rp-text)]">{displayStatus}</p>
           <p className="mt-1 text-xs font-semibold text-[var(--rp-muted)]">
-            {snapshot.confirmedSeats}/{protectedPod.minSeatsToBook} participants payment-authorized.{" "}
+            {snapshot.confirmedSeats}/{protectedPod.minSeatsToBook} participants accepted.{" "}
             {snapshot.hostActionNeeded}. Chat and exact pickup unlock after seat lock.
           </p>
         </div>
@@ -129,9 +129,9 @@ export function PodDetailMoneyLockPanel({ podId }: { podId: string }) {
     <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-lg font-black text-[var(--rp-text)]">Money lock status</h2>
+          <h2 className="text-lg font-black text-[var(--rp-text)]">Seat commitment status</h2>
           <p className="mt-1 text-sm font-semibold text-[var(--rp-muted)]">
-            {snapshot.confirmedSeats}/{protectedPod.minSeatsToBook} participants payment-authorized
+            {snapshot.confirmedSeats}/{protectedPod.minSeatsToBook} participants accepted
           </p>
         </div>
         <SafetyBadgeRow podId={podId} />
@@ -162,7 +162,7 @@ export function MoneySafetyTimeline({ podId }: { podId: string }) {
   return (
     <section className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base font-black text-[var(--rp-text)]">Money lock timeline</h2>
+        <h2 className="text-base font-black text-[var(--rp-text)]">Seat commitment timeline</h2>
         <SafetyBadgeRow podId={podId} />
       </div>
       <div className="mt-4 grid gap-2">
@@ -990,8 +990,8 @@ export function ChatLockNotice({ podId }: { podId: string }) {
         <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rp-primary)]" />
         <p>
           {snapshot.chatUnlocked
-            ? "Chat is unlocked for payment-authorized participants."
-            : "Chat unlocks after your seat is payment-authorized."}
+            ? "Chat is unlocked for accepted participants."
+            : "Chat unlocks after your seat is accepted."}
         </p>
       </div>
     </div>
@@ -1008,7 +1008,7 @@ export function PodChatSafetyPanel({ podId, confirmed = false }: { podId: string
         <div className="mt-3 rounded-2xl bg-[var(--rp-card-soft)] p-3 text-sm font-semibold text-[var(--rp-muted)]">
           <div className="flex gap-2">
             <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rp-primary)]" />
-            <p>Chat unlocks after your seat is payment-authorized.</p>
+            <p>Chat unlocks after your seat is accepted.</p>
           </div>
         </div>
       ) : (

@@ -67,7 +67,7 @@ export function PaymentReconciliationDashboard({ podId }: { podId?: string | nul
           <KeyValue label="Host" value={`${snapshot.hostName} (${pod.replacementHostUserId ?? pod.hostUserId})`} />
           <KeyValue label="Lifecycle" value={<StateBadge value={pod.lifecycleState} />} />
           <KeyValue label="Booking" value={<StateBadge value={pod.bookingState} />} />
-          <KeyValue label="Money lock" value={`${snapshot.confirmedSeats}/${pod.minSeatsToBook} payment-authorized`} />
+          <KeyValue label="Mock authorization state" value={`${snapshot.confirmedSeats}/${pod.minSeatsToBook} participants accepted`} />
           <KeyValue label="Quote" value={quoteStatus} />
           <KeyValue label="Receipt" value={receiptStatus} />
           <KeyValue label="Settlement" value={settlement ? <StateBadge value={settlement.settlementState} /> : "No settlement"} />
