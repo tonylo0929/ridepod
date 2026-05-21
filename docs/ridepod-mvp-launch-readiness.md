@@ -8,6 +8,7 @@ Internal checklist and risk register for deciding whether RidePod is ready for c
 - Recurring pods as weekly ride templates.
 - Ride app / fixed quote mode.
 - Taxi meter mode.
+- Taxi partner quote mode as future beta prototype only.
 - Seat lock and max charge per guest concept.
 - Quote proof before protected booking for ride app / fixed quote.
 - Meter proof after ride for taxi meter.
@@ -29,6 +30,26 @@ Internal checklist and risk register for deciding whether RidePod is ready for c
 - Native mobile app.
 - Recurring billing.
 - Insurance or legal automation.
+
+## Taxi Partner Quote Mode Direction
+
+| Mode | Meaning | Proof | Status |
+| --- | --- | --- | --- |
+| Ride app / fixed quote | Host/organizer books through an app or provider that shows fare before booking. | Fresh quote before booking. Final receipt after ride. | Current beta / proof-based mode. |
+| Taxi meter | Host/organizer takes a real street taxi with a meter. | No upfront quote. Meter proof or taxi receipt after ride. | Current beta / meter-proof mode. |
+| Taxi partner quote | Licensed taxi partner quotes one shared pod price. | Partner quote before guests accept. Completion plus dispute window before payout. | Future beta prototype / no real dispatch or payout yet. |
+
+Taxi Partner Quote flow: organizer creates shared taxi pod, guests join and lock, organizer selects taxi type and luggage/accessibility needs, licensed taxi partner submits quote, guests accept quote, mock payment state is recorded, ride is marked completed, dispute window opens, payout becomes pending, admin review handles issues, and no issue means payout ready in a future/live version.
+
+Money model: `fareShareCents = ceil(driverQuoteCents / guestCount)`, `platformFeeCents = max(ceil(fareShareCents * 10%), HK$6)`, `guestChargeCents = fareShareCents + platformFeeCents`, and `driverPayoutCents = driverQuoteCents`. Example: HK$240 quote / 4 guests = HK$60 fare share, HK$6 platform fee, HK$66 guest pays, HK$24 RidePod earns, HK$240 taxi partner payout. No real payment or payout is enabled in beta unless explicitly stated.
+
+Taxi type options: standard, electric, luggage-friendly, large taxi / van, comfort, and accessible. Accessibility or special vehicle requests are available only if supported by the taxi partner.
+
+Safety/access note: Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner. Verified-only, community-only, high-trust-only, and invite-only remain rider access controls.
+
+Taxi Partner Quote risks: quotes too high, guests decline, taxi partner no-show, pickup issue, guest dispute, payout held during review, unsupported accessibility request, safety report, and licensing/payment review needed. Use licensed taxi partners/fleets first; legal, licensing, insurance, and payment/payout review are required before live operation.
+
+Recommendation: keep current closed beta flows, but treat Taxi Partner Quote Mode as the future main business direction to test with licensed taxi partners.
 
 ## 3. Core Product Rules
 
@@ -86,9 +107,9 @@ Internal checklist and risk register for deciding whether RidePod is ready for c
 - [ ] Admin review queue opens.
 - [ ] Risky wording removed.
 - [ ] No production payment promise.
-- [ ] No "RidePod driver" wording.
+- [ ] No wording that presents taxi partners as RidePod-operated drivers.
 - [ ] No "guaranteed refund" wording.
-- [ ] No "100% safe" wording.
+- [ ] No absolute safety wording.
 - [ ] Manual review path exists.
 
 ## 7. Beta Test Scenarios

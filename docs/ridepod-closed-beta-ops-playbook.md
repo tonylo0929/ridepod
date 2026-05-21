@@ -61,6 +61,7 @@ Before each test session, explain:
 - [ ] Disputes must be raised during the dispute window.
 - [ ] Off-app payments are not protected.
 - [ ] Demo/mock payment status may appear and is not real payment capture.
+- [ ] Taxi Partner Quote Mode is future beta prototype only: licensed taxi partner quote, mock payment state, dispute window, payout pending, no real dispatch yet, and no real payout yet.
 
 ## 6. Admin Review SOP
 
@@ -120,6 +121,26 @@ Before each test session, explain:
 3. Do not claim official ID verification.
 4. If approved, mark only the supported internal/manual status.
 5. Add notes that no document was collected.
+
+### H. Taxi Partner Quote Prototype
+
+Use this only for future-direction sessions with licensed taxi partner assumptions.
+
+| Mode | Meaning | Proof | Status |
+| --- | --- | --- | --- |
+| Ride app / fixed quote | Host/organizer books through an app or provider that shows fare before booking. | Fresh quote before booking. Final receipt after ride. | Current beta / proof-based mode. |
+| Taxi meter | Host/organizer takes a real street taxi with a meter. | No upfront quote. Meter proof or taxi receipt after ride. | Current beta / meter-proof mode. |
+| Taxi partner quote | Licensed taxi partner quotes one shared pod price. | Partner quote before guests accept. Completion plus dispute window before payout. | Future beta prototype / no real dispatch or payout yet. |
+
+Flow to demo: organizer creates shared taxi pod, guests join and lock, organizer selects taxi type and luggage/accessibility needs, licensed taxi partner submits quote, guests accept quote, mock payment state is recorded, ride is marked completed, dispute window opens, payout becomes pending, admin review handles issues, and no issue means payout ready in a future/live version.
+
+Money model: HK$240 quote / 4 guests = HK$60 fare share, HK$6 platform fee, HK$66 guest pays, HK$24 RidePod earns, HK$240 taxi partner payout. Formula: `fareShareCents = ceil(driverQuoteCents / guestCount)`, `platformFeeCents = max(ceil(fareShareCents * 10%), HK$6)`, `guestChargeCents = fareShareCents + platformFeeCents`, `driverPayoutCents = driverQuoteCents`.
+
+Taxi type options: standard, electric, luggage-friendly, large taxi / van, comfort, and accessible. Accessibility or special vehicle requests are available only if supported by the taxi partner.
+
+Safety/access note: Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner. Verified-only, community-only, high-trust-only, and invite-only remain rider access controls.
+
+Operator caution: use licensed taxi partners/fleets first. Legal, licensing, insurance, and payment/payout review are required before live operation. Do not promise platform-operated drivers, driver availability, live taxi dispatch, live payout, absolute safety, or custodial funds handling.
 
 ## 7. Proof Review Checklist
 

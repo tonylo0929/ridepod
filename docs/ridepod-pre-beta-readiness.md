@@ -21,6 +21,7 @@ This document is the feature-freeze and readiness gate for the closed beta demo 
 | Meter Proof Upload | Partial | Mixed | Host | Meter proof metadata and optional storage upload are wired; above-cap cases need manual review. |
 | Settlement Timeline `/pods/[id]/settlement` | Partial | Mixed | Host / Guest | Settlement state and dispute window are represented; no real payment movement. |
 | Settlement Details `/pods/[id]/settlement` | Partial | Mixed | Host / Guest | Demo settlement details exist; final reimbursement/payment decisions are manual. |
+| Taxi Partner Quote Mode | Mock / future beta prototype | Host / Guest / Admin | Organizer requests shared pod quote from licensed taxi partner, guests accept quote, mock payment state is recorded, completion opens dispute window, payout becomes pending. No real dispatch or payout yet. |
 | Admin Review `/admin/review` | Partial | Mixed | Admin | Admin review queue/detail/actions exist; admin auth and ops process need manual production review. |
 | Public Member Preview | Done | Mock fallback | Host / Guest | Public member card/preview shows safe public identity signals only. |
 | Report Concern | Partial | Mock fallback | Host / Guest | Member safety report placeholder exists; creates admin review case when supported, otherwise local success. |
@@ -59,8 +60,25 @@ Frozen for the closed beta demo:
 - Updates.
 - Profile / eligibility.
 - Member report placeholder.
+- Taxi partner quote prototype, only when explicitly testing future direction.
 
 No new product areas should be added before BETA-1.
+
+## Taxi Partner Quote Future Direction
+
+| Mode | Meaning | Proof | Status |
+| --- | --- | --- | --- |
+| Ride app / fixed quote | Host/organizer books through an app or provider that shows fare before booking. | Fresh quote before booking. Final receipt after ride. | Current beta / proof-based mode. |
+| Taxi meter | Host/organizer takes a real street taxi with a meter. | No upfront quote. Meter proof or taxi receipt after ride. | Current beta / meter-proof mode. |
+| Taxi partner quote | Licensed taxi partner quotes one shared pod price. | Partner quote before guests accept. Completion plus dispute window before payout. | Future beta prototype / no real dispatch or payout yet. |
+
+Taxi Partner Quote flow: organizer creates shared taxi pod, guests join and lock, organizer selects taxi type, organizer adds luggage/accessibility needs, taxi partner submits quote, guests accept quote, mock payment state is recorded, taxi partner ride is marked completed, dispute window opens, payout becomes pending, admin review handles issues, and no issue means payout ready in a future/live version.
+
+Taxi type options: standard, electric, luggage-friendly, large taxi / van, comfort, and accessible. Accessibility or special vehicle requests are available only if supported by the taxi partner.
+
+Safety/access note: Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner. Verified-only, community-only, high-trust-only, and invite-only remain rider access controls.
+
+Operational risks: high quotes, quote declines, taxi partner no-show, pickup issues, guest disputes after completion, payout held during review, unsupported accessibility requests, safety reports, and regulatory/licensing review. Taxi Partner Quote Mode should use licensed taxi partners/fleets first and requires legal, licensing, insurance, and payment/payout review before live operation.
 
 ## 4. Do Not Promise Yet
 
@@ -129,18 +147,18 @@ Security notes:
 
 Risky wording searched in auth, profile, safety, public member preview, report concern, docs, and relevant app files:
 
-- RidePod driver.
+- Wording that presents taxi partners as RidePod-operated drivers.
 - guaranteed refund.
 - guaranteed reimbursement.
-- 100% safe.
+- Absolute safety claims.
 - 100% verified.
-- escrow.
+- Custodial funds handling claims.
 - official Uber/Lyft/DiDi integration.
 - AI verified.
 - upload HKID.
 - upload passport.
 - crime of forgery.
-- forever banned.
+- Permanent-ban threats.
 - gal only.
 - boy and gal.
 

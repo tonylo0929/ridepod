@@ -158,3 +158,17 @@ This checklist summarizes the current RidePod MVP Supabase integration status af
 
 - Supabase CLI was not available in the local environment during recent QA, so SQL files need manual execution in Supabase SQL Editor or a configured local Supabase CLI environment.
 - Direct SQL execution as database owner or service role bypasses RLS. Role-based denial checks must be run through normal authenticated Supabase client sessions.
+
+## Taxi Partner Quote Future Beta Notes
+
+| Mode | Meaning | Proof | Status |
+| --- | --- | --- | --- |
+| Ride app / fixed quote | Host/organizer books through an app or provider that shows fare before booking. | Fresh quote before booking. Final receipt after ride. | Current beta / proof-based mode. |
+| Taxi meter | Host/organizer takes a real street taxi with a meter. | No upfront quote. Meter proof or taxi receipt after ride. | Current beta / meter-proof mode. |
+| Taxi partner quote | Licensed taxi partner quotes one shared pod price. | Partner quote before guests accept. Completion plus dispute window before payout. | Future beta prototype / no real dispatch or payout yet. |
+
+Taxi Partner Quote Mode currently belongs in mock/derived beta data unless a later Supabase slice explicitly adds persisted tables. Expected future entities include quote request, guest acceptance, mock payment state, completion event, dispute window, payout pending state, and admin review case links.
+
+Money model for future schema review: `driverQuoteCents`, `guestCount`, `fareShareCents = ceil(driverQuoteCents / guestCount)`, `platformFeeCents = max(ceil(fareShareCents * 10%), HK$6)`, `guestChargeCents`, and `driverPayoutCents = driverQuoteCents`. Example: HK$240 quote, 4 guests, HK$60 fare share, HK$6 platform fee, HK$66 guest pays, HK$24 RidePod earns, HK$240 taxi partner payout.
+
+Operational and legal caution: use licensed taxi partners/fleets first. Legal, licensing, insurance, privacy, and payment/payout review are required before live operation. No real dispatch, real payment, or real payout is enabled by this checklist.

@@ -33,6 +33,7 @@ Closed beta is allowed to test:
 - How RidePod Works page.
 - Closed Beta landing page.
 - Demo scenario switcher.
+- Taxi Partner Quote Mode, only as future beta prototype direction.
 
 ## 2. Not Production Ready
 
@@ -62,6 +63,7 @@ These are not enabled in closed beta unless explicitly stated:
 | Eligibility gates | Mock fallback | Eligibility rules use local/profile fields; Supabase pod safety-field persistence is deferred. | Yes, for workflow testing. |
 | Scheduled ride app flow | Mock fallback | Create and host flows exist; quote proof controls booking permission in demo logic. | Yes. |
 | Taxi meter flow | Mock fallback | Taxi meter path exists; meter proof after ride is represented. | Yes. |
+| Taxi partner quote mode | Mock / future beta prototype | Licensed taxi partner quote, guest acceptance, mock payment state, completion, dispute window, payout pending, and admin review are represented as demo state. | Yes, only if clearly described as no real dispatch or payout yet. |
 | Recurring pod flow | Mock fallback | Recurring weekly/back-and-forth flow exists. | Yes. |
 | My Pods / Host Dashboard | Mixed | Routes open with mock/Supabase fallback. | Yes. |
 | Updates | Mock fallback | Notifications/updates route opens; many updates are demo/derived. | Yes. |
@@ -127,9 +129,9 @@ Closed beta can start only if:
 - Settlement screen opens.
 - Admin Review opens or is safely internal/demo-only.
 - No risky payment promises are visible.
-- No "RidePod driver" wording is visible.
+- No wording presents taxi partners as RidePod-operated drivers.
 - No "guaranteed refund/reimbursement" wording is visible.
-- No "100% safe / 100% verified" wording is visible.
+- No absolute safety or verification wording is visible.
 - Supabase fallback does not crash app.
 - Manual review path is documented.
 - Closed beta limitations are visible to testers.
@@ -179,6 +181,24 @@ Recommended tester copy:
 "RidePod does not provide drivers. The host books or takes the external ride outside RidePod."
 
 "Proof and settlement flows may use demo/manual states during beta."
+
+Taxi Partner Quote tester copy:
+
+"Taxi Partner Quote Mode is a future beta prototype. A licensed taxi partner can quote one shared pod price, guests accept the quote, mock payment state is recorded, completion opens the dispute window, and payout becomes pending. No real taxi dispatch, real payment, or real payout is enabled yet."
+
+## Taxi Partner Quote Readiness Addendum
+
+| Mode | Meaning | Proof | Status |
+| --- | --- | --- | --- |
+| Ride app / fixed quote | Host/organizer books through an app or provider that shows fare before booking. | Fresh quote before booking. Final receipt after ride. | Current beta / proof-based mode. |
+| Taxi meter | Host/organizer takes a real street taxi with a meter. | No upfront quote. Meter proof or taxi receipt after ride. | Current beta / meter-proof mode. |
+| Taxi partner quote | Licensed taxi partner quotes one shared pod price. | Partner quote before guests accept. Completion plus dispute window before payout. | Future beta prototype / no real dispatch or payout yet. |
+
+Flow: organizer creates shared taxi pod, guests join and lock, organizer selects taxi type, organizer adds luggage/accessibility needs, taxi partner submits quote, guests accept quote, mock payment state is recorded, taxi partner ride is marked completed, dispute window opens, payout becomes pending, admin review handles issues, and no issue means payout ready in a future/live version.
+
+Money model: `fareShareCents = ceil(driverQuoteCents / guestCount)`, `platformFeeCents = max(ceil(fareShareCents * 10%), HK$6)`, `guestChargeCents = fareShareCents + platformFeeCents`, `driverPayoutCents = driverQuoteCents`. Example: HK$240 quote, 4 guests, HK$60 fare share, HK$6 platform fee, HK$66 guest pays, HK$24 RidePod earns, HK$240 taxi partner payout.
+
+Go/no-go caution: use licensed taxi partners/fleets first. Legal, licensing, insurance, safety, and payment/payout review are required before live operation. Accessibility or special vehicle requests are available only if supported by the taxi partner. Women-only controls who can join the shared pod; it does not guarantee a female taxi driver unless supported by the taxi partner.
 
 ## 9. Final Go / No-Go Scorecard
 

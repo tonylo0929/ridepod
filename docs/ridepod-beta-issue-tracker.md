@@ -15,6 +15,7 @@ Use one primary category per issue:
 - Money protection issue
 - Proof / receipt issue
 - Taxi meter issue
+- Taxi partner quote issue
 - Ride app / fixed quote issue
 - Recurring pod issue
 - Settlement / dispute issue
@@ -115,6 +116,7 @@ If a tester misunderstands any of the following, classify as "Trust concern" or 
 - Taxi meter proof.
 - Dispute window.
 - Recurring ride settles separately.
+- Taxi Partner Quote Mode is a future beta prototype with no real dispatch or payout yet.
 
 ## 7. Money / Protection Issue Rules
 
@@ -123,6 +125,9 @@ Mark P0 or P1 if:
 - User can bypass eligibility and authorize payment.
 - Ride app flow allows booking without quote.
 - Taxi meter flow asks for quote before booking.
+- Taxi partner quote flow implies live taxi dispatch, live payment, or live payout.
+- Taxi partner quote flow skips guest quote acceptance or mock payment state.
+- Taxi partner quote completion hides dispute window or payout pending status.
 - Final settlement ignores verified receipt/meter proof.
 - User can be charged above max without approval.
 - Guest silence blocks host forever.
@@ -145,21 +150,47 @@ Mark P1 if:
 
 Track and fix if UI says:
 
-- RidePod driver.
+- Wording that presents taxi partners as RidePod-operated drivers.
 - Guaranteed refund.
 - Guaranteed reimbursement.
-- 100% safe.
+- Absolute safety claims.
 - 100% verified.
 - Official Uber/DiDi/Lyft integration.
 - Escrow.
-- Fake / AI fake accusation.
-- Crime / forever banned.
+- Altered-proof accusations.
+- Criminal accusation or permanent-ban threats.
 - Gal only / boy and gal.
 - Wait at.
 - Min seats to book.
 - Target seats.
 
 Preferred wording should stay concrete, calm, and beta-accurate.
+
+## Taxi Partner Quote Issue Rules
+
+Ride mode reference:
+
+| Mode | Meaning | Proof | Status |
+| --- | --- | --- | --- |
+| Ride app / fixed quote | Host/organizer books through an app or provider that shows fare before booking. | Fresh quote before booking. Final receipt after ride. | Current beta / proof-based mode. |
+| Taxi meter | Host/organizer takes a real street taxi with a meter. | No upfront quote. Meter proof or taxi receipt after ride. | Current beta / meter-proof mode. |
+| Taxi partner quote | Licensed taxi partner quotes one shared pod price. | Partner quote before guests accept. Completion plus dispute window before payout. | Future beta prototype / no real dispatch or payout yet. |
+
+Track Taxi Partner Quote issues when:
+
+- Guests do not see the shared pod quote, fare share, platform fee, guest charge, or quote expiry.
+- Accept quote / decline quote behavior creates duplicate counts or wrong mock payment state.
+- Above-cap quote warning is missing.
+- Completion does not open the dispute window or payout pending state.
+- Guest dispute does not map to pickup issue, completion dispute, taxi partner safety concern, or taxi partner guest dispute.
+- Admin Review shows raw enum names instead of clean case labels.
+- Updates use duplicate unstable cards or unsafe CTA copy.
+
+Money model for verification: HK$240 quote / 4 guests = HK$60 fare share, HK$6 platform fee, HK$66 guest pays, HK$24 RidePod earns, HK$240 taxi partner payout. Formula: `fareShareCents = ceil(driverQuoteCents / guestCount)`, `platformFeeCents = max(ceil(fareShareCents * 10%), HK$6)`, `guestChargeCents = fareShareCents + platformFeeCents`, `driverPayoutCents = driverQuoteCents`.
+
+Taxi Partner Quote risks to tag: high quote, guest decline, taxi partner no-show, pickup issue, guest dispute after completion, payout held during review, unsupported accessibility request, safety report, and regulatory/licensing review needed.
+
+Safety/access note: Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner. Verified-only, community-only, high-trust-only, and invite-only remain rider access controls.
 
 ## 10. Example Issues
 
@@ -209,4 +240,3 @@ Verification notes:
 Linked commit:
 Next action:
 ```
-
