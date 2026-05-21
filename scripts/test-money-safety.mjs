@@ -185,10 +185,11 @@ assert.deepEqual(taxiPartnerQuote.TAXI_PARTNER_PAYOUT_STATUSES, [
   "HELD_FOR_REVIEW",
   "READY_TO_RELEASE",
   "RELEASED",
+  "RELEASED_MOCK",
   "DENIED",
   "DENIED_MOCK",
 ]);
-assert.equal(taxiPartnerQuote.mockTaxiPartnerQuoteRequests.length, 6);
+assert.equal(taxiPartnerQuote.mockTaxiPartnerQuoteRequests.length, 12);
 assert.deepEqual(
   taxiPartnerQuote.mockTaxiPartnerQuoteRequests.map((request) => request.id),
   [
@@ -198,6 +199,12 @@ assert.deepEqual(
     "taxi_partner_ready",
     "taxi_partner_completed_payout_pending",
     "taxi_partner_dispute_review",
+    "taxi_partner_payout_ready",
+    "taxi_partner_more_info_needed",
+    "taxi_partner_under_review",
+    "taxi_partner_payout_denied",
+    "taxi_partner_dispute_resolved",
+    "taxi_partner_closed",
   ],
 );
 assert.equal(
@@ -235,6 +242,42 @@ assert.equal(
     taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_dispute_review"),
   ).helperText,
   "Payout is held while RidePod reviews the issue.",
+);
+assert.equal(
+  taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
+    taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_payout_ready"),
+  ).label,
+  "Payout ready",
+);
+assert.equal(
+  taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
+    taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_more_info_needed"),
+  ).label,
+  "More info needed",
+);
+assert.equal(
+  taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
+    taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_under_review"),
+  ).label,
+  "Under review",
+);
+assert.equal(
+  taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
+    taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_payout_denied"),
+  ).label,
+  "Payout denied",
+);
+assert.equal(
+  taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
+    taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_dispute_resolved"),
+  ).label,
+  "Dispute resolved",
+);
+assert.equal(
+  taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
+    taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_closed"),
+  ).label,
+  "Closed",
 );
 assert.equal(
   taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus({
@@ -1180,7 +1223,7 @@ for (const recurringCopy of [
   "Upload the final receipt for settlement.",
   "Proof verified. Dispute window is open.",
   "Closed",
-  "Settlement complete. Payout processed.",
+  "Settlement complete. Payout marked complete.",
   "Next action",
   "Upcoming rides",
   "View all",
@@ -1221,14 +1264,16 @@ for (const taxiPartnerCopy of [
   "Payout ready",
   "Payout denied",
   "More info needed",
+  "Under review",
+  "Dispute resolved",
   "Closed",
   "Request a quote from a licensed taxi partner.",
   "Taxi partners can quote one price for this shared pod.",
   "Guests need to accept the partner quote before the ride proceeds.",
   "Waiting for all guests to accept the quote.",
   "Guests accepted the quote. Ride can proceed in demo mode.",
-  "Dispute window is open before payout release.",
-  "Payout releases after the dispute window if no issue is reported.",
+  "Dispute window is open before payout is marked ready.",
+  "Payout remains pending through the dispute window in demo mode.",
   "Payout is held while RidePod reviews the issue.",
   "Review is complete. Payout can be processed in demo mode.",
   "Payout was denied in demo review.",
@@ -1258,8 +1303,8 @@ for (const taxiPartnerRequestCardCopy of [
   "Fare share",
   "Platform fee",
   "Guest charge",
-  "Driver payout",
-  "Safety modes control who can join the pod. They do not guarantee a specific taxi driver unless supported by the taxi partner.",
+  "Taxi partner payout",
+  "Safety modes control who can join the pod. Taxi partner assignment depends on partner availability.",
   "Guest acceptance flow comes next.",
 ]) {
   assert.ok(
@@ -1282,7 +1327,7 @@ for (const taxiPartnerAcceptanceCardCopy of [
   "Ready for taxi partner",
   "Quote above fare cap",
   "Accept higher quote",
-  "No live payment or taxi dispatch happens yet.",
+  "No live payment or taxi partner booking happens yet.",
   "Next: guests accept the partner quote.",
   "Mock payment state",
 ]) {
@@ -1310,7 +1355,7 @@ for (const taxiPartnerCompletionCardCopy of [
   "activeStatusLabel",
   "displayStatus.helperText",
   "Taxi partner quote",
-  "Driver payout",
+  "Taxi partner payout",
   "Platform fee total",
   "Dispute window",
   "View settlement",
@@ -1415,7 +1460,7 @@ for (const updatesCopy of [
   "Settlement ready",
   "Proof is verified. Guests can report issues until the dispute window ends.",
   "Payout ready",
-  "Settlement is final. Your payout can be processed.",
+  "Settlement is final. Payout is ready to review.",
   "Dispute under review",
   "RidePod is reviewing the issue. Settlement or payout may be held.",
   "Ride booked",
@@ -1468,10 +1513,23 @@ for (const stableNotificationKey of [
   "admin_more_info:${rideInstance.id}:${proofId}",
   "admin_proof_rejected:${rideInstance.id}:${proofId}",
   "admin_payout_held:${rideInstance.id}:${caseId}",
-  "taxi_partner_dispute_opened:${rideInstance.id}",
-  "taxi_partner_guest_dispute_review:${rideInstance.id}",
 ]) {
   assert.ok(rideInstanceNotificationsSource.includes(stableNotificationKey), `Missing stable notification key: ${stableNotificationKey}`);
+}
+for (const taxiPartnerStableEvent of [
+  '"dispute_opened"',
+  '"guest_dispute_review"',
+  '"payout_held"',
+  '"payout_ready"',
+  '"more_info_needed"',
+  '"payout_denied"',
+  '"dispute_resolved"',
+  "taxi_partner_${event}:${rideInstance.id}",
+]) {
+  assert.ok(
+    rideInstanceNotificationsSource.includes(taxiPartnerStableEvent),
+    `Missing Taxi Partner stable notification key support: ${taxiPartnerStableEvent}`,
+  );
 }
 assert.ok(rideInstanceNotificationsSource.includes("getRideInstanceNotifications"));
 assert.ok(rideInstanceNotificationsSource.includes("getDemoRideInstanceNotifications"));
