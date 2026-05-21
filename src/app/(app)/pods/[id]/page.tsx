@@ -45,6 +45,7 @@ export default async function PodDetailPage({
     pod.rideOption === "taxi_partner_quote"
       ? pod.upcomingRideInstances?.find((ride) =>
           [
+            "taxi_partner_quote_needed",
             "taxi_partner_quote_received",
             "taxi_partner_guests_accepting",
             "taxi_partner_ready",

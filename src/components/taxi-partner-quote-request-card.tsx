@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { CarFront, CheckCircle2, Clock3, Info, Luggage, ShieldCheck, UsersRound, WalletCards } from "lucide-react";
+import { AlertTriangle, CarFront, CheckCircle2, Clock3, Info, Luggage, ShieldCheck, UsersRound, WalletCards } from "lucide-react";
 import { Badge, cn } from "@/components/ui";
 import type { RecurringRideInstancePreview, RidePod } from "@/lib/mock-data";
 import {
@@ -221,6 +221,11 @@ export function TaxiPartnerQuoteRequestCard({
     () => activeRequest ? getTaxiPartnerQuoteMoneyDisplay(activeRequest, lockedGuestCount) : null,
     [activeRequest, lockedGuestCount],
   );
+  const quoteAboveCap = Boolean(
+    activeRequest?.quoteAmountCents &&
+      rideInstance.bookingFareCapCents &&
+      activeRequest.quoteAmountCents > rideInstance.bookingFareCapCents,
+  );
   const safetyBadges = [
     pod.genderMode === "women_only" ? "Women-only" : "Mixed pod",
     pod.accessMode ? accessModeLabels[pod.accessMode] : null,
@@ -366,6 +371,15 @@ export function TaxiPartnerQuoteRequestCard({
           <p className="mt-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
             Display/mock only. No real charge or payout is created.
           </p>
+          {quoteAboveCap ? (
+            <div className="mt-3 flex items-start gap-3 rounded-[16px] border border-orange-400/25 bg-orange-400/10 p-3 text-orange-200">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <p className="text-xs font-bold leading-5">
+                Quote above fare cap. Guests must approve the higher amount before the ride can proceed.
+                <span className="sr-only"> TODO: Wire above-cap quote approval state later.</span>
+              </p>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

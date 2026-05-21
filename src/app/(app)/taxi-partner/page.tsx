@@ -15,6 +15,12 @@ import {
   WalletCards,
 } from "lucide-react";
 import { Badge, Card, cn } from "@/components/ui";
+import {
+  getTaxiPartnerQuoteMoneyDisplay,
+  submitTaxiPartnerMockQuote,
+  type TaxiPartnerQuoteRequest,
+  type TaxiPartnerTaxiType,
+} from "@/lib/taxi-partner-quote";
 
 type TaxiType = "Standard" | "Electric" | "Luggage-friendly" | "Large" | "Comfort" | "Accessible";
 type RequestStatus = "Quote requested" | "Quote submitted" | "Quote received";
@@ -29,6 +35,7 @@ type PayoutStatus = "Payout pending" | "Payout held" | "Payout ready" | "Payout 
 
 type PodRequest = {
   id: string;
+  rideInstanceId: string;
   route: string;
   dateTime: string;
   pickup: string;
@@ -50,7 +57,8 @@ const expiryOptions = ["10 minutes", "15 minutes", "30 minutes"];
 
 const initialRequests: PodRequest[] = [
   {
-    id: "usc-lax",
+    id: "taxi_partner_quote_needed",
+    rideInstanceId: "taxi-partner-quote-demo-needed",
     route: "USC Village to LAX Terminal 3",
     dateTime: "Tue May 19 - 8:00 AM",
     pickup: "USC Village rideshare pickup",
@@ -67,7 +75,8 @@ const initialRequests: PodRequest[] = [
     organizerNote: "Guests have two large luggage items and prefer a quiet pickup area.",
   },
   {
-    id: "tst-cwb",
+    id: "taxi_partner_quote_received",
+    rideInstanceId: "taxi-partner-quote-demo-received",
     route: "Tsim Sha Tsui to Causeway Bay",
     dateTime: "Today - 6:30 PM",
     pickup: "Tsim Sha Tsui MTR Exit L5",
@@ -83,7 +92,8 @@ const initialRequests: PodRequest[] = [
     organizerNote: "Evening commute pod. Standard taxi is fine.",
   },
   {
-    id: "central-airport",
+    id: "taxi_partner_guests_accepting",
+    rideInstanceId: "taxi-partner-quote-demo-accepting",
     route: "Central to Airport",
     dateTime: "Fri - 7:15 AM",
     pickup: "Central ferry pier taxi area",
@@ -148,19 +158,22 @@ function parseHkdToCents(value: string) {
   return Math.round(Number(normalized) * 100);
 }
 
-function getMoneyPreview(quoteCents: number, guestCount: number) {
-  if (quoteCents <= 0) return null;
+function toTaxiPartnerTaxiType(taxiType: TaxiType): TaxiPartnerTaxiType {
+  if (taxiType === "Electric") return "ELECTRIC";
+  if (taxiType === "Luggage-friendly") return "LUGGAGE_FRIENDLY";
+  if (taxiType === "Large") return "LARGE";
+  if (taxiType === "Comfort") return "COMFORT";
+  if (taxiType === "Accessible") return "ACCESSIBLE";
 
-  const fareShareCents = Math.ceil(quoteCents / Math.max(1, guestCount));
-  const platformFeeCents = Math.max(Math.ceil(fareShareCents * 0.1), 600);
+  return "STANDARD";
+}
 
-  return {
-    quoteCents,
-    fareShareCents,
-    platformFeeCents,
-    guestTotalCents: fareShareCents + platformFeeCents,
-    taxiPartnerPayoutCents: quoteCents,
-  };
+function expiryToMinutes(expiry: string) {
+  if (expiry === "10 minutes") return 10;
+  if (expiry === "30 minutes") return 30;
+  if (expiry === "15 minutes") return 15;
+
+  return 0;
 }
 
 function statusClass(status: string) {
@@ -209,6 +222,7 @@ export default function TaxiPartnerDashboardPage() {
   const [partnerNote, setPartnerNote] = useState("");
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoteMessage, setQuoteMessage] = useState<string | null>(null);
+  const [submittedQuoteRequest, setSubmittedQuoteRequest] = useState<TaxiPartnerQuoteRequest | null>(null);
   const [activeRides, setActiveRides] = useState(initialActiveRides);
   const [completionRideId, setCompletionRideId] = useState<string | null>(null);
   const [understandsCompletion, setUnderstandsCompletion] = useState(false);
@@ -217,8 +231,13 @@ export default function TaxiPartnerDashboardPage() {
   const selectedRequest = requests.find((request) => request.id === selectedRequestId) ?? requests[0];
   const quoteCents = parseHkdToCents(quoteAmount);
   const quotePreview = useMemo(
-    () => getMoneyPreview(quoteCents, selectedRequest?.guestCount ?? 1),
+    () => getTaxiPartnerQuoteMoneyDisplay({ quoteAmountCents: quoteCents, currency: "HKD" }, selectedRequest?.guestCount ?? 1),
     [quoteCents, selectedRequest?.guestCount],
+  );
+  const submittedQuoteAboveCap = Boolean(
+    submittedQuoteRequest?.quoteAmountCents &&
+      selectedRequest?.fareCapCents &&
+      submittedQuoteRequest.quoteAmountCents > selectedRequest.fareCapCents,
   );
 
   if (!demoModeEnabled) {
@@ -239,31 +258,43 @@ export default function TaxiPartnerDashboardPage() {
   }
 
   function submitQuote() {
-    if (quoteCents <= 0) {
+    if (!quoteAmount.trim()) {
       setQuoteError("Add a quote amount.");
       setQuoteMessage(null);
       return;
     }
 
-    if (!selectedTaxiType) {
-      setQuoteError("Choose a taxi type.");
+    if (quoteCents <= 0) {
+      setQuoteError("Quote amount must be greater than 0.");
       setQuoteMessage(null);
       return;
     }
 
-    if (!selectedExpiry) {
-      setQuoteError("Choose quote expiry.");
+    const result = submitTaxiPartnerMockQuote({
+      requestId: selectedRequest.id,
+      rideInstanceId: selectedRequest.rideInstanceId,
+      quoteAmountCents: quoteCents,
+      taxiType: toTaxiPartnerTaxiType(selectedTaxiType),
+      quoteExpiresInMinutes: expiryToMinutes(selectedExpiry),
+      partnerName: "Demo Taxi Partner",
+      partnerNote,
+      bookingFareCapCents: selectedRequest.fareCapCents,
+    });
+
+    if (!result.success) {
+      setQuoteError(result.error ?? result.message);
       setQuoteMessage(null);
       return;
     }
 
     setRequests((current) =>
       current.map((request) =>
-        request.id === selectedRequest.id ? { ...request, status: "Quote submitted" } : request,
+        request.id === selectedRequest.id ? { ...request, status: "Quote received" } : request,
       ),
     );
+    setSubmittedQuoteRequest(result.quoteRequest);
     setQuoteError(null);
-    setQuoteMessage("Quote submitted. Guests can now review and accept this shared taxi quote.");
+    setQuoteMessage(result.message);
   }
 
   function markRideCompleted() {
@@ -376,9 +407,10 @@ export default function TaxiPartnerDashboardPage() {
                   <div className="mt-4 grid gap-2 min-[520px]:grid-cols-2">
                     <button
                       type="button"
-                      onClick={() => {
+                  onClick={() => {
                         setSelectedRequestId(request.id);
                         setSelectedTaxiType(request.taxiType);
+                        setSubmittedQuoteRequest(null);
                         setQuoteMessage(null);
                         setQuoteError(null);
                       }}
@@ -513,6 +545,9 @@ export default function TaxiPartnerDashboardPage() {
                 <p className="mt-1 text-xs font-bold leading-5 text-emerald-200">
                   Guests can now review and accept this shared taxi quote.
                 </p>
+                <p className="mt-2 text-xs font-bold leading-5 text-emerald-200">
+                  Organizer view updates to Partner quote received. Guest acceptance can now show Accept quote / Decline.
+                </p>
               </div>
             ) : null}
 
@@ -520,16 +555,26 @@ export default function TaxiPartnerDashboardPage() {
               <h3 className="text-base font-black">Quote breakdown preview</h3>
               {quotePreview ? (
                 <dl className="mt-3">
-                  <MoneyRow label="Quote" value={formatHkdCents(quotePreview.quoteCents)} />
+                  <MoneyRow label="Quote" value={formatHkdCents(quotePreview.quoteAmountCents)} />
                   <MoneyRow label="Guests" value={String(selectedRequest.guestCount)} />
                   <MoneyRow label="Fare share" value={formatHkdCents(quotePreview.fareShareCents)} />
                   <MoneyRow label="Platform fee" value={`${formatHkdCents(quotePreview.platformFeeCents)} / guest`} />
-                  <MoneyRow label="Guest total" value={formatHkdCents(quotePreview.guestTotalCents)} />
-                  <MoneyRow label="Taxi partner payout" value={formatHkdCents(quotePreview.taxiPartnerPayoutCents)} />
+                  <MoneyRow label="Guest total" value={formatHkdCents(quotePreview.guestChargeCents)} />
+                  <MoneyRow label="Platform fee total" value={formatHkdCents(quotePreview.platformFeeTotalCents)} />
+                  <MoneyRow label="Taxi partner payout" value={formatHkdCents(quotePreview.driverPayoutCents)} />
                 </dl>
               ) : (
                 <p className="mt-3 text-sm font-bold text-[var(--rp-muted-strong)]">Add a quote amount to preview guest totals.</p>
               )}
+              {submittedQuoteAboveCap ? (
+                <div className="mt-3 flex items-start gap-3 rounded-[16px] border border-orange-400/25 bg-orange-400/10 p-3 text-orange-200">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p className="text-xs font-bold leading-5">
+                    Quote above fare cap. Guests must approve the higher amount before the ride can proceed.
+                    <span className="sr-only"> TODO: Wire above-cap quote approval state later.</span>
+                  </p>
+                </div>
+              ) : null}
               <p className="mt-3 text-xs font-bold leading-5 text-sky-100">
                 Payout is released only after ride completion and dispute window review in the live version.
               </p>

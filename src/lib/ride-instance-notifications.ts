@@ -479,14 +479,14 @@ export function getRideInstanceNotifications(
         notification(rideInstance, {
           stableKey: `taxi_partner_quote_received:${rideInstance.id}`,
           type: "taxi_partner_quote_received",
-          title: "Taxi partner quote received",
+          title: host ? "Partner quote received" : "Taxi partner quote received",
           body: host
-            ? "Guests can review and accept the shared taxi quote."
+            ? "Taxi partner submitted a shared pod quote."
             : "Review and accept the shared taxi quote.",
           timeAgo: "10m",
           group: "Today",
           tone: "green",
-          ctaLabel: host ? "View quote" : "Review quote",
+          ctaLabel: host ? "Review quote" : "Review quote",
           ctaTarget: host ? target : guestRideTarget,
           createdAt: "2026-05-18T09:55:00.000Z",
           read: false,

@@ -108,6 +108,7 @@ export type TaxiPartnerQuoteRequest = {
   stepFreeSupportRequested?: boolean;
   acceptedGuestCount?: number;
   disputeWindowEndsAt?: string | null;
+  quoteAboveCap?: boolean;
   notes?: string;
 };
 
@@ -140,6 +141,26 @@ export type TaxiPartnerQuoteAcceptance = {
   acceptedAt: string | null;
   declinedAt: string | null;
   acceptedHigherQuote: boolean;
+};
+
+export type TaxiPartnerMockQuoteInput = {
+  requestId?: string;
+  rideInstanceId?: string;
+  quoteAmountCents: number;
+  taxiType: TaxiPartnerTaxiType;
+  quoteExpiresInMinutes: number;
+  partnerName?: string;
+  partnerNote?: string;
+  bookingFareCapCents?: number | null;
+};
+
+export type TaxiPartnerMockQuoteResult = {
+  success: boolean;
+  quoteRequest: TaxiPartnerQuoteRequest | null;
+  message: string;
+  aboveCap: boolean;
+  nextStatus: TaxiPartnerQuoteStatus | null;
+  error?: string;
 };
 
 export const taxiPartnerTaxiTypeLabels: Record<TaxiPartnerTaxiType, string> = {
@@ -413,10 +434,148 @@ export const mockTaxiPartnerQuoteRequests: TaxiPartnerQuoteRequest[] = [
   },
 ];
 
+const TAXI_PARTNER_DEMO_QUOTE_STORAGE_KEY = "ridepod:taxi-partner-demo-quotes";
+
+function canUseTaxiPartnerDemoStorage() {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function readStoredTaxiPartnerQuoteRequests() {
+  if (!canUseTaxiPartnerDemoStorage()) return [];
+
+  try {
+    const rawValue = window.localStorage.getItem(TAXI_PARTNER_DEMO_QUOTE_STORAGE_KEY);
+    if (!rawValue) return [];
+    const parsed = JSON.parse(rawValue);
+
+    return Array.isArray(parsed) ? (parsed as TaxiPartnerQuoteRequest[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredTaxiPartnerQuoteRequest(request: TaxiPartnerQuoteRequest) {
+  if (!canUseTaxiPartnerDemoStorage()) return;
+
+  const storedRequests = readStoredTaxiPartnerQuoteRequests();
+  const nextRequests = [
+    request,
+    ...storedRequests.filter((storedRequest) => storedRequest.id !== request.id),
+  ];
+
+  window.localStorage.setItem(TAXI_PARTNER_DEMO_QUOTE_STORAGE_KEY, JSON.stringify(nextRequests));
+}
+
+function upsertMockTaxiPartnerQuoteRequest(request: TaxiPartnerQuoteRequest) {
+  const existingIndex = mockTaxiPartnerQuoteRequests.findIndex((mockRequest) => mockRequest.id === request.id);
+
+  if (existingIndex >= 0) {
+    mockTaxiPartnerQuoteRequests[existingIndex] = request;
+  } else {
+    mockTaxiPartnerQuoteRequests.unshift(request);
+  }
+
+  writeStoredTaxiPartnerQuoteRequest(request);
+}
+
 export function getTaxiPartnerQuoteRequest(id: string | null | undefined) {
   if (!id) return null;
 
+  const storedRequest = readStoredTaxiPartnerQuoteRequests().find(
+    (request) => request.id === id || request.rideInstanceId === id,
+  );
+  if (storedRequest) return storedRequest;
+
   return mockTaxiPartnerQuoteRequests.find((request) => request.id === id) ?? null;
+}
+
+export function submitTaxiPartnerMockQuote(input: TaxiPartnerMockQuoteInput): TaxiPartnerMockQuoteResult {
+  if (!input.quoteAmountCents) {
+    return {
+      success: false,
+      quoteRequest: null,
+      message: "Add a quote amount.",
+      aboveCap: false,
+      nextStatus: null,
+      error: "Add a quote amount.",
+    };
+  }
+
+  if (input.quoteAmountCents <= 0) {
+    return {
+      success: false,
+      quoteRequest: null,
+      message: "Quote amount must be greater than 0.",
+      aboveCap: false,
+      nextStatus: null,
+      error: "Quote amount must be greater than 0.",
+    };
+  }
+
+  if (!input.taxiType) {
+    return {
+      success: false,
+      quoteRequest: null,
+      message: "Choose a taxi type.",
+      aboveCap: false,
+      nextStatus: null,
+      error: "Choose a taxi type.",
+    };
+  }
+
+  if (!input.quoteExpiresInMinutes || input.quoteExpiresInMinutes <= 0) {
+    return {
+      success: false,
+      quoteRequest: null,
+      message: "Choose quote expiry.",
+      aboveCap: false,
+      nextStatus: null,
+      error: "Choose quote expiry.",
+    };
+  }
+
+  const existingRequest =
+    getTaxiPartnerQuoteRequest(input.requestId) ??
+    mockTaxiPartnerQuoteRequests.find((request) => request.rideInstanceId === input.rideInstanceId) ??
+    null;
+  const now = new Date();
+  const quoteExpiresAt = new Date(now.getTime() + input.quoteExpiresInMinutes * 60 * 1000).toISOString();
+  const aboveCap =
+    typeof input.bookingFareCapCents === "number" && input.quoteAmountCents > input.bookingFareCapCents;
+  const quoteRequest: TaxiPartnerQuoteRequest = {
+    ...(existingRequest ?? {
+      id: input.requestId ?? `taxi_partner_mock_quote_${input.rideInstanceId ?? Date.now()}`,
+      podId: "taxi-partner-quote-demo",
+      rideInstanceId: input.rideInstanceId,
+      organizerUserId: "u1",
+      rideOption: "TAXI_PARTNER_QUOTE" as const,
+      requestedAt: now.toISOString(),
+      currency: "HKD" as const,
+      quotedByPartnerId: "demo-taxi-partner",
+      luggageCount: 0,
+    }),
+    requestedTaxiType: input.taxiType,
+    quoteStatus: "QUOTE_RECEIVED",
+    quoteAmountCents: input.quoteAmountCents,
+    quotedByPartnerName: input.partnerName ?? "Demo Taxi Partner",
+    quotedByPartnerId: "demo-taxi-partner",
+    quoteExpiresAt,
+    guestAcceptanceStatus: "ACCEPTING_QUOTE",
+    driverAssignmentStatus: "NOT_ASSIGNED",
+    payoutStatus: "NOT_READY",
+    quoteAboveCap: aboveCap,
+    notes: input.partnerNote?.trim() || "Taxi partner submitted a shared pod quote.",
+  };
+
+  upsertMockTaxiPartnerQuoteRequest(quoteRequest);
+
+  return {
+    success: true,
+    quoteRequest,
+    message: "Quote submitted. Guests can now review and accept this shared taxi quote.",
+    aboveCap,
+    nextStatus: quoteRequest.quoteStatus,
+  };
 }
 
 export function getTaxiPartnerQuoteDisplayStatus(
@@ -566,7 +725,11 @@ export function getTaxiPartnerQuoteDisplayStatus(
     };
   }
 
-  if (request.quoteStatus === "QUOTE_RECEIVED" && request.guestAcceptanceStatus === "ACCEPTING_QUOTE") {
+  if (
+    request.quoteStatus === "QUOTE_RECEIVED" &&
+    request.guestAcceptanceStatus === "ACCEPTING_QUOTE" &&
+    (request.acceptedGuestCount ?? 0) > 0
+  ) {
     return {
       label: "Guests accepting",
       tone: "purple",
@@ -580,7 +743,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
       label: "Quote received",
       tone: "green",
       helperText: "Guests need to accept the partner quote before the ride proceeds.",
-      primaryActionLabel: "Review quote",
+      primaryActionLabel: "View guest acceptance",
     };
   }
 
