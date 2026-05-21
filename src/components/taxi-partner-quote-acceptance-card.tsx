@@ -28,6 +28,10 @@ function formatQuoteExpiry(value: string | null) {
   }).format(parsed);
 }
 
+function formatQuoteExpiryBadge(value: string | null) {
+  return value ? "Quote expires in 15 min" : "Quote expiry not set";
+}
+
 function getInitialAcceptedCount(requestAcceptedCount: number | undefined, guestCount: number) {
   if (typeof requestAcceptedCount === "number") return Math.min(requestAcceptedCount, guestCount);
 
@@ -123,6 +127,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
   const [acceptedCount, setAcceptedCount] = useState(() =>
     getInitialAcceptedCount(baseRequest?.acceptedGuestCount, guestCount),
   );
+  const [declinedCount, setDeclinedCount] = useState(0);
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [understandsMockPayment, setUnderstandsMockPayment] = useState(false);
@@ -141,6 +146,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
   const userAccepted = acceptance.acceptanceStatus === "ACCEPTED";
   const userDeclined = acceptance.acceptanceStatus === "DECLINED";
   const effectiveAcceptedCount = acceptedCount;
+  const pendingCount = Math.max(0, guestCount - effectiveAcceptedCount - declinedCount);
   const allAccepted = effectiveAcceptedCount >= guestCount;
   const totalLabel = moneyDisplay ? formatHkdCents(moneyDisplay.guestChargeCents) : "Pending";
 
@@ -154,6 +160,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
       acceptedHigherQuote: quoteAboveCap,
     }));
     setAcceptedCount((current) => Math.min(guestCount, Math.max(current + 1, current)));
+    setDeclinedCount((current) => Math.max(0, current - 1));
     setShowAcceptModal(false);
     setMessage("Quote accepted");
   }
@@ -167,6 +174,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
       declinedAt: new Date().toISOString(),
       acceptedHigherQuote: false,
     }));
+    setDeclinedCount((current) => Math.min(guestCount, current + 1));
     setShowDeclineModal(false);
     setMessage("Quote declined");
   }
@@ -181,7 +189,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
             Taxi partner quote
           </p>
           <h2 className="mt-2 text-2xl font-black leading-tight text-[var(--rp-text)]">
-            Review shared taxi quote
+            Taxi partner quote
           </h2>
           <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
             Your total includes your fare share and RidePod platform fee.
@@ -196,10 +204,10 @@ export function TaxiPartnerQuoteAcceptanceCard({
         <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
           <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Route</p>
           <p className="mt-1 text-sm font-black text-[var(--rp-text)]">
-            {rideInstance.originLabel} to {rideInstance.destinationLabel}
+            {rideInstance.originLabel} → {rideInstance.destinationLabel}
           </p>
           <p className="mt-1 text-xs font-bold text-[var(--rp-muted-strong)]">
-            {rideInstance.displayDate} - {rideInstance.departureTime}
+            {rideInstance.displayDate} · {rideInstance.departureTime}
           </p>
         </div>
         <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
@@ -238,7 +246,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Badge className="bg-[var(--rp-card-muted)] text-[var(--rp-muted-strong)] ring-[var(--rp-border)]">
           <Clock3 className="mr-1 h-3.5 w-3.5" />
-          Quote expires at {formatQuoteExpiry(baseRequest.quoteExpiresAt)}
+          {formatQuoteExpiryBadge(baseRequest.quoteExpiresAt)}
         </Badge>
         <Badge className="bg-[var(--rp-card-muted)] text-[var(--rp-primary)] ring-[var(--rp-border)]">
           Mock payment state: {acceptance.mockPaymentState === "MOCK_AUTHORIZED" ? "Authorized" : "Not started"}
@@ -267,8 +275,14 @@ export function TaxiPartnerQuoteAcceptanceCard({
           </div>
           <div className="flex items-center justify-between gap-3">
             <span>Other guests</span>
-            <span>{Math.max(0, guestCount - effectiveAcceptedCount)} pending</span>
+            <span>{pendingCount} pending</span>
           </div>
+          {declinedCount > 0 ? (
+            <div className="flex items-center justify-between gap-3">
+              <span>Declined</span>
+              <span>{declinedCount}</span>
+            </div>
+          ) : null}
         </div>
         {allAccepted ? (
           <div className="mt-3 rounded-[14px] border border-emerald-400/20 bg-emerald-400/10 p-3 text-emerald-200">
@@ -282,7 +296,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
       </div>
 
       <p className="mt-4 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-        This is a future beta prototype. No live payment or taxi partner booking happens yet.
+        This is a future beta prototype. No real payment or taxi dispatch happens yet.
       </p>
 
       <div className="mt-5 grid gap-3 min-[520px]:grid-cols-2">

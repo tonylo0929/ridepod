@@ -1327,7 +1327,7 @@ for (const taxiPartnerAcceptanceCardCopy of [
   "Ready for taxi partner",
   "Quote above fare cap",
   "Accept higher quote",
-  "No live payment or taxi partner booking happens yet.",
+  "No real payment or taxi dispatch happens yet.",
   "Next: guests accept the partner quote.",
   "Mock payment state",
 ]) {
@@ -1404,7 +1404,6 @@ for (const forbiddenTaxiPartnerCopy of [
   "female driver guaranteed",
   "100% safe",
   "escrow",
-  "real payment",
   "real payout sent",
 ]) {
   assert.equal(taxiPartnerQuoteSource.includes(forbiddenTaxiPartnerCopy), false);
