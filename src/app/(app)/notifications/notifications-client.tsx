@@ -12,7 +12,6 @@ import {
   CircleDollarSign,
   Clock3,
   FileWarning,
-  Menu,
   ReceiptText,
   UploadCloud,
   WalletCards,
@@ -162,13 +161,7 @@ export function NotificationsClient({
 function UpdatesHeader({ unreadCount }: { unreadCount: number }) {
   return (
     <header className="flex items-center justify-between gap-4">
-      <button
-        type="button"
-        aria-label="Open menu"
-        className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card)] text-[var(--rp-text)]"
-      >
-        <Menu className="h-5 w-5" />
-      </button>
+      <span className="h-11 w-11" aria-hidden="true" />
       <h1 className="text-xl font-black text-[var(--rp-text)]">Updates</h1>
       <div className="relative grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card)] text-[var(--rp-text)]">
         <Bell className="h-5 w-5" />

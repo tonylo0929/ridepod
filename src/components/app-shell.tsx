@@ -75,7 +75,7 @@ function PremiumBottomNav() {
       <div className="mx-auto grid max-w-md grid-cols-5 items-center">
         <NavLink href="/home" label="Home" icon={Home} compact />
         <NavLink href="/pods" label="My Pods" icon={CalendarCheck} compact />
-        <NavLink href="/notifications" label="Updates" icon={Bell} compact />
+        <NavLink href="/create" label="Create" icon={PlusCircle} compact />
         <NavLink href="/host" label="Chat" icon={MessageCircle} compact />
         <NavLink href="/profile" label="Profile" icon={UserRound} compact />
       </div>

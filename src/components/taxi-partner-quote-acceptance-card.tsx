@@ -4,6 +4,8 @@ import { useMemo, useState, type ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, Clock3, Info, WalletCards, XCircle } from "lucide-react";
 import { Badge, cn } from "@/components/ui";
 import type { RecurringRideInstancePreview, RidePod } from "@/lib/mock-data";
+import { createRidePodTestPaymentIntent } from "@/lib/payments/create-ridepod-test-payment";
+import type { RidePodCreateTestPaymentIntentResponse } from "@/lib/payments/ridepod-payment-types";
 import {
   createPendingTaxiPartnerQuoteAcceptance,
   getTaxiPartnerQuoteDisplayStatus,
@@ -30,6 +32,18 @@ function formatQuoteExpiry(value: string | null) {
 
 function formatQuoteExpiryBadge(value: string | null) {
   return value ? "Quote expires in 15 min" : "Quote expiry not set";
+}
+
+function formatMockPaymentState(state: TaxiPartnerQuoteAcceptance["mockPaymentState"]) {
+  if (state === "MOCK_AUTHORIZED") return "Authorized";
+  if (state === "TEST_PAYMENT_INTENT_CREATED") return "Test PaymentIntent created";
+  if (state === "TEST_REQUIRES_PAYMENT_METHOD") return "Test requires payment method";
+  if (state === "TEST_REQUIRES_CAPTURE") return "Test requires capture";
+  if (state === "TEST_SUCCEEDED") return "Test succeeded";
+  if (state === "TEST_CANCELED") return "Test canceled";
+  if (state === "TEST_FAILED") return "Test failed";
+
+  return "Not started";
 }
 
 function getInitialAcceptedCount(requestAcceptedCount: number | undefined, guestCount: number) {
@@ -132,6 +146,8 @@ export function TaxiPartnerQuoteAcceptanceCard({
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [understandsMockPayment, setUnderstandsMockPayment] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [testPaymentIntent, setTestPaymentIntent] = useState<RidePodCreateTestPaymentIntentResponse | null>(null);
+  const [creatingTestPayment, setCreatingTestPayment] = useState(false);
 
   const moneyDisplay = useMemo(
     () => baseRequest ? getTaxiPartnerQuoteMoneyDisplay(baseRequest, guestCount) : null,
@@ -163,6 +179,54 @@ export function TaxiPartnerQuoteAcceptanceCard({
     setDeclinedCount((current) => Math.max(0, current - 1));
     setShowAcceptModal(false);
     setMessage("Quote accepted");
+  }
+
+  async function handleCreateTestPayment() {
+    if (!moneyDisplay) return;
+
+    setCreatingTestPayment(true);
+    setTestPaymentIntent(null);
+
+    const result = await createRidePodTestPaymentIntent({
+      rideInstanceId: rideInstance.id,
+      quoteRequestId: baseRequest?.id ?? null,
+      amountCents: moneyDisplay.guestChargeCents,
+      currency: "hkd",
+      purpose: "TAXI_PARTNER_QUOTE_ACCEPTANCE",
+      userId: currentUserId,
+      captureMode: "manual",
+    });
+
+    setCreatingTestPayment(false);
+    setTestPaymentIntent(result);
+
+    if (!result.ok) {
+      setAcceptance((current) => ({
+        ...current,
+        mockPaymentState: result.error === "STRIPE_TEST_MODE_DISABLED" ? "NOT_STARTED" : "TEST_FAILED",
+      }));
+      setMessage(result.message);
+      return;
+    }
+
+    setAcceptance((current) => ({
+      ...current,
+      mockPaymentState:
+        result.status === "requires_capture"
+          ? "TEST_REQUIRES_CAPTURE"
+          : result.status === "succeeded"
+            ? "TEST_SUCCEEDED"
+            : result.status === "canceled"
+              ? "TEST_CANCELED"
+              : result.status === "requires_payment_method"
+                ? "TEST_PAYMENT_INTENT_CREATED"
+                : "TEST_PAYMENT_INTENT_CREATED",
+    }));
+    setMessage(
+      result.status === "requires_capture"
+        ? "Test payment authorized. Capture is not implemented in this slice."
+        : "Test PaymentIntent created. Card confirmation comes next.",
+    );
   }
 
   function handleDeclineQuote() {
@@ -257,7 +321,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
           {formatQuoteExpiryBadge(baseRequest.quoteExpiresAt)}
         </Badge>
         <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">
-          Mock payment state: {acceptance.mockPaymentState === "MOCK_AUTHORIZED" ? "Authorized" : "Not started"}
+          Mock payment state: {formatMockPaymentState(acceptance.mockPaymentState)}
         </Badge>
       </div>
 
@@ -306,8 +370,42 @@ export function TaxiPartnerQuoteAcceptanceCard({
       <div className="mt-4 flex items-start gap-3 rounded-[16px] border border-sky-400/25 bg-sky-400/10 p-3 text-sky-100">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
         <p className="text-xs font-bold leading-5">
-          Demo only. No real payment or taxi dispatch happens yet. No real payout yet.
+          Demo only. No live payment or taxi dispatch happens yet. No real payout yet.
         </p>
+      </div>
+
+      <div className="mt-4 rounded-[18px] border border-sky-400/20 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.18))] p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-black text-[var(--rp-text)]">Stripe test mode POC</p>
+            <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+              Creates a test-mode PaymentIntent only. Card confirmation / Stripe Elements is PAY-3.
+            </p>
+          </div>
+          <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">No live payment</Badge>
+        </div>
+        <button
+          type="button"
+          disabled={creatingTestPayment || userAccepted || userDeclined}
+          onClick={handleCreateTestPayment}
+          className="mt-3 inline-flex min-h-11 items-center justify-center rounded-[14px] border border-sky-400/30 bg-sky-400/10 px-4 text-sm font-black text-sky-200 transition hover:bg-sky-400/15 disabled:border-[var(--rp-border)] disabled:bg-[var(--rp-card-muted)] disabled:text-[var(--rp-muted)]"
+        >
+          {creatingTestPayment ? "Creating test payment..." : "Create test payment"}
+        </button>
+        {testPaymentIntent ? (
+          <div className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            {testPaymentIntent.ok ? (
+              <div className="grid gap-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                <p className="font-black text-sky-200">Test PaymentIntent created</p>
+                <p>Intent: {testPaymentIntent.paymentIntentId}</p>
+                <p>Status: {testPaymentIntent.status}</p>
+                <p>Amount: {formatHkdCents(testPaymentIntent.amountCents)}</p>
+              </div>
+            ) : (
+              <p className="text-xs font-bold leading-5 text-[var(--rp-warning)]">{testPaymentIntent.message}</p>
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-5 grid gap-3 min-[520px]:grid-cols-2">

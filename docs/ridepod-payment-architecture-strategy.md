@@ -309,3 +309,18 @@ Recommendation: do not add live payments yet. Keep Taxi Partner Quote as mock-on
 
 Next safe step: build PAY-1 decision doc and Stripe/local PSP comparison before any payment code.
 
+
+## PAY-2 Test Mode POC Note
+
+PAY-2 adds a Stripe test mode PaymentIntent creation proof of concept for Taxi Partner Quote guest acceptance.
+
+This POC is test mode only:
+- no live payment
+- no Stripe Connect
+- no taxi partner payout
+- no card confirmation yet
+- no capture/release payout logic
+
+The API is disabled unless `RIDEPOD_ENABLE_STRIPE_TEST_MODE=true`, `STRIPE_SECRET_KEY` starts with `sk_test_`, and `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` starts with `pk_test_`.
+
+Card confirmation / Stripe Elements remains PAY-3.
