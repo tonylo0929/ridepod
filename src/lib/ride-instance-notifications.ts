@@ -120,6 +120,42 @@ function adminReviewTarget() {
   return "/admin/review";
 }
 
+function taxiPartnerStableKey(
+  event:
+    | "dispute_opened"
+    | "guest_dispute_review"
+    | "payout_held"
+    | "payout_ready"
+    | "more_info_needed"
+    | "payout_denied"
+    | "dispute_resolved",
+  rideInstance: RecurringRideInstancePreview,
+) {
+  return `taxi_partner_${event}:${rideInstance.id}`;
+}
+
+function rideInstanceDetailTarget(rideInstance: RecurringRideInstancePreview, viewerRole: RideInstanceNotificationViewerRole) {
+  return viewerRole === "HOST" ? hostTarget(rideInstance) : guestTarget(rideInstance);
+}
+
+function taxiPartnerAdminReviewTarget(rideInstance: RecurringRideInstancePreview) {
+  // TODO: Replace this query fallback with a dedicated admin review case detail route when that route exists.
+  return `${adminReviewTarget()}?rideInstanceId=${encodeURIComponent(rideInstance.id)}`;
+}
+
+function taxiPartnerSettlementTarget(rideInstance: RecurringRideInstancePreview, focus: "dispute" | "payout") {
+  // TODO: Replace this query fallback with dedicated settlement dispute/payout detail routes when available.
+  const baseTarget = rideInstance.recurringTemplateId
+    ? `/pods/${rideInstance.recurringTemplateId}/settlement`
+    : "/settlement";
+
+  return `${baseTarget}?rideInstanceId=${encodeURIComponent(rideInstance.id)}&focus=${focus}`;
+}
+
+function uniqueNotifications(notifications: RideInstanceNotification[]) {
+  return Array.from(new Map(notifications.map((item) => [item.stableKey, item])).values());
+}
+
 function isTaxiPartnerReviewCase(reviewCase: Pick<RidePodAdminReviewCaseRow, "case_type"> | null | undefined) {
   return Boolean(reviewCase?.case_type.includes("TAXI_PARTNER"));
 }
@@ -314,7 +350,7 @@ export function getRideInstanceNotifications(
       if (host) {
         items.push(
           notification(rideInstance, {
-            stableKey: `taxi_partner_dispute_opened:${rideInstance.id}`,
+            stableKey: taxiPartnerStableKey("dispute_opened", rideInstance),
             type: "taxi_partner_dispute_opened",
             title: "Taxi partner dispute opened",
             body: "RidePod is reviewing this taxi partner ride.",
@@ -322,13 +358,13 @@ export function getRideInstanceNotifications(
             group: "This week",
             tone: "amber",
             ctaLabel: "View review",
-            ctaTarget: target,
+            ctaTarget: taxiPartnerAdminReviewTarget(rideInstance),
             createdAt: "2026-05-15T10:00:00.000Z",
             read: false,
             audience: "HOST",
           }),
           notification(rideInstance, {
-            stableKey: `taxi_partner_payout_held:${rideInstance.id}`,
+            stableKey: taxiPartnerStableKey("payout_held", rideInstance),
             type: "taxi_partner_payout_held",
             title: "Payout held",
             body: "Payout is held while RidePod reviews the case.",
@@ -336,7 +372,7 @@ export function getRideInstanceNotifications(
             group: "This week",
             tone: "amber",
             ctaLabel: "View case",
-            ctaTarget: target,
+            ctaTarget: taxiPartnerAdminReviewTarget(rideInstance),
             createdAt: "2026-05-15T10:05:00.000Z",
             read: false,
             audience: "HOST",
@@ -345,7 +381,7 @@ export function getRideInstanceNotifications(
       } else {
         items.push(
           notification(rideInstance, {
-            stableKey: `taxi_partner_guest_dispute_review:${rideInstance.id}`,
+            stableKey: taxiPartnerStableKey("guest_dispute_review", rideInstance),
             type: "taxi_partner_guest_dispute_review",
             title: "Dispute under review",
             body: "RidePod is reviewing the issue you reported.",
@@ -353,7 +389,7 @@ export function getRideInstanceNotifications(
             group: "This week",
             tone: "amber",
             ctaLabel: "View dispute",
-            ctaTarget: guestRideTarget,
+            ctaTarget: taxiPartnerSettlementTarget(rideInstance, "dispute"),
             createdAt: "2026-05-15T10:00:00.000Z",
             read: false,
             audience: "LOCKED_GUESTS",
@@ -365,7 +401,7 @@ export function getRideInstanceNotifications(
     if (host && taxiQuoteStatus.label === "Payout ready") {
       items.push(
         notification(rideInstance, {
-          stableKey: `taxi_partner_payout_ready:${rideInstance.id}`,
+          stableKey: taxiPartnerStableKey("payout_ready", rideInstance),
           type: "taxi_partner_payout_ready",
           title: "Payout ready",
           body: "Review is complete. Payout can be processed in demo mode.",
@@ -373,7 +409,7 @@ export function getRideInstanceNotifications(
           group: "Today",
           tone: "green",
           ctaLabel: "View payout",
-          ctaTarget: target,
+          ctaTarget: taxiPartnerSettlementTarget(rideInstance, "payout"),
           createdAt: "2026-05-18T09:30:00.000Z",
           read: false,
           audience: "HOST",
@@ -384,7 +420,7 @@ export function getRideInstanceNotifications(
     if (host && taxiQuoteStatus.label === "More info needed") {
       items.push(
         notification(rideInstance, {
-          stableKey: `taxi_partner_more_info_needed:${rideInstance.id}`,
+          stableKey: taxiPartnerStableKey("more_info_needed", rideInstance),
           type: "taxi_partner_more_info_needed",
           title: "More info needed",
           body: "RidePod needs more information before resolving this taxi partner case.",
@@ -392,7 +428,7 @@ export function getRideInstanceNotifications(
           group: "Today",
           tone: "amber",
           ctaLabel: "View review",
-          ctaTarget: target,
+          ctaTarget: taxiPartnerAdminReviewTarget(rideInstance),
           createdAt: "2026-05-18T08:30:00.000Z",
           read: false,
           audience: "HOST",
@@ -403,7 +439,7 @@ export function getRideInstanceNotifications(
     if (host && taxiQuoteStatus.label === "Payout denied") {
       items.push(
         notification(rideInstance, {
-          stableKey: `taxi_partner_payout_denied:${rideInstance.id}`,
+          stableKey: taxiPartnerStableKey("payout_denied", rideInstance),
           type: "taxi_partner_payout_denied",
           title: "Payout denied in demo",
           body: "Payout was denied in demo review.",
@@ -411,7 +447,7 @@ export function getRideInstanceNotifications(
           group: "Today",
           tone: "red",
           ctaLabel: "View review",
-          ctaTarget: target,
+          ctaTarget: taxiPartnerAdminReviewTarget(rideInstance),
           createdAt: "2026-05-18T06:30:00.000Z",
           read: false,
           audience: "HOST",
@@ -422,7 +458,7 @@ export function getRideInstanceNotifications(
     if (taxiQuoteStatus.label === "Dispute resolved") {
       items.push(
         notification(rideInstance, {
-          stableKey: `taxi_partner_dispute_resolved:${rideInstance.id}`,
+          stableKey: taxiPartnerStableKey("dispute_resolved", rideInstance),
           type: "taxi_partner_dispute_resolved",
           title: "Dispute resolved",
           body: "RidePod marked this dispute resolved in demo mode.",
@@ -430,7 +466,7 @@ export function getRideInstanceNotifications(
           group: "This week",
           tone: "green",
           ctaLabel: "View details",
-          ctaTarget: host ? target : guestRideTarget,
+          ctaTarget: rideInstanceDetailTarget(rideInstance, viewerRole),
           createdAt: "2026-05-17T10:30:00.000Z",
           read: false,
           audience: host ? "HOST" : "LOCKED_GUESTS",
@@ -659,7 +695,7 @@ export function getRideInstanceNotifications(
     );
   }
 
-  return items;
+  return uniqueNotifications(items);
 }
 
 export function getDemoRideInstanceNotifications(
@@ -739,5 +775,5 @@ export function getDemoRideInstanceNotifications(
     );
   }
 
-  return Array.from(new Map(notifications.map((item) => [item.stableKey, item])).values());
+  return uniqueNotifications(notifications);
 }
