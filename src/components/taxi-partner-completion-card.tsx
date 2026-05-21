@@ -240,7 +240,7 @@ export function TaxiPartnerCompletionCard({
                   }}
                   className="inline-flex min-h-12 items-center justify-center rounded-[16px] border border-sky-400/30 bg-sky-400/10 px-5 text-sm font-black text-sky-200 transition hover:bg-sky-400/15"
                 >
-                  I'm here
+                  I&apos;m here
                 </button>
               </div>
               {riderHere ? (

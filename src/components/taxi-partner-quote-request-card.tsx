@@ -81,7 +81,7 @@ function getBody(label: string) {
   }
 
   if (label === "Ready for taxi partner") {
-    return "Guests accepted the quote. The ride can proceed in demo mode.";
+    return "Guests accepted the quote. Ride can proceed in demo mode.";
   }
 
   return "Taxi partner quote is a future beta prototype.";
@@ -398,7 +398,7 @@ export function TaxiPartnerQuoteRequestCard({
         <div className="mt-4 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
           <CheckCircle2 className="h-5 w-5 text-[var(--rp-success)]" />
           <p className="mt-2 text-sm font-black text-[var(--rp-text)]">
-            Guests accepted the quote. The ride can proceed in demo mode.
+            Guests accepted the quote. Ride can proceed in demo mode.
           </p>
           <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
             No real taxi dispatch or payout yet.

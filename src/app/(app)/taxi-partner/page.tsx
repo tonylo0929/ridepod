@@ -6,12 +6,8 @@ import {
   ArrowRight,
   BriefcaseBusiness,
   CarFront,
-  CheckCircle2,
   Clock3,
   Info,
-  Luggage,
-  ShieldCheck,
-  UsersRound,
   WalletCards,
 } from "lucide-react";
 import { Badge, Card, cn } from "@/components/ui";

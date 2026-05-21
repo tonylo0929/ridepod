@@ -267,11 +267,11 @@ export const mockTaxiPartnerQuoteRequests: TaxiPartnerQuoteRequest[] = [
     quotedByPartnerId: "demo-taxi-partner",
     quoteExpiresAt: "2026-05-20T08:45:00.000Z",
     guestAcceptanceStatus: "ALL_ACCEPTED",
-    driverAssignmentStatus: "PARTNER_ACCEPTED",
+    driverAssignmentStatus: "NOT_ASSIGNED",
     payoutStatus: "NOT_READY",
     luggageCount: 2,
     acceptedGuestCount: 4,
-    notes: "Guests accepted the quote. The licensed taxi partner is ready.",
+    notes: "Guests accepted the quote. Waiting for taxi partner to accept.",
   },
   {
     id: "taxi_partner_completed_payout_pending",
@@ -947,7 +947,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
       label: "Quote received",
       tone: "green",
       helperText: "Guests need to accept the partner quote before the ride proceeds.",
-      primaryActionLabel: "View guest acceptance",
+      primaryActionLabel: "Review quote",
     };
   }
 
