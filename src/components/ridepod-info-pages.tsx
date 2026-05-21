@@ -77,13 +77,20 @@ const cleanHowSteps = [
 const cleanRideOptions = [
   {
     title: "Ride app / fixed quote",
-    body: "Quote before booking",
+    body: "Quote before booking. Receipt after ride.",
     icon: Smartphone,
   },
   {
     title: "Taxi meter",
-    body: "Meter proof after ride",
+    body: "No upfront quote. Meter proof after ride.",
     icon: CarFront,
+  },
+  {
+    title: "Taxi partner quote",
+    body: "Licensed taxi partner quote. Future beta prototype.",
+    icon: CarFront,
+    badge: "Future beta prototype",
+    helper: "No real taxi dispatch or payout yet.",
   },
 ];
 
@@ -95,9 +102,10 @@ const cleanMoneyItems = [
 
 const faqPreviewItems = [
   "Does RidePod provide drivers?",
+  "What is Taxi partner quote?",
   "What is max charge?",
   "When is proof needed?",
-  "How are refunds handled?",
+  "Is Taxi partner quote live?",
 ];
 
 const faqItems = [
@@ -115,6 +123,21 @@ const faqItems = [
     question: "Who books the actual ride?",
     answer:
       "The host books the external ride through Uber, Lyft, DiDi, taxi, private van, or another provider. RidePod helps confirm that participants are payment-authorized before protected booking.",
+  },
+  {
+    question: "What is Taxi partner quote?",
+    answer:
+      "Taxi partner quote is a future beta mode where RidePod groups riders first, then a licensed taxi partner can quote one shared price. It is not live taxi dispatch yet.",
+  },
+  {
+    question: "Does RidePod provide drivers?",
+    answer:
+      "No. RidePod does not provide drivers. Taxi partners are external licensed providers.",
+  },
+  {
+    question: "Is Taxi partner quote live?",
+    answer:
+      "Not yet. It is a beta prototype. No real taxi dispatch, payment, or payout is enabled unless clearly stated.",
   },
   {
     question: "When is my seat confirmed?",
@@ -291,8 +314,8 @@ export function HowRidePodWorksPage() {
         ))}
       </section>
 
-      <section className="grid grid-cols-2 gap-3">
-        {cleanRideOptions.map(({ title, body, icon: Icon }) => (
+      <section className="grid gap-3 sm:grid-cols-2">
+        {cleanRideOptions.map(({ title, body, icon: Icon, badge, helper }) => (
           <Card key={title} className="grid grid-cols-[34px_1fr_auto] items-center gap-3 p-3">
             <span className="grid h-9 w-9 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
               <Icon className="h-5 w-5" />
@@ -300,6 +323,14 @@ export function HowRidePodWorksPage() {
             <span className="min-w-0">
               <span className="block text-sm font-black leading-4 text-[var(--rp-text)]">{title}</span>
               <span className="mt-1 block text-[11px] font-semibold text-[var(--rp-muted)]">{body}</span>
+              {badge ? (
+                <span className="mt-2 inline-flex rounded-full bg-[var(--rp-warning-bg)] px-2 py-1 text-[10px] font-black text-[var(--rp-warning)]">
+                  {badge}
+                </span>
+              ) : null}
+              {helper ? (
+                <span className="mt-1 block text-[10px] font-semibold text-[var(--rp-muted)]">{helper}</span>
+              ) : null}
             </span>
             <ArrowRight className="h-4 w-4 text-[var(--rp-muted)]" />
           </Card>

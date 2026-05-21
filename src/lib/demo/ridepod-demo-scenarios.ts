@@ -69,11 +69,11 @@ export const RIDE_POD_DEMO_SCENARIOS: readonly RidePodDemoScenario[] = [
   {
     id: "taxi_partner_quote_mode",
     title: "Taxi Partner Quote",
-    description: "Licensed taxi partner quotes one price for a shared taxi pod.",
-    role: "Host / Guest",
+    description: "Licensed taxi partner quotes one price. Guests accept in mock payment state.",
+    role: "Organizer / Guest",
     primaryStatus: "Future beta prototype",
     recommendedRoute: "/host",
-    tags: ["demo", "closed beta", "taxi partner quote", "future beta prototype"],
+    tags: ["Taxi partner", "Quote", "Mock payment", "Future beta"],
     notes: "Use this demo scenario to test shared pod quote statuses without real taxi dispatch or payout.",
   },
   {

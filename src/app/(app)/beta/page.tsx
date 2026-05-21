@@ -15,37 +15,46 @@ import { Badge, Card, PrimaryButton, SecondaryButton, cn } from "@/components/ui
 
 const betaFlows = [
   {
-    title: "Scheduled ride app",
+    title: "Ride app / fixed quote",
     body: "Quote before booking. Receipt after ride.",
-    cta: "Try flow",
+    cta: "Try demo",
     href: "/create/scheduled",
     icon: CalendarClock,
   },
   {
     title: "Taxi meter",
     body: "No upfront quote. Meter proof after ride.",
-    cta: "Try flow",
+    cta: "Try demo",
     href: "/create/scheduled",
     icon: CarFront,
   },
   {
+    title: "Taxi partner quote",
+    body: "Test how a licensed taxi partner could quote one price for a shared taxi pod.",
+    cta: "Try demo",
+    href: "/host",
+    icon: CarFront,
+    badge: "Future beta",
+    helper: "Taxi Partner Quote is demo-only. No real taxi dispatch or payout is enabled.",
+  },
+  {
     title: "Recurring pod",
     body: "Weekly template. Each ride settles separately.",
-    cta: "Try flow",
+    cta: "Try demo",
     href: "/create/recurring",
     icon: Repeat2,
   },
   {
     title: "Settlement",
     body: "Final split, dispute window, and payout status.",
-    cta: "Try flow",
+    cta: "Try demo",
     href: "/pods/usc-lax-001/settlement",
     icon: WalletCards,
   },
   {
     title: "Admin review",
     body: "Review proof, disputes, and above-cap cases.",
-    cta: "Try flow",
+    cta: "Try demo",
     href: "/admin/review",
     icon: ClipboardCheck,
   },
@@ -89,6 +98,14 @@ function FlowCard({ flow }: { flow: (typeof betaFlows)[number] }) {
         </span>
         <h3 className="mt-4 text-lg font-black text-[var(--rp-text)]">{flow.title}</h3>
         <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">{flow.body}</p>
+        {"badge" in flow && flow.badge ? (
+          <Badge className="mt-3 bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border)]">
+            {flow.badge}
+          </Badge>
+        ) : null}
+        {"helper" in flow && flow.helper ? (
+          <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">{flow.helper}</p>
+        ) : null}
       </div>
       <Link
         href={flow.href}
