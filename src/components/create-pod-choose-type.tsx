@@ -240,22 +240,22 @@ function getRideProofCopy(rideOption: RideOptionId) {
   if (normalizedRideOption === "taxi_partner_quote") {
     return {
       moneyIntro:
-        "Taxi partner quote is a future beta prototype. Guests accept the partner quote before the ride can proceed.",
-      fareCapHelper: "Partner quote must stay within this before the shared ride proceeds.",
-      bookingProofStatus: "Taxi partner quote required",
-      bookingProofHelper: "Guests accept the partner quote before the ride can proceed.",
+        "Beta uses mock payment state. No live payment or payout is enabled.",
+      fareCapHelper: "Final guest price appears after taxi partner quote.",
+      bookingProofStatus: "Shared quote pending",
+      bookingProofHelper: "Guests accept the taxi partner quote before the ride can proceed.",
       reviewRows: [
-        { label: "Ride option", value: "Taxi partner quote" },
-        { label: "Quote status", value: "Taxi partner quote required" },
+        { label: "Main ride type", value: "Taxi" },
+        { label: "Taxi quote mode", value: "Taxi partner quote" },
         {
           label: "Booking rule",
-          value: "Guests accept the partner quote before the ride can proceed.",
+          value: "Guests accept quote before the ride can proceed.",
         },
         {
           label: "Settlement rule",
-          value: "Payout is released after ride completion and dispute window review.",
+          value: "Payout stays pending until completion and dispute window review.",
         },
-        { label: "Helper", value: "Future beta prototype. No real taxi dispatch or payout yet." },
+        { label: "Beta limit", value: "No real taxi dispatch yet. No real payout yet." },
       ],
     };
   }
@@ -2719,6 +2719,106 @@ function PricingSummaryCard({ money, rideOption }: { money: MoneyProtectionState
   );
 }
 
+function getLuggageNeedsSummary(peopleVehicle: PeopleVehicleState) {
+  const parts = [`${peopleVehicle.bags} ${pluralize(peopleVehicle.bags, "bag")}`];
+  if (peopleVehicle.largeLuggage) parts.push("large luggage");
+
+  return parts.join(" / ");
+}
+
+function getAccessibilityNeedsSummary(peopleVehicle: PeopleVehicleState) {
+  const needs = [
+    peopleVehicle.extraSpaceNeeded ? "Extra space needed" : null,
+    peopleVehicle.wheelchairAccessibleRequested ? "Wheelchair-accessible taxi requested" : null,
+    peopleVehicle.stepFreeSupportRequested ? "Step-free support requested" : null,
+  ].filter(Boolean);
+
+  return needs.length ? needs.join(", ") : "Not specified";
+}
+
+function TaxiReviewSummaryCard({
+  peopleVehicle,
+  pickupAddress,
+  dropoffAddress,
+}: {
+  peopleVehicle: PeopleVehicleState;
+  pickupAddress: string;
+  dropoffAddress: string;
+}) {
+  const quoteSteps = [
+    ["Group locks first", "Guests join before requesting a taxi partner quote."],
+    ["Partner quotes one price", "A licensed taxi partner quotes the shared taxi pod."],
+    ["Guests accept quote", "The ride proceeds only after guests accept the quote."],
+    ["Payout after review", "Payout stays pending until completion and dispute window review."],
+  ];
+  const taxiNeeds = [
+    ["Taxi type", getTaxiTypeLabel(peopleVehicle.taxiType)],
+    ["Luggage", getLuggageNeedsSummary(peopleVehicle)],
+    ["Accessibility", getAccessibilityNeedsSummary(peopleVehicle)],
+    ["Pickup", pickupAddress || "Not specified"],
+    ["Dropoff", dropoffAddress || "Not specified"],
+  ];
+
+  return (
+    <section className="grid gap-4">
+      <section className="rounded-[22px] border border-sky-400/30 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(15,23,42,0.16)),var(--rp-card)] p-4 shadow-[0_18px_42px_rgba(14,165,233,0.1)]">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-sky-300">Taxi</p>
+            <h2 className="mt-2 text-2xl font-black leading-tight text-[var(--rp-text)]">Shared taxi pod</h2>
+            <p className="mt-2 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+              RidePod groups riders first, then requests one shared quote from a licensed taxi partner.
+            </p>
+          </div>
+          <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-xs font-black text-sky-200">
+            Beta prototype
+          </span>
+        </div>
+        <p className="mt-4 rounded-[16px] border border-sky-400/25 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
+          No real taxi dispatch yet. No real payout yet.
+        </p>
+      </section>
+
+      <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+        <h2 className="text-lg font-black text-[var(--rp-text)]">How quote works</h2>
+        <div className="mt-3 grid gap-2">
+          {quoteSteps.map(([title, body]) => (
+            <div key={title} className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+              <p className="text-sm font-black text-[var(--rp-text)]">{title}</p>
+              <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">{body}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+        <h2 className="text-lg font-black text-[var(--rp-text)]">Taxi needs</h2>
+        <dl className="mt-3 grid gap-2">
+          {taxiNeeds.map(([label, value]) => (
+            <div key={label} className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-3">
+              <dt className="text-xs font-black uppercase tracking-[0.1em] text-sky-300">{label}</dt>
+              <dd className="mt-1 text-sm font-black leading-5 text-[var(--rp-text)]">{value}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="mt-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
+          Taxi type and accessibility requests depend on taxi partner availability.
+        </p>
+      </section>
+
+      <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+        <h2 className="text-lg font-black text-[var(--rp-text)]">Payment status</h2>
+        <p className="mt-2 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+          Beta uses mock payment state. No live payment or payout is enabled.
+        </p>
+        <p className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+          Final guest price appears after taxi partner quote.
+        </p>
+      </section>
+    </section>
+  );
+}
+
 type MoneyProtectionState = {
   estimatedTotalFare: number;
   approvedMaxTotalFare: number;
@@ -2929,9 +3029,13 @@ function PreviewMoneyProtectionCard({
       <div className="flex items-start gap-3">
         <ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
         <div>
-          <h2 className="text-lg font-black text-[var(--rp-text)]">Money Protection</h2>
+          <h2 className="text-lg font-black text-[var(--rp-text)]">
+            {normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote" ? "Payment status" : "Money Protection"}
+          </h2>
           <p className="mt-2 text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
-            Riders authorize the protected max before the host books. They may pay less after the final receipt is verified.
+            {normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote"
+              ? "Beta uses mock payment state. No live payment or payout is enabled."
+              : "Riders authorize the protected max before the host books. They may pay less after the final receipt is verified."}
           </p>
         </div>
       </div>
@@ -2964,12 +3068,14 @@ function SafetyTrustPanel({
   onGenderModeChange: (genderMode: GenderMode) => void;
   onAccessModeChange: (accessMode: AccessMode) => void;
 }) {
+  const selectedAccessMode = accessModeOptions.find((option) => option.id === accessMode)?.label ?? "Open";
+
   return (
     <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
       <div className="flex items-start gap-3">
         <ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
         <div>
-          <h2 className="text-lg font-black text-[var(--rp-text)]">Safety &amp; Trust</h2>
+          <h2 className="text-lg font-black text-[var(--rp-text)]">Who can join</h2>
           <p className="mt-2 text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
             Choose who can join and which trust rules riders see before requesting a seat.
           </p>
@@ -2998,7 +3104,7 @@ function SafetyTrustPanel({
           </div>
           {genderMode === "women_only" ? (
             <p className="mt-3 rounded-xl bg-[var(--rp-card-soft)] p-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-              Women-only pods are designed for safer matching. Eligible female users can join. Women-only pods require the host profile to be eligible too. RidePod does not guarantee safety; report concerns immediately.
+              Women-only controls who can join the pod. It does not guarantee a female taxi driver.
             </p>
           ) : null}
         </div>
@@ -3022,6 +3128,16 @@ function SafetyTrustPanel({
               </button>
             ))}
           </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-1 text-xs font-black text-[var(--rp-muted-strong)]">
+              {genderMode === "women_only" ? "Women-only" : "Mixed pod"}
+            </span>
+            {accessMode !== "open" ? (
+              <span className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-1 text-xs font-black text-[var(--rp-muted-strong)]">
+                {selectedAccessMode}
+              </span>
+            ) : null}
+          </div>
         </div>
       </div>
     </section>
@@ -3034,14 +3150,17 @@ function ReviewPanelControls({
   onCreate,
   canProceed,
   blockedReason,
+  createLabel = "Create Pod",
+  panelLabels = ["Pricing summary", "Money Protection", "Safety & Trust", "Preview your pod"],
 }: {
   currentPanel: number;
   onPanelChange: (panel: number) => void;
   onCreate: () => void;
   canProceed: boolean;
   blockedReason?: string;
+  createLabel?: string;
+  panelLabels?: string[];
 }) {
-  const panelLabels = ["Pricing summary", "Money Protection", "Safety & Trust", "Preview your pod"];
   const isFirst = currentPanel === 0;
   const isLast = currentPanel === panelLabels.length - 1;
   const moneyProtectionPanelIndex = 1;
@@ -3086,7 +3205,7 @@ function ReviewPanelControls({
             onClick={onCreate}
             className="review-create-pod-button min-h-12 rounded-2xl border px-4 text-sm font-black shadow-[0_14px_28px_rgba(246,196,83,0.34)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
           >
-            Create Pod
+            {createLabel}
           </button>
         ) : (
           <button
@@ -3126,14 +3245,14 @@ function CreatePodConfirmationDialog({
   const copy =
     normalizedRideOption === "taxi_partner_quote"
       ? {
-          title: "Create this taxi partner quote pod?",
+          title: "Create this taxi pod?",
           body: [
             "Guests can join and lock their seats after the pod is created.",
-            "Taxi partner quote is a future beta prototype. Guests accept the partner quote before the ride can proceed.",
+            "RidePod groups riders first, then requests one shared quote from a licensed taxi partner.",
             "Future beta prototype. No real taxi dispatch or payout yet.",
           ],
           checkbox: "I understand this is a mock beta prototype and no real taxi dispatch or payout is enabled.",
-          submitLabel: "Create Pod",
+          submitLabel: "Create taxi pod",
         }
       : normalizedRideOption === "taxi_meter"
         ? {
@@ -3569,6 +3688,7 @@ function ReviewPodStep({
   });
   const [genderMode, setGenderMode] = useState<GenderMode>("mixed");
   const [accessMode, setAccessMode] = useState<AccessMode>("verified_only");
+  const isTaxiPartnerQuoteReview = normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote";
   const moneyProtectionError =
     moneyProtection.approvedMaxTotalFare < moneyProtection.estimatedTotalFare
       ? `Approved max must be at least ${formatMoney(moneyProtection.estimatedTotalFare)} before you continue.`
@@ -3652,7 +3772,15 @@ function ReviewPodStep({
 
         <div className={cn("grid gap-4", reviewPanel === 3 ? "mt-0" : "mt-5")}>
           {reviewPanel === 0 ? (
-            <PricingSummaryCard money={moneyProtection} rideOption={peopleVehicle.rideOption} />
+            isTaxiPartnerQuoteReview ? (
+              <TaxiReviewSummaryCard
+                peopleVehicle={peopleVehicle}
+                pickupAddress={pickupAddress}
+                dropoffAddress={dropoffAddress}
+              />
+            ) : (
+              <PricingSummaryCard money={moneyProtection} rideOption={peopleVehicle.rideOption} />
+            )
           ) : null}
 
           {reviewPanel === 1 ? (
@@ -3707,6 +3835,12 @@ function ReviewPodStep({
           }}
           canProceed={!moneyProtectionError}
           blockedReason={moneyProtectionError ?? undefined}
+          createLabel={isTaxiPartnerQuoteReview ? "Create taxi pod" : "Create Pod"}
+          panelLabels={
+            isTaxiPartnerQuoteReview
+              ? ["Taxi summary", "Payment status", "Who can join", "Preview your pod"]
+              : undefined
+          }
         />
 
         <p className="mt-3 text-center text-sm font-medium text-[var(--rp-muted)]">
