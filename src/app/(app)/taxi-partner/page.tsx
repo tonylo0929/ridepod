@@ -17,8 +17,10 @@ import {
 import { Badge, Card, cn } from "@/components/ui";
 import {
   acceptTaxiPartnerMockJob,
+  completeTaxiPartnerQuoteRequestMock,
   declineTaxiPartnerMockJob,
   getTaxiPartnerQuoteMoneyDisplay,
+  getTaxiPartnerQuoteRequest,
   markTaxiPartnerArrivedMock,
   startTaxiPartnerRideMock,
   submitTaxiPartnerMockQuote,
@@ -292,8 +294,12 @@ export default function TaxiPartnerDashboardPage() {
   const declineJobRide = activeRides.find((ride) => ride.id === declineJobRideId) ?? null;
   const arrivedRide = activeRides.find((ride) => ride.id === arrivedRideId) ?? null;
   const startRideTarget = activeRides.find((ride) => ride.id === startRideId) ?? null;
+  const completionRide = activeRides.find((ride) => ride.id === completionRideId) ?? null;
   const acceptJobMoney = acceptJobRide
     ? getTaxiPartnerQuoteMoneyDisplay({ quoteAmountCents: acceptJobRide.quoteCents, currency: "HKD" }, acceptJobRide.guestCount)
+    : null;
+  const completionRideMoney = completionRide
+    ? getTaxiPartnerQuoteMoneyDisplay({ quoteAmountCents: completionRide.quoteCents, currency: "HKD" }, completionRide.guestCount)
     : null;
 
   if (!demoModeEnabled) {
@@ -355,6 +361,12 @@ export default function TaxiPartnerDashboardPage() {
 
   function markRideCompleted() {
     if (!completionRideId || !understandsCompletion) return;
+    const ride = activeRides.find((activeRide) => activeRide.id === completionRideId);
+    const request = getTaxiPartnerQuoteRequest(ride?.requestId);
+
+    if (request) {
+      completeTaxiPartnerQuoteRequestMock(request);
+    }
 
     setActiveRides((current) =>
       current.map((ride) =>
@@ -877,6 +889,89 @@ export default function TaxiPartnerDashboardPage() {
                         Mark completed
                       </button>
                     ) : null}
+
+                    {ride.status === "Ride started" ? (
+                      <div className="mt-3 rounded-[18px] border border-emerald-400/25 bg-emerald-400/10 p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <h4 className="text-base font-black text-[var(--rp-text)]">Complete ride</h4>
+                            <p className="mt-1 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+                              Mark this shared taxi ride completed in demo mode.
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Badge className={statusClass("Ride started")}>Ride started</Badge>
+                            <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">Demo mode</Badge>
+                            <Badge className="bg-amber-400/10 text-amber-300 ring-amber-400/25">No real payout yet</Badge>
+                          </div>
+                        </div>
+                        <dl className="mt-3">
+                          <MoneyRow label="Route" value={ride.route} />
+                          <MoneyRow label="Date/time" value={ride.dateTime} />
+                          <MoneyRow label="Taxi type" value={`${ride.taxiType} taxi`} />
+                          <MoneyRow label="Taxi partner quote" value={formatHkdCents(ride.quoteCents)} />
+                          <MoneyRow label="Accepted guests" value={`${ride.guestCount} guests`} />
+                          <MoneyRow label="Pickup status" value="Ride started" />
+                          <MoneyRow
+                            label="Payout amount"
+                            value={rideMoney ? formatHkdCents(rideMoney.driverPayoutCents) : formatHkdCents(ride.quoteCents)}
+                          />
+                        </dl>
+                        <p className="mt-3 text-xs font-bold leading-5 text-emerald-100">
+                          This starts the dispute window. No real payout is sent.
+                        </p>
+                      </div>
+                    ) : null}
+
+                    {["Payout pending", "Dispute review", "Ride completed"].includes(ride.status) ? (
+                      <div className="mt-3 rounded-[18px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(15,23,42,0.16))] p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <h4 className="text-base font-black text-[var(--rp-text)]">Payout status</h4>
+                            <p className="mt-1 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+                              {ride.status === "Dispute review"
+                                ? "Payout is held while RidePod reviews the case."
+                                : "Payout releases after the dispute window if no issue is reported."}
+                            </p>
+                          </div>
+                          <Badge className={statusClass(ride.status === "Dispute review" ? "Payout held" : "Payout pending")}>
+                            {ride.status === "Dispute review" ? "Payout held" : "Payout pending"}
+                          </Badge>
+                        </div>
+                        <dl className="mt-3">
+                          <MoneyRow label="Taxi partner quote" value={formatHkdCents(ride.quoteCents)} />
+                          <MoneyRow
+                            label="Taxi partner payout"
+                            value={rideMoney ? formatHkdCents(rideMoney.driverPayoutCents) : formatHkdCents(ride.quoteCents)}
+                          />
+                          <MoneyRow
+                            label="Platform fee total"
+                            value={rideMoney ? formatHkdCents(rideMoney.platformFeeTotalCents) : "HK$0.00"}
+                          />
+                          <MoneyRow label="Dispute window" value="24h" />
+                          <MoneyRow label="Payout mode" value="Demo only" />
+                        </dl>
+                        <p className="mt-3 rounded-[14px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
+                          No real payout is sent in beta. Guests can report an issue before payout is released.
+                        </p>
+                        <div className="mt-4 grid gap-2 min-[520px]:grid-cols-2">
+                          <button
+                            type="button"
+                            onClick={() => setCompletionMessage("Dispute window is open. Payout may be held if a guest reports an issue.")}
+                            className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-sky-400/30 bg-sky-400/10 px-4 text-sm font-black text-sky-200 transition hover:bg-sky-400/15"
+                          >
+                            View dispute window
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCompletionMessage("Manual review status shown for demo only. RidePod is reviewing the case.")}
+                            className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-orange-400/30 bg-orange-400/10 px-4 text-sm font-black text-orange-200 transition hover:bg-orange-400/15"
+                          >
+                            View review status
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
                   </article>
                 );
               })}
@@ -932,7 +1027,7 @@ export default function TaxiPartnerDashboardPage() {
               <div className="flex items-start gap-3">
                 <WalletCards className="mt-1 h-6 w-6 text-sky-300" />
                 <div>
-                  <h2 className="text-xl font-black">Payout status mock</h2>
+                  <h2 className="text-xl font-black">Payout status</h2>
                   <p className="mt-1 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
                     Demo payout status preview for partner-facing ride states.
                   </p>
@@ -940,15 +1035,22 @@ export default function TaxiPartnerDashboardPage() {
               </div>
               <div className="mt-4 grid gap-3">
                 {[
-                  ["Payout pending", "Payout releases after the dispute window if no issue is reported."],
-                  ["Payout held", "Payout is held while RidePod reviews the case."],
-                  ["Payout ready", "Review is complete. Payout can be processed in demo mode."],
-                  ["Payout denied in demo", "Payout was denied in demo review."],
-                  ["Closed", "Review is closed in demo mode."],
-                ].map(([status, body]) => (
+                  ["Payout pending", "Payout releases after the dispute window if no issue is reported.", "View dispute window"],
+                  ["Payout held", "Payout is held while RidePod reviews the case.", "View review status"],
+                  ["Payout ready", "Review is complete. Payout can be processed in demo mode.", "View payout details"],
+                  ["Payout denied in demo", "Payout was denied during demo review.", "View review"],
+                  ["Closed", "Payout was marked released in demo mode.", "View details"],
+                ].map(([status, body, cta]) => (
                   <div key={status} className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
                     <Badge className={statusClass(status)}>{status}</Badge>
                     <p className="mt-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">{body}</p>
+                    <button
+                      type="button"
+                      onClick={() => setCompletionMessage(`${status} shown for demo only.`)}
+                      className="mt-3 inline-flex min-h-9 items-center justify-center rounded-[12px] border border-sky-400/25 bg-sky-400/10 px-3 text-xs font-black text-sky-200 transition hover:bg-sky-400/15"
+                    >
+                      {cta}
+                    </button>
                   </div>
                 ))}
               </div>
@@ -1158,6 +1260,26 @@ export default function TaxiPartnerDashboardPage() {
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
               This demo action marks the taxi partner ride as completed and starts the dispute window. No real payout is sent.
             </p>
+            {completionRide ? (
+              <dl className="mt-5 rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
+                <MoneyRow label="Route" value={completionRide.route} />
+                <MoneyRow label="Date/time" value={completionRide.dateTime} />
+                <MoneyRow label="Taxi partner quote" value={formatHkdCents(completionRide.quoteCents)} />
+                <MoneyRow label="Accepted guests" value={`${completionRide.guestCount} guests`} />
+                <MoneyRow
+                  label="Taxi partner payout"
+                  value={
+                    completionRideMoney
+                      ? formatHkdCents(completionRideMoney.driverPayoutCents)
+                      : formatHkdCents(completionRide.quoteCents)
+                  }
+                />
+                <MoneyRow
+                  label="Platform fee total"
+                  value={completionRideMoney ? formatHkdCents(completionRideMoney.platformFeeTotalCents) : "HK$0.00"}
+                />
+              </dl>
+            ) : null}
             <label className="mt-4 flex gap-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-sm font-bold leading-6 text-sky-100">
               <input
                 type="checkbox"

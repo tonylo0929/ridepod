@@ -1007,14 +1007,19 @@ export function completeTaxiPartnerQuoteRequestMock(
   const completedAt = Number.isNaN(now.getTime()) ? new Date() : now;
   const disputeWindowEndsAt = new Date(completedAt.getTime() + 24 * 60 * 60 * 1000).toISOString();
 
-  return {
+  const quoteRequest: TaxiPartnerQuoteRequest = {
     ...request,
     quoteStatus: "QUOTE_ACCEPTED",
     guestAcceptanceStatus: "ALL_ACCEPTED",
     driverAssignmentStatus: "COMPLETED",
     payoutStatus: "PENDING_DISPUTE_WINDOW",
+    pickupStatus: "RIDE_STARTED",
     acceptedGuestCount: request.acceptedGuestCount ?? 0,
     disputeWindowEndsAt,
     notes: "Ride completed. Payout is pending until the dispute window ends.",
   };
+
+  upsertMockTaxiPartnerQuoteRequest(quoteRequest);
+
+  return quoteRequest;
 }
