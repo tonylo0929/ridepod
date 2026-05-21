@@ -15,7 +15,15 @@ import {
 } from "lucide-react";
 import { SettlementReceiptVerifiedScreen } from "@/components/settlement-receipt-verified-screen";
 import { PrimaryButton, SecondaryButton, cn } from "@/components/ui";
-import { getUser, type RidePod } from "@/lib/mock-data";
+import { formatCents } from "@/lib/money-safety";
+import { getUser, type RecurringRideInstancePreview, type RidePod } from "@/lib/mock-data";
+import {
+  getTaxiPartnerQuoteMoneyDisplay,
+  getTaxiPartnerQuoteRequest,
+  taxiPartnerTaxiTypeLabels,
+  type TaxiPartnerPayoutStatus,
+  type TaxiPartnerQuoteRequest,
+} from "@/lib/taxi-partner-quote";
 
 type SettlementValues = {
   finalFare: number;
@@ -72,6 +80,7 @@ export function SettlementPage({ pod }: { pod: RidePod }) {
   const [isEditingFare, setIsEditingFare] = useState(false);
   const [settlementReviewReady, setSettlementReviewReady] = useState(false);
   const host = getUser(pod.hostUserId);
+  const isTaxiPartnerQuote = pod.rideOption === "taxi_partner_quote";
   const isTaxiMeter = pod.rideOption === "taxi_meter" || pod.vehicleType === "Taxi";
 
   const totalPaid = useMemo(
@@ -90,6 +99,10 @@ export function SettlementPage({ pod }: { pod: RidePod }) {
     { label: "Tip", value: tip, colorVar: "--rp-chart-tip" },
     { label: "Platform fee", value: platformFee, colorVar: "--rp-chart-platform" },
   ];
+
+  if (isTaxiPartnerQuote) {
+    return <TaxiPartnerQuoteSettlement pod={pod} />;
+  }
 
   if (pod.status === "completed" || pod.moneyStatus === "settlement_ready") {
     return (
@@ -171,6 +184,368 @@ export function SettlementPage({ pod }: { pod: RidePod }) {
       </div>
     </div>
   );
+}
+
+function TaxiPartnerQuoteSettlement({ pod }: { pod: RidePod }) {
+  const [issueReported, setIssueReported] = useState(false);
+  const rideInstance =
+    pod.upcomingRideInstances?.find((instance) => instance.status === "completed" && instance.taxiPartnerQuoteRequestId) ??
+    pod.upcomingRideInstances?.find((instance) => instance.taxiPartnerQuoteRequestId) ??
+    null;
+  const quoteRequest = getTaxiPartnerQuoteRequest(rideInstance?.taxiPartnerQuoteRequestId);
+  const acceptedGuests = quoteRequest?.acceptedGuestCount ?? pod.seatsFilled;
+  const guestCount = Math.max(1, acceptedGuests || pod.seatsFilled || pod.seatsTotal || 1);
+  const money = quoteRequest ? getTaxiPartnerQuoteMoneyDisplay(quoteRequest, guestCount) : null;
+  const payoutCopy = getTaxiPartnerPayoutCopy(quoteRequest?.payoutStatus, rideInstance?.payoutState);
+  const disputeCopy = issueReported
+    ? {
+        label: "Under review",
+        body: "RidePod is reviewing the reported issue.",
+        cta: "View dispute",
+      }
+    : getTaxiPartnerDisputeCopy(quoteRequest, rideInstance);
+  const route = `${rideInstance?.originLabel ?? pod.fromLabel} to ${rideInstance?.destinationLabel ?? pod.toLabel}`;
+  const rideDateTime = rideInstance
+    ? `${rideInstance.displayDate} • ${rideInstance.departureTime}`
+    : `${pod.date} • ${pod.time}`;
+  const taxiType = quoteRequest ? `${taxiPartnerTaxiTypeLabels[quoteRequest.requestedTaxiType]} taxi` : pod.vehicleType;
+  const taxiPartner = quoteRequest?.quotedByPartnerName ?? "Demo Taxi Partner";
+
+  return (
+    <div className="mx-auto grid min-h-[calc(100vh-7rem)] w-full max-w-[430px] gap-5 pb-4 min-[560px]:max-w-4xl">
+      <header className="grid gap-5 pt-1">
+        <div className="grid grid-cols-[44px_1fr_44px] items-center">
+          <Link
+            href="/host"
+            aria-label="Back to Host Dashboard"
+            className="grid h-11 w-11 place-items-center rounded-full text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]"
+          >
+            <ArrowLeft className="h-6 w-6" />
+          </Link>
+          <div className="text-center">
+            <h1 className="text-xl font-black tracking-tight text-[var(--rp-text)]">Taxi quote settlement</h1>
+            <p className="mt-1 text-xs font-semibold text-[var(--rp-muted)] min-[560px]:hidden">
+              {route}
+            </p>
+          </div>
+        </div>
+        <section className="rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
+          <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Taxi settlement</p>
+          <h2 className="mt-2 text-3xl font-black leading-tight text-[var(--rp-text)]">
+            Review quote, acceptance, and payout status.
+          </h2>
+          <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+            Taxi Partner Quote uses the selected partner quote and guest acceptance state. No live payment or payout is enabled unless clearly stated.
+          </p>
+          <p className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-2 text-xs font-black text-[var(--rp-primary)]">
+            Beta uses mock/test payment states. No live payment or payout is enabled.
+          </p>
+        </section>
+      </header>
+
+      <div className="grid gap-5 min-[820px]:grid-cols-[minmax(0,1fr)_340px] min-[820px]:items-start">
+        <div className="grid gap-5">
+          <TaxiSettlementStatusCard payoutCopy={payoutCopy} disputeCopy={disputeCopy} />
+          <TaxiSettlementMoneyCard money={money} quoteRequest={quoteRequest} guestCount={guestCount} />
+          <TaxiSettlementAcceptanceCard
+            acceptedGuests={acceptedGuests}
+            guestCount={guestCount}
+            quoteAboveCap={Boolean(quoteRequest?.quoteAboveCap)}
+          />
+          <TaxiSettlementPaymentStateCard quoteRequest={quoteRequest} />
+        </div>
+        <div className="grid gap-5">
+          <TaxiSettlementRideSummaryCard
+            route={route}
+            rideDateTime={rideDateTime}
+            taxiType={taxiType}
+            taxiPartner={taxiPartner}
+            acceptedGuests={acceptedGuests}
+            rideStatus={payoutCopy.label}
+          />
+          <TaxiSettlementDisputeCard
+            disputeCopy={disputeCopy}
+            issueReported={issueReported}
+            onReportIssue={() => setIssueReported(true)}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TaxiSettlementStatusCard({
+  payoutCopy,
+  disputeCopy,
+}: {
+  payoutCopy: TaxiPayoutCopy;
+  disputeCopy: TaxiDisputeCopy;
+}) {
+  return (
+    <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Payout status</p>
+          <h2 className="mt-2 text-3xl font-black text-[var(--rp-text)]">{payoutCopy.label}</h2>
+        </div>
+        <span className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-1 text-xs font-black text-[var(--rp-primary)]">
+          {disputeCopy.label}
+        </span>
+      </div>
+      <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{payoutCopy.body}</p>
+      <p className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+        {payoutCopy.helper}
+      </p>
+      <Link
+        href={payoutCopy.href}
+        className="mt-4 inline-flex min-h-11 items-center justify-center rounded-2xl bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)]"
+      >
+        {payoutCopy.cta}
+      </Link>
+    </section>
+  );
+}
+
+function TaxiSettlementMoneyCard({
+  money,
+  quoteRequest,
+  guestCount,
+}: {
+  money: ReturnType<typeof getTaxiPartnerQuoteMoneyDisplay> | null;
+  quoteRequest: TaxiPartnerQuoteRequest | null;
+  guestCount: number;
+}) {
+  const quoteAmountCents = money?.quoteAmountCents ?? quoteRequest?.quoteAmountCents ?? 0;
+  const fareShareCents = money?.fareShareCents ?? Math.ceil(quoteAmountCents / Math.max(1, guestCount));
+  const platformFeeCents = money?.platformFeeCents ?? Math.max(Math.ceil(fareShareCents * 0.1), 600);
+  const guestChargeCents = money?.guestChargeCents ?? fareShareCents + platformFeeCents;
+  const platformFeeTotalCents = money?.platformFeeTotalCents ?? platformFeeCents * Math.max(1, guestCount);
+  const taxiPartnerPayoutCents = money?.driverPayoutCents ?? quoteAmountCents;
+
+  return (
+    <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
+      <h2 className="text-xl font-black text-[var(--rp-text)]">Quote & split</h2>
+      <dl className="mt-4 grid gap-2 text-sm">
+        <SettlementRow label="Taxi partner quote" value={formatCents(quoteAmountCents, "HKD")} />
+        <SettlementRow label="Fare share" value={formatCents(fareShareCents, "HKD")} />
+        <SettlementRow label="Platform fee" value={formatCents(platformFeeCents, "HKD")} />
+        <SettlementRow label="Guest total" value={formatCents(guestChargeCents, "HKD")} />
+        <SettlementRow label="Platform fee total" value={formatCents(platformFeeTotalCents, "HKD")} />
+        <SettlementRow label="Taxi partner payout" value={formatCents(taxiPartnerPayoutCents, "HKD")} />
+      </dl>
+      <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+        Platform fee is paid by guests. Taxi partner payout equals the accepted quote in this demo.
+      </p>
+    </section>
+  );
+}
+
+function TaxiSettlementAcceptanceCard({
+  acceptedGuests,
+  guestCount,
+  quoteAboveCap,
+}: {
+  acceptedGuests: number;
+  guestCount: number;
+  quoteAboveCap: boolean;
+}) {
+  const pendingGuests = Math.max(0, guestCount - acceptedGuests);
+
+  return (
+    <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
+      <h2 className="text-xl font-black text-[var(--rp-text)]">Guest acceptance</h2>
+      <dl className="mt-4 grid gap-2 text-sm">
+        <SettlementRow label="Accepted" value={`${acceptedGuests} / ${guestCount} guests accepted`} />
+        <SettlementRow label="Pending" value={`${pendingGuests} pending`} />
+        <SettlementRow label="Declined" value="0 declined" />
+        {quoteAboveCap ? <SettlementRow label="Higher quote accepted" value="Yes" /> : null}
+      </dl>
+      <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+        The ride proceeds only after required guests accept the selected taxi quote.
+      </p>
+    </section>
+  );
+}
+
+function TaxiSettlementPaymentStateCard({ quoteRequest }: { quoteRequest: TaxiPartnerQuoteRequest | null }) {
+  const activeState = quoteRequest?.quoteStatus === "QUOTE_ACCEPTED" ? "Mock payment state" : "Mock payment state";
+
+  return (
+    <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
+      <h2 className="text-xl font-black text-[var(--rp-text)]">Payment state</h2>
+      <p className="mt-3 text-base font-black text-[var(--rp-primary)]">{activeState}</p>
+      <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+        No live money is charged in this beta flow.
+      </p>
+    </section>
+  );
+}
+
+function TaxiSettlementRideSummaryCard({
+  route,
+  rideDateTime,
+  taxiType,
+  taxiPartner,
+  acceptedGuests,
+  rideStatus,
+}: {
+  route: string;
+  rideDateTime: string;
+  taxiType: string;
+  taxiPartner: string;
+  acceptedGuests: number;
+  rideStatus: string;
+}) {
+  return (
+    <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
+      <h2 className="text-xl font-black text-[var(--rp-text)]">Shared taxi ride</h2>
+      <dl className="mt-4 grid gap-2 text-sm">
+        <SettlementRow label="Route" value={route} />
+        <SettlementRow label="Date/time" value={rideDateTime} />
+        <SettlementRow label="Taxi type" value={taxiType} />
+        <SettlementRow label="Taxi partner" value={taxiPartner} />
+        <SettlementRow label="Guests accepted" value={`${acceptedGuests} accepted`} />
+        <SettlementRow label="Ride status" value={rideStatus} />
+      </dl>
+    </section>
+  );
+}
+
+function TaxiSettlementDisputeCard({
+  disputeCopy,
+  issueReported,
+  onReportIssue,
+}: {
+  disputeCopy: TaxiDisputeCopy;
+  issueReported: boolean;
+  onReportIssue: () => void;
+}) {
+  return (
+    <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
+      <h2 className="text-xl font-black text-[var(--rp-text)]">Dispute window</h2>
+      <p className="mt-3 text-base font-black text-[var(--rp-primary)]">{disputeCopy.label}</p>
+      <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">{disputeCopy.body}</p>
+      <p className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] px-3 py-2 text-xs font-bold leading-5 text-[var(--rp-warning)]">
+        Do not use this form for emergencies. Contact local emergency services immediately.
+      </p>
+      <button
+        type="button"
+        disabled={issueReported}
+        onClick={onReportIssue}
+        className="mt-4 inline-flex min-h-11 items-center justify-center rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)] disabled:opacity-60"
+      >
+        {issueReported ? "Dispute under review" : disputeCopy.cta}
+      </button>
+      {issueReported ? (
+        <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+          RidePod will review this taxi partner ride. Payout may be held during review.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function SettlementRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-2">
+      <dt className="font-semibold text-[var(--rp-muted)]">{label}</dt>
+      <dd className="text-right font-black text-[var(--rp-text)]">{value}</dd>
+    </div>
+  );
+}
+
+type TaxiPayoutCopy = {
+  label: string;
+  body: string;
+  helper: string;
+  cta: string;
+  href: string;
+};
+
+type TaxiDisputeCopy = {
+  label: string;
+  body: string;
+  cta: string;
+};
+
+function getTaxiPartnerPayoutCopy(
+  payoutStatus: TaxiPartnerPayoutStatus | null | undefined,
+  ridePayoutState: string | null | undefined,
+): TaxiPayoutCopy {
+  if (payoutStatus === "HELD_FOR_REVIEW" || ridePayoutState === "HELD_FOR_REVIEW") {
+    return {
+      label: "Payout held",
+      body: "Payout is held while RidePod reviews the case.",
+      helper: "No real payout is sent while the case is under review.",
+      cta: "View review",
+      href: "/admin/review",
+    };
+  }
+
+  if (payoutStatus === "READY_TO_RELEASE" || ridePayoutState === "READY") {
+    return {
+      label: "Payout ready",
+      body: "Review is complete. Payout can be marked ready in demo mode.",
+      helper: "No real payout is sent.",
+      cta: "View payout details",
+      href: "/taxi-partner",
+    };
+  }
+
+  if (payoutStatus === "DENIED_MOCK") {
+    return {
+      label: "Payout denied in demo",
+      body: "Payout was denied during demo review.",
+      helper: "No real money moves.",
+      cta: "View review",
+      href: "/admin/review",
+    };
+  }
+
+  if (payoutStatus === "RELEASED_MOCK" || payoutStatus === "RELEASED" || ridePayoutState === "PAID") {
+    return {
+      label: "Closed",
+      body: "Case closed in app state.",
+      helper: "Payout was only marked released in demo mode. No real payout was sent.",
+      cta: "View details",
+      href: "/taxi-partner",
+    };
+  }
+
+  return {
+    label: "Payout pending",
+    body: "Payout stays pending until the dispute window clears.",
+    helper: "No real payout is sent in beta.",
+    cta: "View dispute window",
+    href: "/taxi-partner",
+  };
+}
+
+function getTaxiPartnerDisputeCopy(
+  quoteRequest: TaxiPartnerQuoteRequest | null,
+  rideInstance: RecurringRideInstancePreview | null,
+): TaxiDisputeCopy {
+  if (quoteRequest?.disputeStatus === "UNDER_REVIEW" || rideInstance?.settlementState === "DISPUTE_REVIEW") {
+    return {
+      label: "Under review",
+      body: "RidePod is reviewing the reported issue.",
+      cta: "View dispute",
+    };
+  }
+
+  if (quoteRequest?.disputeStatus === "RESOLVED" || rideInstance?.settlementState === "PAID") {
+    return {
+      label: "Closed",
+      body: "The dispute window is closed in app state.",
+      cta: "View dispute",
+    };
+  }
+
+  return {
+    label: "Open",
+    body: "Guests can report an issue before the dispute window ends.",
+    cta: "Report an issue",
+  };
 }
 
 function ReceiptProtectionNotice({

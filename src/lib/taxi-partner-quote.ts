@@ -766,7 +766,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Payout ready",
       tone: "green",
-      helperText: "Review is complete. Payout can be processed in demo mode.",
+      helperText: "Review is complete. Payout can be marked ready in demo mode.",
       primaryActionLabel: "View payout",
     };
   }
@@ -850,7 +850,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Payout pending",
       tone: "blue",
-      helperText: "Payout waits for dispute window review.",
+      helperText: "Payout stays pending until the dispute window clears.",
       primaryActionLabel: "View settlement",
     };
   }

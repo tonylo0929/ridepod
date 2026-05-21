@@ -705,7 +705,7 @@ export default function TaxiPartnerDashboardPage() {
                 </div>
               ) : null}
               <p className="mt-3 text-xs font-bold leading-5 text-sky-100">
-                Payout is released only after ride completion and dispute window review in the live version.
+                Payout stays pending until ride completion and dispute window review in this demo flow.
               </p>
               <p className="mt-2 text-xs font-bold leading-5 text-sky-100">
                 No real payout is sent in this demo.
@@ -1033,7 +1033,7 @@ export default function TaxiPartnerDashboardPage() {
                 {[
                   ["Payout pending", "Payout stays pending until the dispute window clears.", "View dispute window"],
                   ["Payout held", "Payout is held while RidePod reviews the case.", "View review status"],
-                  ["Payout ready", "Review is complete. Payout can be processed in demo mode.", "View payout details"],
+                  ["Payout ready", "Review is complete. Payout can be marked ready in demo mode.", "View payout details"],
                   ["Payout denied in demo", "Payout was denied during demo review.", "View review"],
                   ["Closed", "Payout was closed in demo mode.", "View details"],
                 ].map(([status, body, cta]) => (

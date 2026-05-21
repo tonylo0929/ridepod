@@ -228,7 +228,7 @@ function getSettlementDisplayState(rideInstance: RecurringRideInstancePreview) {
   if (rideInstance.settlementState === "SETTLEMENT_FINAL") {
     return {
       badge: "Settlement final",
-      payoutHelper: "Settlement is final. Payout can be processed.",
+      payoutHelper: "Review is complete in demo mode.",
       finalStepComplete: true,
     };
   }
@@ -243,7 +243,7 @@ function getSettlementDisplayState(rideInstance: RecurringRideInstancePreview) {
 
   return {
     badge: "Settlement ready",
-    payoutHelper: "Payout will be processed after the dispute window.",
+    payoutHelper: "Payout stays pending until the dispute window clears.",
     finalStepComplete: false,
   };
 }
