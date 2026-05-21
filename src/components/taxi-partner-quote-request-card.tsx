@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { LucideIcon } from "lucide-react";
-import { CarFront, CheckCircle2, Clock3, Luggage, ShieldCheck, UsersRound, WalletCards } from "lucide-react";
+import { CarFront, CheckCircle2, Clock3, Info, Luggage, ShieldCheck, UsersRound, WalletCards } from "lucide-react";
 import { Badge, cn } from "@/components/ui";
 import type { RecurringRideInstancePreview, RidePod } from "@/lib/mock-data";
 import {
@@ -87,6 +87,24 @@ function getBody(label: string) {
   return "Taxi partner quote is a future beta prototype.";
 }
 
+function getStatusChipClass(label: string) {
+  if (label === "Quote received" || label === "Ready for taxi partner" || label === "Guests accepted") {
+    return "bg-emerald-400/10 text-emerald-300 ring-emerald-400/25";
+  }
+
+  if (label === "Waiting for quote" || label === "Partner quote needed" || label === "Payout pending") {
+    return "bg-amber-400/10 text-amber-300 ring-amber-400/25";
+  }
+
+  if (label === "Dispute review" || label === "More info needed" || label === "Under review") {
+    return "bg-orange-400/10 text-orange-300 ring-orange-400/25";
+  }
+
+  if (label === "Payout denied") return "bg-red-400/10 text-red-300 ring-red-400/25";
+
+  return "bg-sky-400/10 text-sky-300 ring-sky-400/25";
+}
+
 function createRequestedQuote({
   pod,
   rideInstance,
@@ -159,8 +177,8 @@ function SummaryTile({
   icon: LucideIcon;
 }) {
   return (
-    <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-      <Icon className="h-5 w-5 text-[var(--rp-primary)]" />
+    <div className="rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
+      <Icon className="h-5 w-5 text-sky-300" />
       <p className="mt-2 text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">{label}</p>
       <p className="mt-1 text-sm font-black leading-5 text-[var(--rp-text)]">{value}</p>
     </div>
@@ -249,10 +267,10 @@ export function TaxiPartnerQuoteRequestCard({
   }
 
   return (
-    <section className="overflow-hidden rounded-[30px] border border-[var(--rp-border-strong)] bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--rp-primary)_12%,transparent),transparent_36%),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)] sm:p-6">
+    <section className="overflow-hidden rounded-[30px] border border-sky-400/30 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.16),transparent_36%),var(--rp-card)] p-4 shadow-[0_18px_46px_rgba(14,165,233,0.12)] sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-300">
             Taxi partner quote
           </p>
           <h2 className="mt-2 text-2xl font-black leading-tight text-[var(--rp-text)]">
@@ -262,7 +280,7 @@ export function TaxiPartnerQuoteRequestCard({
             {getBody(displayStatus.label)}
           </p>
         </div>
-        <Badge className="bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border)]">
+        <Badge className={getStatusChipClass(displayStatus.label)}>
           {displayStatus.label === "Waiting for quote" ? "Quote requested" : displayStatus.label}
         </Badge>
       </div>
@@ -287,12 +305,17 @@ export function TaxiPartnerQuoteRequestCard({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {safetyBadges.map((badge) => (
-          <Badge key={badge} className="bg-[var(--rp-card-muted)] text-[var(--rp-primary)] ring-[var(--rp-border)]">
+        {["Taxi partner", "Quote", "Mock payment", "Shared pod"].map((badge) => (
+          <Badge key={badge} className="border border-sky-400/20 bg-sky-400/10 text-sky-100 ring-sky-400/25">
             {badge}
           </Badge>
         ))}
-        <Badge className="bg-[var(--rp-card-muted)] text-[var(--rp-muted-strong)] ring-[var(--rp-border)]">
+        {safetyBadges.map((badge) => (
+          <Badge key={badge} className="bg-[var(--rp-card-muted)] text-sky-300 ring-sky-400/20">
+            {badge}
+          </Badge>
+        ))}
+        <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">
           Future beta prototype
         </Badge>
         {requestDetailBadges.map((badge) => (
@@ -302,12 +325,15 @@ export function TaxiPartnerQuoteRequestCard({
         ))}
       </div>
 
-      <p className="mt-4 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-        Future beta prototype. No real taxi dispatch yet. No real payout yet. Guest acceptance flow comes next.
-      </p>
+      <div className="mt-4 flex items-start gap-3 rounded-[16px] border border-sky-400/25 bg-sky-400/10 p-3 text-sky-100">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
+        <p className="text-xs font-bold leading-5">
+          Taxi Partner Quote is demo only. No real taxi dispatch or payout yet.
+        </p>
+      </div>
 
       {activeRequest?.quoteAmountCents ? (
-        <div className="mt-4 rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+        <div className="mt-4 rounded-[22px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.22))] p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h3 className="text-lg font-black text-[var(--rp-text)]">Partner quote received</h3>
@@ -315,7 +341,7 @@ export function TaxiPartnerQuoteRequestCard({
                 Taxi partner: {activeRequest.quotedByPartnerName ?? "Demo Taxi Partner"}
               </p>
             </div>
-            <Badge className="bg-[var(--rp-success-bg)] text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]">
+            <Badge className="bg-emerald-400/10 text-emerald-300 ring-emerald-400/25">
               Expires {formatQuoteExpiry(activeRequest.quoteExpiresAt)}
             </Badge>
           </div>
@@ -329,21 +355,21 @@ export function TaxiPartnerQuoteRequestCard({
                 ["Guest charge", formatHkdCents(moneyDisplay.guestChargeCents)],
                 ["Taxi partner payout", formatHkdCents(moneyDisplay.driverPayoutCents)],
               ].map(([label, value]) => (
-                <div key={label} className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3">
+                <div key={label} className="rounded-[16px] border border-sky-400/15 bg-[var(--rp-card)] p-3">
                   <dt className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">{label}</dt>
                   <dd className="mt-1 text-base font-black text-[var(--rp-text)]">{value}</dd>
                 </div>
               ))}
             </dl>
           ) : null}
-          <p className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+          <p className="mt-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
             Display/mock only. No real charge or payout is created.
           </p>
         </div>
       ) : null}
 
       {displayStatus.label === "Guests accepting" ? (
-        <div className="mt-4 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+        <div className="mt-4 rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-4">
           <p className="text-sm font-black text-[var(--rp-text)]">
             {acceptedGuestCount} / {lockedGuestCount} guests accepted
           </p>
@@ -369,8 +395,7 @@ export function TaxiPartnerQuoteRequestCard({
         <button
           type="button"
           onClick={handlePrimaryAction}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] px-5 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]"
-          style={{ background: "var(--rp-gradient-primary)" }}
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] bg-sky-500 px-5 text-sm font-black text-white shadow-[0_14px_28px_rgba(14,165,233,0.22)] transition hover:bg-sky-400"
         >
           <WalletCards className="h-4 w-4" /> {displayStatus.primaryActionLabel}
         </button>
@@ -378,7 +403,7 @@ export function TaxiPartnerQuoteRequestCard({
           <button
             type="button"
             onClick={handleSimulateQuote}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-5 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)]"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-sky-400/30 bg-sky-400/10 px-5 text-sm font-black text-sky-200 transition hover:bg-sky-400/15"
           >
             Simulate quote
           </button>
@@ -400,7 +425,7 @@ export function TaxiPartnerQuoteRequestCard({
         >
           <section className="max-h-[92vh] w-full max-w-[460px] overflow-y-auto rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
             <div className="flex items-start gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-sky-400/25 bg-sky-400/10 text-sky-300">
                 <ShieldCheck className="h-5 w-5" />
               </span>
               <div>
@@ -437,7 +462,7 @@ export function TaxiPartnerQuoteRequestCard({
                     className={cn(
                       "min-h-11 rounded-xl border px-3 py-2 text-sm font-black",
                       selectedTaxiType === taxiType
-                        ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                        ? "border-sky-400 bg-sky-500 text-white"
                         : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
                     )}
                   >
@@ -474,7 +499,7 @@ export function TaxiPartnerQuoteRequestCard({
                     onChange={(event) =>
                       setAccessibility((current) => ({ ...current, [key]: event.target.checked }))
                     }
-                    className="mt-1 h-4 w-4 accent-[var(--rp-primary)]"
+                    className="mt-1 h-4 w-4 accent-sky-500"
                   />
                   <span>{accessibilityLabels[key]}</span>
                 </label>
@@ -490,7 +515,7 @@ export function TaxiPartnerQuoteRequestCard({
                 {safetyBadges.map((badge) => (
                   <Badge
                     key={badge}
-                    className="bg-[var(--rp-card-muted)] text-[var(--rp-primary)] ring-[var(--rp-border)]"
+                    className="bg-sky-400/10 text-sky-200 ring-sky-400/25"
                   >
                     {badge}
                   </Badge>
@@ -512,7 +537,7 @@ export function TaxiPartnerQuoteRequestCard({
               <button
                 type="button"
                 onClick={submitRequest}
-                className="min-h-12 rounded-2xl border border-[var(--rp-primary)] bg-[var(--rp-primary)] text-sm font-black text-[var(--rp-primary-text)] transition hover:brightness-105"
+                className="min-h-12 rounded-2xl border border-sky-400 bg-sky-500 text-sm font-black text-white transition hover:bg-sky-400"
               >
                 Submit request
               </button>

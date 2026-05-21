@@ -80,10 +80,10 @@ export function TaxiPartnerCompletionCard({
   }
 
   return (
-    <section className="overflow-hidden rounded-[30px] border border-[var(--rp-border-strong)] bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--rp-primary)_12%,transparent),transparent_36%),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)] sm:p-6">
+    <section className="overflow-hidden rounded-[30px] border border-sky-400/30 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.16),transparent_36%),var(--rp-card)] p-4 shadow-[0_18px_46px_rgba(14,165,233,0.12)] sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-300">
             Taxi partner completion
           </p>
           <h2 className="mt-2 text-2xl font-black leading-tight text-[var(--rp-text)]">
@@ -96,7 +96,7 @@ export function TaxiPartnerCompletionCard({
         <Badge
           className={cn(
             isDisputeReview
-              ? "bg-sky-400/10 text-sky-300 ring-sky-400/25"
+              ? "bg-orange-400/10 text-orange-300 ring-orange-400/25"
               : isPayoutPending || completed
                 ? "bg-sky-400/10 text-sky-300 ring-sky-400/25"
                 : "bg-[var(--rp-success-bg)] text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]",
@@ -110,17 +110,22 @@ export function TaxiPartnerCompletionCard({
         <Badge className="bg-[var(--rp-success-bg)] text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]">
           Guests accepted
         </Badge>
-        <Badge className="bg-[var(--rp-card-muted)] text-[var(--rp-primary)] ring-[var(--rp-border)]">
-          Beta prototype
+        <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">
+          Future beta
         </Badge>
+        {["Taxi partner", "Quote", "Mock payment", "Shared pod"].map((badge) => (
+          <Badge key={badge} className="border border-sky-400/20 bg-sky-400/10 text-sky-100 ring-sky-400/25">
+            {badge}
+          </Badge>
+        ))}
         <Badge className="bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border)]">
           No real payout yet
         </Badge>
       </div>
 
       <div className="mt-5 grid gap-3 min-[720px]:grid-cols-3">
-        <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-          <CalendarClock className="h-5 w-5 text-[var(--rp-primary)]" />
+        <div className="rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
+          <CalendarClock className="h-5 w-5 text-sky-300" />
           <p className="mt-2 text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Route</p>
           <p className="mt-1 text-sm font-black text-[var(--rp-text)]">
             {rideInstance.originLabel} to {rideInstance.destinationLabel}
@@ -129,8 +134,8 @@ export function TaxiPartnerCompletionCard({
             {rideInstance.displayDate}, {rideInstance.departureTime}
           </p>
         </div>
-        <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-          <ShieldCheck className="h-5 w-5 text-[var(--rp-primary)]" />
+        <div className="rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
+          <ShieldCheck className="h-5 w-5 text-sky-300" />
           <p className="mt-2 text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Taxi partner</p>
           <p className="mt-1 text-sm font-black text-[var(--rp-text)]">
             {activeRequest.quotedByPartnerName ?? "Demo Taxi Partner"}
@@ -139,8 +144,8 @@ export function TaxiPartnerCompletionCard({
             {taxiPartnerTaxiTypeLabels[activeRequest.requestedTaxiType]} taxi
           </p>
         </div>
-        <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-          <WalletCards className="h-5 w-5 text-[var(--rp-primary)]" />
+        <div className="rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
+          <WalletCards className="h-5 w-5 text-sky-300" />
           <p className="mt-2 text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Taxi partner payout</p>
           <p className="mt-1 text-sm font-black text-[var(--rp-text)]">
             {formatHkdCents(moneyDisplay.driverPayoutCents)}
@@ -150,7 +155,7 @@ export function TaxiPartnerCompletionCard({
       </div>
 
       {isPayoutPending || completed || isDisputeReview ? (
-        <div className="mt-5 rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+        <div className="mt-5 rounded-[22px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.2))] p-4">
           <h3 className="text-lg font-black text-[var(--rp-text)]">{displayStatus.label}</h3>
           <p className="mt-1 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
             {displayStatus.helperText}
@@ -165,21 +170,20 @@ export function TaxiPartnerCompletionCard({
             <SummaryRow label="Driver payout" value={formatHkdCents(moneyDisplay.driverPayoutCents)} />
             <SummaryRow label="Dispute window" value="24h" />
           </dl>
-          <p className="mt-4 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+          <p className="mt-4 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
             No real payout is sent in beta. Payout is pending during the dispute window.
           </p>
           <div className="mt-4 grid gap-3 min-[520px]:grid-cols-2">
             <Link
               href={`/pods/${pod.id}/settlement`}
-              className="inline-flex min-h-12 items-center justify-center rounded-[16px] px-5 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]"
-              style={{ background: "var(--rp-gradient-primary)" }}
+              className="inline-flex min-h-12 items-center justify-center rounded-[16px] bg-sky-500 px-5 text-sm font-black text-white shadow-[0_14px_28px_rgba(14,165,233,0.22)] transition hover:bg-sky-400"
             >
               View settlement
             </Link>
             <button
               type="button"
               onClick={() => setMessage("Report an issue before the dispute window ends.")}
-              className="inline-flex min-h-12 items-center justify-center rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-5 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)]"
+              className="inline-flex min-h-12 items-center justify-center rounded-[16px] border border-sky-400/30 bg-sky-400/10 px-5 text-sm font-black text-sky-200 transition hover:bg-sky-400/15"
             >
               View dispute window
             </button>
@@ -193,8 +197,7 @@ export function TaxiPartnerCompletionCard({
           <button
             type="button"
             onClick={() => setShowCompletionModal(true)}
-            className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[16px] px-5 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)] min-[520px]:w-auto"
-            style={{ background: "var(--rp-gradient-primary)" }}
+            className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[16px] bg-sky-500 px-5 text-sm font-black text-white shadow-[0_14px_28px_rgba(14,165,233,0.22)] transition hover:bg-sky-400 min-[520px]:w-auto"
           >
             <CheckCircle2 className="h-4 w-4" /> Simulate ride completed
           </button>
@@ -240,7 +243,7 @@ export function TaxiPartnerCompletionCard({
                 type="checkbox"
                 checked={understandsMockCompletion}
                 onChange={(event) => setUnderstandsMockCompletion(event.target.checked)}
-                className="mt-1 h-4 w-4 accent-[var(--rp-primary)]"
+                className="mt-1 h-4 w-4 accent-sky-500"
               />
               <span>I understand this is a beta mock completion.</span>
             </label>
@@ -259,7 +262,7 @@ export function TaxiPartnerCompletionCard({
                 className={cn(
                   "min-h-12 rounded-2xl border text-sm font-black transition",
                   understandsMockCompletion
-                    ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)] hover:brightness-105"
+                    ? "border-sky-400 bg-sky-500 text-white hover:bg-sky-400"
                     : "border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted)]",
                 )}
               >

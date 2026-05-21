@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, Clock3, WalletCards, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, Info, WalletCards, XCircle } from "lucide-react";
 import { Badge, cn } from "@/components/ui";
 import type { RecurringRideInstancePreview, RidePod } from "@/lib/mock-data";
 import {
@@ -42,7 +42,7 @@ function MoneyRow({ label, value, strong = false }: { label: string; value: stri
   return (
     <div className="flex items-center justify-between gap-4 border-b border-[var(--rp-border)] py-2 last:border-b-0">
       <dt className="text-sm font-bold text-[var(--rp-muted-strong)]">{label}</dt>
-      <dd className={cn("text-sm font-black", strong ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]")}>
+      <dd className={cn("text-sm font-black", strong ? "text-sky-300" : "text-[var(--rp-text)]")}>
         {value}
       </dd>
     </div>
@@ -95,7 +95,7 @@ function AcceptanceModal({
               "min-h-12 rounded-2xl border text-sm font-black transition",
               confirmDisabled
                 ? "border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted)]"
-                : "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)] hover:brightness-105",
+                : "border-sky-400 bg-sky-500 text-white hover:bg-sky-400",
             )}
           >
             {confirmLabel}
@@ -182,10 +182,10 @@ export function TaxiPartnerQuoteAcceptanceCard({
   if (!baseRequest || !moneyDisplay || !baseRequest.quoteAmountCents) return null;
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-[var(--rp-border-strong)] bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--rp-primary)_10%,transparent),transparent_34%),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)] sm:p-5">
+    <section className="overflow-hidden rounded-[28px] border border-sky-400/30 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.15),transparent_34%),var(--rp-card)] p-4 shadow-[0_18px_46px_rgba(14,165,233,0.12)] sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-300">
             Taxi partner quote
           </p>
           <h2 className="mt-2 text-2xl font-black leading-tight text-[var(--rp-text)]">
@@ -195,22 +195,30 @@ export function TaxiPartnerQuoteAcceptanceCard({
             Your total includes your fare share and RidePod platform fee.
           </p>
         </div>
-        <Badge className="bg-[var(--rp-success-bg)] text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]">
+        <Badge className={allAccepted ? "bg-emerald-400/10 text-emerald-300 ring-emerald-400/25" : "bg-sky-400/10 text-sky-300 ring-sky-400/25"}>
           {allAccepted ? "Ready for taxi partner" : displayStatus.label}
         </Badge>
       </div>
 
+      <div className="mt-4 flex flex-wrap gap-2">
+        {["Taxi partner", "Quote", "Mock payment", "Shared pod"].map((badge) => (
+          <Badge key={badge} className="border border-sky-400/20 bg-sky-400/10 text-sky-100 ring-sky-400/25">
+            {badge}
+          </Badge>
+        ))}
+      </div>
+
       <div className="mt-5 grid gap-3 min-[720px]:grid-cols-2">
-        <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+        <div className="rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
           <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Route</p>
           <p className="mt-1 text-sm font-black text-[var(--rp-text)]">
-            {rideInstance.originLabel} → {rideInstance.destinationLabel}
+            {rideInstance.originLabel} to {rideInstance.destinationLabel}
           </p>
           <p className="mt-1 text-xs font-bold text-[var(--rp-muted-strong)]">
-            {rideInstance.displayDate} · {rideInstance.departureTime}
+            {rideInstance.displayDate} - {rideInstance.departureTime}
           </p>
         </div>
-        <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+        <div className="rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
           <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Taxi partner</p>
           <p className="mt-1 text-sm font-black text-[var(--rp-text)]">
             {baseRequest.quotedByPartnerName ?? "Demo Taxi Partner"}
@@ -235,7 +243,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
         </div>
       ) : null}
 
-      <dl className="mt-4 rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+      <dl className="mt-4 rounded-[20px] border border-sky-400/20 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.18))] p-4">
         <MoneyRow label="Quote" value={formatHkdCents(moneyDisplay.quoteAmountCents)} />
         <MoneyRow label="Guest count" value={`${moneyDisplay.guestCount} guests`} />
         <MoneyRow label="Fare share" value={formatHkdCents(moneyDisplay.fareShareCents)} />
@@ -248,14 +256,14 @@ export function TaxiPartnerQuoteAcceptanceCard({
           <Clock3 className="mr-1 h-3.5 w-3.5" />
           {formatQuoteExpiryBadge(baseRequest.quoteExpiresAt)}
         </Badge>
-        <Badge className="bg-[var(--rp-card-muted)] text-[var(--rp-primary)] ring-[var(--rp-border)]">
+        <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">
           Mock payment state: {acceptance.mockPaymentState === "MOCK_AUTHORIZED" ? "Authorized" : "Not started"}
         </Badge>
       </div>
 
-      <div className="mt-4 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+      <div className="mt-4 rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-4">
         <p className="text-sm font-black text-[var(--rp-text)]">Guest acceptance</p>
-        <p className="mt-1 text-lg font-black text-[var(--rp-primary)]">
+        <p className="mt-1 text-lg font-black text-sky-300">
           {effectiveAcceptedCount} / {guestCount} accepted
         </p>
         <div className="mt-3 grid gap-2 text-sm font-bold text-[var(--rp-muted-strong)]">
@@ -295,9 +303,12 @@ export function TaxiPartnerQuoteAcceptanceCard({
         ) : null}
       </div>
 
-      <p className="mt-4 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-        This is a future beta prototype. No real payment or taxi dispatch happens yet.
-      </p>
+      <div className="mt-4 flex items-start gap-3 rounded-[16px] border border-sky-400/25 bg-sky-400/10 p-3 text-sky-100">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
+        <p className="text-xs font-bold leading-5">
+          Demo only. No real payment, taxi dispatch, or payout yet.
+        </p>
+      </div>
 
       <div className="mt-5 grid gap-3 min-[520px]:grid-cols-2">
         <button
@@ -308,12 +319,11 @@ export function TaxiPartnerQuoteAcceptanceCard({
             setShowAcceptModal(true);
           }}
           className={cn(
-            "inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] px-5 text-sm font-black shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]",
+            "inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] px-5 text-sm font-black shadow-[0_14px_28px_rgba(14,165,233,0.22)] transition",
             userAccepted
               ? "bg-[var(--rp-card-muted)] text-[var(--rp-muted)]"
-              : "text-[var(--rp-primary-text)]",
+              : "bg-sky-500 text-white hover:bg-sky-400",
           )}
-          style={userAccepted ? undefined : { background: "var(--rp-gradient-primary)" }}
         >
           <WalletCards className="h-4 w-4" /> {quoteAboveCap ? "Accept higher quote" : "Accept quote"}
         </button>
@@ -321,7 +331,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
           type="button"
           disabled={userDeclined || userAccepted}
           onClick={() => setShowDeclineModal(true)}
-          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-5 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)] disabled:text-[var(--rp-muted)]"
+          className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-sky-400/30 bg-sky-400/10 px-5 text-sm font-black text-sky-200 transition hover:bg-sky-400/15 disabled:text-[var(--rp-muted)]"
         >
           <XCircle className="h-4 w-4" /> Decline
         </button>
@@ -340,7 +350,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
         </div>
       ) : null}
 
-      <p className="mt-4 text-xs font-black text-[var(--rp-primary)]">
+      <p className="mt-4 text-xs font-black text-sky-300">
         Next: guests accept the partner quote.
       </p>
 
@@ -365,7 +375,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
               type="checkbox"
               checked={understandsMockPayment}
               onChange={(event) => setUnderstandsMockPayment(event.target.checked)}
-              className="mt-1 h-4 w-4 accent-[var(--rp-primary)]"
+              className="mt-1 h-4 w-4 accent-sky-500"
             />
             <span>I understand this is a beta mock payment state.</span>
           </label>

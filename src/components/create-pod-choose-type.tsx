@@ -179,7 +179,7 @@ const rideOptions: Array<{
     helper: "Future beta mode",
     recurringHelper: "Future beta mode for each ride date.",
     icon: CarFront,
-    badge: "Beta prototype",
+    badge: "Future beta",
     taxiTypeChips: ["Standard", "Electric", "Luggage-friendly", "Large", "Comfort", "Accessible"],
   },
 ];
@@ -1973,6 +1973,7 @@ function RideOptionCard({
   onSelect: () => void;
 }) {
   const Icon = option.icon;
+  const taxiPartnerOption = option.id === "taxi_partner_quote";
 
   return (
     <button
@@ -1984,20 +1985,32 @@ function RideOptionCard({
       onClick={onSelect}
       className={cn(
         "grid w-full grid-cols-[52px_1fr_34px] items-center gap-3 rounded-[14px] border bg-[var(--rp-card)] p-3 text-left shadow-[var(--rp-shadow-soft)] transition",
-        selected
-          ? "border-[var(--rp-primary)] ring-1 ring-[var(--rp-primary)]"
-          : "border-[var(--rp-border)] hover:border-[var(--rp-border-strong)]",
+        selected && taxiPartnerOption
+          ? "border-sky-400/70 bg-[linear-gradient(135deg,rgba(14,165,233,0.14),rgba(2,6,23,0.02))] ring-1 ring-sky-400/45"
+          : selected
+            ? "border-[var(--rp-primary)] ring-1 ring-[var(--rp-primary)]"
+            : "border-[var(--rp-border)] hover:border-[var(--rp-border-strong)]",
         disabled && "cursor-not-allowed opacity-70 hover:border-[var(--rp-border)]",
       )}
     >
-      <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+      <span
+        className={cn(
+          "grid h-12 w-12 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]",
+          taxiPartnerOption && "border border-sky-400/25 bg-sky-400/10 text-sky-300",
+        )}
+      >
         <Icon className="h-7 w-7" />
       </span>
       <span className="min-w-0">
         <span className="flex flex-wrap items-center gap-2 text-base font-black text-[var(--rp-text)]">
           <span>{option.title}</span>
           {option.badge ? (
-            <span className="rounded-full border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,var(--rp-card))] px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]">
+            <span
+              className={cn(
+                "rounded-full border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,var(--rp-card))] px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]",
+                taxiPartnerOption && "border-sky-400/35 bg-sky-400/10 text-sky-200",
+              )}
+            >
               {disabled ? "Coming soon" : option.badge}
             </span>
           ) : null}
@@ -2005,7 +2018,7 @@ function RideOptionCard({
         <span className="mt-1 block text-xs font-semibold leading-4 text-[var(--rp-muted)]">
           {option.description}
         </span>
-        <span className="mt-1 block text-[11px] font-black leading-4 text-[var(--rp-primary)]">
+        <span className={cn("mt-1 block text-[11px] font-black leading-4 text-[var(--rp-primary)]", taxiPartnerOption && "text-sky-300")}>
           {disabled ? "Coming soon" : helper}
         </span>
         {option.taxiTypeChips ? (
@@ -2013,7 +2026,10 @@ function RideOptionCard({
             {option.taxiTypeChips.map((chip) => (
               <span
                 key={chip}
-                className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-2 py-1 text-[10px] font-black text-[var(--rp-muted-strong)]"
+                className={cn(
+                  "rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-2 py-1 text-[10px] font-black text-[var(--rp-muted-strong)]",
+                  taxiPartnerOption && "border-sky-400/20 bg-sky-400/10 text-sky-100",
+                )}
               >
                 {chip}
               </span>
@@ -2025,7 +2041,9 @@ function RideOptionCard({
         aria-hidden="true"
         className={cn(
           "grid h-7 w-7 place-items-center rounded-full border-2",
-          selected
+          selected && taxiPartnerOption
+            ? "border-sky-400 bg-sky-500 text-white"
+            : selected
             ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
             : "border-[var(--rp-muted)] text-transparent",
         )}
@@ -2073,23 +2091,47 @@ function RideOptionSelector({
         })}
       </div>
       {selectedTaxiPartnerQuote ? (
-        <div className="mt-3 rounded-[18px] border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_10%,var(--rp-card))] p-4">
+        <div className="mt-3 rounded-[18px] border border-sky-400/35 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(15,23,42,0.2))] p-4 shadow-[0_18px_42px_rgba(14,165,233,0.12)]">
           <div className="flex items-start gap-3">
-            <Info className="mt-1 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
-            <div>
+            <Info className="mt-1 h-5 w-5 shrink-0 text-sky-300" />
+            <div className="min-w-0 flex-1">
               <h3 className="text-sm font-black text-[var(--rp-text)]">Taxi partner quote</h3>
               <p className="mt-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-                RidePod groups riders first. A licensed taxi partner can quote one price for the shared pod. This mode is a future beta prototype and does not dispatch real taxis yet.
+                Licensed taxi partner quotes one price for the shared pod.
               </p>
-              <p className="mt-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-                Future matching can consider luggage, larger vehicles, and accessibility needs, available only when supported by taxi partner.
-              </p>
+              <div className="mt-3 grid gap-2 min-[560px]:grid-cols-3">
+                {[
+                  { title: "Group first", body: "Guests join and lock", icon: UsersRound },
+                  { title: "Partner quote", body: "One price for the pod", icon: DollarSign },
+                  { title: "Accept & ride", body: "Guests accept and ride", icon: Check },
+                ].map((step) => {
+                  const StepIcon = step.icon;
+
+                  return (
+                    <div key={step.title} className="rounded-[14px] border border-sky-400/20 bg-sky-400/10 p-3">
+                      <StepIcon className="h-4 w-4 text-sky-300" />
+                      <p className="mt-2 text-xs font-black text-[var(--rp-text)]">{step.title}</p>
+                      <p className="mt-1 text-[11px] font-bold leading-4 text-[var(--rp-muted-strong)]">{step.body}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="mt-3 flex items-start gap-2 rounded-[14px] border border-sky-400/25 bg-sky-400/10 p-3 text-sky-100">
+                <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
+                <p className="text-xs font-bold leading-5">
+                  Taxi Partner Quote is demo only. No real taxi dispatch or payout yet.
+                </p>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {["Taxi partner", "Quote", "Mock payment", "Shared pod"].map((chip) => (
+                  <span key={chip} className="rounded-full border border-sky-400/25 bg-sky-400/10 px-2.5 py-1 text-[11px] font-black text-sky-100">
+                    {chip}
+                  </span>
+                ))}
+              </div>
               <p className="mt-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
                 Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner.
               </p>
-              <span className="mt-3 inline-flex rounded-full bg-[var(--rp-primary)] px-3 py-1 text-xs font-black text-[var(--rp-primary-text)]">
-                Use beta prototype
-              </span>
             </div>
           </div>
         </div>
