@@ -18,6 +18,9 @@ export type RideInstanceNotificationType =
   | "proof_more_info_needed"
   | "proof_rejected"
   | "payout_held"
+  | "taxi_partner_dispute_opened"
+  | "taxi_partner_guest_dispute_review"
+  | "taxi_partner_payout_held"
   | "taxi_partner_quote_received"
   | "taxi_partner_guests_accepting"
   | "taxi_partner_ride_completed"
@@ -304,26 +307,55 @@ export function getRideInstanceNotifications(
     );
 
     if (taxiQuoteStatus.label === "Dispute review") {
-      items.push(
-        notification(rideInstance, {
-          stableKey: host
-            ? `taxi_partner_dispute_opened:${rideInstance.id}`
-            : `taxi_partner_guest_dispute_review:${rideInstance.id}`,
-          type: "dispute_under_review",
-          title: host ? "Taxi partner dispute opened" : "Dispute under review",
-          body: host
-            ? "RidePod is reviewing this taxi partner ride."
-            : "RidePod is reviewing the issue you reported.",
-          timeAgo: "3d",
-          group: "This week",
-          tone: "orange",
-          ctaLabel: host ? "View review" : "View dispute",
-          ctaTarget: host ? target : guestRideTarget,
-          createdAt: "2026-05-15T10:00:00.000Z",
-          read: false,
-          audience: host ? "HOST" : "LOCKED_GUESTS",
-        }),
-      );
+      if (host) {
+        items.push(
+          notification(rideInstance, {
+            stableKey: `taxi_partner_dispute_opened:${rideInstance.id}`,
+            type: "taxi_partner_dispute_opened",
+            title: "Taxi partner dispute opened",
+            body: "RidePod is reviewing this taxi partner ride.",
+            timeAgo: "3d",
+            group: "This week",
+            tone: "amber",
+            ctaLabel: "View review",
+            ctaTarget: target,
+            createdAt: "2026-05-15T10:00:00.000Z",
+            read: false,
+            audience: "HOST",
+          }),
+          notification(rideInstance, {
+            stableKey: `taxi_partner_payout_held:${rideInstance.id}`,
+            type: "taxi_partner_payout_held",
+            title: "Payout held",
+            body: "Payout is held while RidePod reviews the case.",
+            timeAgo: "3d",
+            group: "This week",
+            tone: "amber",
+            ctaLabel: "View case",
+            ctaTarget: target,
+            createdAt: "2026-05-15T10:05:00.000Z",
+            read: false,
+            audience: "HOST",
+          }),
+        );
+      } else {
+        items.push(
+          notification(rideInstance, {
+            stableKey: `taxi_partner_guest_dispute_review:${rideInstance.id}`,
+            type: "taxi_partner_guest_dispute_review",
+            title: "Dispute under review",
+            body: "RidePod is reviewing the issue you reported.",
+            timeAgo: "3d",
+            group: "This week",
+            tone: "amber",
+            ctaLabel: "View dispute",
+            ctaTarget: guestRideTarget,
+            createdAt: "2026-05-15T10:00:00.000Z",
+            read: false,
+            audience: "LOCKED_GUESTS",
+          }),
+        );
+      }
     }
 
     if (taxiQuoteStatus.label === "Quote received") {
@@ -623,23 +655,6 @@ export function getDemoRideInstanceNotifications(
         reviewCase: { id: "demo-payout-held-case", case_type: "PAYOUT_HOLD" },
         viewerRole,
         createdAt: "2026-05-18T09:40:00.000Z",
-      }),
-    );
-  }
-
-  const taxiPartnerDisputeRide = pods
-    .flatMap((pod) => pod.upcomingRideInstances ?? [])
-    .find((ride) => ride.taxiPartnerQuoteRequestId === "taxi_partner_dispute_review");
-
-  if (taxiPartnerDisputeRide) {
-    notifications.push(
-      ...getAdminActionNotifications({
-        adminAction: "ADMIN_PAYOUT_HELD",
-        rideInstance: taxiPartnerDisputeRide,
-        proof: { id: "demo-taxi-partner-proof", proof_type: "FINAL_RECEIPT" },
-        reviewCase: { id: "demo-taxi-partner-payout-held-case", case_type: "TAXI_PARTNER_PAYOUT_HOLD" },
-        viewerRole,
-        createdAt: "2026-05-18T09:20:00.000Z",
       }),
     );
   }
