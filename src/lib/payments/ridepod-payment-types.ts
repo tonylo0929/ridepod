@@ -21,6 +21,67 @@ export const RIDEPOD_TEST_PAYMENT_STATUSES = [
 
 export type RidePodTestPaymentStatus = (typeof RIDEPOD_TEST_PAYMENT_STATUSES)[number];
 
+export const RIDEPOD_PAYMENT_EVENT_TYPES = [
+  "TEST_PAYMENT_INTENT_CREATED",
+  "TEST_PAYMENT_CONFIRMED",
+  "TEST_REQUIRES_CAPTURE",
+  "TEST_CAPTURED",
+  "TEST_CANCELED",
+  "TEST_REFUND_SIMULATED",
+  "PAYMENT_HELD_FOR_REVIEW",
+  "PAYOUT_MARKED_READY_DEMO",
+  "PAYOUT_DENIED_DEMO",
+  "PAYMENT_ACTION_FAILED",
+  "PAYMENT_ACTION_SKIPPED",
+  "MOCK_PAYMENT_ACCEPTED",
+] as const;
+
+export type RidePodPaymentEventType = (typeof RIDEPOD_PAYMENT_EVENT_TYPES)[number];
+
+export type RidePodPaymentEvent = {
+  id: string;
+  rideInstanceId: string | null;
+  podId: string | null;
+  userId: string | null;
+  actorRole: string | null;
+  eventType: RidePodPaymentEventType;
+  paymentProvider: string;
+  stripePaymentIntentId: string | null;
+  amountCents: number | null;
+  currency: string;
+  previousStatus: string | null;
+  newStatus: string | null;
+  eventPayload: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type RidePodRecordPaymentEventInput = {
+  rideInstanceId?: string | null;
+  podId?: string | null;
+  userId?: string | null;
+  actorRole?: string | null;
+  eventType: RidePodPaymentEventType;
+  paymentProvider?: string;
+  stripePaymentIntentId?: string | null;
+  amountCents?: number | null;
+  currency?: string;
+  previousStatus?: string | null;
+  newStatus?: string | null;
+  eventPayload?: Record<string, unknown> | null;
+};
+
+export type RidePodRecordPaymentEventResult =
+  | {
+      success: true;
+      event: RidePodPaymentEvent;
+      warning?: string;
+    }
+  | {
+      success: false;
+      event: null;
+      warning: string;
+    };
+
 export type RidePodCreateTestPaymentIntentInput = {
   rideInstanceId: string;
   quoteRequestId?: string | null;

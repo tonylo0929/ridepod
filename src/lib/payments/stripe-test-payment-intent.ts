@@ -7,6 +7,7 @@ import {
   type RidePodCreateTestPaymentIntentInput,
   type RidePodCreateTestPaymentIntentResponse,
 } from "@/lib/payments/ridepod-payment-types";
+import { recordPaymentEvent } from "@/lib/payments/payment-events";
 
 function failed(error: string, message: string, status = 400) {
   return {
@@ -70,6 +71,25 @@ export async function createRidePodStripeTestPaymentIntent(
       return failed("STRIPE_LIVE_PAYMENT_INTENT_BLOCKED", "Stripe test keys are not configured.", 500);
     }
 
+    void recordPaymentEvent({
+      rideInstanceId: input.rideInstanceId,
+      userId: input.userId,
+      actorRole: "guest",
+      eventType: "TEST_PAYMENT_INTENT_CREATED",
+      stripePaymentIntentId: paymentIntent.id,
+      amountCents: paymentIntent.amount,
+      currency: "HKD",
+      newStatus: paymentIntent.status,
+      eventPayload: {
+        stripeStatus: paymentIntent.status,
+        captureMethod,
+        livemode: paymentIntent.livemode,
+        quoteRequestId: input.quoteRequestId ?? null,
+        rideOption: "TAXI_PARTNER_QUOTE",
+        demoMode: true,
+      },
+    });
+
     return {
       status: 200,
       response: {
@@ -89,4 +109,3 @@ export async function createRidePodStripeTestPaymentIntent(
     return failed("STRIPE_TEST_PAYMENT_INTENT_FAILED", "Couldn’t create test payment. Try again later.", 500);
   }
 }
-

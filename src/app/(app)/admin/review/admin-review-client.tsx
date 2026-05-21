@@ -29,6 +29,10 @@ import {
   type AdminReviewFilter,
   type AdminReviewSeverity,
 } from "@/lib/admin-review-queue";
+import {
+  buildRidePodEvidencePackageFromAdminReviewCase,
+  type RidePodEvidencePackage,
+} from "@/lib/payments/evidence-package";
 import type { AdminReviewCaseViewModel } from "@/lib/supabase/admin-review-cases";
 
 type AdminReviewAction =
@@ -63,6 +67,16 @@ type AdminPaymentSimulationStatus =
   | "TEST_CANCEL_FAILED"
   | "HELD_FOR_REVIEW"
   | "CLEARED_FOR_PAYOUT";
+
+type AdminPaymentHistoryEvent = {
+  id: string;
+  createdAt: string;
+  eventType: string;
+  actor: string;
+  amountCents: number | null;
+  previousStatus: string | null;
+  newStatus: string | null;
+};
 
 const taxiPartnerMockActionLabels: Array<{ key: TaxiPartnerMockActionKey; label: string; requiresNotes: boolean }> = [
   { key: "holdPayout", label: "Hold payout", requiresNotes: true },
@@ -762,6 +776,20 @@ function stripeStatusToPaymentState(status: string): AdminPaymentSimulationStatu
   return "TEST_PAYMENT_INTENT_CREATED";
 }
 
+function paymentEventLabel(eventType: string) {
+  if (eventType === "TEST_PAYMENT_INTENT_CREATED") return "Test payment created";
+  if (eventType === "TEST_PAYMENT_CONFIRMED") return "Test payment confirmed";
+  if (eventType === "TEST_REQUIRES_CAPTURE") return "Test authorization ready for capture";
+  if (eventType === "TEST_CAPTURED") return "Test payment captured";
+  if (eventType === "TEST_CANCELED") return "Test authorization canceled";
+  if (eventType === "TEST_REFUND_SIMULATED") return "Refund simulated";
+  if (eventType === "PAYMENT_HELD_FOR_REVIEW") return "Payment held for review";
+  if (eventType === "PAYOUT_MARKED_READY_DEMO") return "Payout marked ready in demo";
+  if (eventType === "PAYOUT_DENIED_DEMO") return "Payout denied in demo";
+  if (eventType === "PAYMENT_ACTION_FAILED") return "Payment action failed";
+  return "Payment event";
+}
+
 type PaymentAdminApiResponse =
   | {
       ok: true;
@@ -790,14 +818,91 @@ function TaxiPartnerPaymentSimulation({
   const [stripeStatus, setStripeStatus] = useState("requires_capture");
   const [paymentState, setPaymentState] = useState<AdminPaymentSimulationStatus>("TEST_REQUIRES_CAPTURE");
   const [paymentReviewState, setPaymentReviewState] = useState<"OPEN" | "HELD_FOR_REVIEW" | "CLEARED">("OPEN");
+  const [paymentEvents, setPaymentEvents] = useState<AdminPaymentHistoryEvent[]>([]);
   const [confirmationAction, setConfirmationAction] = useState<AdminPaymentSimulationActionKey | null>(null);
   const [isApplyingPaymentAction, setIsApplyingPaymentAction] = useState(false);
   const [paymentActionMessage, setPaymentActionMessage] = useState<string | null>(null);
   const [paymentActionError, setPaymentActionError] = useState<string | null>(null);
+  const [evidencePackage, setEvidencePackage] = useState<RidePodEvidencePackage | null>(null);
+  const [evidenceCopyMessage, setEvidenceCopyMessage] = useState<string | null>(null);
   const guestPaymentAmountCents = reviewCase.taxiPartnerGuestChargeCents ?? reviewCase.maxChargePerGuestCents;
   const paymentPurpose = "TAXI_PARTNER_QUOTE_ACCEPTANCE";
   const disputeWindowStatus = reviewCase.disputeStatus === "None" ? "Open / no issue reported" : reviewCase.disputeStatus;
   const hasPaymentIntent = paymentIntentId.trim().startsWith("pi_");
+
+  const generateEvidencePackage = () => {
+    const generated = buildRidePodEvidencePackageFromAdminReviewCase(reviewCase, {
+      packageType: reviewCase.disputeStatus !== "None" ? "TAXI_PARTNER_QUOTE_DISPUTE" : "ADMIN_PAYOUT_REVIEW",
+      viewerRole: "admin",
+      paymentIntentId: paymentIntentId.trim() || null,
+      paymentEvents: paymentEvents.map((event) => ({
+        eventType: event.eventType,
+        timestamp: event.createdAt,
+        amountCents: event.amountCents,
+        paymentProvider: "STRIPE_TEST",
+        paymentIntentId: paymentIntentId.trim() || null,
+        previousStatus: event.previousStatus,
+        newStatus: event.newStatus,
+        actorRole: event.actor,
+      })),
+    });
+    setEvidencePackage(generated);
+    setEvidenceCopyMessage(null);
+  };
+
+  const copyEvidenceSummary = async () => {
+    if (!evidencePackage) return;
+    try {
+      await navigator.clipboard.writeText(evidencePackage.recommendedAdminNotes);
+      setEvidenceCopyMessage("Summary copied.");
+    } catch {
+      setEvidenceCopyMessage("Summary text is ready to copy.");
+    }
+  };
+
+  const appendPaymentEvent = async (
+    eventType: AdminPaymentHistoryEvent["eventType"],
+    newStatus: string,
+    previousStatus: string | null = paymentState,
+    persistEvent = true,
+  ) => {
+    const localEvent: AdminPaymentHistoryEvent = {
+      id: `payment-event-${Date.now()}-${eventType}`,
+      createdAt: new Date().toISOString(),
+      eventType,
+      actor: "Admin",
+      amountCents: guestPaymentAmountCents,
+      previousStatus,
+      newStatus,
+    };
+    setPaymentEvents((current) => [localEvent, ...current]);
+
+    if (!persistEvent) return;
+
+    try {
+      await fetch("/api/payments/record-test-payment-event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          rideInstanceId: reviewCase.id,
+          actorRole: "admin",
+          eventType,
+          stripePaymentIntentId: paymentIntentId.trim() || null,
+          amountCents: guestPaymentAmountCents,
+          currency: "HKD",
+          previousStatus,
+          newStatus,
+          eventPayload: {
+            adminReason: "Admin payment simulation",
+            demoMode: true,
+            disputeWindowState: disputeWindowStatus,
+          },
+        }),
+      });
+    } catch {
+      // Audit logging should not block the demo payment flow.
+    }
+  };
 
   const callPaymentApi = async (endpoint: string): Promise<PaymentAdminApiResponse> => {
     const response = await fetch(endpoint, {
@@ -839,6 +944,7 @@ function TaxiPartnerPaymentSimulation({
           setPaymentState("TEST_CAPTURED");
         }
         setPaymentActionMessage("Test payment captured.");
+        void appendPaymentEvent("TEST_CAPTURED", "TEST_CAPTURED", paymentState, !(hasPaymentIntent && stripeTestModeEnabled));
         return;
       }
 
@@ -861,12 +967,14 @@ function TaxiPartnerPaymentSimulation({
           setPaymentState("TEST_CANCELED");
         }
         setPaymentActionMessage("Test authorization canceled.");
+        void appendPaymentEvent("TEST_CANCELED", "TEST_CANCELED", paymentState, !(hasPaymentIntent && stripeTestModeEnabled));
         return;
       }
 
       if (confirmationAction === "simulateRefund") {
         setPaymentState("TEST_REFUND_SIMULATED");
         setPaymentActionMessage("Refund simulated.");
+        void appendPaymentEvent("TEST_REFUND_SIMULATED", "TEST_REFUND_SIMULATED");
         return;
       }
 
@@ -875,6 +983,7 @@ function TaxiPartnerPaymentSimulation({
         setPaymentState("HELD_FOR_REVIEW");
         await onTaxiPartnerMockActionApplied(reviewCase.id, "holdPayout", "Payment held for review in demo mode.");
         setPaymentActionMessage("Payment held for review.");
+        void appendPaymentEvent("PAYMENT_HELD_FOR_REVIEW", "HELD_FOR_REVIEW");
         return;
       }
 
@@ -882,6 +991,7 @@ function TaxiPartnerPaymentSimulation({
       setPaymentState("CLEARED_FOR_PAYOUT");
       await onTaxiPartnerMockActionApplied(reviewCase.id, "releasePayoutMock", "Payout marked ready from payment simulation.");
       setPaymentActionMessage("Payout marked ready in demo mode.");
+      void appendPaymentEvent("PAYOUT_MARKED_READY_DEMO", "CLEARED_FOR_PAYOUT");
     } finally {
       setIsApplyingPaymentAction(false);
       setConfirmationAction(null);
@@ -987,8 +1097,108 @@ function TaxiPartnerPaymentSimulation({
           </p>
         ) : null}
         <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-          Refund simulation is mock-only in PAY-4. TODO: Persist payment events in PAY-5.
+          Refund simulation is mock-only in PAY-5. Payment events are recorded when server-side persistence is available.
         </p>
+        <div className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+          <h4 className="text-sm font-black text-[var(--rp-text)]">Payment event history</h4>
+          {paymentEvents.length ? (
+            <div className="mt-3 grid gap-2">
+              {paymentEvents.map((event) => (
+                <article key={event.id} className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <p className="text-sm font-black text-[var(--rp-text)]">{paymentEventLabel(event.eventType)}</p>
+                    <p className="text-xs font-bold text-[var(--rp-muted)]">
+                      {new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(event.createdAt))}
+                    </p>
+                  </div>
+                  <dl className="mt-2 grid gap-2 text-xs sm:grid-cols-3">
+                    <KeyValue label="Amount" value={event.amountCents ? formatAdminHkd(event.amountCents) : "Not available"} />
+                    <KeyValue
+                      label="Status change"
+                      value={event.previousStatus ? `${event.previousStatus} -> ${event.newStatus}` : event.newStatus}
+                    />
+                    <KeyValue label="Actor" value={event.actor} />
+                  </dl>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">No payment events yet.</p>
+          )}
+          <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted)]">
+            Event payloads are sanitized. Client secrets, secret keys, and card data are not shown here.
+          </p>
+        </div>
+        <div className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h4 className="text-sm font-black text-[var(--rp-text)]">Evidence package</h4>
+              <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted)]">
+                Internal payment dispute review summary. No Stripe submission happens here.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={generateEvidencePackage}
+              className="min-h-10 rounded-[14px] bg-[var(--rp-gradient-primary)] px-3 text-xs font-black text-[var(--rp-primary-text)]"
+            >
+              Generate evidence package
+            </button>
+          </div>
+          {evidencePackage ? (
+            <div className="mt-3 grid gap-3">
+              <dl className="grid gap-2 text-xs sm:grid-cols-2">
+                <KeyValue label="Package type" value={evidencePackage.packageType.replaceAll("_", " ")} />
+                <KeyValue
+                  label="Generated"
+                  value={new Intl.DateTimeFormat("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  }).format(new Date(evidencePackage.generatedAt))}
+                />
+                <KeyValue
+                  label="Checklist"
+                  value={`${evidencePackage.evidenceChecklist.filter((item) => item.present).length} / ${evidencePackage.evidenceChecklist.length} present`}
+                />
+                <KeyValue label="Missing evidence" value={String(evidencePackage.missingEvidence.length)} />
+              </dl>
+              <div className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3">
+                <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Recommended admin notes</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                  {evidencePackage.recommendedAdminNotes}
+                </p>
+                <button
+                  type="button"
+                  onClick={copyEvidenceSummary}
+                  className="mt-3 min-h-10 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-xs font-black text-[var(--rp-text)]"
+                >
+                  Copy summary
+                </button>
+                {evidenceCopyMessage ? (
+                  <p className="mt-2 text-xs font-bold text-[var(--rp-success)]">{evidenceCopyMessage}</p>
+                ) : null}
+              </div>
+              <div className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3">
+                <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Timeline preview</p>
+                {evidencePackage.timeline.length ? (
+                  <div className="mt-2 grid gap-2">
+                    {evidencePackage.timeline.slice(0, 4).map((item, index) => (
+                      <p key={`${item.title}-${index}`} className="text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                        {item.title} - {item.description}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs font-bold text-[var(--rp-muted-strong)]">No timeline events available.</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              Generate an internal evidence package before payment dispute review.
+            </p>
+          )}
+        </div>
       </div>
       {confirmationAction ? (
         <AdminPaymentSimulationConfirmation

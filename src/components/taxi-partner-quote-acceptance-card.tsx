@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, Clock3, Info, WalletCards, XCircle } from 
 import { RidePodTestPaymentElement } from "@/components/payments/RidePodTestPaymentElement";
 import { Badge, cn } from "@/components/ui";
 import type { RecurringRideInstancePreview, RidePod } from "@/lib/mock-data";
+import { recordRidePodTestPaymentEvent } from "@/lib/payments/create-ridepod-payment-event";
 import { createRidePodTestPaymentIntent } from "@/lib/payments/create-ridepod-test-payment";
 import type { RidePodCreateTestPaymentIntentResponse } from "@/lib/payments/ridepod-payment-types";
 import {
@@ -190,6 +191,14 @@ export function TaxiPartnerQuoteAcceptanceCard({
     setDeclinedCount((current) => Math.max(0, current - 1));
   }
 
+  function paymentEventTypeForState(mockPaymentState: TaxiPartnerQuoteAcceptance["mockPaymentState"]) {
+    if (mockPaymentState === "TEST_REQUIRES_CAPTURE") return "TEST_REQUIRES_CAPTURE";
+    if (mockPaymentState === "TEST_SUCCEEDED" || mockPaymentState === "TEST_PAYMENT_CONFIRMED") {
+      return "TEST_PAYMENT_CONFIRMED";
+    }
+    return "MOCK_PAYMENT_ACCEPTED";
+  }
+
   async function handleCreateTestPayment() {
     if (!moneyDisplay) return;
     if (!stripeTestModeEnabled) {
@@ -249,6 +258,23 @@ export function TaxiPartnerQuoteAcceptanceCard({
     message: string;
   }) {
     acceptQuoteWithPaymentState(result.mockPaymentState);
+    void recordRidePodTestPaymentEvent({
+      rideInstanceId: rideInstance.id,
+      userId: currentUserId,
+      actorRole: "guest",
+      eventType: paymentEventTypeForState(result.mockPaymentState),
+      stripePaymentIntentId: result.paymentIntentId,
+      amountCents: moneyDisplay?.guestChargeCents ?? null,
+      currency: "HKD",
+      previousStatus: "TEST_PAYMENT_INTENT_CREATED",
+      newStatus: result.status,
+      eventPayload: {
+        stripeStatus: result.status,
+        demoMode: true,
+        rideOption: "TAXI_PARTNER_QUOTE",
+        quoteRequestId: baseRequest?.id ?? null,
+      },
+    });
     setTestPaymentIntent((current) =>
       current?.ok
         ? {

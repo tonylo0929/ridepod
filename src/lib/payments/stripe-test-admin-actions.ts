@@ -6,6 +6,7 @@ import type {
   RidePodTestPaymentIntentAdminActionInput,
   RidePodTestPaymentIntentAdminActionResponse,
 } from "@/lib/payments/ridepod-payment-types";
+import { recordPaymentEvent } from "@/lib/payments/payment-events";
 
 function failed(error: string, message: string, status = 400) {
   return {
@@ -78,10 +79,37 @@ export async function captureRidePodStripeTestPaymentIntent(
     }
 
     const captured = await stripe.paymentIntents.capture(input.paymentIntentId);
+    void recordPaymentEvent({
+      rideInstanceId: input.rideInstanceId,
+      actorRole: "admin",
+      eventType: "TEST_CAPTURED",
+      stripePaymentIntentId: captured.id,
+      amountCents: captured.amount,
+      currency: captured.currency.toUpperCase(),
+      previousStatus: current.status,
+      newStatus: captured.status,
+      eventPayload: {
+        stripeStatus: captured.status,
+        adminReason: input.reason ?? null,
+        livemode: captured.livemode,
+        demoMode: true,
+      },
+    });
     return stripePaymentIntentResponse(captured);
   } catch (error) {
     const stripeError = error as { message?: string };
     console.error("RidePod Stripe test capture failed:", stripeError.message ?? "Unknown Stripe error");
+    void recordPaymentEvent({
+      rideInstanceId: input.rideInstanceId,
+      actorRole: "admin",
+      eventType: "PAYMENT_ACTION_FAILED",
+      stripePaymentIntentId: input.paymentIntentId,
+      eventPayload: {
+        failureMessage: stripeError.message ?? "Unknown Stripe error",
+        adminReason: input.reason ?? null,
+        demoMode: true,
+      },
+    });
     return failed("STRIPE_TEST_CAPTURE_FAILED", "Couldn't capture test payment.", 500);
   }
 }
@@ -105,10 +133,37 @@ export async function cancelRidePodStripeTestPaymentIntent(
     }
 
     const canceled = await stripe.paymentIntents.cancel(input.paymentIntentId);
+    void recordPaymentEvent({
+      rideInstanceId: input.rideInstanceId,
+      actorRole: "admin",
+      eventType: "TEST_CANCELED",
+      stripePaymentIntentId: canceled.id,
+      amountCents: canceled.amount,
+      currency: canceled.currency.toUpperCase(),
+      previousStatus: current.status,
+      newStatus: canceled.status,
+      eventPayload: {
+        stripeStatus: canceled.status,
+        adminReason: input.reason ?? null,
+        livemode: canceled.livemode,
+        demoMode: true,
+      },
+    });
     return stripePaymentIntentResponse(canceled);
   } catch (error) {
     const stripeError = error as { message?: string };
     console.error("RidePod Stripe test cancel failed:", stripeError.message ?? "Unknown Stripe error");
+    void recordPaymentEvent({
+      rideInstanceId: input.rideInstanceId,
+      actorRole: "admin",
+      eventType: "PAYMENT_ACTION_FAILED",
+      stripePaymentIntentId: input.paymentIntentId,
+      eventPayload: {
+        failureMessage: stripeError.message ?? "Unknown Stripe error",
+        adminReason: input.reason ?? null,
+        demoMode: true,
+      },
+    });
     return failed("STRIPE_TEST_CANCEL_FAILED", "Couldn't cancel test authorization.", 500);
   }
 }

@@ -8,6 +8,10 @@ PAY-3 adds Stripe Elements / Payment Element test card confirmation for that Pay
 
 PAY-4 adds admin-side capture, cancel, refund, hold, and payout-ready simulation for test/demo state.
 
+PAY-5 adds payment event persistence and a lightweight audit trail for test/demo payment actions.
+
+PAY-6 adds a structured evidence package generator for payment dispute review, chargeback review, and internal admin review.
+
 This is not production payment. It does not enable live payments, Stripe Connect, taxi partner payout, wallet balances, or live capture.
 
 ## Safety Guard
@@ -288,6 +292,159 @@ TODO:
 
 Persist payment events in PAY-5.
 
+## PAY-5 Payment Event Audit Trail
+
+PAY-5 adds a lightweight `payment_events` table and server helper for test/demo payment history.
+
+Purpose:
+
+- show what payment action happened
+- show when it happened
+- show who triggered it
+- link the event to a ride instance, pod, user, and test PaymentIntent when available
+- show amount and status changes
+
+This is not a production ledger, wallet, Stripe Connect payout system, or accounting source of truth.
+
+## PAY-5 payment_events Table
+
+Fields include:
+
+- ride_instance_id
+- pod_id
+- user_id
+- actor_role
+- event_type
+- payment_provider
+- stripe_payment_intent_id
+- amount_cents
+- currency
+- previous_status
+- new_status
+- event_payload
+- created_at
+
+RLS:
+
+- admin can read payment events
+- host can read events for hosted pods or ride instances
+- guest can read own payment events
+- inserts are admin-only
+
+Writes should happen through server-side helpers or safe API routes. Normal users should not insert arbitrary payment events from the browser.
+
+## PAY-5 Sanitization
+
+`sanitizePaymentEventPayload` removes unsafe fields before storage:
+
+- client_secret
+- clientSecret
+- secret
+- stripeSecretKey
+- STRIPE_SECRET_KEY
+- cardNumber
+- cvc
+- cvv
+
+Do not store raw Stripe objects, card data, secret keys, or PaymentIntent client secrets.
+
+## PAY-5 Event Types
+
+Supported event types:
+
+- TEST_PAYMENT_INTENT_CREATED
+- TEST_PAYMENT_CONFIRMED
+- TEST_REQUIRES_CAPTURE
+- TEST_CAPTURED
+- TEST_CANCELED
+- TEST_REFUND_SIMULATED
+- PAYMENT_HELD_FOR_REVIEW
+- PAYOUT_MARKED_READY_DEMO
+- PAYOUT_DENIED_DEMO
+- PAYMENT_ACTION_FAILED
+- PAYMENT_ACTION_SKIPPED
+- MOCK_PAYMENT_ACCEPTED
+
+Admin UI labels convert these into readable copy such as "Test payment captured" and "Refund simulated."
+
+## PAY-5 Integration
+
+Recorded events:
+
+- PaymentIntent creation records `TEST_PAYMENT_INTENT_CREATED`
+- test card confirmation records `TEST_PAYMENT_CONFIRMED` or `TEST_REQUIRES_CAPTURE`
+- admin capture records `TEST_CAPTURED`
+- admin cancel records `TEST_CANCELED`
+- refund simulation records `TEST_REFUND_SIMULATED`
+- hold payment records `PAYMENT_HELD_FOR_REVIEW`
+- mark payout ready records `PAYOUT_MARKED_READY_DEMO`
+- failures record `PAYMENT_ACTION_FAILED`
+
+Audit writes should never break the payment flow. If Supabase is missing or the table is unavailable, the helper returns a mock event with a warning.
+
+## PAY-5 Admin Display
+
+Admin Review shows a compact "Payment event history" inside the Payment simulation card.
+
+Rows show:
+
+- timestamp
+- event label
+- amount
+- status change
+- actor
+
+The UI does not show client secrets, secret keys, raw Stripe objects, or card data.
+
+## PAY-6 Evidence Package
+
+PAY-6 adds an internal evidence package generator for:
+
+- Taxi Partner Quote disputes
+- Ride app / fixed quote receipt disputes
+- Taxi meter proof disputes
+- future payment chargeback review
+- admin payout review
+
+The package is for manual review and future Stripe dispute evidence mapping. It does not submit anything to Stripe.
+
+The evidence package includes:
+
+- ride instance summary
+- pod summary
+- user acceptance summary
+- money summary
+- proof summary
+- payment event summary
+- dispute summary
+- admin review summary
+- chronological timeline
+- evidence checklist
+- missing evidence list
+- recommended admin notes
+
+The package helps answer:
+
+- who accepted what
+- what amount was shown
+- what quote or max charge was approved
+- what ride/proof/completion events exist
+- what issue was reported
+- what admin action was taken
+- what test payment events happened
+
+PAY-6 does not add:
+
+- real Stripe dispute submission
+- PDF export
+- live payment handling
+- payout handling
+- card data storage
+
+Sensitive fields are sanitized before display. Do not include client secrets, secret keys, raw Stripe objects, card numbers, CVC/CVV, private phone/email, gender identity, risk score, or private safety notes.
+
+Future PAY-7 can map the evidence package to Stripe dispute evidence fields after legal/payment review.
+
 ## Limitations
 
 - Test mode only.
@@ -297,13 +454,14 @@ Persist payment events in PAY-5.
 - No production keys.
 - No production card storage.
 - No payment persistence table yet.
-- PaymentIntent state is shown in the demo UI and can be stored in mock/local state only.
+- Payment event history is lightweight and test/demo oriented.
 - Manual capture is requested; PAY-4 can capture a Stripe test-mode PaymentIntent from Admin Review when a test ID is provided.
+- A production ledger is still required before live payment.
 
 TODO:
 
-Persist PaymentIntent state in PAY-5 or later after payment state shape is finalized.
+Add production-grade payment ledger, reconciliation, and audit retention rules before live payment.
 
 ## Next Step
 
-PAY-5 should add persistence/payment ledger strategy after the PAY-4 admin simulation shape is validated.
+PAY-6 should cover dispute/chargeback evidence package and richer payment event review.

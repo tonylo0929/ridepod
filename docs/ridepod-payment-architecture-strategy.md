@@ -258,6 +258,8 @@ Before live payment:
 - no payment secrets in browser
 - RLS/security review
 - audit logs
+- payment event audit trail
+- dispute / chargeback evidence package
 - evidence retention policy
 
 ## 14. What Not To Build Yet

@@ -145,6 +145,23 @@ export type RidePodEventRow = {
   created_at: string | null;
 };
 
+export type RidePodPaymentEventRow = {
+  id: string;
+  ride_instance_id: string | null;
+  pod_id: string | null;
+  user_id: string | null;
+  actor_role: string | null;
+  event_type: string;
+  payment_provider: string;
+  stripe_payment_intent_id: string | null;
+  amount_cents: number | null;
+  currency: string | null;
+  previous_status: string | null;
+  new_status: string | null;
+  event_payload: Json | null;
+  created_at: string | null;
+};
+
 type TableDefinition<Row> = {
   Row: Row;
   Insert: Partial<Row>;
@@ -164,6 +181,7 @@ export type Database = {
       settlement_items: TableDefinition<RidePodSettlementItemRow>;
       admin_review_cases: TableDefinition<RidePodAdminReviewCaseRow>;
       pod_events: TableDefinition<RidePodEventRow>;
+      payment_events: TableDefinition<RidePodPaymentEventRow>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
