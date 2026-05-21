@@ -119,7 +119,7 @@ function createRequestedQuote({
     payoutStatus: "NOT_READY",
     luggageCount,
     ...accessibility,
-    notes: "Future beta prototype. No real taxi partner booking yet.",
+    notes: "Future beta prototype. No real taxi dispatch yet.",
   };
 }
 
@@ -207,6 +207,14 @@ export function TaxiPartnerQuoteRequestCard({
     pod.genderMode === "women_only" ? "Women-only" : "Mixed pod",
     pod.accessMode ? accessModeLabels[pod.accessMode] : null,
   ].filter(Boolean);
+  const requestDetailBadges = [
+    activeRequest?.luggageCount ? `Luggage: ${activeRequest.luggageCount}` : null,
+    ...(activeRequest
+      ? (Object.keys(accessibilityLabels) as AccessibilityKey[])
+          .filter((key) => activeRequest[key])
+          .map((key) => accessibilityLabels[key])
+      : []),
+  ].filter(Boolean);
 
   function submitRequest() {
     const request = createRequestedQuote({
@@ -287,10 +295,15 @@ export function TaxiPartnerQuoteRequestCard({
         <Badge className="bg-[var(--rp-card-muted)] text-[var(--rp-muted-strong)] ring-[var(--rp-border)]">
           Future beta prototype
         </Badge>
+        {requestDetailBadges.map((badge) => (
+          <Badge key={badge} className="bg-[var(--rp-card-muted)] text-[var(--rp-muted-strong)] ring-[var(--rp-border)]">
+            {badge}
+          </Badge>
+        ))}
       </div>
 
       <p className="mt-4 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-        Future beta prototype. No real taxi partner booking yet. No real payout yet. Guest acceptance flow comes next.
+        Future beta prototype. No real taxi dispatch yet. No real payout yet. Guest acceptance flow comes next.
       </p>
 
       {activeRequest?.quoteAmountCents ? (
@@ -310,6 +323,7 @@ export function TaxiPartnerQuoteRequestCard({
             <dl className="mt-4 grid gap-2 min-[640px]:grid-cols-2">
               {[
                 ["Quote", formatHkdCents(moneyDisplay.quoteAmountCents)],
+                ["Guests", String(moneyDisplay.guestCount)],
                 ["Fare share", `${formatHkdCents(moneyDisplay.fareShareCents)} / guest`],
                 ["Platform fee", `${formatHkdCents(moneyDisplay.platformFeeCents)} / guest`],
                 ["Guest charge", formatHkdCents(moneyDisplay.guestChargeCents)],
@@ -322,6 +336,9 @@ export function TaxiPartnerQuoteRequestCard({
               ))}
             </dl>
           ) : null}
+          <p className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+            Display/mock only. No real charge or payout is created.
+          </p>
         </div>
       ) : null}
 
@@ -343,7 +360,7 @@ export function TaxiPartnerQuoteRequestCard({
             Guests accepted the quote. The ride can proceed in demo mode.
           </p>
           <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-            No real taxi partner booking or payout yet.
+            No real taxi dispatch or payout yet.
           </p>
         </div>
       ) : null}
