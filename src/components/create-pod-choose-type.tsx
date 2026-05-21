@@ -2739,47 +2739,78 @@ function TaxiReviewSummaryCard({
   peopleVehicle,
   pickupAddress,
   dropoffAddress,
+  dateTime,
+  genderMode,
+  accessMode,
 }: {
   peopleVehicle: PeopleVehicleState;
   pickupAddress: string;
   dropoffAddress: string;
+  dateTime: DateTimeState;
+  genderMode: GenderMode;
+  accessMode: AccessMode;
 }) {
+  const selectedAccessMode = accessModeOptions.find((option) => option.id === accessMode)?.label ?? "Open";
+  const taxiType = getTaxiTypeLabel(peopleVehicle.taxiType);
+  const summaryRows = [
+    ["Route", `${pickupAddress || "Pickup point"} \u2192 ${dropoffAddress || "Dropoff point"}`],
+    ["Date/time", `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}`],
+    ["Taxi type", taxiType],
+    ["Seats / guests", `${peopleVehicle.seatsAvailable} seats total`],
+    ...(dateTime.scheduleType === "RECURRING" ? [["Trip pattern", getRecurringWeekdaySummary(dateTime)]] : []),
+  ];
   const quoteSteps = [
-    ["Group locks first", "Guests join before requesting a taxi partner quote."],
-    ["Partner quotes one price", "A licensed taxi partner quotes the shared taxi pod."],
-    ["Guests accept quote", "The ride proceeds only after guests accept the quote."],
-    ["Payout after review", "Payout stays pending until completion and dispute window review."],
+    ["Group first", "Guests join before quote request."],
+    ["Partner quote", "A licensed taxi partner quotes one shared price."],
+    ["Guests accept", "The ride proceeds after guests accept the quote."],
+    ["Review window", "Payout stays pending during the dispute window."],
   ];
   const taxiNeeds = [
-    ["Taxi type", getTaxiTypeLabel(peopleVehicle.taxiType)],
+    ["Taxi type", taxiType],
     ["Luggage", getLuggageNeedsSummary(peopleVehicle)],
     ["Accessibility", getAccessibilityNeedsSummary(peopleVehicle)],
-    ["Pickup", pickupAddress || "Not specified"],
-    ["Dropoff", dropoffAddress || "Not specified"],
+    ["Pickup point", pickupAddress || "Not specified"],
+    ["Dropoff point", dropoffAddress || "Not specified"],
   ];
+  const joinChips: string[] = [
+    genderMode === "women_only" ? "Women-only" : "Mixed pod",
+    accessMode !== "open" ? selectedAccessMode : null,
+  ].filter((chip): chip is string => Boolean(chip));
 
   return (
     <section className="grid gap-4">
       <section className="rounded-[22px] border border-sky-400/30 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(15,23,42,0.16)),var(--rp-card)] p-4 shadow-[0_18px_42px_rgba(14,165,233,0.1)]">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-sky-300">Taxi</p>
             <h2 className="mt-2 text-2xl font-black leading-tight text-[var(--rp-text)]">Shared taxi pod</h2>
             <p className="mt-2 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
               RidePod groups riders first, then requests one shared quote from a licensed taxi partner.
             </p>
           </div>
-          <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-xs font-black text-sky-200">
-            Beta prototype
-          </span>
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-xs font-black text-sky-200">
+              Taxi
+            </span>
+            <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-xs font-black text-sky-200">
+              Taxi partner quote
+            </span>
+            <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-xs font-black text-sky-200">
+              Beta
+            </span>
+          </div>
         </div>
-        <p className="mt-4 rounded-[16px] border border-sky-400/25 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
-          No real taxi dispatch yet. No real payout yet.
-        </p>
+        <dl className="mt-4 grid gap-2">
+          {summaryRows.map(([label, value]) => (
+            <div key={label} className="rounded-2xl border border-sky-400/20 bg-sky-400/10 px-3 py-3">
+              <dt className="text-xs font-black uppercase tracking-[0.1em] text-sky-300">{label}</dt>
+              <dd className="mt-1 text-sm font-black leading-5 text-[var(--rp-text)]">{value}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
 
       <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-        <h2 className="text-lg font-black text-[var(--rp-text)]">How quote works</h2>
+        <h2 className="text-lg font-black text-[var(--rp-text)]">How the taxi quote works</h2>
         <div className="mt-3 grid gap-2">
           {quoteSteps.map(([title, body]) => (
             <div key={title} className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
@@ -2806,12 +2837,30 @@ function TaxiReviewSummaryCard({
       </section>
 
       <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-        <h2 className="text-lg font-black text-[var(--rp-text)]">Payment status</h2>
-        <p className="mt-2 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
-          Beta uses mock payment state. No live payment or payout is enabled.
+        <h2 className="text-lg font-black text-[var(--rp-text)]">Who can join</h2>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {joinChips.map((chip) => (
+            <span
+              key={chip}
+              className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-1 text-xs font-black text-[var(--rp-muted-strong)]"
+            >
+              {chip}
+            </span>
+          ))}
+        </div>
+        {genderMode === "women_only" ? (
+          <p className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+            Women-only controls who can join the pod. It does not guarantee a female taxi driver.
+          </p>
+        ) : null}
+      </section>
+
+      <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+        <p className="text-sm font-black leading-6 text-[var(--rp-text)]">
+          No live payment or payout is enabled. Guests accept the selected taxi quote before the ride proceeds.
         </p>
-        <p className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-          Final guest price appears after taxi partner quote.
+        <p className="mt-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+          Final guest price appears after the taxi partner quote.
         </p>
       </section>
     </section>
@@ -3687,6 +3736,8 @@ function ReviewPodStep({
   const [genderMode, setGenderMode] = useState<GenderMode>("mixed");
   const [accessMode, setAccessMode] = useState<AccessMode>("verified_only");
   const isTaxiPartnerQuoteReview = normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote";
+  const safetyPanelIndex = isTaxiPartnerQuoteReview ? 1 : 2;
+  const previewPanelIndex = isTaxiPartnerQuoteReview ? 2 : 3;
   const moneyProtectionError =
     moneyProtection.approvedMaxTotalFare < moneyProtection.estimatedTotalFare
       ? `Approved max must be at least ${formatMoney(moneyProtection.estimatedTotalFare)} before you continue.`
@@ -3756,7 +3807,7 @@ function ReviewPodStep({
       <CreatePodTopBar currentStep={4} onBack={onBack} />
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-7">
-        {reviewPanel === 3 ? null : (
+        {reviewPanel === previewPanelIndex ? null : (
           <section className="text-center">
             <ScheduleTypeEyebrow podType={podType} />
             <h1 className="text-[26px] font-black leading-tight text-[var(--rp-text)]">
@@ -3768,20 +3819,23 @@ function ReviewPodStep({
           </section>
         )}
 
-        <div className={cn("grid gap-4", reviewPanel === 3 ? "mt-0" : "mt-5")}>
+        <div className={cn("grid gap-4", reviewPanel === previewPanelIndex ? "mt-0" : "mt-5")}>
           {reviewPanel === 0 ? (
             isTaxiPartnerQuoteReview ? (
               <TaxiReviewSummaryCard
                 peopleVehicle={peopleVehicle}
                 pickupAddress={pickupAddress}
                 dropoffAddress={dropoffAddress}
+                dateTime={dateTime}
+                genderMode={genderMode}
+                accessMode={accessMode}
               />
             ) : (
               <PricingSummaryCard money={moneyProtection} rideOption={peopleVehicle.rideOption} />
             )
           ) : null}
 
-          {reviewPanel === 1 ? (
+          {!isTaxiPartnerQuoteReview && reviewPanel === 1 ? (
             <MoneyProtectionPanel
               money={moneyProtection}
               peopleVehicle={peopleVehicle}
@@ -3789,7 +3843,7 @@ function ReviewPodStep({
             />
           ) : null}
 
-          {reviewPanel === 2 ? (
+          {reviewPanel === safetyPanelIndex ? (
             <SafetyTrustPanel
               genderMode={genderMode}
               accessMode={accessMode}
@@ -3798,7 +3852,7 @@ function ReviewPodStep({
             />
           ) : null}
 
-          {reviewPanel === 3 ? (
+          {reviewPanel === previewPanelIndex ? (
             <section className="grid gap-4">
               <div className="text-center">
                 <h2 className="text-xl font-black text-[var(--rp-text)]">Preview your pod</h2>
@@ -3812,7 +3866,9 @@ function ReviewPodStep({
                 dateTime={dateTime}
                 peopleVehicle={peopleVehicle}
               />
-              <PreviewMoneyProtectionCard money={moneyProtection} peopleVehicle={peopleVehicle} />
+              {isTaxiPartnerQuoteReview ? null : (
+                <PreviewMoneyProtectionCard money={moneyProtection} peopleVehicle={peopleVehicle} />
+              )}
               <DetailSummaryCard
                 routeFrom={routeFrom}
                 routeTo={routeTo}
@@ -3831,12 +3887,12 @@ function ReviewPodStep({
             setCreateConfirmChecked(false);
             setShowCreateConfirm(true);
           }}
-          canProceed={!moneyProtectionError}
-          blockedReason={moneyProtectionError ?? undefined}
+          canProceed={isTaxiPartnerQuoteReview ? true : !moneyProtectionError}
+          blockedReason={isTaxiPartnerQuoteReview ? undefined : moneyProtectionError ?? undefined}
           createLabel={isTaxiPartnerQuoteReview ? "Create taxi pod" : "Create Pod"}
           panelLabels={
             isTaxiPartnerQuoteReview
-              ? ["Taxi summary", "Payment status", "Who can join", "Preview your pod"]
+              ? ["Taxi review", "Who can join", "Preview your pod"]
               : undefined
           }
         />
