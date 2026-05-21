@@ -504,7 +504,7 @@ function TaxiPartnerQuoteDetailSections({ reviewCase }: { reviewCase: AdminRevie
           <KeyValue label="Title" value={reviewCase.caseTypeLabel} />
           <KeyValue label="Case type" value={reviewCase.caseTypeLabel} />
           <KeyValue label="Severity" value={reviewCase.severityLabel} />
-          <KeyValue label="Status" value={reviewCase.statusLabel} />
+          <KeyValue label="Review state" value={reviewCase.reviewStateLabel} />
           <KeyValue label="Created" value={reviewCase.createdAtLabel} />
         </dl>
       </DetailSection>
