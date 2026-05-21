@@ -69,7 +69,7 @@ export function TaxiPartnerCompletionCard({
     displayStatus.label === "Riders checking in" ||
     displayStatus.label === "Ride started" ||
     displayStatus.label === "Pickup issue";
-  const activeStatusLabel = isPayoutPending || completed || isDisputeReview || pickupActive ? displayStatus.label : "Ready for taxi partner";
+  const activeStatusLabel = isPayoutPending || completed || isDisputeReview || pickupActive ? displayStatus.label : "Ready for pickup";
   const activeStatusHelper =
     isPayoutPending || completed || isDisputeReview || pickupActive
       ? displayStatus.helperText
@@ -175,7 +175,7 @@ export function TaxiPartnerCompletionCard({
             <SummaryRow label="Platform fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
             <SummaryRow label="Guest charge" value={formatHkdCents(moneyDisplay.guestChargeCents)} />
             <SummaryRow label="Platform fee total" value={formatHkdCents(moneyDisplay.platformFeeTotalCents)} />
-            <SummaryRow label="Driver payout" value={formatHkdCents(moneyDisplay.driverPayoutCents)} />
+            <SummaryRow label="Taxi partner payout" value={formatHkdCents(moneyDisplay.driverPayoutCents)} />
             <SummaryRow label="Dispute window" value="24h" />
           </dl>
           <p className="mt-4 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
@@ -294,7 +294,7 @@ export function TaxiPartnerCompletionCard({
               <SummaryRow label="Quote amount" value={formatHkdCents(moneyDisplay.quoteAmountCents)} />
               <SummaryRow label="Guest count" value={`${moneyDisplay.guestCount} guests`} />
               <SummaryRow label="Guest charge" value={formatHkdCents(moneyDisplay.guestChargeCents)} />
-              <SummaryRow label="Driver payout amount" value={formatHkdCents(moneyDisplay.driverPayoutCents)} />
+              <SummaryRow label="Taxi partner payout amount" value={formatHkdCents(moneyDisplay.driverPayoutCents)} />
               <SummaryRow label="Route" value={`${rideInstance.originLabel} to ${rideInstance.destinationLabel}`} />
               <SummaryRow label="Date/time" value={`${rideInstance.displayDate}, ${rideInstance.departureTime}`} />
             </dl>

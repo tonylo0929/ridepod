@@ -54,45 +54,45 @@ function formatQuoteExpiry(value: string | null) {
 }
 
 function getTitle(label: string) {
-  if (label === "Partner quote needed") return "Request taxi partner quote";
+  if (label === "Taxi quote needed") return "Request taxi quote";
   if (label === "Waiting for quote") return "Waiting for partner quote";
-  if (label === "Quote received") return "Partner quote received";
+  if (label === "Quote received") return "Taxi quote received";
   if (label === "Guests accepting") return "Guests accepting quote";
-  if (label === "Ready for taxi partner") return "Ready for taxi partner";
+  if (label === "Ready for pickup") return "Ready for pickup";
 
   return label;
 }
 
 function getBody(label: string) {
-  if (label === "Partner quote needed") {
+  if (label === "Taxi quote needed") {
     return "Guests are locked. Request one shared quote from a licensed taxi partner.";
   }
 
   if (label === "Waiting for quote") {
-    return "Taxi partners can quote one price for this shared pod.";
+    return "Waiting for a licensed taxi partner to quote this shared pod.";
   }
 
   if (label === "Quote received") {
-    return "Guests must accept the quote before the ride can proceed.";
+    return "Guests need to accept the shared taxi quote.";
   }
 
   if (label === "Guests accepting") {
-    return "Waiting for all guests to accept the partner quote.";
+    return "Waiting for guests to accept the shared taxi quote.";
   }
 
-  if (label === "Ready for taxi partner") {
-    return "Guests accepted the quote. Ride can proceed in demo mode.";
+  if (label === "Ready for pickup") {
+    return "Guests accepted the quote. Coordinate pickup next.";
   }
 
   return "Taxi partner quote is a future beta prototype.";
 }
 
 function getStatusChipClass(label: string) {
-  if (label === "Quote received" || label === "Ready for taxi partner" || label === "Guests accepted") {
+  if (label === "Quote received" || label === "Ready for pickup" || label === "Guests accepted") {
     return "bg-emerald-400/10 text-emerald-300 ring-emerald-400/25";
   }
 
-  if (label === "Waiting for quote" || label === "Partner quote needed" || label === "Payout pending") {
+  if (label === "Waiting for quote" || label === "Taxi quote needed" || label === "Payout pending") {
     return "bg-amber-400/10 text-amber-300 ring-amber-400/25";
   }
 
@@ -214,7 +214,7 @@ export function TaxiPartnerQuoteRequestCard({
     activeRequest?.acceptedGuestCount ??
     (displayStatus.label === "Guests accepting"
       ? Math.min(2, lockedGuestCount)
-      : displayStatus.label === "Ready for taxi partner"
+      : displayStatus.label === "Ready for pickup"
         ? lockedGuestCount
         : 0);
   const moneyDisplay = useMemo(
@@ -253,13 +253,13 @@ export function TaxiPartnerQuoteRequestCard({
   }
 
   function handlePrimaryAction() {
-    if (displayStatus.label === "Partner quote needed") {
+    if (displayStatus.label === "Taxi quote needed") {
       setShowRequestModal(true);
       return;
     }
 
     if (displayStatus.label === "Quote received") {
-      setRequestMessage("Next: guests accept the partner quote.");
+      setRequestMessage("Next: guests accept the shared taxi quote.");
       return;
     }
 
@@ -342,7 +342,7 @@ export function TaxiPartnerQuoteRequestCard({
         <div className="mt-4 rounded-[22px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.22))] p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h3 className="text-lg font-black text-[var(--rp-text)]">Partner quote received</h3>
+              <h3 className="text-lg font-black text-[var(--rp-text)]">Taxi quote received</h3>
               <p className="mt-1 text-sm font-bold text-[var(--rp-muted-strong)]">
                 Taxi partner: {activeRequest.quotedByPartnerName ?? "Demo Taxi Partner"}
               </p>
@@ -389,16 +389,16 @@ export function TaxiPartnerQuoteRequestCard({
             {acceptedGuestCount} / {lockedGuestCount} guests accepted
           </p>
           <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-            Waiting for all guests to accept the partner quote.
+            Waiting for guests to accept the shared taxi quote.
           </p>
         </div>
       ) : null}
 
-      {displayStatus.label === "Ready for taxi partner" ? (
+      {displayStatus.label === "Ready for pickup" ? (
         <div className="mt-4 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
           <CheckCircle2 className="h-5 w-5 text-[var(--rp-success)]" />
           <p className="mt-2 text-sm font-black text-[var(--rp-text)]">
-            Guests accepted the quote. Ride can proceed in demo mode.
+            Guests accepted the quote. Coordinate pickup next.
           </p>
           <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
             No real taxi dispatch or payout yet.

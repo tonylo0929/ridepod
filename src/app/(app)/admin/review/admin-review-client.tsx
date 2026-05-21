@@ -512,7 +512,7 @@ function taxiPartnerRideStatusLabel(reviewCase: AdminReviewCaseViewModel) {
   if (reviewCase.payoutStatus === "HELD_FOR_REVIEW" || reviewCase.disputeStatus !== "None") return "Dispute review";
   if (reviewCase.payoutStatus === "PENDING") return "Payout pending";
   if (reviewCase.taxiPartnerRideCompletionStatus?.toLowerCase().includes("completed")) return "Ride completed";
-  return reviewCase.taxiPartnerRideCompletionStatus ?? "Ready for taxi partner";
+  return reviewCase.taxiPartnerRideCompletionStatus ?? "Ready for pickup";
 }
 
 function aboveCapDifferenceLabel(quoteCents: number | null | undefined, fareCapCents: number | null | undefined) {

@@ -675,7 +675,7 @@ export default function TaxiPartnerDashboardPage() {
                   Guests can now review and accept this shared taxi quote.
                 </p>
                 <p className="mt-2 text-xs font-bold leading-5 text-emerald-200">
-                  Organizer view updates to Partner quote received. Guest acceptance can now show Accept quote / Decline.
+                  Organizer view updates to Taxi quote received. Guest acceptance can now show Accept quote / Decline.
                 </p>
               </div>
             ) : null}

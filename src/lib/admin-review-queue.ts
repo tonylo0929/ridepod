@@ -118,8 +118,8 @@ export type TaxiPartnerAdminTimelineItem = {
   title:
     | "Pod created"
     | "Guests locked"
-    | "Partner quote requested"
-    | "Partner quote received"
+    | "Taxi quote requested"
+    | "Taxi quote received"
     | "Guests accepted quote"
     | "Ride marked completed"
     | "Dispute opened"
@@ -372,8 +372,8 @@ export function getAdminReviewCases(): AdminReviewCase[] {
       taxiPartnerTimeline: [
         { id: "taxi-partner-above-cap-pod-created", title: "Pod created", timestampLabel: "May 19, 7:10 AM" },
         { id: "taxi-partner-above-cap-guests-locked", title: "Guests locked", timestampLabel: "May 19, 7:36 AM", detail: "4 guests locked." },
-        { id: "taxi-partner-above-cap-quote-requested", title: "Partner quote requested", timestampLabel: "May 19, 7:38 AM", detail: "Licensed taxi partner quote requested." },
-        { id: "taxi-partner-above-cap-quote-received", title: "Partner quote received", timestampLabel: "May 19, 7:42 AM", detail: "Demo Taxi Partner quoted HK$240.00." },
+        { id: "taxi-partner-above-cap-quote-requested", title: "Taxi quote requested", timestampLabel: "May 19, 7:38 AM", detail: "Licensed taxi partner quote requested." },
+        { id: "taxi-partner-above-cap-quote-received", title: "Taxi quote received", timestampLabel: "May 19, 7:42 AM", detail: "Demo Taxi Partner quoted HK$240.00." },
         { id: "taxi-partner-above-cap-payout-held", title: "Payout held", timestampLabel: "May 19, 7:43 AM", detail: "Partner quote above fare cap. Manual review required." },
       ],
       statusLabel: "Open",
@@ -425,8 +425,8 @@ export function getAdminReviewCases(): AdminReviewCase[] {
       taxiPartnerTimeline: [
         { id: "taxi-partner-dispute-pod-created", title: "Pod created", timestampLabel: "May 19, 7:10 AM" },
         { id: "taxi-partner-dispute-guests-locked", title: "Guests locked", timestampLabel: "May 19, 7:36 AM", detail: "4 guests accepted." },
-        { id: "taxi-partner-dispute-quote-requested", title: "Partner quote requested", timestampLabel: "May 19, 7:38 AM", detail: "Licensed taxi partner quote requested." },
-        { id: "taxi-partner-dispute-quote-received", title: "Partner quote received", timestampLabel: "May 19, 7:42 AM", detail: "Demo Taxi Partner quoted HK$240.00." },
+        { id: "taxi-partner-dispute-quote-requested", title: "Taxi quote requested", timestampLabel: "May 19, 7:38 AM", detail: "Licensed taxi partner quote requested." },
+        { id: "taxi-partner-dispute-quote-received", title: "Taxi quote received", timestampLabel: "May 19, 7:42 AM", detail: "Demo Taxi Partner quoted HK$240.00." },
         { id: "taxi-partner-dispute-guests-accepted", title: "Guests accepted quote", timestampLabel: "May 19, 7:48 AM" },
         { id: "taxi-partner-dispute-completed", title: "Ride marked completed", timestampLabel: "May 19, 9:15 AM" },
         { id: "taxi-partner-dispute-opened", title: "Dispute opened", timestampLabel: "May 19, 9:24 AM", detail: "Dispute under review." },
@@ -479,7 +479,7 @@ export function getAdminReviewCases(): AdminReviewCase[] {
       taxiPartnerTimeline: [
         { id: "taxi-partner-hold-pod-created", title: "Pod created", timestampLabel: "May 20, 6:50 AM" },
         { id: "taxi-partner-hold-guests-locked", title: "Guests locked", timestampLabel: "May 20, 7:10 AM", detail: "4 guests accepted." },
-        { id: "taxi-partner-hold-quote-received", title: "Partner quote received", timestampLabel: "May 20, 7:16 AM", detail: "Demo Taxi Partner quoted HK$240.00." },
+        { id: "taxi-partner-hold-quote-received", title: "Taxi quote received", timestampLabel: "May 20, 7:16 AM", detail: "Demo Taxi Partner quoted HK$240.00." },
         { id: "taxi-partner-hold-guests-accepted", title: "Guests accepted quote", timestampLabel: "May 20, 7:20 AM" },
         { id: "taxi-partner-hold-completed", title: "Ride marked completed", timestampLabel: "May 20, 8:52 AM" },
         { id: "taxi-partner-hold-payout-held", title: "Payout held", timestampLabel: "May 20, 8:54 AM", detail: "Payout held for manual review." },

@@ -428,7 +428,7 @@ function isTaxiPartnerCase(reviewCase: RidePodAdminReviewCaseRow) {
 function taxiPartnerEventTitle(eventType: string): NonNullable<AdminReviewCase["taxiPartnerTimeline"]>[number]["title"] | null {
   if (eventType === "POD_CREATED") return "Pod created";
   if (eventType === "GUESTS_LOCKED" || eventType === "POD_LOCKED") return "Guests locked";
-  if (eventType === "TAXI_PARTNER_QUOTE_RECEIVED") return "Partner quote received";
+  if (eventType === "TAXI_PARTNER_QUOTE_RECEIVED") return "Taxi quote received";
   if (eventType === "TAXI_PARTNER_QUOTE_ACCEPTED" || eventType === "TAXI_PARTNER_GUESTS_ACCEPTED") {
     return "Guests accepted quote";
   }
@@ -470,7 +470,7 @@ function buildTaxiPartnerTimeline(
   );
   pushItem(
     "taxi-partner-quote-received",
-    "Partner quote received",
+    "Taxi quote received",
     related.proof?.submitted_at ?? reviewCase.created_at,
     related.proof?.amount_cents ? `Taxi partner quote: ${formatHkd(related.proof.amount_cents)}.` : undefined,
   );

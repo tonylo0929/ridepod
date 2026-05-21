@@ -486,7 +486,7 @@ export const ridePods: RidePod[] = [
   {
     id: "campus-commute-442",
     type: "recurring",
-    title: "USC Village ??LAX Terminal 3",
+    title: "USC Village → LAX Terminal 3",
     fromLabel: "USC Village",
     toLabel: "LAX Terminal 3",
     pickupHub: "USC Village rideshare zone",

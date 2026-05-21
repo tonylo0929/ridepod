@@ -318,7 +318,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
           </p>
         </div>
         <Badge className={allAccepted ? "bg-emerald-400/10 text-emerald-300 ring-emerald-400/25" : "bg-sky-400/10 text-sky-300 ring-sky-400/25"}>
-          {allAccepted ? "Ready for taxi partner" : displayStatus.label}
+          {allAccepted ? "Ready for pickup" : displayStatus.label}
         </Badge>
       </div>
 
@@ -524,7 +524,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
           <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
             {userAccepted
               ? allAccepted
-                ? "Ready for taxi partner."
+                ? "Ready for pickup."
                 : "Waiting for other guests to accept."
               : "The organizer may request a new quote."}
           </p>
@@ -532,7 +532,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
       ) : null}
 
       <p className="mt-4 text-xs font-black text-sky-300">
-        Next: guests accept the partner quote.
+        Next: guests accept the shared taxi quote.
       </p>
 
       {showAcceptModal ? (

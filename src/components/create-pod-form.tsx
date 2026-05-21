@@ -156,7 +156,7 @@ function MoneySafetyFields({
             </div>
             {genderMode === "women_only" ? (
               <p className="mt-3 rounded-lg bg-zinc-50 p-3 text-xs font-semibold leading-5 text-zinc-600">
-                Women-only pods are designed for safer matching. Eligible female users can join. Women-only pods require the host profile to be eligible too. RidePod does not guarantee safety; report concerns immediately.
+                Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner.
               </p>
             ) : null}
           </div>

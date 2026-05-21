@@ -226,7 +226,7 @@ assert.equal(
   taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
     taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_quote_needed"),
   ).label,
-  "Partner quote needed",
+  "Taxi quote needed",
 );
 assert.equal(
   taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
@@ -244,7 +244,7 @@ assert.equal(
   taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
     taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_ready"),
   ).label,
-  "Ready for taxi partner",
+  "Ready for pickup",
 );
 assert.equal(
   taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
@@ -256,7 +256,7 @@ assert.equal(
   taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
     taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_dispute_review"),
   ).helperText,
-  "Payout is held while RidePod reviews the issue.",
+  "RidePod is reviewing the reported issue.",
 );
 assert.equal(
   taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(
@@ -315,7 +315,7 @@ assert.equal(
   }).primaryActionLabel,
   "View review",
 );
-assert.equal(taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(null).primaryActionLabel, "Request quote");
+assert.equal(taxiPartnerQuote.getTaxiPartnerQuoteDisplayStatus(null).primaryActionLabel, "Request taxi quote");
 assert.deepEqual(
   taxiPartnerQuote.getTaxiPartnerQuoteMoneyDisplay(
     taxiPartnerQuote.getTaxiPartnerQuoteRequest("taxi_partner_quote_received"),
@@ -1016,11 +1016,15 @@ assert.ok(createPodChooseTypeSource.includes("Luggage-friendly"));
 assert.ok(createPodChooseTypeSource.includes("Large"));
 assert.ok(createPodChooseTypeSource.includes("Comfort"));
 assert.ok(createPodChooseTypeSource.includes("Accessible"));
-assert.ok(createPodChooseTypeSource.includes("RidePod groups riders first. A licensed taxi partner can quote one price for the shared pod. This mode is a future beta prototype and does not dispatch real taxis yet."));
-assert.ok(createPodChooseTypeSource.includes("Use beta prototype"));
-assert.ok(createPodChooseTypeSource.includes("Taxi partner quote required"));
-assert.ok(createPodChooseTypeSource.includes("Guests accept the partner quote before the ride can proceed."));
-assert.ok(createPodChooseTypeSource.includes("Payout is released after ride completion and dispute window review."));
+assert.ok(createPodChooseTypeSource.includes("How do you want to ride?"));
+assert.ok(createPodChooseTypeSource.includes("RidePod groups riders first, then helps the group request the right ride."));
+assert.ok(createPodChooseTypeSource.includes("Licensed taxi partner quote for your shared pod."));
+assert.ok(createPodChooseTypeSource.includes("Available in beta"));
+assert.ok(createPodChooseTypeSource.includes("Choose taxi type, luggage needs, and safety mode next."));
+assert.ok(createPodChooseTypeSource.includes("Group ride app bookings are coming later."));
+assert.ok(createPodChooseTypeSource.includes("Start with taxi pods first. Ride app support will be added later."));
+assert.ok(createPodChooseTypeSource.includes("Guests accept the taxi partner quote before the ride can proceed."));
+assert.ok(createPodChooseTypeSource.includes("Payout stays pending until completion and dispute window review."));
 assert.ok(createPodChooseTypeSource.includes("Future beta prototype. No real taxi dispatch or payout yet."));
 assert.ok(createPodChooseTypeSource.includes("Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner."));
 assert.ok(createPodChooseTypeSource.includes("Add TAXI_PARTNER_QUOTE to Supabase ride_option enum in TAXI-2."));
@@ -1030,7 +1034,7 @@ assert.equal(createPodChooseTypeSource.includes("official taxi dispatch"), false
 assert.equal(createPodChooseTypeSource.includes("female driver guaranteed"), false);
 assert.equal(createPodChooseTypeSource.includes("100% safe"), false);
 assert.equal(createPodChooseTypeSource.includes("escrow"), false);
-assert.ok(createPodChooseTypeSource.includes("RidePod protection applies only when the ride stays within the approved max. Final settlement uses the verified receipt."));
+assert.ok(createPodChooseTypeSource.includes("RidePod protection applies only when the fresh quote is within the approved max. Final settlement uses the verified receipt."));
 assert.ok(createPodChooseTypeSource.includes("Pickup point"));
 assert.ok(createPodChooseTypeSource.includes("Dropoff point"));
 assert.equal(createPodChooseTypeSource.includes("Wait at"), false);
@@ -1096,7 +1100,7 @@ assert.equal(createPodChooseTypeSource.includes("PreviewBookingRulesCard"), fals
 assert.equal(createPodChooseTypeSource.includes("Minimum locked guests: "), false);
 assert.equal(createPodChooseTypeSource.includes("must authorize before host can book."), false);
 assert.equal(createPodChooseTypeSource.includes("Upload a fresh quote after guests lock."), false);
-assert.ok(createPodChooseTypeSource.includes("Quote status"));
+assert.ok(createPodChooseTypeSource.includes("Payment status"));
 assert.ok(createPodChooseTypeSource.includes("normalizeRideOptionId"));
 assert.ok(createPodChooseTypeSource.includes("rideConfirmationCopy"));
 assert.ok(createPodChooseTypeSource.includes("Create this pod?"));
@@ -1117,7 +1121,7 @@ assert.ok(createPodChooseTypeSource.includes("The host takes a metered taxi outs
 assert.ok(createPodChooseTypeSource.includes("RidePod uses the taxi baseline to set the booking fare cap. Final settlement uses verified meter proof or receipt."));
 assert.ok(createPodChooseTypeSource.includes("I understand the taxi fare is settled from verified meter proof or receipt, within the approved max rules."));
 assert.ok(createPodChooseTypeSource.includes("Confirm Taxi Partner Quote Prototype"));
-assert.ok(createPodChooseTypeSource.includes("Create this taxi partner quote pod?"));
+assert.ok(createPodChooseTypeSource.includes("Create this taxi pod?"));
 assert.ok(createPodChooseTypeSource.includes("I understand this is a beta prototype and no real taxi dispatch or payout is enabled."));
 assert.ok(createPodChooseTypeSource.includes("/ rider if ${getMinimumLockedSummary(hostRidingMoney)}"));
 assert.ok(createPodChooseTypeSource.includes("Guests authorize the max charge before the host books. Final settlement uses the verified receipt and may be lower."));
@@ -1268,11 +1272,11 @@ assert.ok(mockDataSource.includes("taxi_partner_completed_payout_pending"));
 assert.ok(mockDataSource.includes("taxi_partner_dispute_review"));
 for (const taxiPartnerCopy of [
   "Taxi partner quote",
-  "Partner quote needed",
+  "Taxi quote needed",
   "Waiting for quote",
   "Quote received",
   "Guests accepting",
-  "Ready for taxi partner",
+  "Ready for pickup",
   "Ride completed",
   "Payout pending",
   "Dispute review",
@@ -1282,18 +1286,18 @@ for (const taxiPartnerCopy of [
   "Under review",
   "Dispute resolved",
   "Closed",
-  "Request a quote from a licensed taxi partner.",
-  "Taxi partners can quote one price for this shared pod.",
-  "Guests need to accept the partner quote before the ride proceeds.",
-  "Waiting for all guests to accept the quote.",
-  "Guests accepted the quote. Ride can proceed in demo mode.",
+  "Request one shared quote from a licensed taxi partner.",
+  "Waiting for a licensed taxi partner to quote this shared pod.",
+  "Guests need to accept the shared taxi quote.",
+  "Waiting for guests to accept the shared taxi quote.",
+  "Guests accepted the quote. Coordinate pickup next.",
   "Dispute window is open before payout is marked ready.",
-  "Payout releases after the dispute window if no issue is reported.",
-  "Payout is held while RidePod reviews the issue.",
+  "Payout waits for dispute window review.",
+  "RidePod is reviewing the reported issue.",
   "Review is complete. Payout can be processed in demo mode.",
   "Payout was denied in demo review.",
   "RidePod needs more information before resolving this case.",
-  "Ride completed and payout status is closed.",
+  "Ride completed in demo mode.",
   "shared pod quote",
 ]) {
   assert.ok(
@@ -1339,11 +1343,11 @@ for (const taxiPartnerAcceptanceCardCopy of [
   "Quote accepted",
   "Quote declined",
   "Guest acceptance",
-  "Ready for taxi partner",
+  "Ready for pickup",
   "Quote above fare cap",
   "Accept higher quote",
-  "No real payment or taxi dispatch happens yet.",
-  "Next: guests accept the partner quote.",
+  "Demo only. No live money or taxi dispatch happens yet. No real payout yet.",
+  "Next: guests accept the shared taxi quote.",
   "Mock payment state",
 ]) {
   assert.ok(
@@ -1354,7 +1358,7 @@ for (const taxiPartnerAcceptanceCardCopy of [
 for (const taxiPartnerCompletionCardCopy of [
   "TaxiPartnerCompletionCard",
   "completeTaxiPartnerQuoteRequestMock",
-  "Ready for taxi partner",
+  "Ready for pickup",
   "Guests accepted the quote. In the live version, the taxi partner would complete the ride here.",
   "Guests accepted",
   "Beta prototype",
@@ -1387,7 +1391,7 @@ assert.ok(podDetailSource.includes("TaxiPartnerQuoteAcceptanceCard"));
 assert.ok(podDetailSource.includes("taxiPartnerQuoteRide"));
 assert.ok(uiSource.includes("guestTaxiPartnerHref"));
 assert.ok(rideInstanceNotificationsSource.includes("taxi_partner_quote_received"));
-assert.ok(rideInstanceNotificationsSource.includes("Taxi partner quote received"));
+assert.ok(rideInstanceNotificationsSource.includes("Taxi quote received"));
 assert.ok(rideInstanceNotificationsSource.includes("Review and accept the shared taxi quote."));
 assert.ok(hostPageSource.includes("TaxiPartnerQuoteRequestCard"));
 assert.ok(hostPageSource.includes("TaxiPartnerCompletionCard"));
@@ -1407,9 +1411,9 @@ assert.ok(rideInstanceNotificationsSource.includes("taxi_partner_payout_pending"
 assert.ok(rideInstanceNotificationsSource.includes("taxi_partner_dispute_opened"));
 assert.ok(rideInstanceNotificationsSource.includes("taxi_partner_guest_dispute_review"));
 assert.ok(rideInstanceNotificationsSource.includes("Review the ride before the dispute window ends."));
-assert.ok(rideInstanceNotificationsSource.includes("Payout is pending until the dispute window ends."));
+assert.ok(rideInstanceNotificationsSource.includes("Payout waits for the dispute window. No real payout is sent in beta."));
 assert.ok(rideInstanceNotificationsSource.includes("Taxi partner dispute opened"));
-assert.ok(rideInstanceNotificationsSource.includes("RidePod is reviewing this taxi partner ride."));
+assert.ok(rideInstanceNotificationsSource.includes("RidePod is reviewing this shared taxi ride."));
 assert.ok(rideInstanceNotificationsSource.includes("RidePod is reviewing the issue you reported."));
 for (const forbiddenTaxiPartnerCopy of [
   "RidePod driver",
@@ -1496,7 +1500,7 @@ for (const updatesCopy of [
   "Payout held for review",
   "Settlement under review",
   "Taxi partner dispute opened",
-  "RidePod is reviewing this taxi partner ride.",
+  "RidePod is reviewing this shared taxi ride.",
   "RidePod is reviewing the issue you reported.",
   "Payout held",
   "Payout is held while RidePod reviews the case.",
@@ -1538,7 +1542,7 @@ for (const taxiPartnerStableEvent of [
   '"more_info_needed"',
   '"payout_denied"',
   '"dispute_resolved"',
-  "taxi_partner_${event}:${rideInstance.id}",
+  "keyPrefix[event]",
 ]) {
   assert.ok(
     rideInstanceNotificationsSource.includes(taxiPartnerStableEvent),
@@ -1565,7 +1569,7 @@ assert.ok(uiSource.includes('rideInstance.proofType === "FINAL_RECEIPT"'));
 assert.ok(uiSource.includes('rideInstance.settlementState === "DISPUTE_REVIEW"'));
 assert.ok(recurringInstanceProofFlowSource.includes("More quote info needed"));
 assert.ok(recurringInstanceProofFlowSource.includes("Quote rejected"));
-assert.ok(appShellSource.includes('href="/notifications" label="Updates" icon={Bell} compact'));
+assert.ok(appShellSource.includes('href="/create" label="Create" icon={PlusCircle} compact'));
 assert.ok(appShellSource.includes('href: "/admin/review", label: "Admin review", icon: ShieldAlert'));
 assert.ok(supabaseEnvSource.includes("getSupabasePublicEnv"));
 assert.ok(supabaseEnvSource.includes("Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY."));
@@ -2283,7 +2287,7 @@ for (const adminReviewCopy of [
   "Dispute / issue summary",
   "No dispute reported.",
   "Evidence timeline",
-  "Partner quote requested",
+  "Taxi quote requested",
   "Proof / evidence preview",
   "No proof file available.",
   "Taxi partner quote",
@@ -2468,7 +2472,7 @@ for (const recurringInstanceCopy of [
   "Payout will be processed after the dispute window.",
   "Payout is held while RidePod reviews the dispute.",
   "Settlement is final. Payout can be processed.",
-  "Payout completed.",
+  "Settlement marked closed in app state.",
   "Guests can raise a dispute until",
   "48h remaining",
   "View settlement details",
@@ -3474,8 +3478,8 @@ assert.ok(joinPodMapFirstSource.includes("Enter invite code"));
 assert.ok(joinPodMapFirstSource.includes("Contact support"));
 assert.ok(joinPodMapFirstSource.includes("disabled={!isEligible || pending || authorized}"));
 assert.ok(joinFlowSource.includes("requiredAction={eligibility.requiredAction}"));
-assert.ok(createPodChooseTypeSource.includes("Women-only pods require the host profile to be eligible too."));
-assert.ok(createPodFormSource.includes("Women-only pods require the host profile to be eligible too."));
+assert.ok(createPodChooseTypeSource.includes("Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner."));
+assert.ok(createPodFormSource.includes("Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner."));
 assert.ok(podEligibilitySource.includes("profileToProtectedUser"));
 assert.ok(podEligibilitySource.includes("gender_identity"));
 assert.ok(podEligibilitySource.includes("verification_status"));
