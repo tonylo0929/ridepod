@@ -871,3 +871,5 @@ UI-FIX-3 completed: Admin Review case detail now has a decision header, clearer 
 UI-FIX-4 completed: Guest quote acceptance now shows one payment mode at a time. Mock sessions show demo acceptance only; Stripe test sessions show Stripe test payment only.
 
 UI-FIX-5 completed: Create Pod Review was simplified into a Taxi summary, quote process, taxi needs, who-can-join summary, concise beta/payment note, and clearer Taxi-first CTA.
+
+UI-FIX-6 completed: Homepage and How RidePod Works visual hierarchy were checked for Taxi-first positioning, CTA clarity, mock/payment wording, and old-mode prominence.

@@ -154,9 +154,9 @@ export default function HomePage() {
 
       <section className="relative mt-8">
         <h1 className="max-w-[330px] text-[42px] font-black leading-[1.08] tracking-[-0.02em] text-[var(--rp-text)] sm:max-w-none sm:text-5xl">
-          Split the ride.
+          Shared taxi pods
           <br />
-          Not the risk.
+          for planned rides.
         </h1>
         <p className="mt-4 text-lg font-medium text-[var(--rp-muted-strong)]">
           Shared taxi pods. Taxi partner quotes. Review steps.

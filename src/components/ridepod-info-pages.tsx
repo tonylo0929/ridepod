@@ -30,13 +30,13 @@ const featureCards = [
     icon: ShieldCheck,
   },
   {
-    title: "Verified receipts",
-    body: "Final settlement uses the host's verified final receipt.",
+    title: "Manual proof review",
+    body: "Fallback proof flows can support manual settlement review.",
     icon: ReceiptText,
   },
   {
-    title: "Fair splits",
-    body: "RidePod calculates each participant's share based on the final verified fare.",
+    title: "Clear quote split",
+    body: "Guests see the selected quote, fare share, platform fee, and review state.",
     icon: CircleDollarSign,
   },
   {
@@ -54,22 +54,22 @@ const featureCards = [
 const cleanHowSteps = [
   {
     title: "Create taxi pod",
-    body: "Organizer starts a shared taxi pod.",
+    body: "Choose route, time, taxi type, and who can join.",
     icon: UsersRound,
   },
   {
     title: "Guests join",
-    body: "Riders join before the quote request.",
+    body: "Riders lock into the shared pod.",
     icon: LockKeyhole,
   },
   {
-    title: "Request quote",
-    body: "A licensed taxi partner quotes one price.",
+    title: "Request taxi quote",
+    body: "A licensed taxi partner quotes one shared price.",
     icon: CarFront,
   },
   {
-    title: "Review status",
-    body: "Quote acceptance, dispute, and payout states stay visible.",
+    title: "Ride and review",
+    body: "Payout stays pending during the dispute window.",
     icon: Scale,
   },
 ];
@@ -105,9 +105,9 @@ const fallbackRideOptions = [
 ];
 
 const cleanMoneyItems = [
-  "Booking fare cap",
-  "Max charge per guest",
-  "Verified receipt settlement",
+  "Quote acceptance",
+  "Mock payment state",
+  "Dispute window review",
 ];
 
 const faqPreviewItems = [
@@ -137,7 +137,7 @@ const faqItems = [
   {
     question: "What is Taxi partner quote?",
     answer:
-      "Taxi partner quote is a future beta mode where RidePod groups riders first, then a licensed taxi partner can quote one shared price. It is not live taxi dispatch yet.",
+      "Taxi partner quote is the Taxi-first beta flow. RidePod groups riders first, then a licensed taxi partner can quote one shared price. It is not live taxi dispatch yet.",
   },
   {
     question: "Does RidePod provide drivers?",
@@ -147,7 +147,7 @@ const faqItems = [
   {
     question: "Is Taxi partner quote live?",
     answer:
-      "Not yet. It is a beta prototype. No real taxi dispatch, payment, or payout is enabled unless clearly stated.",
+      "It is beta/demo only. No real taxi dispatch, payment, or payout is enabled unless clearly stated.",
   },
   {
     question: "When is my seat confirmed?",
@@ -197,7 +197,7 @@ const faqItems = [
   {
     question: "What are Women-only pods?",
     answer:
-      "Women-only pods are designed for safer matching. Eligible female users can join based on profile and verification settings. RidePod does not guarantee safety; report concerns immediately.",
+      "Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner.",
   },
   {
     question: "What are Verified-only, Community-only, High-trust-only, and Invite-only pods?",
@@ -217,7 +217,7 @@ const faqItems = [
   {
     question: "Does RidePod guarantee safety?",
     answer:
-      "No. RidePod provides tools designed for safer matching, payment protection, trust rules, and reporting. These tools help reduce risk, but they do not guarantee safety.",
+      "No. RidePod provides tools designed for safer matching, trust rules, quote review, and reporting. These tools help reduce risk, but they do not guarantee safety.",
   },
   {
     question: "Does RidePod guarantee a refund?",
@@ -232,7 +232,7 @@ const faqItems = [
   {
     question: "What if the receipt cannot be verified?",
     answer:
-      "RidePod may request more information, hold settlement, or route the case to review. Host reimbursement may be delayed or denied if the receipt is missing, incorrect, or suspicious.",
+      "RidePod may request more information, hold settlement, or route the case to manual review. Payout or reimbursement state may stay pending if proof is missing or unsupported.",
   },
   {
     question: "What is the best use case for RidePod?",
@@ -257,8 +257,8 @@ export function AboutRidePodPage() {
             </h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
               RidePod is not a ride-hailing company. We help users coordinate planned shared rides
-              and manage the protected payment and settlement flow. The host books the actual ride
-              externally.
+              and manage quote, acceptance, and review steps. Taxi partners are external licensed
+              providers.
             </p>
           </div>
         </div>
@@ -314,7 +314,7 @@ export function HowRidePodWorksPage() {
         </p>
       </section>
 
-      <section className="grid grid-cols-4 gap-2">
+      <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {cleanHowSteps.map(({ title, body, icon: Icon }, index) => (
           <Card key={title} className="relative p-2.5 text-center">
             <span className="absolute -top-2 left-1/2 grid h-5 w-5 -translate-x-1/2 place-items-center rounded-full bg-[var(--rp-primary)] text-[11px] font-black text-[var(--rp-primary-text)]">
@@ -327,7 +327,7 @@ export function HowRidePodWorksPage() {
         ))}
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2">
+      <section className="grid gap-3">
         {cleanRideOptions.map(({ title, body, icon: Icon, badge, helper }) => (
           <Card key={title} className="grid grid-cols-[34px_1fr_auto] items-center gap-3 p-3">
             <span className="grid h-9 w-9 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">

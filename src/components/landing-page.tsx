@@ -11,19 +11,19 @@ import { RidePodLogo } from "@/components/ridepod-logo";
 const steps = [
   {
     title: "Create a shared taxi pod",
-    body: "Pick a planned route for airport, campus, commute, or event rides.",
+    body: "Choose route, time, taxi type, and who can join.",
   },
   {
     title: "Guests join first",
-    body: "Riders join the pod before the group requests one shared taxi quote.",
+    body: "Riders join the shared pod before quote request.",
   },
   {
-    title: "Taxi partner quotes",
-    body: "RidePod does not provide drivers. Taxi partners are external licensed providers.",
+    title: "Request taxi quote",
+    body: "A licensed taxi partner quotes one shared price.",
   },
   {
-    title: "Review before payout",
-    body: "Guests accept the quote, then RidePod tracks mock payment and review states.",
+    title: "Ride and review",
+    body: "Guests accept the quote before the ride proceeds.",
   },
 ];
 
@@ -53,10 +53,13 @@ export function LandingPage() {
               Shared taxi pods for planned rides.
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-8 text-zinc-700">
-              RidePod helps groups create shared taxi pods, request a taxi partner quote, and split the ride with clear quote, acceptance, and review steps. RidePod does not provide drivers. Taxi partners are external licensed providers.
+              RidePod helps groups create shared taxi pods, request a taxi partner quote, and split the ride with clear quote, acceptance, and review steps.
             </p>
             <p className="mt-3 max-w-xl text-sm font-bold leading-6 text-zinc-600">
-              Taxi-first beta. No real taxi dispatch or payment yet.
+              RidePod does not provide drivers. Taxi partners are external licensed providers.
+            </p>
+            <p className="mt-2 max-w-xl text-sm font-bold leading-6 text-zinc-600">
+              Taxi-first beta. No real taxi dispatch, payment, or payout yet.
             </p>
             <div className="mt-7 grid gap-3 sm:flex">
               <Link
@@ -89,7 +92,7 @@ export function LandingPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-lg bg-white/10 p-3">
-                    <p className="text-xs text-zinc-300">Seats owned</p>
+                    <p className="text-xs text-zinc-300">Guests joined</p>
                     <p className="font-bold">3 of 4</p>
                   </div>
                   <div className="rounded-lg bg-white/10 p-3">
@@ -102,6 +105,7 @@ export function LandingPage() {
                   <p className="mt-1 text-sm font-semibold">
                     No taxi quote proceeds until guests accept.
                   </p>
+                  <p className="mt-1 text-xs font-semibold">No live payment or payout yet.</p>
                 </div>
               </div>
             </div>
