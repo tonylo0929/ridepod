@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, Clock3, Info, WalletCards, XCircle } from "lucide-react";
+import { RidePodTestPaymentElement } from "@/components/payments/RidePodTestPaymentElement";
 import { Badge, cn } from "@/components/ui";
 import type { RecurringRideInstancePreview, RidePod } from "@/lib/mock-data";
 import { createRidePodTestPaymentIntent } from "@/lib/payments/create-ridepod-test-payment";
@@ -37,6 +38,7 @@ function formatQuoteExpiryBadge(value: string | null) {
 function formatMockPaymentState(state: TaxiPartnerQuoteAcceptance["mockPaymentState"]) {
   if (state === "MOCK_AUTHORIZED") return "Authorized";
   if (state === "TEST_PAYMENT_INTENT_CREATED") return "Test PaymentIntent created";
+  if (state === "TEST_PAYMENT_CONFIRMED") return "Test payment confirmed";
   if (state === "TEST_REQUIRES_PAYMENT_METHOD") return "Test requires payment method";
   if (state === "TEST_REQUIRES_CAPTURE") return "Test requires capture";
   if (state === "TEST_SUCCEEDED") return "Test succeeded";
@@ -124,10 +126,12 @@ export function TaxiPartnerQuoteAcceptanceCard({
   pod,
   rideInstance,
   currentUserId,
+  stripeTestModeEnabled = false,
 }: {
   pod: RidePod;
   rideInstance: RecurringRideInstancePreview;
   currentUserId: string;
+  stripeTestModeEnabled?: boolean;
 }) {
   const baseRequest = getTaxiPartnerQuoteRequest(rideInstance.taxiPartnerQuoteRequestId);
   const guestCount = Math.max(1, pod.seatsFilled);
@@ -148,6 +152,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
   const [message, setMessage] = useState<string | null>(null);
   const [testPaymentIntent, setTestPaymentIntent] = useState<RidePodCreateTestPaymentIntentResponse | null>(null);
   const [creatingTestPayment, setCreatingTestPayment] = useState(false);
+  const stripeTestIntentReady = Boolean(testPaymentIntent?.ok && testPaymentIntent.clientSecret);
 
   const moneyDisplay = useMemo(
     () => baseRequest ? getTaxiPartnerQuoteMoneyDisplay(baseRequest, guestCount) : null,
@@ -167,22 +172,30 @@ export function TaxiPartnerQuoteAcceptanceCard({
   const totalLabel = moneyDisplay ? formatHkdCents(moneyDisplay.guestChargeCents) : "Pending";
 
   function handleAcceptQuote() {
+    acceptQuoteWithPaymentState("MOCK_AUTHORIZED");
+    setShowAcceptModal(false);
+    setMessage("Quote accepted");
+  }
+
+  function acceptQuoteWithPaymentState(mockPaymentState: TaxiPartnerQuoteAcceptance["mockPaymentState"]) {
     setAcceptance((current) => ({
       ...current,
       acceptanceStatus: "ACCEPTED",
-      mockPaymentState: "MOCK_AUTHORIZED",
+      mockPaymentState,
       acceptedAt: new Date().toISOString(),
       declinedAt: null,
       acceptedHigherQuote: quoteAboveCap,
     }));
     setAcceptedCount((current) => Math.min(guestCount, Math.max(current + 1, current)));
     setDeclinedCount((current) => Math.max(0, current - 1));
-    setShowAcceptModal(false);
-    setMessage("Quote accepted");
   }
 
   async function handleCreateTestPayment() {
     if (!moneyDisplay) return;
+    if (!stripeTestModeEnabled) {
+      setMessage("Stripe test mode is not enabled.");
+      return;
+    }
 
     setCreatingTestPayment(true);
     setTestPaymentIntent(null);
@@ -225,8 +238,27 @@ export function TaxiPartnerQuoteAcceptanceCard({
     setMessage(
       result.status === "requires_capture"
         ? "Test payment authorized. Capture is not implemented in this slice."
-        : "Test PaymentIntent created. Card confirmation comes next.",
+        : "Test PaymentIntent created. Enter a Stripe test card to confirm.",
     );
+  }
+
+  function handleTestPaymentConfirmed(result: {
+    paymentIntentId: string;
+    status: string;
+    mockPaymentState: TaxiPartnerQuoteAcceptance["mockPaymentState"];
+    message: string;
+  }) {
+    acceptQuoteWithPaymentState(result.mockPaymentState);
+    setTestPaymentIntent((current) =>
+      current?.ok
+        ? {
+            ...current,
+            paymentIntentId: result.paymentIntentId,
+            status: result.status,
+          }
+        : current,
+    );
+    setMessage(result.message);
   }
 
   function handleDeclineQuote() {
@@ -377,21 +409,27 @@ export function TaxiPartnerQuoteAcceptanceCard({
       <div className="mt-4 rounded-[18px] border border-sky-400/20 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.18))] p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-black text-[var(--rp-text)]">Stripe test mode POC</p>
+            <p className="text-sm font-black text-[var(--rp-text)]">Test payment</p>
             <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-              Creates a test-mode PaymentIntent only. Card confirmation / Stripe Elements is PAY-3.
+              Use Stripe test mode to confirm this quote acceptance. No live money is charged.
             </p>
           </div>
-          <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">No live payment</Badge>
+          <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">No live money</Badge>
         </div>
-        <button
-          type="button"
-          disabled={creatingTestPayment || userAccepted || userDeclined}
-          onClick={handleCreateTestPayment}
-          className="mt-3 inline-flex min-h-11 items-center justify-center rounded-[14px] border border-sky-400/30 bg-sky-400/10 px-4 text-sm font-black text-sky-200 transition hover:bg-sky-400/15 disabled:border-[var(--rp-border)] disabled:bg-[var(--rp-card-muted)] disabled:text-[var(--rp-muted)]"
-        >
-          {creatingTestPayment ? "Creating test payment..." : "Create test payment"}
-        </button>
+        {stripeTestModeEnabled ? (
+          <button
+            type="button"
+            disabled={creatingTestPayment || userAccepted || userDeclined || stripeTestIntentReady}
+            onClick={handleCreateTestPayment}
+            className="mt-3 inline-flex min-h-11 items-center justify-center rounded-[14px] border border-sky-400/30 bg-sky-400/10 px-4 text-sm font-black text-sky-200 transition hover:bg-sky-400/15 disabled:border-[var(--rp-border)] disabled:bg-[var(--rp-card-muted)] disabled:text-[var(--rp-muted)]"
+          >
+            {creatingTestPayment ? "Creating test payment..." : "Accept quote with test card"}
+          </button>
+        ) : (
+          <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+            Stripe test mode is not configured. Using mock payment state.
+          </p>
+        )}
         {testPaymentIntent ? (
           <div className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
             {testPaymentIntent.ok ? (
@@ -404,6 +442,25 @@ export function TaxiPartnerQuoteAcceptanceCard({
             ) : (
               <p className="text-xs font-bold leading-5 text-[var(--rp-warning)]">{testPaymentIntent.message}</p>
             )}
+          </div>
+        ) : null}
+        {testPaymentIntent?.ok && testPaymentIntent.clientSecret && !userAccepted ? (
+          <div className="mt-4 grid gap-3">
+            <dl className="rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3">
+              <MoneyRow label="Fare share" value={formatHkdCents(moneyDisplay.fareShareCents)} />
+              <MoneyRow label="Platform fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
+              <MoneyRow label="Total" value={totalLabel} strong />
+              <MoneyRow label="Taxi partner" value={baseRequest.quotedByPartnerName ?? "Demo Taxi Partner"} />
+              <MoneyRow label="Quote expiry" value={formatQuoteExpiry(baseRequest.quoteExpiresAt)} />
+            </dl>
+            <p className="rounded-[14px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
+              Use Stripe test card details from your Stripe dashboard/docs. Test card: 4242 4242 4242 4242.
+            </p>
+            <RidePodTestPaymentElement
+              clientSecret={testPaymentIntent.clientSecret}
+              disabled={userAccepted || userDeclined}
+              onConfirmed={handleTestPaymentConfirmed}
+            />
           </div>
         ) : null}
       </div>

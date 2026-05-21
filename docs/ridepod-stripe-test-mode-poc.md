@@ -2,13 +2,15 @@
 
 ## Scope
 
-PAY-2 adds a test-mode-only PaymentIntent proof of concept for Taxi Partner Quote guest acceptance.
+PAY-2 added a test-mode-only PaymentIntent creation proof of concept for Taxi Partner Quote guest acceptance.
+
+PAY-3 adds Stripe Elements / Payment Element test card confirmation for that PaymentIntent.
 
 This is not production payment. It does not enable live payments, Stripe Connect, taxi partner payout, wallet balances, or live capture.
 
 ## Safety Guard
 
-The POC is disabled unless all conditions are true:
+The server-side POC is disabled unless all conditions are true:
 
 ```text
 RIDEPOD_ENABLE_STRIPE_TEST_MODE=true
@@ -18,13 +20,24 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY starts with pk_test_
 
 If the flag is missing, the API returns:
 
-“Stripe test mode is not enabled.”
+"Stripe test mode is not enabled."
 
 If keys are missing or live keys are detected, the API returns:
 
-“Stripe test keys are not configured.”
+"Stripe test keys are not configured."
 
-The server never returns `STRIPE_SECRET_KEY` to the browser.
+The browser never receives `STRIPE_SECRET_KEY`.
+
+## Client Gate
+
+The Taxi Partner Quote guest acceptance screen renders Stripe Elements only when the server-rendered page confirms:
+
+```text
+RIDEPOD_ENABLE_STRIPE_TEST_MODE=true
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY starts with pk_test_
+```
+
+If Stripe test mode is not configured, the UI keeps the existing mock payment state path.
 
 ## API
 
@@ -53,6 +66,8 @@ Output:
 - livemode: false
 
 If Stripe ever returns `livemode: true`, the request is rejected.
+
+Do not log, persist, or place the PaymentIntent `clientSecret` in a URL.
 
 ## Taxi Partner Quote Example
 
@@ -92,38 +107,111 @@ Metadata:
 
 ## UI Behavior
 
-The Taxi Partner Quote guest acceptance card shows a Stripe test mode POC panel.
+The Taxi Partner Quote guest acceptance card shows a Stripe test mode panel.
 
 Button:
 
-“Create test payment”
+"Accept quote with test card"
 
-Expected PAY-2 behavior:
+Expected behavior:
 - calls the test-mode API route
 - creates a PaymentIntent if test mode is configured
-- displays PaymentIntent id, status, and amount
-- updates local/mock payment state
-- does not collect card details
-- does not confirm the card
-- does not capture payment
+- renders Stripe Payment Element with the returned client secret
+- lets the guest confirm with Stripe test card details
+- updates local/mock payment state after confirmation
+- marks the guest acceptance as accepted after successful test confirmation
 - does not create payout
+- does not use live money
 
 If test mode is disabled, the existing mock quote acceptance still works.
 
+## Payment Element
+
+PAY-3 renders Stripe Payment Element inside the guest acceptance card.
+
+Copy:
+
+"Use Stripe test mode to confirm this quote acceptance. No live money is charged."
+
+CTA:
+
+"Confirm test payment"
+
+Loading:
+
+"Confirming..."
+
+Error:
+
+"Couldn’t confirm test payment. Try again."
+
+Success:
+
+"Test payment confirmed"
+
+Subcopy:
+
+"No live money was charged."
+
+## Test Card
+
+The demo may show:
+
+"Test card: 4242 4242 4242 4242"
+
+Use Stripe test card details only.
+
+## Manual Capture Status
+
+PAY-2 creates PaymentIntents with `capture_method: manual` by default.
+
+After confirmation, Stripe may return:
+
+`requires_capture`
+
+RidePod should show:
+
+"Test authorization complete"
+
+Subcopy:
+
+"Capture is not implemented in this slice."
+
+Payment state:
+
+`TEST_REQUIRES_CAPTURE`
+
+If Stripe returns:
+
+`succeeded`
+
+RidePod should show:
+
+"Test payment confirmed"
+
+Payment state:
+
+`TEST_SUCCEEDED`
+
+Capture/release is PAY-4.
+
 ## Limitations
 
-- Card confirmation / Stripe Elements is PAY-3.
+- Test mode only.
+- No live payment.
 - No Stripe Connect.
 - No real payout.
 - No production keys.
+- No production card storage.
 - No payment persistence table yet.
 - PaymentIntent state is shown in the demo UI and can be stored in mock/local state only.
-- Manual capture is requested, but PAY-2 does not implement capture.
+- Manual capture is requested, but PAY-3 does not implement capture.
 
 TODO:
 
-Add a `payment_intents` table or equivalent persistence in PAY-3 or PAY-4 after payment state shape is finalized.
+Persist PaymentIntent state in PAY-4 or later after payment state shape is finalized.
 
 ## Next Step
 
-PAY-3 should add Stripe Elements / test card confirmation so a guest can confirm the test PaymentIntent using Stripe test cards.
+PAY-4 should add admin capture/cancel/refund simulation and decide where PaymentIntent state should persist.
+

@@ -52,6 +52,9 @@ export default async function PodDetailPage({
           ].includes(ride.taxiPartnerQuoteRequestId ?? ""),
         ) ?? null
       : null;
+  const stripeTestModeEnabled =
+    process.env.RIDEPOD_ENABLE_STRIPE_TEST_MODE === "true" &&
+    Boolean(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.startsWith("pk_test_"));
   const confirmedRiders = pod.members.filter(
     (member) => member.role === "member" && ["authorized", "charged"].includes(member.paymentStatus),
   );
@@ -155,6 +158,7 @@ export default async function PodDetailPage({
               pod={pod}
               rideInstance={taxiPartnerQuoteRide}
               currentUserId={currentUserId}
+              stripeTestModeEnabled={stripeTestModeEnabled}
             />
           ) : null}
           {protectedPod ? (
