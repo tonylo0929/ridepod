@@ -119,7 +119,7 @@ function createRequestedQuote({
     payoutStatus: "NOT_READY",
     luggageCount,
     ...accessibility,
-    notes: "Future beta prototype. No real taxi dispatch yet.",
+    notes: "Future beta prototype. No real taxi partner booking yet.",
   };
 }
 
@@ -290,7 +290,7 @@ export function TaxiPartnerQuoteRequestCard({
       </div>
 
       <p className="mt-4 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-        Future beta prototype. No real taxi dispatch yet. No real payout yet. Guest acceptance flow comes next.
+        Future beta prototype. No real taxi partner booking yet. No real payout yet. Guest acceptance flow comes next.
       </p>
 
       {activeRequest?.quoteAmountCents ? (
@@ -313,7 +313,7 @@ export function TaxiPartnerQuoteRequestCard({
                 ["Fare share", `${formatHkdCents(moneyDisplay.fareShareCents)} / guest`],
                 ["Platform fee", `${formatHkdCents(moneyDisplay.platformFeeCents)} / guest`],
                 ["Guest charge", formatHkdCents(moneyDisplay.guestChargeCents)],
-                ["Driver payout", formatHkdCents(moneyDisplay.driverPayoutCents)],
+                ["Taxi partner payout", formatHkdCents(moneyDisplay.driverPayoutCents)],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3">
                   <dt className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">{label}</dt>
@@ -343,7 +343,7 @@ export function TaxiPartnerQuoteRequestCard({
             Guests accepted the quote. The ride can proceed in demo mode.
           </p>
           <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-            No real taxi dispatch or payout yet.
+            No real taxi partner booking or payout yet.
           </p>
         </div>
       ) : null}
@@ -480,7 +480,7 @@ export function TaxiPartnerQuoteRequestCard({
                 ))}
               </div>
               <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-                Safety modes control who can join the pod. They do not guarantee a specific taxi driver unless supported by the taxi partner.
+                Safety modes control who can join the pod. Taxi partner assignment depends on partner availability.
               </p>
             </div>
 

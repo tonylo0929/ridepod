@@ -683,7 +683,7 @@ export function getRideInstanceNotifications(
         stableKey: `payout_ready:${rideInstance.id}`,
         type: "payout_ready",
         title: "Payout ready",
-        body: "Settlement is final. Your payout can be processed.",
+        body: "Settlement is final. Payout is ready to review.",
         timeAgo: "2d",
         group: "This week",
         tone: "green",

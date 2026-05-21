@@ -282,7 +282,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
       </div>
 
       <p className="mt-4 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-        This is a future beta prototype. No live payment or taxi dispatch happens yet.
+        This is a future beta prototype. No live payment or taxi partner booking happens yet.
       </p>
 
       <div className="mt-5 grid gap-3 min-[520px]:grid-cols-2">

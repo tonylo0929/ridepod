@@ -141,7 +141,7 @@ export function TaxiPartnerCompletionCard({
         </div>
         <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
           <WalletCards className="h-5 w-5 text-[var(--rp-primary)]" />
-          <p className="mt-2 text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Driver payout</p>
+          <p className="mt-2 text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Taxi partner payout</p>
           <p className="mt-1 text-sm font-black text-[var(--rp-text)]">
             {formatHkdCents(moneyDisplay.driverPayoutCents)}
           </p>
@@ -157,7 +157,7 @@ export function TaxiPartnerCompletionCard({
           </p>
           <dl className="mt-4">
             <SummaryRow label="Taxi partner quote" value={formatHkdCents(moneyDisplay.quoteAmountCents)} />
-            <SummaryRow label="Driver payout" value={formatHkdCents(moneyDisplay.driverPayoutCents)} />
+            <SummaryRow label="Taxi partner payout" value={formatHkdCents(moneyDisplay.driverPayoutCents)} />
             <SummaryRow label="Platform fee total" value={formatHkdCents(moneyDisplay.platformFeeTotalCents)} />
             <SummaryRow label="Dispute window" value="24h" />
           </dl>
@@ -227,7 +227,7 @@ export function TaxiPartnerCompletionCard({
               <SummaryRow label="Quote amount" value={formatHkdCents(moneyDisplay.quoteAmountCents)} />
               <SummaryRow label="Guest count" value={`${moneyDisplay.guestCount} guests`} />
               <SummaryRow label="Guest charge" value={formatHkdCents(moneyDisplay.guestChargeCents)} />
-              <SummaryRow label="Driver payout amount" value={formatHkdCents(moneyDisplay.driverPayoutCents)} />
+              <SummaryRow label="Taxi partner payout amount" value={formatHkdCents(moneyDisplay.driverPayoutCents)} />
               <SummaryRow label="Route" value={`${rideInstance.originLabel} to ${rideInstance.destinationLabel}`} />
               <SummaryRow label="Date/time" value={`${rideInstance.displayDate}, ${rideInstance.departureTime}`} />
             </dl>

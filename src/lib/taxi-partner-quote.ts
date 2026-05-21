@@ -329,7 +329,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Closed",
       tone: "gray",
-      helperText: "Payout was marked released in demo mode.",
+      helperText: "Payout was marked closed in demo mode.",
       primaryActionLabel: "View details",
     };
   }
@@ -404,7 +404,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Payout pending",
       tone: "blue",
-      helperText: "Payout releases after the dispute window if no issue is reported.",
+      helperText: "Payout remains pending through the dispute window in demo mode.",
       primaryActionLabel: "View payout",
     };
   }
@@ -413,7 +413,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Ride completed",
       tone: "blue",
-      helperText: "Dispute window is open before payout release.",
+      helperText: "Dispute window is open before payout is marked ready.",
       primaryActionLabel: "View settlement",
     };
   }
