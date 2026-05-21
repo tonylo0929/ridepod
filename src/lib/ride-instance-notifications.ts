@@ -25,8 +25,11 @@ export type RideInstanceNotificationType =
   | "taxi_partner_more_info_needed"
   | "taxi_partner_payout_denied"
   | "taxi_partner_dispute_resolved"
+  | "taxi_partner_quote_needed"
+  | "taxi_partner_quote_requested"
   | "taxi_partner_quote_received"
   | "taxi_partner_guests_accepting"
+  | "taxi_partner_guests_accepted"
   | "taxi_partner_accepted"
   | "taxi_partner_declined"
   | "taxi_partner_arrived"
@@ -126,6 +129,17 @@ function adminReviewTarget() {
 
 function taxiPartnerStableKey(
   event:
+    | "quote_needed"
+    | "quote_requested"
+    | "quote_received"
+    | "guest_quote_received"
+    | "guests_accepting"
+    | "guests_accepted"
+    | "partner_accepted"
+    | "partner_arrived"
+    | "ride_started"
+    | "ride_completed"
+    | "payout_pending"
     | "dispute_opened"
     | "guest_dispute_review"
     | "payout_held"
@@ -135,7 +149,28 @@ function taxiPartnerStableKey(
     | "dispute_resolved",
   rideInstance: RecurringRideInstancePreview,
 ) {
-  return `taxi_partner_${event}:${rideInstance.id}`;
+  const keyPrefix: Record<typeof event, string> = {
+    quote_needed: "taxi_quote_needed",
+    quote_requested: "taxi_quote_requested",
+    quote_received: "taxi_quote_received",
+    guest_quote_received: "guest_taxi_quote_received",
+    guests_accepting: "taxi_guests_accepting",
+    guests_accepted: "taxi_guests_accepted",
+    partner_accepted: "taxi_partner_accepted",
+    partner_arrived: "taxi_partner_arrived",
+    ride_started: "taxi_ride_started",
+    ride_completed: "taxi_ride_completed",
+    payout_pending: "taxi_payout_pending",
+    dispute_opened: "taxi_partner_dispute_opened",
+    guest_dispute_review: "taxi_partner_guest_dispute_review",
+    payout_held: "taxi_partner_payout_held",
+    payout_ready: "taxi_partner_payout_ready",
+    more_info_needed: "taxi_partner_more_info_needed",
+    payout_denied: "taxi_partner_payout_denied",
+    dispute_resolved: "taxi_partner_dispute_resolved",
+  };
+
+  return `${keyPrefix[event]}:${rideInstance.id}`;
 }
 
 function rideInstanceDetailTarget(rideInstance: RecurringRideInstancePreview, viewerRole: RideInstanceNotificationViewerRole) {
@@ -344,11 +379,51 @@ export function getRideInstanceNotifications(
   const guestRideTarget = guestTarget(rideInstance);
   const host = viewerRole === "HOST";
   const items: RideInstanceNotification[] = [];
+  const hasTaxiPartnerQuote = Boolean(rideInstance.taxiPartnerQuoteRequestId);
 
   if (rideInstance.taxiPartnerQuoteRequestId) {
+    const taxiQuoteRequest = getTaxiPartnerQuoteRequest(rideInstance.taxiPartnerQuoteRequestId);
     const taxiQuoteStatus = getTaxiPartnerQuoteDisplayStatus(
-      getTaxiPartnerQuoteRequest(rideInstance.taxiPartnerQuoteRequestId),
+      taxiQuoteRequest,
     );
+
+    if (host && taxiQuoteStatus.label === "Taxi quote needed") {
+      items.push(
+        notification(rideInstance, {
+          stableKey: taxiPartnerStableKey("quote_needed", rideInstance),
+          type: "taxi_partner_quote_needed",
+          title: "Taxi quote needed",
+          body: "Guests are locked. Request one shared quote from a licensed taxi partner.",
+          timeAgo: "10m",
+          group: "Today",
+          tone: "gold",
+          ctaLabel: "Request taxi quote",
+          ctaTarget: target,
+          createdAt: "2026-05-18T09:50:00.000Z",
+          read: false,
+          audience: "HOST",
+        }),
+      );
+    }
+
+    if (host && taxiQuoteStatus.label === "Waiting for quote") {
+      items.push(
+        notification(rideInstance, {
+          stableKey: taxiPartnerStableKey("quote_requested", rideInstance),
+          type: "taxi_partner_quote_requested",
+          title: "Taxi quote requested",
+          body: "Waiting for a licensed taxi partner to quote this shared pod.",
+          timeAgo: "10m",
+          group: "Today",
+          tone: "gold",
+          ctaLabel: "View request",
+          ctaTarget: target,
+          createdAt: "2026-05-18T09:52:00.000Z",
+          read: false,
+          audience: "HOST",
+        }),
+      );
+    }
 
     if (taxiQuoteStatus.label === "Dispute review") {
       if (host) {
@@ -357,7 +432,7 @@ export function getRideInstanceNotifications(
             stableKey: taxiPartnerStableKey("dispute_opened", rideInstance),
             type: "taxi_partner_dispute_opened",
             title: "Taxi partner dispute opened",
-            body: "RidePod is reviewing this taxi partner ride.",
+            body: "RidePod is reviewing this shared taxi ride.",
             timeAgo: "3d",
             group: "This week",
             tone: "amber",
@@ -481,11 +556,11 @@ export function getRideInstanceNotifications(
     if (taxiQuoteStatus.label === "Quote received") {
       items.push(
         notification(rideInstance, {
-          stableKey: `taxi_partner_quote_received:${rideInstance.id}`,
+          stableKey: taxiPartnerStableKey(host ? "quote_received" : "guest_quote_received", rideInstance),
           type: "taxi_partner_quote_received",
-          title: host ? "Partner quote received" : "Taxi partner quote received",
+          title: "Taxi quote received",
           body: host
-            ? "Taxi partner submitted a shared pod quote."
+            ? "Review the shared taxi quote before sending it to guests."
             : "Review and accept the shared taxi quote.",
           timeAgo: "10m",
           group: "Today",
@@ -502,10 +577,10 @@ export function getRideInstanceNotifications(
     if (taxiQuoteStatus.label === "Guests accepting") {
       items.push(
         notification(rideInstance, {
-          stableKey: `taxi_partner_guests_accepting:${rideInstance.id}`,
+          stableKey: taxiPartnerStableKey("guests_accepting", rideInstance),
           type: "taxi_partner_guests_accepting",
           title: "Guests accepting quote",
-          body: "Waiting for guests to accept the taxi partner quote.",
+          body: "Waiting for guests to accept the shared taxi quote.",
           timeAgo: "20m",
           group: "Today",
           tone: "purple",
@@ -521,16 +596,20 @@ export function getRideInstanceNotifications(
     if (taxiQuoteStatus.label === "Ready for pickup") {
       items.push(
         notification(rideInstance, {
-          stableKey: `taxi_partner_accepted:${rideInstance.id}`,
-          type: "taxi_partner_accepted",
-          title: "Taxi partner accepted",
-          body: host
-            ? "The shared taxi job is ready for pickup in demo mode."
-            : "Your shared taxi ride is ready in demo mode.",
+          stableKey: taxiPartnerStableKey(
+            taxiQuoteRequest?.driverAssignmentStatus === "NOT_ASSIGNED" ? "guests_accepted" : "partner_accepted",
+            rideInstance,
+          ),
+          type: taxiQuoteRequest?.driverAssignmentStatus === "NOT_ASSIGNED" ? "taxi_partner_guests_accepted" : "taxi_partner_accepted",
+          title: taxiQuoteRequest?.driverAssignmentStatus === "NOT_ASSIGNED" ? "Guests accepted" : "Taxi partner accepted",
+          body:
+            taxiQuoteRequest?.driverAssignmentStatus === "NOT_ASSIGNED"
+              ? "The shared taxi quote is accepted. Coordinate pickup next."
+              : "The shared taxi pod is ready for pickup in demo mode.",
           timeAgo: "5m",
           group: "Today",
           tone: "green",
-          ctaLabel: "View ride",
+          ctaLabel: "View pickup",
           ctaTarget: host ? target : guestRideTarget,
           createdAt: "2026-05-18T10:00:00.000Z",
           read: false,
@@ -549,7 +628,7 @@ export function getRideInstanceNotifications(
           timeAgo: "5m",
           group: "Today",
           tone: "amber",
-          ctaLabel: "Request quote",
+          ctaLabel: "Request taxi quote",
           ctaTarget: target,
           createdAt: "2026-05-18T10:00:00.000Z",
           read: false,
@@ -561,7 +640,7 @@ export function getRideInstanceNotifications(
     if (taxiQuoteStatus.label === "Taxi partner arrived") {
       items.push(
         notification(rideInstance, {
-          stableKey: `taxi_partner_arrived:${rideInstance.id}`,
+          stableKey: taxiPartnerStableKey("partner_arrived", rideInstance),
           type: "taxi_partner_arrived",
           title: "Taxi partner arrived",
           body: "Meet at the pickup point.",
@@ -580,7 +659,7 @@ export function getRideInstanceNotifications(
     if (taxiQuoteStatus.label === "Ride started") {
       items.push(
         notification(rideInstance, {
-          stableKey: `taxi_partner_ride_started:${rideInstance.id}`,
+          stableKey: taxiPartnerStableKey("ride_started", rideInstance),
           type: "taxi_partner_ride_started",
           title: "Ride started",
           body: "The shared taxi ride is in progress.",
@@ -600,12 +679,12 @@ export function getRideInstanceNotifications(
       items.push(
         notification(rideInstance, {
           stableKey: host
-            ? `taxi_partner_payout_pending:${rideInstance.id}`
-            : `taxi_partner_ride_completed:${rideInstance.id}`,
+            ? taxiPartnerStableKey("payout_pending", rideInstance)
+            : taxiPartnerStableKey("ride_completed", rideInstance),
           type: host ? "taxi_partner_payout_pending" : "taxi_partner_ride_completed",
           title: host ? "Payout pending" : "Ride completed",
           body: host
-            ? "Payout is pending until the dispute window ends."
+            ? "Payout waits for the dispute window. No real payout is sent in beta."
             : "Review the ride before the dispute window ends.",
           timeAgo: "15m",
           group: "Today",
@@ -620,7 +699,7 @@ export function getRideInstanceNotifications(
     }
   }
 
-  if (rideInstance.status === "quote_needed") {
+  if (!hasTaxiPartnerQuote && rideInstance.status === "quote_needed") {
     items.push(
       notification(rideInstance, {
         stableKey: `upload_quote_needed:${rideInstance.id}`,
@@ -638,7 +717,7 @@ export function getRideInstanceNotifications(
     );
   }
 
-  if (rideInstance.status === "ready_to_book") {
+  if (!hasTaxiPartnerQuote && rideInstance.status === "ready_to_book") {
     items.push(
       notification(rideInstance, {
         stableKey: `quote_approved:${rideInstance.id}`,
@@ -656,7 +735,7 @@ export function getRideInstanceNotifications(
     );
   }
 
-  if (rideInstance.status === "ride_booked") {
+  if (!hasTaxiPartnerQuote && rideInstance.status === "ride_booked") {
     items.push(
       notification(rideInstance, {
         stableKey: `ride_booked:${rideInstance.id}`,
@@ -674,7 +753,7 @@ export function getRideInstanceNotifications(
     );
   }
 
-  if (rideInstance.status === "receipt_pending") {
+  if (!hasTaxiPartnerQuote && rideInstance.status === "receipt_pending") {
     items.push(
       notification(rideInstance, {
         stableKey: `upload_receipt_needed:${rideInstance.id}`,
@@ -692,7 +771,7 @@ export function getRideInstanceNotifications(
     );
   }
 
-  if (rideInstance.status === "meter_proof_needed") {
+  if (!hasTaxiPartnerQuote && rideInstance.status === "meter_proof_needed") {
     items.push(
       notification(rideInstance, {
         stableKey: `meter_proof_needed:${rideInstance.id}`,
@@ -710,7 +789,7 @@ export function getRideInstanceNotifications(
     );
   }
 
-  if (rideInstance.status === "settlement_ready" || rideInstance.settlementState === "DISPUTE_WINDOW") {
+  if (!hasTaxiPartnerQuote && (rideInstance.status === "settlement_ready" || rideInstance.settlementState === "DISPUTE_WINDOW")) {
     items.push(
       notification(rideInstance, {
         stableKey: `dispute_window_ending:${rideInstance.id}`,
@@ -759,7 +838,7 @@ export function getRideInstanceNotifications(
     );
   }
 
-  if (rideInstance.settlementState === "PAID" || rideInstance.payoutState === "PAID") {
+  if (!hasTaxiPartnerQuote && (rideInstance.settlementState === "PAID" || rideInstance.payoutState === "PAID")) {
     items.push(
       notification(rideInstance, {
         stableKey: `payout_ready:${rideInstance.id}`,
