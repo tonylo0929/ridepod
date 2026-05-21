@@ -462,7 +462,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Closed",
       tone: "gray",
-      helperText: "Payout was marked closed in demo mode.",
+      helperText: "Payout was marked released in demo mode.",
       primaryActionLabel: "View details",
     };
   }
