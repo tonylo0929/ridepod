@@ -1,5 +1,7 @@
 # RidePod Stripe Test Mode PaymentIntent POC
 
+Payment readiness note: RidePod is not live-payment ready. Current payment flows are mock/test mode only. Live payments and payouts require legal, payment provider, security, ops, and partner readiness review.
+
 ## Scope
 
 PAY-2 added a test-mode-only PaymentIntent creation proof of concept for Taxi Partner Quote guest acceptance.

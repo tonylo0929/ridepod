@@ -1,5 +1,7 @@
 # RidePod Stripe / PSP Decision
 
+Payment readiness note: RidePod is not live-payment ready. Current payment flows are mock/test mode only. Live payments and payouts require legal, payment provider, security, ops, and partner readiness review.
+
 ## 1. Decision Summary
 
 Decision options:
@@ -350,4 +352,3 @@ PAY-1 recommendation: No live payments yet. Proceed to Stripe test mode POC only
 - PAY-5 — Taxi partner payout architecture POC
 - PAY-6 — Dispute/chargeback evidence package
 - PAY-7 — Legal/payment readiness gate
-

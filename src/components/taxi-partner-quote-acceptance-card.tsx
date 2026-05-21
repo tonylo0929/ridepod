@@ -428,7 +428,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
       <div className="mt-4 flex items-start gap-3 rounded-[16px] border border-sky-400/25 bg-sky-400/10 p-3 text-sky-100">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
         <p className="text-xs font-bold leading-5">
-          Demo only. No live payment or taxi dispatch happens yet. No real payout yet.
+          Demo only. No live money or taxi dispatch happens yet. No real payout yet.
         </p>
       </div>
 

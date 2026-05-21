@@ -1,5 +1,7 @@
 # Taxi Partner Quote Mode — Go / No-Go Review
 
+Payment readiness note: RidePod is not live-payment ready. Current payment flows are mock/test mode only. Live payments and payouts require legal, payment provider, security, ops, and partner readiness review.
+
 ## 1. Decision Summary
 
 Recommended decision: **GO as demo-only beta prototype**.

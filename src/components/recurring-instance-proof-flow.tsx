@@ -235,8 +235,8 @@ function getSettlementDisplayState(rideInstance: RecurringRideInstancePreview) {
 
   if (rideInstance.settlementState === "PAID" || rideInstance.payoutState === "PAID") {
     return {
-      badge: "Paid",
-      payoutHelper: "Payout completed.",
+      badge: "Closed",
+      payoutHelper: "Settlement marked closed in app state.",
       finalStepComplete: true,
     };
   }

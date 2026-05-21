@@ -1,5 +1,7 @@
 # RidePod Payment Architecture Strategy
 
+Payment readiness note: RidePod is not live-payment ready. Current payment flows are mock/test mode only. Live payments and payouts require legal, payment provider, security, ops, and partner readiness review.
+
 ## 1. Payment Positioning
 
 RidePod payment architecture should protect guests, hosts/organizers, and taxi partners without promising guaranteed refunds or guaranteed payouts.
