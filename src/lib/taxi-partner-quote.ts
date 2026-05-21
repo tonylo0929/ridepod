@@ -72,6 +72,7 @@ export const TAXI_PARTNER_PAYOUT_STATUSES = [
   "HELD_FOR_REVIEW",
   "READY_TO_RELEASE",
   "RELEASED",
+  "RELEASED_MOCK",
   "DENIED",
   "DENIED_MOCK",
 ] as const;
@@ -79,6 +80,8 @@ export const TAXI_PARTNER_PAYOUT_STATUSES = [
 export type TaxiPartnerPayoutStatus = (typeof TAXI_PARTNER_PAYOUT_STATUSES)[number];
 
 export type TaxiPartnerReviewState = "OPEN" | "UNDER_REVIEW" | "NEEDS_MORE_INFO" | "APPROVED" | "REJECTED" | "RESOLVED";
+
+export type TaxiPartnerDisputeStatus = "OPEN" | "UNDER_REVIEW" | "RESOLVED";
 
 export type TaxiPartnerQuoteRequest = {
   id: string;
@@ -98,6 +101,7 @@ export type TaxiPartnerQuoteRequest = {
   driverAssignmentStatus: TaxiPartnerDriverAssignmentStatus;
   payoutStatus: TaxiPartnerPayoutStatus;
   reviewState?: TaxiPartnerReviewState;
+  disputeStatus?: TaxiPartnerDisputeStatus;
   luggageCount?: number;
   extraSpaceNeeded?: boolean;
   wheelchairAccessibleRequested?: boolean;
@@ -109,7 +113,7 @@ export type TaxiPartnerQuoteRequest = {
 
 export type TaxiPartnerQuoteDisplayStatus = {
   label: string;
-  tone: "gold" | "green" | "purple" | "orange" | "blue" | "gray";
+  tone: "gold" | "green" | "purple" | "orange" | "blue" | "gray" | "amber" | "red";
   helperText: string;
   primaryActionLabel: string;
   primaryActionTarget?: string;
@@ -303,11 +307,11 @@ export function getTaxiPartnerQuoteDisplayStatus(
     };
   }
 
-  if (request.reviewState === "NEEDS_MORE_INFO") {
+  if (request.payoutStatus === "HELD_FOR_REVIEW") {
     return {
-      label: "More info needed",
-      tone: "orange",
-      helperText: "RidePod needs more information before resolving this case.",
+      label: "Dispute review",
+      tone: "amber",
+      helperText: "Payout is held while RidePod reviews the issue.",
       primaryActionLabel: "View review",
     };
   }
@@ -321,19 +325,64 @@ export function getTaxiPartnerQuoteDisplayStatus(
     };
   }
 
+  if (request.payoutStatus === "RELEASED_MOCK") {
+    return {
+      label: "Closed",
+      tone: "gray",
+      helperText: "Payout was marked released in demo mode.",
+      primaryActionLabel: "View details",
+    };
+  }
+
   if (request.payoutStatus === "DENIED_MOCK") {
     return {
       label: "Payout denied",
-      tone: "gray",
+      tone: "red",
       helperText: "Payout was denied in demo review.",
       primaryActionLabel: "View review",
     };
   }
 
-  if (request.quoteStatus === "ADMIN_REVIEW" || request.payoutStatus === "HELD_FOR_REVIEW") {
+  if (request.reviewState === "NEEDS_MORE_INFO") {
+    return {
+      label: "More info needed",
+      tone: "amber",
+      helperText: "RidePod needs more information before resolving this case.",
+      primaryActionLabel: "View review",
+    };
+  }
+
+  if (request.reviewState === "UNDER_REVIEW") {
+    return {
+      label: "Under review",
+      tone: "blue",
+      helperText: "RidePod is reviewing this taxi partner case.",
+      primaryActionLabel: "View review",
+    };
+  }
+
+  if (request.disputeStatus === "OPEN" || request.disputeStatus === "UNDER_REVIEW") {
     return {
       label: "Dispute review",
-      tone: "blue",
+      tone: "amber",
+      helperText: "RidePod is reviewing the reported issue.",
+      primaryActionLabel: "View dispute",
+    };
+  }
+
+  if (request.disputeStatus === "RESOLVED") {
+    return {
+      label: "Dispute resolved",
+      tone: "green",
+      helperText: "The dispute was resolved in demo mode.",
+      primaryActionLabel: "View details",
+    };
+  }
+
+  if (request.quoteStatus === "ADMIN_REVIEW") {
+    return {
+      label: "Dispute review",
+      tone: "amber",
       helperText: "Payout is held while RidePod reviews the issue.",
       primaryActionLabel: "View review",
     };

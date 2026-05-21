@@ -125,9 +125,17 @@ const rideInstanceStatusTones = {
     chip: "bg-[var(--rp-danger-bg)] text-[var(--rp-danger)] ring-[var(--rp-border)]",
     card: "border-orange-400/20 bg-orange-400/10 text-orange-300",
   },
+  amber: {
+    chip: "bg-amber-400/10 text-amber-300 ring-amber-400/25",
+    card: "border-amber-400/20 bg-amber-400/10 text-amber-300",
+  },
   blue: {
     chip: "bg-sky-400/10 text-sky-300 ring-sky-400/25",
     card: "border-sky-400/20 bg-sky-400/10 text-sky-300",
+  },
+  red: {
+    chip: "bg-red-400/10 text-red-300 ring-red-400/25",
+    card: "border-red-400/20 bg-red-400/10 text-red-300",
   },
   gray: {
     chip: "bg-[var(--rp-badge-neutral-bg)] text-[var(--rp-badge-neutral-text)] ring-[var(--rp-border)]",
