@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, Clock3, Info, WalletCards, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock3, WalletCards, XCircle } from "lucide-react";
 import { RidePodTestPaymentElement } from "@/components/payments/RidePodTestPaymentElement";
 import { Badge, cn } from "@/components/ui";
 import type { RecurringRideInstancePreview, RidePod } from "@/lib/mock-data";
@@ -34,19 +34,6 @@ function formatQuoteExpiry(value: string | null) {
 
 function formatQuoteExpiryBadge(value: string | null) {
   return value ? "Quote expires in 15 min" : "Quote expiry not set";
-}
-
-function formatMockPaymentState(state: TaxiPartnerQuoteAcceptance["mockPaymentState"]) {
-  if (state === "MOCK_AUTHORIZED") return "Authorized";
-  if (state === "TEST_PAYMENT_INTENT_CREATED") return "Test PaymentIntent created";
-  if (state === "TEST_PAYMENT_CONFIRMED") return "Test payment confirmed";
-  if (state === "TEST_REQUIRES_PAYMENT_METHOD") return "Test requires payment method";
-  if (state === "TEST_REQUIRES_CAPTURE") return "Test requires capture";
-  if (state === "TEST_SUCCEEDED") return "Test succeeded";
-  if (state === "TEST_CANCELED") return "Test canceled";
-  if (state === "TEST_FAILED") return "Test failed";
-
-  return "Not started";
 }
 
 function getInitialAcceptedCount(requestAcceptedCount: number | undefined, guestCount: number) {
@@ -154,6 +141,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
   const [testPaymentIntent, setTestPaymentIntent] = useState<RidePodCreateTestPaymentIntentResponse | null>(null);
   const [creatingTestPayment, setCreatingTestPayment] = useState(false);
   const stripeTestIntentReady = Boolean(testPaymentIntent?.ok && testPaymentIntent.clientSecret);
+  const paymentMode: "stripe_test" | "mock" = stripeTestModeEnabled ? "stripe_test" : "mock";
 
   const moneyDisplay = useMemo(
     () => baseRequest ? getTaxiPartnerQuoteMoneyDisplay(baseRequest, guestCount) : null,
@@ -244,11 +232,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
                 ? "TEST_PAYMENT_INTENT_CREATED"
                 : "TEST_PAYMENT_INTENT_CREATED",
     }));
-    setMessage(
-      result.status === "requires_capture"
-        ? "Test authorization complete. Capture is not implemented in this slice."
-        : "Test PaymentIntent created. Enter a Stripe test card to confirm.",
-    );
+    setMessage("Test payment ready. Continue with Stripe test card details.");
   }
 
   function handleTestPaymentConfirmed(result: {
@@ -323,7 +307,11 @@ export function TaxiPartnerQuoteAcceptanceCard({
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        {["Taxi partner", "Quote", "Mock payment", "Shared pod"].map((badge) => (
+        {[
+          "Taxi partner",
+          "Shared pod",
+          paymentMode === "stripe_test" ? "Stripe test mode" : "Demo acceptance",
+        ].map((badge) => (
           <Badge key={badge} className="border border-sky-400/20 bg-sky-400/10 text-sky-100 ring-sky-400/25">
             {badge}
           </Badge>
@@ -358,7 +346,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
             <div>
               <p className="text-sm font-black">Quote above fare cap</p>
               <p className="mt-1 text-xs font-bold leading-5">
-                This quote is above the original fare cap. Guests must approve the higher amount before the ride can proceed.
+                This quote is above the original fare cap. Accept only if you agree to the higher amount.
               </p>
             </div>
           </div>
@@ -366,20 +354,22 @@ export function TaxiPartnerQuoteAcceptanceCard({
       ) : null}
 
       <dl className="mt-4 rounded-[20px] border border-sky-400/20 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.18))] p-4">
-        <MoneyRow label="Quote" value={formatHkdCents(moneyDisplay.quoteAmountCents)} />
-        <MoneyRow label="Guest count" value={`${moneyDisplay.guestCount} guests`} />
+        <MoneyRow label="Taxi partner" value={baseRequest.quotedByPartnerName ?? "Demo Taxi Partner"} />
+        <MoneyRow label="Taxi type" value={`${taxiPartnerTaxiTypeLabels[baseRequest.requestedTaxiType]} taxi`} />
+        <MoneyRow label="Quote amount" value={formatHkdCents(moneyDisplay.quoteAmountCents)} />
         <MoneyRow label="Fare share" value={formatHkdCents(moneyDisplay.fareShareCents)} />
         <MoneyRow label="Platform fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
         <MoneyRow label="Your total" value={totalLabel} strong />
+        <MoneyRow label="Quote expiry" value={formatQuoteExpiry(baseRequest.quoteExpiresAt)} />
       </dl>
+      <p className="mt-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
+        Guests must accept the selected quote before the ride proceeds.
+      </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <Badge className="bg-[var(--rp-card-muted)] text-[var(--rp-muted-strong)] ring-[var(--rp-border)]">
           <Clock3 className="mr-1 h-3.5 w-3.5" />
           {formatQuoteExpiryBadge(baseRequest.quoteExpiresAt)}
-        </Badge>
-        <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">
-          Mock payment state: {formatMockPaymentState(acceptance.mockPaymentState)}
         </Badge>
       </div>
 
@@ -425,41 +415,72 @@ export function TaxiPartnerQuoteAcceptanceCard({
         ) : null}
       </div>
 
-      <div className="mt-4 flex items-start gap-3 rounded-[16px] border border-sky-400/25 bg-sky-400/10 p-3 text-sky-100">
-        <Info className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
-        <p className="text-xs font-bold leading-5">
-          Demo only. No live money or taxi dispatch happens yet. No real payout yet.
-        </p>
-      </div>
-
       <div className="mt-4 rounded-[18px] border border-sky-400/20 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.18))] p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-black text-[var(--rp-text)]">Test payment</p>
+            <p className="text-sm font-black text-[var(--rp-text)]">
+              {paymentMode === "stripe_test" ? "Accept quote with test payment" : "Accept taxi quote"}
+            </p>
             <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-              Use Stripe test mode to confirm this quote acceptance. No live money is charged.
+              {paymentMode === "stripe_test"
+                ? "Use Stripe test mode to confirm this quote acceptance."
+                : "Accept this shared taxi quote for the demo."}
             </p>
           </div>
-          <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">No live money</Badge>
+          <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">
+            {paymentMode === "stripe_test" ? "Stripe test mode" : "Demo acceptance"}
+          </Badge>
         </div>
-        {stripeTestModeEnabled ? (
-          <button
-            type="button"
-            disabled={creatingTestPayment || userAccepted || userDeclined || stripeTestIntentReady}
-            onClick={handleCreateTestPayment}
-            className="mt-3 inline-flex min-h-11 items-center justify-center rounded-[14px] border border-sky-400/30 bg-sky-400/10 px-4 text-sm font-black text-sky-200 transition hover:bg-sky-400/15 disabled:border-[var(--rp-border)] disabled:bg-[var(--rp-card-muted)] disabled:text-[var(--rp-muted)]"
-          >
-            {creatingTestPayment ? "Creating test payment..." : "Accept quote with test card"}
-          </button>
+
+        <dl className="mt-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3">
+          <MoneyRow label="Taxi partner quote" value={formatHkdCents(moneyDisplay.quoteAmountCents)} />
+          <MoneyRow label="Fare share" value={formatHkdCents(moneyDisplay.fareShareCents)} />
+          <MoneyRow label="Platform fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
+          <MoneyRow label="Your total" value={totalLabel} strong />
+        </dl>
+
+        {paymentMode === "stripe_test" ? (
+          <>
+            <p className="mt-3 rounded-[14px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
+              Stripe test mode only. No live money is charged.
+            </p>
+            <button
+              type="button"
+              disabled={creatingTestPayment || userAccepted || userDeclined || stripeTestIntentReady}
+              onClick={handleCreateTestPayment}
+              className="mt-3 inline-flex min-h-11 items-center justify-center rounded-[14px] border border-sky-400/30 bg-sky-400/10 px-4 text-sm font-black text-sky-200 transition hover:bg-sky-400/15 disabled:border-[var(--rp-border)] disabled:bg-[var(--rp-card-muted)] disabled:text-[var(--rp-muted)]"
+            >
+              {creatingTestPayment ? "Creating test payment..." : "Continue to test payment"}
+            </button>
+          </>
         ) : (
-          <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-            This records quote acceptance for the demo. No live money is charged.
-          </p>
+          <>
+            <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+              This records quote acceptance for the demo. No live money is charged.
+            </p>
+            <button
+              type="button"
+              disabled={userAccepted || userDeclined}
+              onClick={() => {
+                setUnderstandsMockPayment(false);
+                setShowAcceptModal(true);
+              }}
+              className={cn(
+                "mt-3 inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] px-5 text-sm font-black shadow-[0_14px_28px_rgba(14,165,233,0.22)] transition",
+                userAccepted
+                  ? "bg-[var(--rp-card-muted)] text-[var(--rp-muted)]"
+                  : "bg-sky-500 text-white hover:bg-sky-400",
+              )}
+            >
+              <WalletCards className="h-4 w-4" /> {quoteAboveCap ? "Accept higher quote" : "Accept quote in demo"}
+            </button>
+          </>
         )}
-        {testPaymentIntent ? (
-          <div className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+        {paymentMode === "stripe_test" && testPaymentIntent ? (
+          <details className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <summary className="cursor-pointer text-xs font-black text-sky-200">Test details</summary>
             {testPaymentIntent.ok ? (
-              <div className="grid gap-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+              <div className="mt-3 grid gap-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
                 <p className="font-black text-sky-200">Test PaymentIntent created</p>
                 <p>Intent: {testPaymentIntent.paymentIntentId}</p>
                 <p>Status: {testPaymentIntent.status}</p>
@@ -468,19 +489,12 @@ export function TaxiPartnerQuoteAcceptanceCard({
             ) : (
               <p className="text-xs font-bold leading-5 text-[var(--rp-warning)]">{testPaymentIntent.message}</p>
             )}
-          </div>
+          </details>
         ) : null}
-        {testPaymentIntent?.ok && testPaymentIntent.clientSecret && !userAccepted ? (
+        {paymentMode === "stripe_test" && testPaymentIntent?.ok && testPaymentIntent.clientSecret && !userAccepted ? (
           <div className="mt-4 grid gap-3">
-            <dl className="rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3">
-              <MoneyRow label="Fare share" value={formatHkdCents(moneyDisplay.fareShareCents)} />
-              <MoneyRow label="Platform fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
-              <MoneyRow label="Total" value={totalLabel} strong />
-              <MoneyRow label="Taxi partner" value={baseRequest.quotedByPartnerName ?? "Demo Taxi Partner"} />
-              <MoneyRow label="Quote expiry" value={formatQuoteExpiry(baseRequest.quoteExpiresAt)} />
-            </dl>
             <p className="rounded-[14px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
-              Use Stripe test card details from your Stripe dashboard/docs. Test card: 4242 4242 4242 4242.
+              Use Stripe test card details. Do not use a real card. Test card: 4242 4242 4242 4242.
             </p>
             <RidePodTestPaymentElement
               clientSecret={testPaymentIntent.clientSecret}
@@ -492,22 +506,6 @@ export function TaxiPartnerQuoteAcceptanceCard({
       </div>
 
       <div className="mt-5 grid gap-3 min-[520px]:grid-cols-2">
-        <button
-          type="button"
-          disabled={userAccepted || userDeclined}
-          onClick={() => {
-            setUnderstandsMockPayment(false);
-            setShowAcceptModal(true);
-          }}
-          className={cn(
-            "inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] px-5 text-sm font-black shadow-[0_14px_28px_rgba(14,165,233,0.22)] transition",
-            userAccepted
-              ? "bg-[var(--rp-card-muted)] text-[var(--rp-muted)]"
-              : "bg-sky-500 text-white hover:bg-sky-400",
-          )}
-        >
-          <WalletCards className="h-4 w-4" /> {quoteAboveCap ? "Accept higher quote" : "Accept quote"}
-        </button>
         <button
           type="button"
           disabled={userDeclined || userAccepted}
@@ -526,7 +524,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
               ? allAccepted
                 ? "Ready for pickup."
                 : "Waiting for other guests to accept."
-              : "The organizer may request a new quote."}
+              : "The organizer may request another quote."}
           </p>
         </div>
       ) : null}
@@ -537,9 +535,13 @@ export function TaxiPartnerQuoteAcceptanceCard({
 
       {showAcceptModal ? (
         <AcceptanceModal
-          title="Accept taxi partner quote?"
-          body="This records quote acceptance for the demo. No live money is charged."
-          confirmLabel={quoteAboveCap ? "Accept higher quote" : "Accept quote"}
+          title={quoteAboveCap ? "Quote above fare cap" : "Accept taxi quote"}
+          body={
+            quoteAboveCap
+              ? "This quote is above the original fare cap. Accept only if you agree to the higher amount."
+              : "Accept this shared taxi quote for the demo."
+          }
+          confirmLabel={quoteAboveCap ? "Accept higher quote" : "Accept quote in demo"}
           confirmDisabled={!understandsMockPayment}
           onCancel={() => setShowAcceptModal(false)}
           onConfirm={handleAcceptQuote}
@@ -558,15 +560,19 @@ export function TaxiPartnerQuoteAcceptanceCard({
               onChange={(event) => setUnderstandsMockPayment(event.target.checked)}
               className="mt-1 h-4 w-4 accent-sky-500"
             />
-            <span>I understand this records quote acceptance for the demo.</span>
+            <span>
+              {quoteAboveCap
+                ? "I understand this is a demo acceptance of a higher quote."
+                : "I understand this is a demo acceptance."}
+            </span>
           </label>
         </AcceptanceModal>
       ) : null}
 
       {showDeclineModal ? (
         <AcceptanceModal
-          title="Decline quote?"
-          body="If you decline, this taxi partner quote cannot proceed unless the organizer requests another quote or guests choose a new option."
+          title="Decline taxi quote?"
+          body="The organizer may request another quote or choose another option."
           confirmLabel="Decline quote"
           onCancel={() => setShowDeclineModal(false)}
           onConfirm={handleDeclineQuote}

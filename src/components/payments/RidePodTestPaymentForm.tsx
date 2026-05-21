@@ -50,7 +50,7 @@ export function RidePodTestPaymentForm({
     if (result.error || !result.paymentIntent) {
       setState({
         loading: false,
-        error: "Couldn’t confirm test payment. Try again.",
+        error: "Couldn't confirm test payment. Try again.",
       });
       return;
     }
@@ -60,10 +60,7 @@ export function RidePodTestPaymentForm({
       paymentIntentId: result.paymentIntent.id,
       status: result.paymentIntent.status,
       mockPaymentState,
-      message:
-        result.paymentIntent.status === "requires_capture"
-          ? "Test authorization complete. Capture is not implemented in this slice."
-          : "Test payment confirmed. No live money was charged.",
+      message: "Test payment confirmed. No live money was charged.",
     });
     setState({ loading: false, error: null });
   }

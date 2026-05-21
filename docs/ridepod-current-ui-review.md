@@ -867,3 +867,5 @@ UI-FIX-1 completed: homepage Taxi-first copy, How RidePod Works Taxi-first posit
 UI-FIX-2 completed: Taxi Partner Quote settlement / payout screens now use selected quote, guest acceptance, mock/test payment state, payout pending, and dispute window language instead of legacy host reimbursement/proof wording.
 
 UI-FIX-3 completed: Admin Review case detail now has a decision header, clearer case summary, improved evidence hierarchy, safer payment/payout copy, and grouped admin actions.
+
+UI-FIX-4 completed: Guest quote acceptance now shows one payment mode at a time. Mock sessions show demo acceptance only; Stripe test sessions show Stripe test payment only.
