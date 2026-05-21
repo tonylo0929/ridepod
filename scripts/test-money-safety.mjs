@@ -1273,7 +1273,7 @@ for (const taxiPartnerCopy of [
   "Waiting for all guests to accept the quote.",
   "Guests accepted the quote. Ride can proceed in demo mode.",
   "Dispute window is open before payout is marked ready.",
-  "Payout remains pending through the dispute window in demo mode.",
+  "Payout releases after the dispute window if no issue is reported.",
   "Payout is held while RidePod reviews the issue.",
   "Review is complete. Payout can be processed in demo mode.",
   "Payout was denied in demo review.",

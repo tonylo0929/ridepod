@@ -537,7 +537,7 @@ export function getTaxiPartnerQuoteDisplayStatus(
     return {
       label: "Payout pending",
       tone: "blue",
-      helperText: "Payout remains pending through the dispute window in demo mode.",
+      helperText: "Payout releases after the dispute window if no issue is reported.",
       primaryActionLabel: "View payout",
     };
   }
