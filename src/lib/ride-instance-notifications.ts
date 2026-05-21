@@ -29,6 +29,8 @@ export type RideInstanceNotificationType =
   | "taxi_partner_guests_accepting"
   | "taxi_partner_accepted"
   | "taxi_partner_declined"
+  | "taxi_partner_arrived"
+  | "taxi_partner_ride_started"
   | "taxi_partner_ride_completed"
   | "taxi_partner_payout_pending";
 export type RideInstanceNotificationViewerRole = "HOST" | "GUEST";
@@ -552,6 +554,44 @@ export function getRideInstanceNotifications(
           createdAt: "2026-05-18T10:00:00.000Z",
           read: false,
           audience: "HOST",
+        }),
+      );
+    }
+
+    if (taxiQuoteStatus.label === "Taxi partner arrived") {
+      items.push(
+        notification(rideInstance, {
+          stableKey: `taxi_partner_arrived:${rideInstance.id}`,
+          type: "taxi_partner_arrived",
+          title: "Taxi partner arrived",
+          body: "Meet at the pickup point.",
+          timeAgo: "2m",
+          group: "Today",
+          tone: "blue",
+          ctaLabel: "View pickup",
+          ctaTarget: host ? target : guestRideTarget,
+          createdAt: "2026-05-18T10:05:00.000Z",
+          read: false,
+          audience: host ? "HOST" : "LOCKED_GUESTS",
+        }),
+      );
+    }
+
+    if (taxiQuoteStatus.label === "Ride started") {
+      items.push(
+        notification(rideInstance, {
+          stableKey: `taxi_partner_ride_started:${rideInstance.id}`,
+          type: "taxi_partner_ride_started",
+          title: "Ride started",
+          body: "The shared taxi ride is in progress.",
+          timeAgo: "1m",
+          group: "Today",
+          tone: "blue",
+          ctaLabel: "View ride",
+          ctaTarget: host ? target : guestRideTarget,
+          createdAt: "2026-05-18T10:08:00.000Z",
+          read: false,
+          audience: host ? "HOST" : "LOCKED_GUESTS",
         }),
       );
     }

@@ -89,6 +89,8 @@ const notificationIcons: Record<RideInstanceNotificationType, typeof Bell> = {
   taxi_partner_guests_accepting: Clock3,
   taxi_partner_accepted: CheckCircle2,
   taxi_partner_declined: AlertTriangle,
+  taxi_partner_arrived: Car,
+  taxi_partner_ride_started: Car,
   taxi_partner_ride_completed: CheckCircle2,
   taxi_partner_payout_pending: WalletCards,
 };

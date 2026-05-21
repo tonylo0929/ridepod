@@ -60,6 +60,7 @@ export const TAXI_PARTNER_DRIVER_ASSIGNMENT_STATUSES = [
   "DRIVER_ASSIGNED",
   "DRIVER_EN_ROUTE",
   "ARRIVED",
+  "IN_PROGRESS",
   "COMPLETED",
   "CANCELED",
 ] as const;
@@ -84,6 +85,13 @@ export type TaxiPartnerReviewState = "OPEN" | "UNDER_REVIEW" | "NEEDS_MORE_INFO"
 
 export type TaxiPartnerDisputeStatus = "OPEN" | "UNDER_REVIEW" | "RESOLVED";
 
+export type TaxiPartnerPickupStatus =
+  | "READY_FOR_PICKUP"
+  | "PARTNER_ARRIVED"
+  | "RIDERS_CHECKING_IN"
+  | "RIDE_STARTED"
+  | "PICKUP_ISSUE";
+
 export type TaxiPartnerQuoteRequest = {
   id: string;
   podId: string;
@@ -101,6 +109,7 @@ export type TaxiPartnerQuoteRequest = {
   guestAcceptanceStatus: TaxiPartnerGuestAcceptanceStatus;
   driverAssignmentStatus: TaxiPartnerDriverAssignmentStatus;
   payoutStatus: TaxiPartnerPayoutStatus;
+  pickupStatus?: TaxiPartnerPickupStatus;
   reviewState?: TaxiPartnerReviewState;
   disputeStatus?: TaxiPartnerDisputeStatus;
   luggageCount?: number;
@@ -606,6 +615,7 @@ export function acceptTaxiPartnerMockJob(requestId: string | null | undefined): 
     guestAcceptanceStatus: "ALL_ACCEPTED",
     driverAssignmentStatus: "PARTNER_ACCEPTED",
     payoutStatus: "NOT_READY",
+    pickupStatus: "READY_FOR_PICKUP",
     notes: "Taxi partner accepted the shared taxi job in demo mode.",
   };
 
@@ -615,6 +625,66 @@ export function acceptTaxiPartnerMockJob(requestId: string | null | undefined): 
     success: true,
     quoteRequest,
     message: "Job accepted. This ride is ready for pickup in demo mode.",
+    nextStatus: quoteRequest.driverAssignmentStatus,
+  };
+}
+
+export function markTaxiPartnerArrivedMock(requestId: string | null | undefined): TaxiPartnerMockJobResult {
+  const existingRequest = getTaxiPartnerQuoteRequest(requestId);
+
+  if (!existingRequest) {
+    return {
+      success: false,
+      quoteRequest: null,
+      message: "Taxi partner quote request not found.",
+      nextStatus: null,
+      error: "Taxi partner quote request not found.",
+    };
+  }
+
+  const quoteRequest: TaxiPartnerQuoteRequest = {
+    ...existingRequest,
+    driverAssignmentStatus: "ARRIVED",
+    pickupStatus: "PARTNER_ARRIVED",
+    notes: "Taxi partner marked arrived at the pickup point in demo mode.",
+  };
+
+  upsertMockTaxiPartnerQuoteRequest(quoteRequest);
+
+  return {
+    success: true,
+    quoteRequest,
+    message: "Taxi partner arrived. Meet at the pickup point.",
+    nextStatus: quoteRequest.driverAssignmentStatus,
+  };
+}
+
+export function startTaxiPartnerRideMock(requestId: string | null | undefined): TaxiPartnerMockJobResult {
+  const existingRequest = getTaxiPartnerQuoteRequest(requestId);
+
+  if (!existingRequest) {
+    return {
+      success: false,
+      quoteRequest: null,
+      message: "Taxi partner quote request not found.",
+      nextStatus: null,
+      error: "Taxi partner quote request not found.",
+    };
+  }
+
+  const quoteRequest: TaxiPartnerQuoteRequest = {
+    ...existingRequest,
+    driverAssignmentStatus: "IN_PROGRESS",
+    pickupStatus: "RIDE_STARTED",
+    notes: "Taxi partner started the shared taxi ride in demo mode.",
+  };
+
+  upsertMockTaxiPartnerQuoteRequest(quoteRequest);
+
+  return {
+    success: true,
+    quoteRequest,
+    message: "Ride started. The shared taxi ride is in progress.",
     nextStatus: quoteRequest.driverAssignmentStatus,
   };
 }
@@ -782,10 +852,53 @@ export function getTaxiPartnerQuoteDisplayStatus(
   }
 
   if (
+    request.pickupStatus === "PICKUP_ISSUE"
+  ) {
+    return {
+      label: "Pickup issue",
+      tone: "amber",
+      helperText: "RidePod may need to review this pickup.",
+      primaryActionLabel: "View review",
+    };
+  }
+
+  if (
+    request.pickupStatus === "RIDE_STARTED" ||
+    request.driverAssignmentStatus === "IN_PROGRESS"
+  ) {
+    return {
+      label: "Ride started",
+      tone: "blue",
+      helperText: "The shared taxi ride is in progress.",
+      primaryActionLabel: "View ride",
+    };
+  }
+
+  if (request.pickupStatus === "RIDERS_CHECKING_IN") {
+    return {
+      label: "Riders checking in",
+      tone: "blue",
+      helperText: "Waiting for guests to confirm they are at pickup.",
+      primaryActionLabel: "View pickup",
+    };
+  }
+
+  if (
+    request.pickupStatus === "PARTNER_ARRIVED" ||
+    request.driverAssignmentStatus === "ARRIVED"
+  ) {
+    return {
+      label: "Taxi partner arrived",
+      tone: "blue",
+      helperText: "Meet at the pickup point.",
+      primaryActionLabel: "View pickup",
+    };
+  }
+
+  if (
     request.driverAssignmentStatus === "PARTNER_ACCEPTED" ||
     request.driverAssignmentStatus === "DRIVER_ASSIGNED" ||
-    request.driverAssignmentStatus === "DRIVER_EN_ROUTE" ||
-    request.driverAssignmentStatus === "ARRIVED"
+    request.driverAssignmentStatus === "DRIVER_EN_ROUTE"
   ) {
     return {
       label: "Ready for pickup",

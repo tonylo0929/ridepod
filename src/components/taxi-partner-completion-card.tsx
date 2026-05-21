@@ -51,6 +51,7 @@ export function TaxiPartnerCompletionCard({
   const [localRequest, setLocalRequest] = useState<TaxiPartnerQuoteRequest | null>(null);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [understandsMockCompletion, setUnderstandsMockCompletion] = useState(false);
+  const [riderHere, setRiderHere] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const activeRequest = localRequest ?? baseRequest;
   const lockedGuestCount = Math.max(1, activeRequest?.acceptedGuestCount ?? pod.seatsFilled);
@@ -62,9 +63,15 @@ export function TaxiPartnerCompletionCard({
   const isPayoutPending = activeRequest?.payoutStatus === "PENDING_DISPUTE_WINDOW";
   const isDisputeReview = activeRequest?.payoutStatus === "HELD_FOR_REVIEW";
   const completed = activeRequest?.driverAssignmentStatus === "COMPLETED";
-  const activeStatusLabel = isPayoutPending || completed || isDisputeReview ? displayStatus.label : "Ready for taxi partner";
+  const pickupActive =
+    displayStatus.label === "Ready for pickup" ||
+    displayStatus.label === "Taxi partner arrived" ||
+    displayStatus.label === "Riders checking in" ||
+    displayStatus.label === "Ride started" ||
+    displayStatus.label === "Pickup issue";
+  const activeStatusLabel = isPayoutPending || completed || isDisputeReview || pickupActive ? displayStatus.label : "Ready for taxi partner";
   const activeStatusHelper =
-    isPayoutPending || completed || isDisputeReview
+    isPayoutPending || completed || isDisputeReview || pickupActive
       ? displayStatus.helperText
       : "Guests accepted the quote. In the live version, the taxi partner would complete the ride here.";
 
@@ -192,6 +199,58 @@ export function TaxiPartnerCompletionCard({
         </div>
       ) : (
         <>
+          {pickupActive ? (
+            <div className="mt-5 rounded-[22px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.2))] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-black text-[var(--rp-text)]">Pickup status</h3>
+                  <p className="mt-1 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+                    Taxi partner accepted. Meet at the pickup point.
+                  </p>
+                </div>
+                <Badge className="bg-sky-400/10 text-sky-300 ring-sky-400/25">{displayStatus.label}</Badge>
+              </div>
+              <dl className="mt-4">
+                <SummaryRow label="Pickup point" value={pod.pickupHub} />
+                <SummaryRow label="Pickup time" value={`${rideInstance.displayDate}, ${rideInstance.departureTime}`} />
+                <SummaryRow label="Taxi partner" value={activeRequest.quotedByPartnerName ?? "Demo Taxi Partner"} />
+                <SummaryRow label="Taxi type" value={`${taxiPartnerTaxiTypeLabels[activeRequest.requestedTaxiType]} taxi`} />
+                <SummaryRow label="Route" value={`${rideInstance.originLabel} to ${rideInstance.destinationLabel}`} />
+                <SummaryRow label="Guests accepted" value={`${lockedGuestCount} / ${lockedGuestCount}`} />
+              </dl>
+              <div className="mt-4 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3">
+                <p className="text-sm font-black text-sky-100">Live pickup tracking</p>
+                <p className="mt-1 text-xs font-bold leading-5 text-sky-100">
+                  Future: show taxi partner location and pickup progress here. No live GPS is shared in this beta prototype.
+                </p>
+              </div>
+              <div className="mt-4 grid gap-3 min-[520px]:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setMessage("Pickup details shown. No live GPS is shared in this beta prototype.")}
+                  className="inline-flex min-h-12 items-center justify-center rounded-[16px] bg-sky-500 px-5 text-sm font-black text-white shadow-[0_14px_28px_rgba(14,165,233,0.22)] transition hover:bg-sky-400"
+                >
+                  View pickup details
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRiderHere(true);
+                    setMessage("You marked yourself at pickup.");
+                  }}
+                  className="inline-flex min-h-12 items-center justify-center rounded-[16px] border border-sky-400/30 bg-sky-400/10 px-5 text-sm font-black text-sky-200 transition hover:bg-sky-400/15"
+                >
+                  I'm here
+                </button>
+              </div>
+              {riderHere ? (
+                <p className="mt-3 rounded-[16px] border border-emerald-400/20 bg-emerald-400/10 p-3 text-xs font-bold leading-5 text-emerald-200">
+                  You marked yourself at pickup. 1 / {lockedGuestCount} guests here.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <p className="mt-5 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
             This only updates the demo state. No real taxi payout is sent.
           </p>

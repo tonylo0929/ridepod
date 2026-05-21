@@ -19,6 +19,8 @@ import {
   acceptTaxiPartnerMockJob,
   declineTaxiPartnerMockJob,
   getTaxiPartnerQuoteMoneyDisplay,
+  markTaxiPartnerArrivedMock,
+  startTaxiPartnerRideMock,
   submitTaxiPartnerMockQuote,
   type TaxiPartnerQuoteRequest,
   type TaxiPartnerTaxiType,
@@ -30,6 +32,8 @@ type ActiveRideStatus =
   | "Job ready"
   | "Waiting for guests to accept"
   | "Ready for pickup"
+  | "Taxi partner arrived"
+  | "Ride started"
   | "Ride completed"
   | "Payout pending"
   | "Dispute review"
@@ -215,6 +219,10 @@ function statusClass(status: string) {
     return "bg-emerald-400/10 text-emerald-300 ring-emerald-400/25";
   }
 
+  if (status === "Taxi partner arrived" || status === "Ride started") {
+    return "bg-sky-400/10 text-sky-300 ring-sky-400/25";
+  }
+
   if (status === "Payout pending" || status === "Waiting for guests to accept" || status === "Quote requested") {
     return "bg-amber-400/10 text-amber-300 ring-amber-400/25";
   }
@@ -262,6 +270,8 @@ export default function TaxiPartnerDashboardPage() {
   const [activeRides, setActiveRides] = useState(initialActiveRides);
   const [acceptJobRideId, setAcceptJobRideId] = useState<string | null>(null);
   const [declineJobRideId, setDeclineJobRideId] = useState<string | null>(null);
+  const [arrivedRideId, setArrivedRideId] = useState<string | null>(null);
+  const [startRideId, setStartRideId] = useState<string | null>(null);
   const [understandsJobAssignment, setUnderstandsJobAssignment] = useState(false);
   const [completionRideId, setCompletionRideId] = useState<string | null>(null);
   const [understandsCompletion, setUnderstandsCompletion] = useState(false);
@@ -280,6 +290,8 @@ export default function TaxiPartnerDashboardPage() {
   );
   const acceptJobRide = activeRides.find((ride) => ride.id === acceptJobRideId) ?? null;
   const declineJobRide = activeRides.find((ride) => ride.id === declineJobRideId) ?? null;
+  const arrivedRide = activeRides.find((ride) => ride.id === arrivedRideId) ?? null;
+  const startRideTarget = activeRides.find((ride) => ride.id === startRideId) ?? null;
   const acceptJobMoney = acceptJobRide
     ? getTaxiPartnerQuoteMoneyDisplay({ quoteAmountCents: acceptJobRide.quoteCents, currency: "HKD" }, acceptJobRide.guestCount)
     : null;
@@ -389,6 +401,38 @@ export default function TaxiPartnerDashboardPage() {
     setDeclineJobRideId(null);
   }
 
+  function markArrived() {
+    const ride = activeRides.find((activeRide) => activeRide.id === arrivedRideId);
+    if (!ride) return;
+
+    markTaxiPartnerArrivedMock(ride.requestId);
+    setActiveRides((current) =>
+      current.map((activeRide) =>
+        activeRide.id === ride.id
+          ? { ...activeRide, status: "Taxi partner arrived" }
+          : activeRide,
+      ),
+    );
+    setCompletionMessage("Taxi partner arrived. Meet at the pickup point.");
+    setArrivedRideId(null);
+  }
+
+  function startRide() {
+    const ride = activeRides.find((activeRide) => activeRide.id === startRideId);
+    if (!ride) return;
+
+    startTaxiPartnerRideMock(ride.requestId);
+    setActiveRides((current) =>
+      current.map((activeRide) =>
+        activeRide.id === ride.id
+          ? { ...activeRide, status: "Ride started" }
+          : activeRide,
+      ),
+    );
+    setCompletionMessage("Ride started. The shared taxi ride is in progress.");
+    setStartRideId(null);
+  }
+
   return (
     <main className="min-h-screen bg-[var(--rp-background)] px-4 py-6 text-[var(--rp-text)]">
       <div className="mx-auto flex max-w-6xl flex-col gap-5">
@@ -412,7 +456,7 @@ export default function TaxiPartnerDashboardPage() {
           <div className="mt-5 flex items-start gap-3 rounded-[18px] border border-sky-400/25 bg-sky-400/10 p-4 text-sky-100">
             <Info className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" />
             <p className="text-sm font-bold leading-6">
-              Future beta prototype. RidePod does not provide drivers. Taxi partners are external licensed providers. No real taxi dispatch or payout yet.
+              Future beta prototype. RidePod does not provide drivers. Taxi partners are external licensed providers. No real dispatch or payout yet.
             </p>
           </div>
         </section>
@@ -715,6 +759,70 @@ export default function TaxiPartnerDashboardPage() {
                       <FieldRow label="Accessibility" value={ride.accessibility} />
                     </div>
 
+                    {["Ready for pickup", "Taxi partner arrived", "Ride started"].includes(ride.status) ? (
+                      <div className="mt-3 rounded-[18px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(15,23,42,0.16))] p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <h4 className="text-base font-black text-[var(--rp-text)]">Pickup coordination</h4>
+                            <p className="mt-1 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+                              Use this demo checklist to coordinate the shared pickup.
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <Badge className={statusClass(ride.status)}>{ride.status}</Badge>
+                            <Badge className={statusClass("Guests accepted")}>Guests accepted</Badge>
+                            <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">Demo mode</Badge>
+                          </div>
+                        </div>
+                        <div className="mt-3 grid gap-2 min-[620px]:grid-cols-2">
+                          <FieldRow label="Pickup point" value={ride.pickup} />
+                          <FieldRow label="Dropoff point" value={ride.dropoff} />
+                          <FieldRow label="Pickup time" value={ride.dateTime} />
+                          <FieldRow label="Guest count" value={`${ride.guestCount} guests accepted`} />
+                          <FieldRow label="Taxi type" value={`${ride.taxiType} taxi`} />
+                          <FieldRow label="Luggage" value={`${ride.luggageCount} large luggage`} />
+                        </div>
+                        <p className="mt-3 rounded-[14px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
+                          Live GPS is not enabled yet. No rider phone numbers or private profile details are shown.
+                        </p>
+                        <div className="mt-4 grid gap-2 min-[620px]:grid-cols-3">
+                          <button
+                            type="button"
+                            onClick={() => setArrivedRideId(ride.id)}
+                            disabled={ride.status !== "Ready for pickup"}
+                            className={cn(
+                              "inline-flex min-h-11 items-center justify-center rounded-[14px] px-4 text-sm font-black transition",
+                              ride.status === "Ready for pickup"
+                                ? "bg-sky-500 text-white shadow-[0_14px_28px_rgba(14,165,233,0.22)] hover:bg-sky-400"
+                                : "border border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted)]",
+                            )}
+                          >
+                            Mark arrived
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setStartRideId(ride.id)}
+                            disabled={ride.status === "Ride started"}
+                            className={cn(
+                              "inline-flex min-h-11 items-center justify-center rounded-[14px] px-4 text-sm font-black transition",
+                              ride.status !== "Ride started"
+                                ? "border border-sky-400/30 bg-sky-400/10 text-sky-200 hover:bg-sky-400/15"
+                                : "border border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted)]",
+                            )}
+                          >
+                            Start ride
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCompletionMessage("Contact organizer placeholder. No phone number is exposed in this demo.")}
+                            className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+                          >
+                            Contact organizer
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+
                     <div className="mt-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3">
                       <dl>
                         <MoneyRow label="Taxi partner quote" value={formatHkdCents(ride.quoteCents)} />
@@ -734,7 +842,7 @@ export default function TaxiPartnerDashboardPage() {
                       </p>
                     ) : (
                       <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-                        Demo only. No real taxi dispatch happens.
+                        Demo only. No real dispatch happens.
                       </p>
                     )}
 
@@ -760,7 +868,7 @@ export default function TaxiPartnerDashboardPage() {
                       </div>
                     ) : null}
 
-                    {ride.status === "Ready for pickup" ? (
+                    {ride.status === "Ready for pickup" || ride.status === "Taxi partner arrived" || ride.status === "Ride started" ? (
                       <button
                         type="button"
                         onClick={() => setCompletionRideId(ride.id)}
@@ -780,20 +888,46 @@ export default function TaxiPartnerDashboardPage() {
                     ? "Job accepted"
                     : completionMessage.startsWith("Partner declined")
                       ? "Partner declined"
-                      : "Ride completed"}
+                      : completionMessage.startsWith("Taxi partner arrived")
+                        ? "Taxi partner arrived"
+                        : completionMessage.startsWith("Ride started")
+                          ? "Ride started"
+                          : "Ride completed"}
                 </p>
                 <p className="mt-1 text-xs font-bold leading-5 text-emerald-200">
                   {completionMessage.startsWith("Job accepted")
                     ? "This ride is ready for pickup in demo mode."
                     : completionMessage.startsWith("Partner declined")
                       ? "Organizer may request another quote."
-                      : "Payout is pending until the dispute window ends."}
+                      : completionMessage.startsWith("Taxi partner arrived")
+                        ? "Meet at the pickup point."
+                        : completionMessage.startsWith("Ride started")
+                          ? "The shared taxi ride is in progress."
+                          : "Payout is pending until the dispute window ends."}
                 </p>
               </div>
             ) : null}
           </Card>
 
           <div className="grid gap-5">
+            <Card className="border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.12)),var(--rp-card)]">
+              <div className="flex items-start gap-3">
+                <CarFront className="mt-1 h-6 w-6 text-sky-300" />
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-xl font-black">Live pickup tracking</h2>
+                    <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">Coming later</Badge>
+                  </div>
+                  <p className="mt-2 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+                    Future: show taxi partner location and pickup progress here.
+                  </p>
+                </div>
+              </div>
+              <p className="mt-4 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
+                No live GPS is shared in this beta prototype.
+              </p>
+            </Card>
+
             <Card className="border-sky-400/25">
               <div className="flex items-start gap-3">
                 <WalletCards className="mt-1 h-6 w-6 text-sky-300" />
@@ -857,7 +991,7 @@ export default function TaxiPartnerDashboardPage() {
               Accept this taxi job?
             </h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              You are accepting this shared taxi pod in demo mode. No real taxi dispatch or payout happens.
+              You are accepting this shared taxi pod in demo mode. No real dispatch or payout happens.
             </p>
             <dl className="mt-5 rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
               <MoneyRow label="Route" value={acceptJobRide.route} />
@@ -936,6 +1070,74 @@ export default function TaxiPartnerDashboardPage() {
                 className="min-h-12 rounded-2xl border border-amber-400/30 bg-amber-400/10 text-sm font-black text-amber-200 transition hover:bg-amber-400/15"
               >
                 Decline job
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {arrivedRide ? (
+        <div
+          className="fixed inset-0 z-[80] grid place-items-center bg-[rgba(3,7,18,0.68)] px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="taxi-partner-arrived-title"
+        >
+          <section className="w-full max-w-[460px] rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
+            <h2 id="taxi-partner-arrived-title" className="text-2xl font-black leading-tight">
+              Mark arrived?
+            </h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              This demo action tells the group the taxi partner is at the pickup point. No live GPS is shared.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setArrivedRideId(null)}
+                className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={markArrived}
+                className="min-h-12 rounded-2xl border border-sky-400 bg-sky-500 text-sm font-black text-white transition hover:bg-sky-400"
+              >
+                Mark arrived
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {startRideTarget ? (
+        <div
+          className="fixed inset-0 z-[80] grid place-items-center bg-[rgba(3,7,18,0.68)] px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="taxi-partner-start-ride-title"
+        >
+          <section className="w-full max-w-[460px] rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
+            <h2 id="taxi-partner-start-ride-title" className="text-2xl font-black leading-tight">
+              Start ride?
+            </h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              This demo action marks the shared taxi ride as started.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setStartRideId(null)}
+                className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={startRide}
+                className="min-h-12 rounded-2xl border border-sky-400 bg-sky-500 text-sm font-black text-white transition hover:bg-sky-400"
+              >
+                Start ride
               </button>
             </div>
           </section>
