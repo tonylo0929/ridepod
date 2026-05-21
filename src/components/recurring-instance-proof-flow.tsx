@@ -329,6 +329,16 @@ const taxiPartnerQuoteDisputeCaseTypeMap: Record<
   Other: { caseType: "TAXI_PARTNER_GUEST_DISPUTE", severity: "MEDIUM" },
 };
 
+const taxiPartnerQuoteCaseTypeLabels: Record<
+  (typeof taxiPartnerQuoteDisputeCaseTypeMap)[(typeof taxiPartnerQuoteDisputeIssueTypes)[number]]["caseType"],
+  string
+> = {
+  TAXI_PARTNER_GUEST_DISPUTE: "Taxi partner guest dispute",
+  TAXI_PARTNER_PICKUP_ISSUE: "Pickup issue",
+  TAXI_PARTNER_COMPLETION_DISPUTE: "Completion dispute",
+  TAXI_PARTNER_SAFETY_CONCERN: "Taxi partner safety concern",
+};
+
 function RideInstanceSettlementSummary({
   rideInstance,
   statusLabel,
@@ -574,7 +584,7 @@ function SettlementDetailsScreen({
             ) : null}
             {isTaxiPartnerQuote && mockTaxiPartnerCaseQueued ? (
               <p className="mt-1 text-xs">
-                Taxi partner case added to manual review{mockTaxiPartnerCaseType ? ` as ${mockTaxiPartnerCaseType.replaceAll("_", " ").toLowerCase()}` : ""}.
+                Taxi partner case added to manual review{mockTaxiPartnerCaseType ? ` as ${taxiPartnerQuoteCaseTypeLabels[mockTaxiPartnerCaseType as keyof typeof taxiPartnerQuoteCaseTypeLabels]}` : ""}.
               </p>
             ) : null}
             {isTaxiPartnerQuote ? (
