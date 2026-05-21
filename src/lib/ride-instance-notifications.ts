@@ -21,6 +21,10 @@ export type RideInstanceNotificationType =
   | "taxi_partner_dispute_opened"
   | "taxi_partner_guest_dispute_review"
   | "taxi_partner_payout_held"
+  | "taxi_partner_payout_ready"
+  | "taxi_partner_more_info_needed"
+  | "taxi_partner_payout_denied"
+  | "taxi_partner_dispute_resolved"
   | "taxi_partner_quote_received"
   | "taxi_partner_guests_accepting"
   | "taxi_partner_ride_completed"
@@ -356,6 +360,82 @@ export function getRideInstanceNotifications(
           }),
         );
       }
+    }
+
+    if (host && taxiQuoteStatus.label === "Payout ready") {
+      items.push(
+        notification(rideInstance, {
+          stableKey: `taxi_partner_payout_ready:${rideInstance.id}`,
+          type: "taxi_partner_payout_ready",
+          title: "Payout ready",
+          body: "Review is complete. Payout can be processed in demo mode.",
+          timeAgo: "1h",
+          group: "Today",
+          tone: "green",
+          ctaLabel: "View payout",
+          ctaTarget: target,
+          createdAt: "2026-05-18T09:30:00.000Z",
+          read: false,
+          audience: "HOST",
+        }),
+      );
+    }
+
+    if (host && taxiQuoteStatus.label === "More info needed") {
+      items.push(
+        notification(rideInstance, {
+          stableKey: `taxi_partner_more_info_needed:${rideInstance.id}`,
+          type: "taxi_partner_more_info_needed",
+          title: "More info needed",
+          body: "RidePod needs more information before resolving this taxi partner case.",
+          timeAgo: "2h",
+          group: "Today",
+          tone: "amber",
+          ctaLabel: "View review",
+          ctaTarget: target,
+          createdAt: "2026-05-18T08:30:00.000Z",
+          read: false,
+          audience: "HOST",
+        }),
+      );
+    }
+
+    if (host && taxiQuoteStatus.label === "Payout denied") {
+      items.push(
+        notification(rideInstance, {
+          stableKey: `taxi_partner_payout_denied:${rideInstance.id}`,
+          type: "taxi_partner_payout_denied",
+          title: "Payout denied in demo",
+          body: "Payout was denied in demo review.",
+          timeAgo: "4h",
+          group: "Today",
+          tone: "red",
+          ctaLabel: "View review",
+          ctaTarget: target,
+          createdAt: "2026-05-18T06:30:00.000Z",
+          read: false,
+          audience: "HOST",
+        }),
+      );
+    }
+
+    if (taxiQuoteStatus.label === "Dispute resolved") {
+      items.push(
+        notification(rideInstance, {
+          stableKey: `taxi_partner_dispute_resolved:${rideInstance.id}`,
+          type: "taxi_partner_dispute_resolved",
+          title: "Dispute resolved",
+          body: "RidePod marked this dispute resolved in demo mode.",
+          timeAgo: "1d",
+          group: "This week",
+          tone: "green",
+          ctaLabel: "View details",
+          ctaTarget: host ? target : guestRideTarget,
+          createdAt: "2026-05-17T10:30:00.000Z",
+          read: false,
+          audience: host ? "HOST" : "LOCKED_GUESTS",
+        }),
+      );
     }
 
     if (taxiQuoteStatus.label === "Quote received") {
