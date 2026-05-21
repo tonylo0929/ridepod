@@ -112,10 +112,27 @@ function MemberPaymentRow({ pod, member }: { pod: RidePod; member: RidePod["memb
   );
 }
 
+function getTaxiPartnerDashboardRide(pod: RidePod) {
+  const rides = pod.upcomingRideInstances ?? [];
+  const reviewLabels = new Set([
+    "Dispute review",
+    "Payout ready",
+    "Payout denied",
+    "More info needed",
+    "Under review",
+    "Dispute resolved",
+    "Closed",
+  ]);
+
+  return rides.find((ride) => reviewLabels.has(getRideInstanceDisplayStatus(ride, pod).label)) ?? rides[0] ?? null;
+}
+
 function HostPodCard({ pod }: { pod: RidePod }) {
   const readyMembers = getReadyMembers(pod);
   const progress = (readyMembers / pod.members.length) * 100;
-  const nextRide = pod.upcomingRideInstances?.[0] ?? null;
+  const nextRide = pod.rideOption === "taxi_partner_quote"
+    ? getTaxiPartnerDashboardRide(pod)
+    : pod.upcomingRideInstances?.[0] ?? null;
   const taxiPartnerQuoteStatus =
     pod.rideOption === "taxi_partner_quote" && nextRide
       ? getRideInstanceDisplayStatus(nextRide, pod)
