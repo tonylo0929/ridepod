@@ -2028,6 +2028,22 @@ function getRecommendedTaxiType(riders: number, bags: number): TaxiTypeId {
   return "standard";
 }
 
+function getMaxBagsForRiders(riders: number) {
+  const fittingOptions = taxiTypeOptions.filter((option) => riders <= option.maxRiders);
+  return Math.max(...fittingOptions.map((option) => option.maxBags));
+}
+
+function getBestTaxiForInputs(riders: number, bags: number) {
+  const recommendedId = getRecommendedTaxiType(riders, bags);
+  const recommendedOption = taxiTypeOptions.find((option) => option.id === recommendedId);
+
+  if (recommendedOption && riders <= recommendedOption.maxRiders && bags <= recommendedOption.maxBags) {
+    return recommendedOption;
+  }
+
+  return taxiTypeOptions.find((option) => riders <= option.maxRiders && bags <= option.maxBags) ?? taxiTypeOptions[0];
+}
+
 function RideCategoryCard({
   category,
   selected,
@@ -2161,6 +2177,7 @@ function TaxiTypeSelector({
     (option) =>
       peopleVehicle.seatsAvailable <= option.maxRiders && peopleVehicle.bags <= option.maxBags,
   );
+  const maxBagsForRiders = getMaxBagsForRiders(peopleVehicle.seatsAvailable);
   const visibleTaxiOptions = taxiTypeOptions.map(
     (_, offset) => taxiTypeOptions[(selectedIndex + offset) % taxiTypeOptions.length],
   );
@@ -2179,17 +2196,27 @@ function TaxiTypeSelector({
 
   function updateRiders(nextRiders: number) {
     const riders = Math.min(6, Math.max(1, nextRiders));
+    const bags = Math.min(peopleVehicle.bags, getMaxBagsForRiders(riders));
+    const nextTaxi = getBestTaxiForInputs(riders, bags);
+
     onPeopleVehicleChange({
       ...peopleVehicle,
       seatsAvailable: riders,
+      bags,
+      taxiType: nextTaxi.id,
+      vehicleType: nextTaxi.title,
     });
   }
 
   function updateBags(nextBags: number) {
-    const bags = Math.min(6, Math.max(0, nextBags));
+    const bags = Math.min(maxBagsForRiders, Math.max(0, nextBags));
+    const nextTaxi = getBestTaxiForInputs(peopleVehicle.seatsAvailable, bags);
+
     onPeopleVehicleChange({
       ...peopleVehicle,
       bags,
+      taxiType: nextTaxi.id,
+      vehicleType: nextTaxi.title,
     });
   }
 
@@ -2225,7 +2252,7 @@ function TaxiTypeSelector({
           label="Bags"
           value={peopleVehicle.bags}
           min={0}
-          max={8}
+          max={maxBagsForRiders}
           icon={<Luggage className="h-5 w-5" />}
           onChange={updateBags}
         />
