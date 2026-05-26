@@ -2425,21 +2425,21 @@ function TaxiNeedsSelector({
           Add bag details before the taxi partner quotes.
         </p>
 
-        <div className="mt-6 rounded-[22px] border border-[var(--rp-primary)]/35 bg-[rgba(7,19,38,0.62)] p-4">
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-muted)]">Luggage count</p>
-          <div className="mt-4 grid grid-cols-[52px_1fr_52px] items-center gap-4">
+        <div className="mt-6 rounded-[22px] border border-[var(--rp-primary)]/35 bg-[rgba(7,19,38,0.62)] p-3">
+          <p className="text-center text-[11px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">Luggage count</p>
+          <div className="mt-4 grid grid-cols-[42px_minmax(0,1fr)_42px] items-center gap-2">
             <button
               type="button"
               aria-label="Decrease luggage count"
               disabled={peopleVehicle.bags <= minBags}
               onClick={() => onPeopleVehicleChange({ ...peopleVehicle, bags: Math.max(minBags, peopleVehicle.bags - 1) })}
-              className="grid h-12 w-12 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)] disabled:opacity-35"
+              className="grid h-10 w-10 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)] disabled:opacity-35"
             >
               <Minus className="h-5 w-5" />
             </button>
-            <div>
+            <div className="min-w-0 text-center">
               <p className="text-5xl font-black leading-none text-[var(--rp-text)]">{peopleVehicle.bags}</p>
-              <p className="mt-2 text-xs font-semibold text-[var(--rp-muted)]">
+              <p className="mx-auto mt-2 max-w-[74px] text-xs font-semibold leading-4 text-[var(--rp-muted)]">
                 {peopleVehicle.bags === 1 ? "Standard piece" : "Standard pieces"}
               </p>
             </div>
@@ -2448,7 +2448,7 @@ function TaxiNeedsSelector({
               aria-label="Increase luggage count"
               disabled={peopleVehicle.bags >= maxBags}
               onClick={() => onPeopleVehicleChange({ ...peopleVehicle, bags: Math.min(maxBags, peopleVehicle.bags + 1) })}
-              className="grid h-12 w-12 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)] disabled:opacity-35"
+              className="grid h-10 w-10 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)] disabled:opacity-35"
             >
               <Plus className="h-5 w-5" />
             </button>
