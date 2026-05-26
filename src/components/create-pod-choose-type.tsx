@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -2349,6 +2349,10 @@ function TaxiTypeSelector({
 function TaxiOptionImage({ src, alt }: { src: string; alt: string }) {
   const [imageSrc, setImageSrc] = useState(src);
 
+  useEffect(() => {
+    setImageSrc(src);
+  }, [src]);
+
   return (
     <Image
       src={imageSrc}
@@ -2356,6 +2360,7 @@ function TaxiOptionImage({ src, alt }: { src: string; alt: string }) {
       width={360}
       height={190}
       sizes="(max-width: 640px) 320px, 360px"
+      unoptimized
       className="h-full w-full object-contain"
       onError={() => setImageSrc(TAXI_IMAGE_FALLBACK_SRC)}
     />
