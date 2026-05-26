@@ -2021,29 +2021,6 @@ function getTaxiTypeLabel(taxiType: TaxiTypeId) {
   return taxiTypeOptions.find((option) => option.id === taxiType)?.title ?? legacyLabels[taxiType] ?? "Standard 4-seat taxi";
 }
 
-function getRecommendedTaxiType(riders: number, bags: number): TaxiTypeId {
-  if (riders >= 5) return "six_seat";
-  if (bags >= 4) return "large_luggage_4_seat";
-  if (bags <= 2) return "compact_4_seat";
-  return "standard";
-}
-
-function getMaxBagsForRiders(riders: number) {
-  const fittingOptions = taxiTypeOptions.filter((option) => riders <= option.maxRiders);
-  return Math.max(...fittingOptions.map((option) => option.maxBags));
-}
-
-function getBestTaxiForInputs(riders: number, bags: number) {
-  const recommendedId = getRecommendedTaxiType(riders, bags);
-  const recommendedOption = taxiTypeOptions.find((option) => option.id === recommendedId);
-
-  if (recommendedOption && riders <= recommendedOption.maxRiders && bags <= recommendedOption.maxBags) {
-    return recommendedOption;
-  }
-
-  return taxiTypeOptions.find((option) => riders <= option.maxRiders && bags <= option.maxBags) ?? taxiTypeOptions[0];
-}
-
 function RideCategoryCard({
   category,
   selected,
@@ -2174,7 +2151,6 @@ function TaxiTypeSelector({
     (option) =>
       peopleVehicle.seatsAvailable <= option.maxRiders && peopleVehicle.bags <= option.maxBags,
   );
-  const maxBagsForRiders = getMaxBagsForRiders(peopleVehicle.seatsAvailable);
   const doesNotFit =
     peopleVehicle.seatsAvailable > selectedOption.maxRiders || peopleVehicle.bags > selectedOption.maxBags;
 
@@ -2186,32 +2162,6 @@ function TaxiTypeSelector({
     });
   }
 
-  function updateRiders(nextRiders: number) {
-    const riders = Math.min(6, Math.max(1, nextRiders));
-    const bags = Math.min(peopleVehicle.bags, getMaxBagsForRiders(riders));
-    const nextTaxi = getBestTaxiForInputs(riders, bags);
-
-    onPeopleVehicleChange({
-      ...peopleVehicle,
-      seatsAvailable: riders,
-      bags,
-      taxiType: nextTaxi.id,
-      vehicleType: nextTaxi.title,
-    });
-  }
-
-  function updateBags(nextBags: number) {
-    const bags = Math.min(maxBagsForRiders, Math.max(0, nextBags));
-    const nextTaxi = getBestTaxiForInputs(peopleVehicle.seatsAvailable, bags);
-
-    onPeopleVehicleChange({
-      ...peopleVehicle,
-      bags,
-      taxiType: nextTaxi.id,
-      vehicleType: nextTaxi.title,
-    });
-  }
-
   function moveTaxiOption(direction: -1 | 1) {
     const nextIndex = (selectedIndex + direction + taxiTypeOptions.length) % taxiTypeOptions.length;
     updateTaxiType(taxiTypeOptions[nextIndex]);
@@ -2219,25 +2169,6 @@ function TaxiTypeSelector({
 
   return (
     <section className="mt-7 space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <TaxiCapacityCounter
-          label="Riders"
-          value={peopleVehicle.seatsAvailable}
-          min={1}
-          max={6}
-          icon={<UsersRound className="h-5 w-5" />}
-          onChange={updateRiders}
-        />
-        <TaxiCapacityCounter
-          label="Bags"
-          value={peopleVehicle.bags}
-          min={0}
-          max={maxBagsForRiders}
-          icon={<Luggage className="h-5 w-5" />}
-          onChange={updateBags}
-        />
-      </div>
-
       <div className="space-y-3 rounded-[24px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.12)),var(--rp-card)] p-3 shadow-[0_18px_42px_rgba(14,165,233,0.1)]">
         <div className="flex items-center justify-between gap-3 px-1">
           <button
@@ -2377,52 +2308,6 @@ function TaxiTypeOptionCard({
       </span>
 
     </button>
-  );
-}
-
-function TaxiCapacityCounter({
-  label,
-  value,
-  min,
-  max,
-  icon,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  icon: ReactNode;
-  onChange: (value: number) => void;
-}) {
-  return (
-    <div className="rounded-[18px] border border-[var(--rp-border)] bg-[linear-gradient(135deg,rgba(15,23,42,0.78),rgba(2,6,23,0.72))] p-3 shadow-[var(--rp-shadow-soft)]">
-      <p className="text-center text-sm font-black text-[var(--rp-text)]">{label}</p>
-      <div className="mt-3 grid grid-cols-[36px_1fr_36px] items-center gap-2">
-        <button
-          type="button"
-          aria-label={`Decrease ${label.toLowerCase()}`}
-          disabled={value <= min}
-          onClick={() => onChange(value - 1)}
-          className="grid h-9 w-9 place-items-center rounded-full border border-[var(--rp-input-border)] text-[var(--rp-muted-strong)] transition hover:text-[var(--rp-primary)] disabled:opacity-35"
-        >
-          <Minus className="h-5 w-5" />
-        </button>
-        <div className="flex items-center justify-center gap-2 text-2xl font-black text-[var(--rp-text)]">
-          <span className="text-[var(--rp-muted-strong)]">{icon}</span>
-          <span>{value}</span>
-        </div>
-        <button
-          type="button"
-          aria-label={`Increase ${label.toLowerCase()}`}
-          disabled={value >= max}
-          onClick={() => onChange(value + 1)}
-          className="grid h-9 w-9 place-items-center rounded-full border border-[var(--rp-input-border)] text-[var(--rp-muted-strong)] transition hover:text-[var(--rp-primary)] disabled:opacity-35"
-        >
-          <Plus className="h-5 w-5" />
-        </button>
-      </div>
-    </div>
   );
 }
 
