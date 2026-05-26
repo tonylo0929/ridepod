@@ -2157,7 +2157,6 @@ function TaxiTypeSelector({
   const recommendedTaxiType = getRecommendedTaxiType(peopleVehicle.seatsAvailable, peopleVehicle.bags);
   const recommendedOption =
     taxiTypeOptions.find((option) => option.id === recommendedTaxiType) ?? taxiTypeOptions[0];
-  const isRecommended = selectedOption.id === recommendedTaxiType;
   const hasAnyFit = taxiTypeOptions.some(
     (option) =>
       peopleVehicle.seatsAvailable <= option.maxRiders && peopleVehicle.bags <= option.maxBags,
@@ -2166,7 +2165,6 @@ function TaxiTypeSelector({
     peopleVehicle.wheelchairAccessibleRequested || peopleVehicle.stepFreeSupportRequested;
   const doesNotFit =
     peopleVehicle.seatsAvailable > selectedOption.maxRiders || peopleVehicle.bags > selectedOption.maxBags;
-  const fitBadgeLabel = isRecommended ? "Recommended" : doesNotFit ? "May not fit" : "Fits your group";
 
   function updateTaxiType(option: (typeof taxiTypeOptions)[number]) {
     onPeopleVehicleChange({
@@ -2198,11 +2196,6 @@ function TaxiTypeSelector({
       wheelchairAccessibleRequested: required,
       stepFreeSupportRequested: required,
     });
-  }
-
-  function moveTaxiOption(direction: -1 | 1) {
-    const nextIndex = (selectedIndex + direction + taxiTypeOptions.length) % taxiTypeOptions.length;
-    updateTaxiType(taxiTypeOptions[nextIndex]);
   }
 
   function switchToRecommended() {
@@ -2253,144 +2246,64 @@ function TaxiTypeSelector({
         </div>
       </div>
 
-      <div className="rounded-[24px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.12)),var(--rp-card)] p-4 shadow-[0_18px_42px_rgba(14,165,233,0.1)]">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            aria-label="Previous taxi type"
-            onClick={() => moveTaxiOption(-1)}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)] transition hover:border-[var(--rp-primary)] hover:text-[var(--rp-primary)]"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
-          <div className="text-center">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
-              {selectedIndex + 1} of {taxiTypeOptions.length}
-            </p>
-            <div className="mt-2 flex justify-center gap-1.5">
-              {taxiTypeOptions.map((option, index) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  aria-label={`Show ${option.title}`}
-                  onClick={() => updateTaxiType(option)}
-                  className={cn(
-                    "h-2.5 rounded-full transition",
-                    index === selectedIndex ? "w-7 bg-[var(--rp-primary)]" : "w-2.5 bg-[var(--rp-border-strong)]",
-                  )}
-                />
-              ))}
-            </div>
-          </div>
-          <button
-            type="button"
-            aria-label="Next taxi type"
-            onClick={() => moveTaxiOption(1)}
-            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)] transition hover:border-[var(--rp-primary)] hover:text-[var(--rp-primary)]"
-          >
-            <ChevronRight className="h-6 w-6" />
-          </button>
+      <div className="space-y-3 rounded-[24px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.12)),var(--rp-card)] p-3 shadow-[0_18px_42px_rgba(14,165,233,0.1)]">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
+            Choose taxi type
+          </p>
+          <p className="text-xs font-bold text-[var(--rp-muted-strong)]">
+            Recommended: <span className="text-[var(--rp-text)]">{recommendedOption.title}</span>
+          </p>
         </div>
-        {!isRecommended ? (
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-2">
-            <p className="text-xs font-black leading-5 text-[var(--rp-muted-strong)]">
-              Recommended: <span className="text-[var(--rp-text)]">{recommendedOption.title}</span>
-            </p>
+
+        <div className="grid gap-3" role="radiogroup" aria-label="Taxi type">
+          {taxiTypeOptions.map((option) => {
+            const selected = option.id === selectedOption.id;
+            const recommended = option.id === recommendedOption.id;
+            const fits =
+              peopleVehicle.seatsAvailable <= option.maxRiders && peopleVehicle.bags <= option.maxBags;
+
+            return (
+              <TaxiTypeOptionCard
+                key={option.id}
+                option={option}
+                selected={selected}
+                recommended={recommended}
+                fits={fits}
+                onSelect={() => updateTaxiType(option)}
+              />
+            );
+          })}
+        </div>
+      </div>
+
+      {doesNotFit || !hasAnyFit ? (
+        <div className="rounded-[18px] border border-amber-300/35 bg-amber-300/10 p-3">
+          <p className="text-sm font-bold leading-5 text-amber-100">
+            {hasAnyFit
+              ? "This taxi may not fit your group or luggage."
+              : "No single taxi type clearly fits this group."}
+          </p>
+          <p className="mt-1 text-xs font-bold leading-5 text-amber-100/85">
+            {hasAnyFit
+              ? "Try the recommended taxi type or split into two pods."
+              : "This group may need a larger vehicle or split pod."}
+          </p>
+          {hasAnyFit ? (
             <button
               type="button"
               onClick={switchToRecommended}
-              className="rounded-full border border-[var(--rp-primary)] px-3 py-1 text-xs font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)] hover:text-[var(--rp-primary-text)]"
+              className="mt-3 min-h-10 w-full rounded-[14px] bg-[var(--rp-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] transition hover:brightness-105"
             >
-              View recommended
+              Switch to recommended
             </button>
-          </div>
-        ) : null}
-
-        <article
-          role="radio"
-          aria-checked="true"
-          className={cn(
-            "relative overflow-hidden rounded-[22px] border p-4",
-            doesNotFit
-              ? "border-amber-300/60 bg-amber-300/10"
-              : "border-[var(--rp-primary)] bg-[linear-gradient(135deg,rgba(250,204,21,0.12),rgba(14,165,233,0.08),rgba(2,6,23,0.3))] shadow-[0_0_0_1px_color-mix(in_srgb,var(--rp-primary)_40%,transparent),0_18px_44px_rgba(250,204,21,0.12)]",
+          ) : (
+            <p className="mt-3 rounded-[12px] border border-amber-300/25 px-3 py-2 text-xs font-black text-amber-100">
+              Reduce luggage or split pod.
+            </p>
           )}
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            <span
-              className={cn(
-                "rounded-full px-3 py-1 text-xs font-black uppercase",
-                isRecommended
-                  ? "bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
-                  : doesNotFit
-                    ? "border border-amber-300/45 bg-amber-300/15 text-amber-100"
-                    : "border border-sky-400/35 bg-sky-400/10 text-sky-100",
-              )}
-            >
-              {fitBadgeLabel}
-            </span>
-            {selectedOption.placeholderVisual ? (
-              <span className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-1 text-xs font-black text-[var(--rp-muted-strong)]">
-                Placeholder visual
-              </span>
-            ) : null}
-          </div>
-
-          <div className="mt-4 grid gap-4">
-            <div className="flex h-52 items-center justify-center overflow-hidden rounded-[18px] bg-[radial-gradient(circle_at_50%_70%,rgba(250,204,21,0.22),transparent_56%)]">
-              <TaxiOptionImage key={selectedOption.id} src={selectedOption.imageSrc} alt={selectedOption.title} />
-            </div>
-            <div>
-              <h2 className="text-2xl font-black leading-tight text-[var(--rp-text)]">
-                {selectedOption.title}
-              </h2>
-              <p className="mt-2 text-base font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                {selectedOption.description}
-              </p>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <TaxiCapacityStat
-                  icon={<UsersRound className="h-6 w-6" />}
-                  value={`x${selectedOption.maxRiders}`}
-                  label={`Up to ${selectedOption.maxRiders} riders`}
-                />
-                <TaxiCapacityStat
-                  icon={<Luggage className="h-6 w-6" />}
-                  value={`x${selectedOption.maxBags}`}
-                  label={`Up to ${selectedOption.maxBags} bags`}
-                />
-              </div>
-            </div>
-          </div>
-
-          {doesNotFit || !hasAnyFit ? (
-            <div className="mt-4 rounded-[16px] border border-amber-300/35 bg-amber-300/10 p-3">
-              <p className="text-sm font-bold leading-5 text-amber-100">
-                {hasAnyFit
-                  ? "This taxi may not fit your group or luggage."
-                  : "No single taxi type clearly fits this group."}
-              </p>
-              <p className="mt-1 text-xs font-bold leading-5 text-amber-100/85">
-                {hasAnyFit
-                  ? "Try the recommended taxi type or split into two pods."
-                  : "This group may need a larger vehicle or split pod."}
-              </p>
-              {hasAnyFit ? (
-                <button
-                  type="button"
-                  onClick={switchToRecommended}
-                  className="mt-3 min-h-10 w-full rounded-[14px] bg-[var(--rp-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] transition hover:brightness-105"
-                >
-                  Switch to recommended
-                </button>
-              ) : (
-                <p className="mt-3 rounded-[12px] border border-amber-300/25 px-3 py-2 text-xs font-black text-amber-100">
-                  Reduce luggage or split pod.
-                </p>
-              )}
-            </div>
-          ) : null}
-        </article>
-      </div>
+        </div>
+      ) : null}
 
       <div className="rounded-[18px] border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-primary)_9%,var(--rp-card))] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
         <p>Taxi type depends on taxi partner availability.</p>
@@ -2419,6 +2332,91 @@ function TaxiOptionImage({ src, alt }: { src: string; alt: string }) {
       className="h-full w-full object-contain"
       onError={() => setImageSrc(TAXI_IMAGE_FALLBACK_SRC)}
     />
+  );
+}
+
+function TaxiTypeOptionCard({
+  option,
+  selected,
+  recommended,
+  fits,
+  onSelect,
+}: {
+  option: (typeof taxiTypeOptions)[number];
+  selected: boolean;
+  recommended: boolean;
+  fits: boolean;
+  onSelect: () => void;
+}) {
+  const badgeLabel = recommended ? "Recommended" : fits ? "Fits your group" : "May not fit";
+
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={cn(
+        "grid w-full gap-3 rounded-[22px] border bg-[linear-gradient(135deg,rgba(15,23,42,0.74),rgba(2,6,23,0.54))] p-3 text-left transition min-[390px]:grid-cols-[42%_1fr_36px] min-[390px]:items-center",
+        selected
+          ? "border-[var(--rp-primary)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--rp-primary)_42%,transparent),0_16px_36px_rgba(250,204,21,0.12)]"
+          : "border-[var(--rp-border)] hover:border-sky-400/45",
+      )}
+    >
+      <span className="relative flex min-h-28 items-center justify-center overflow-hidden rounded-[18px] bg-[radial-gradient(circle_at_50%_70%,rgba(250,204,21,0.2),transparent_56%)]">
+        {recommended ? (
+          <span className="absolute left-2 top-2 z-10 rounded-full bg-[var(--rp-primary)] px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-primary-text)]">
+            Recommended
+          </span>
+        ) : null}
+        <TaxiOptionImage src={option.imageSrc} alt={option.title} />
+      </span>
+
+      <span className="min-w-0">
+        {!recommended ? (
+          <span
+            className={cn(
+              "mb-2 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase",
+              fits
+                ? "border-sky-400/35 bg-sky-400/10 text-sky-100"
+                : "border-amber-300/45 bg-amber-300/15 text-amber-100",
+            )}
+          >
+            {badgeLabel}
+          </span>
+        ) : null}
+        <span className="block text-xl font-black leading-tight text-[var(--rp-text)]">
+          {option.title}
+        </span>
+        <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
+          {option.description}
+        </span>
+        <span className="mt-3 grid grid-cols-2 gap-3">
+          <TaxiCapacityStat
+            icon={<UsersRound className="h-5 w-5" />}
+            value={`x${option.maxRiders}`}
+            label={`Up to ${option.maxRiders} riders`}
+          />
+          <TaxiCapacityStat
+            icon={<Luggage className="h-5 w-5" />}
+            value={`x${option.maxBags}`}
+            label={`Up to ${option.maxBags} bags`}
+          />
+        </span>
+      </span>
+
+      <span
+        aria-hidden="true"
+        className={cn(
+          "grid h-9 w-9 place-items-center justify-self-end rounded-full border-2",
+          selected
+            ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+            : "border-[var(--rp-muted)] text-transparent",
+        )}
+      >
+        <Check className="h-5 w-5" />
+      </span>
+    </button>
   );
 }
 
