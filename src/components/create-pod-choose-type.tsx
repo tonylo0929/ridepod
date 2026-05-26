@@ -2008,9 +2008,9 @@ const rideCategories: Array<{
   {
     id: "ride_app",
     title: "Ride app",
-    description: "Group ride app bookings are coming later.",
+    description: "",
     badge: "Coming soon",
-    helper: "Start with taxi pods first. Ride app support will be added later.",
+    helper: "",
     icon: Smartphone,
     disabled: true,
   },
@@ -2092,6 +2092,22 @@ function RideCategoryCard({
 }) {
   const Icon = category.icon;
   const taxiCategory = category.id === "taxi";
+  const rideAppCategory = category.id === "ride_app";
+
+  if (rideAppCategory) {
+    return (
+      <button
+        type="button"
+        role="radio"
+        aria-checked={selected}
+        aria-disabled={category.disabled}
+        disabled={category.disabled}
+        className="grid min-h-24 w-full cursor-not-allowed place-items-center rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-center opacity-70 shadow-[var(--rp-shadow-soft)]"
+      >
+        <span className="text-lg font-black text-[var(--rp-primary)]">Coming soon</span>
+      </button>
+    );
+  }
 
   return (
     <button
@@ -2187,9 +2203,6 @@ function RideOptionSelector({
           />
         ))}
       </div>
-      <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted)]">
-        Existing ride app, taxi meter, and taxi partner quote modes remain available for demo/internal flows.
-      </p>
       {/* TODO: Add TAXI_PARTNER_QUOTE to Supabase ride_option enum in TAXI-2. */}
     </section>
   );
