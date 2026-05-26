@@ -2170,16 +2170,11 @@ function TaxiTypeSelector({
     taxiTypeOptions.findIndex((option) => option.id === peopleVehicle.taxiType),
   );
   const selectedOption = taxiTypeOptions[selectedIndex] ?? taxiTypeOptions[0];
-  const recommendedTaxiType = getRecommendedTaxiType(peopleVehicle.seatsAvailable, peopleVehicle.bags);
-  const recommendedOption =
-    taxiTypeOptions.find((option) => option.id === recommendedTaxiType) ?? taxiTypeOptions[0];
   const hasAnyFit = taxiTypeOptions.some(
     (option) =>
       peopleVehicle.seatsAvailable <= option.maxRiders && peopleVehicle.bags <= option.maxBags,
   );
   const maxBagsForRiders = getMaxBagsForRiders(peopleVehicle.seatsAvailable);
-  const accessibilityRequired =
-    peopleVehicle.wheelchairAccessibleRequested || peopleVehicle.stepFreeSupportRequested;
   const doesNotFit =
     peopleVehicle.seatsAvailable > selectedOption.maxRiders || peopleVehicle.bags > selectedOption.maxBags;
 
@@ -2217,18 +2212,6 @@ function TaxiTypeSelector({
     });
   }
 
-  function updateAccessibility(required: boolean) {
-    onPeopleVehicleChange({
-      ...peopleVehicle,
-      wheelchairAccessibleRequested: required,
-      stepFreeSupportRequested: required,
-    });
-  }
-
-  function switchToRecommended() {
-    updateTaxiType(recommendedOption);
-  }
-
   function moveTaxiOption(direction: -1 | 1) {
     const nextIndex = (selectedIndex + direction + taxiTypeOptions.length) % taxiTypeOptions.length;
     updateTaxiType(taxiTypeOptions[nextIndex]);
@@ -2253,29 +2236,6 @@ function TaxiTypeSelector({
           icon={<Luggage className="h-5 w-5" />}
           onChange={updateBags}
         />
-        <div className="col-span-2 rounded-[18px] border border-[var(--rp-border)] bg-[linear-gradient(135deg,rgba(15,23,42,0.78),rgba(2,6,23,0.72))] p-3 shadow-[var(--rp-shadow-soft)]">
-          <p className="text-center text-sm font-black text-[var(--rp-text)]">Accessibility</p>
-          <div className="mt-3 grid gap-2">
-            {[
-              { label: "No access needs", value: false },
-              { label: "Access needed", value: true },
-            ].map((option) => (
-              <button
-                key={option.label}
-                type="button"
-                onClick={() => updateAccessibility(option.value)}
-                className={cn(
-                  "min-h-11 rounded-[14px] border px-3 text-sm font-black leading-5 transition",
-                  accessibilityRequired === option.value
-                    ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
-                    : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       <div className="space-y-3 rounded-[24px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.12)),var(--rp-card)] p-3 shadow-[0_18px_42px_rgba(14,165,233,0.1)]">
@@ -2293,8 +2253,7 @@ function TaxiTypeSelector({
               Choose taxi type
             </p>
             <p className="mt-1 text-xs font-bold leading-4 text-[var(--rp-muted-strong)]">
-              {selectedIndex + 1} of {taxiTypeOptions.length} · Recommended:{" "}
-              <span className="text-[var(--rp-text)]">{recommendedOption.title}</span>
+              {selectedIndex + 1} of {taxiTypeOptions.length}
             </p>
           </div>
           <button
@@ -2312,7 +2271,6 @@ function TaxiTypeSelector({
             key={selectedOption.id}
             option={selectedOption}
             selected
-            recommended={selectedOption.id === recommendedOption.id}
             fits={peopleVehicle.seatsAvailable <= selectedOption.maxRiders && peopleVehicle.bags <= selectedOption.maxBags}
             onSelect={() => updateTaxiType(selectedOption)}
           />
@@ -2329,35 +2287,16 @@ function TaxiTypeSelector({
           </p>
           <p className="mt-1 text-xs font-bold leading-5 text-amber-100/85">
             {hasAnyFit
-              ? "Try the recommended taxi type or split into two pods."
+              ? "Try another taxi type or split into two pods."
               : "This group may need a larger vehicle or split pod."}
           </p>
-          {hasAnyFit ? (
-            <button
-              type="button"
-              onClick={switchToRecommended}
-              className="mt-3 min-h-10 w-full rounded-[14px] bg-[var(--rp-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] transition hover:brightness-105"
-            >
-              Switch to recommended
-            </button>
-          ) : (
+          {!hasAnyFit ? (
             <p className="mt-3 rounded-[12px] border border-amber-300/25 px-3 py-2 text-xs font-black text-amber-100">
               Reduce luggage or split pod.
             </p>
-          )}
+          ) : null}
         </div>
       ) : null}
-
-      <div className="rounded-[18px] border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-primary)_9%,var(--rp-card))] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-        <p>Taxi type depends on taxi partner availability.</p>
-        <p>Luggage capacity is a guide and may vary by bag size.</p>
-        {doesNotFit ? <p className="mt-2">Try the recommended taxi type or split into two pods.</p> : null}
-        {accessibilityRequired ? (
-          <p className="mt-2 text-sky-100">
-            Accessibility support depends on taxi partner availability.
-          </p>
-        ) : null}
-      </div>
     </section>
   );
 }
@@ -2386,18 +2325,14 @@ function TaxiOptionImage({ src, alt }: { src: string; alt: string }) {
 function TaxiTypeOptionCard({
   option,
   selected,
-  recommended,
   fits,
   onSelect,
 }: {
   option: (typeof taxiTypeOptions)[number];
   selected: boolean;
-  recommended: boolean;
   fits: boolean;
   onSelect: () => void;
 }) {
-  const badgeLabel = recommended ? "Recommended" : fits ? "Fits your group" : "May not fit";
-
   return (
     <button
       type="button"
@@ -2412,25 +2347,13 @@ function TaxiTypeOptionCard({
       )}
     >
       <span className="relative flex min-h-28 items-center justify-center overflow-hidden rounded-[18px] bg-[radial-gradient(circle_at_50%_70%,rgba(250,204,21,0.2),transparent_56%)]">
-        {recommended ? (
-          <span className="absolute left-2 top-2 z-10 rounded-full bg-[var(--rp-primary)] px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-primary-text)]">
-            Recommended
-          </span>
-        ) : null}
         <TaxiOptionImage src={option.imageSrc} alt={option.title} />
       </span>
 
       <span className="min-w-0">
-        {!recommended ? (
-          <span
-            className={cn(
-              "mb-2 inline-flex rounded-full border px-2.5 py-1 text-[10px] font-black uppercase",
-              fits
-                ? "border-sky-400/35 bg-sky-400/10 text-sky-100"
-                : "border-amber-300/45 bg-amber-300/15 text-amber-100",
-            )}
-          >
-            {badgeLabel}
+        {!fits ? (
+          <span className="mb-2 inline-flex rounded-full border border-amber-300/45 bg-amber-300/15 px-2.5 py-1 text-[10px] font-black uppercase text-amber-100">
+            May not fit
           </span>
         ) : null}
         <span className="block text-xl font-black leading-tight text-[var(--rp-text)]">
