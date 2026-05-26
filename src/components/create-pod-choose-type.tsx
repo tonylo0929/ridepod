@@ -99,6 +99,8 @@ type PricingState = {
 };
 type GenderMode = "women_only" | "mixed";
 type AccessMode = "open" | "verified_only" | "community_only" | "high_trust_only" | "invite_only";
+type WhoCanJoinId = "women_only" | "mixed" | "verified_only" | "invite_only";
+type TaxiPartnerPreference = "standard" | "higher_trust" | "airport_luggage_friendly" | "accessibility_support";
 type TaxiTypeId =
   | "standard"
   | "compact_4_seat"
@@ -309,6 +311,65 @@ const accessModeOptions: Array<{ id: AccessMode; label: string }> = [
   { id: "community_only", label: "Community-only" },
   { id: "high_trust_only", label: "High-trust-only" },
   { id: "invite_only", label: "Invite-only" },
+];
+
+const whoCanJoinOptions: Array<{
+  id: WhoCanJoinId;
+  title: string;
+  description: string;
+  helper?: string;
+}> = [
+  {
+    id: "women_only",
+    title: "Women-only pod",
+    description: "Only eligible women can join this shared pod, including the host.",
+    helper: "This controls who can join the pod. It does not guarantee a female taxi driver.",
+  },
+  {
+    id: "mixed",
+    title: "Mixed pod",
+    description: "Open to eligible riders who match the pod rules.",
+  },
+  {
+    id: "verified_only",
+    title: "Verified-only",
+    description: "Only riders with RidePod trust review can join.",
+  },
+  {
+    id: "invite_only",
+    title: "Invite-only",
+    description: "Only people with your invite link can join.",
+  },
+];
+
+const taxiPartnerPreferenceOptions: Array<{
+  id: TaxiPartnerPreference;
+  title: string;
+  description: string;
+  helper?: string;
+}> = [
+  {
+    id: "standard",
+    title: "Standard taxi partner",
+    description: "Any available licensed taxi partner who can support this ride.",
+  },
+  {
+    id: "higher_trust",
+    title: "Higher-trust taxi partner",
+    description: "Prioritize partners with stronger RidePod trust signals.",
+    helper: "Trust signals may include completed rides, partner rating, low issue rate, and safe-driving commitment.",
+  },
+  {
+    id: "airport_luggage_friendly",
+    title: "Airport / luggage-friendly",
+    description: "Prioritize partners comfortable with airport trips and luggage.",
+  },
+  {
+    id: "accessibility_support",
+    title: "Accessibility support",
+    description: "Request a partner who can support access needs when available.",
+    helper: "Availability depends on taxi partner support.",
+  },
 ];
 
 function formatCalendarLabel(label: string) {
@@ -2403,6 +2464,114 @@ function TaxiNeedsSelector({
   );
 }
 
+function PreferenceOptionCard({
+  title,
+  description,
+  helper,
+  selected,
+  onSelect,
+}: {
+  title: string;
+  description: string;
+  helper?: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={cn(
+        "w-full rounded-[18px] border p-4 text-left transition",
+        selected
+          ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,var(--rp-card))] shadow-[0_0_0_1px_color-mix(in_srgb,var(--rp-primary)_35%,transparent)]"
+          : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] hover:border-sky-400/45",
+      )}
+    >
+      <span className="block text-base font-black leading-5 text-[var(--rp-text)]">{title}</span>
+      <span className="mt-2 block text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">{description}</span>
+      {helper ? (
+        <span className="mt-3 block rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+          {helper}
+        </span>
+      ) : null}
+    </button>
+  );
+}
+
+function WhoCanJoinSelector({
+  genderMode,
+  accessMode,
+  onGenderModeChange,
+  onAccessModeChange,
+}: {
+  genderMode: GenderMode;
+  accessMode: AccessMode;
+  onGenderModeChange: (genderMode: GenderMode) => void;
+  onAccessModeChange: (accessMode: AccessMode) => void;
+}) {
+  const selectedWhoCanJoin = getWhoCanJoinId(genderMode, accessMode);
+
+  function updateWhoCanJoin(whoCanJoin: WhoCanJoinId) {
+    if (whoCanJoin === "women_only") {
+      onGenderModeChange("women_only");
+      onAccessModeChange("open");
+      return;
+    }
+
+    onGenderModeChange("mixed");
+    if (whoCanJoin === "verified_only") {
+      onAccessModeChange("verified_only");
+      return;
+    }
+    if (whoCanJoin === "invite_only") {
+      onAccessModeChange("invite_only");
+      return;
+    }
+    onAccessModeChange("open");
+  }
+
+  return (
+    <section className="mt-7 grid gap-3" role="radiogroup" aria-label="Who can join">
+      {whoCanJoinOptions.map((option) => (
+        <PreferenceOptionCard
+          key={option.id}
+          title={option.title}
+          description={option.description}
+          helper={option.helper}
+          selected={selectedWhoCanJoin === option.id}
+          onSelect={() => updateWhoCanJoin(option.id)}
+        />
+      ))}
+    </section>
+  );
+}
+
+function TaxiPartnerPreferenceSelector({
+  value,
+  onChange,
+}: {
+  value: TaxiPartnerPreference;
+  onChange: (value: TaxiPartnerPreference) => void;
+}) {
+  return (
+    <section className="mt-7 grid gap-3" role="radiogroup" aria-label="Taxi partner preference">
+      {taxiPartnerPreferenceOptions.map((option) => (
+        <PreferenceOptionCard
+          key={option.id}
+          title={option.title}
+          description={option.description}
+          helper={option.helper}
+          selected={value === option.id}
+          onSelect={() => onChange(option.id)}
+        />
+      ))}
+    </section>
+  );
+}
+
 function HostChoiceConfirmationDialog({
   rideOption,
   checked,
@@ -2519,19 +2688,31 @@ function VehicleLightArt() {
 function PeopleVehicleStep({
   podType,
   peopleVehicle,
+  genderMode,
+  accessMode,
+  taxiPartnerPreference,
   onPeopleVehicleChange,
+  onGenderModeChange,
+  onAccessModeChange,
+  onTaxiPartnerPreferenceChange,
   onBack,
   onContinue,
 }: {
   podType: PodType;
   peopleVehicle: PeopleVehicleState;
+  genderMode: GenderMode;
+  accessMode: AccessMode;
+  taxiPartnerPreference: TaxiPartnerPreference;
   onPeopleVehicleChange: (peopleVehicle: PeopleVehicleState) => void;
+  onGenderModeChange: (genderMode: GenderMode) => void;
+  onAccessModeChange: (accessMode: AccessMode) => void;
+  onTaxiPartnerPreferenceChange: (preference: TaxiPartnerPreference) => void;
   onBack: () => void;
   onContinue: () => void;
 }) {
   const selectedRideOptionId = normalizeRideOptionId(peopleVehicle.rideOption);
   const isTaxiFlow = selectedRideOptionId === "taxi_partner_quote" || selectedRideOptionId === "taxi_meter";
-  const [taxiDetailsPage, setTaxiDetailsPage] = useState<"category" | "type" | "needs">("category");
+  const [taxiDetailsPage, setTaxiDetailsPage] = useState<"category" | "type" | "needs" | "join" | "partner">("category");
   const [showRideConfirm, setShowRideConfirm] = useState(false);
   const [rideConfirmChecked, setRideConfirmChecked] = useState(false);
   const [confirmedRideOption, setConfirmedRideOption] = useState<ActiveRideOptionId | null>(null);
@@ -2544,6 +2725,16 @@ function PeopleVehicleStep({
 
     if (isTaxiFlow && taxiDetailsPage === "type") {
       setTaxiDetailsPage("needs");
+      return;
+    }
+
+    if (isTaxiFlow && taxiDetailsPage === "needs") {
+      setTaxiDetailsPage("join");
+      return;
+    }
+
+    if (isTaxiFlow && taxiDetailsPage === "join") {
+      setTaxiDetailsPage("partner");
       return;
     }
 
@@ -2561,6 +2752,16 @@ function PeopleVehicleStep({
       <CreatePodTopBar
         currentStep={3}
         onBack={() => {
+          if (isTaxiFlow && taxiDetailsPage === "partner") {
+            setTaxiDetailsPage("join");
+            return;
+          }
+
+          if (isTaxiFlow && taxiDetailsPage === "join") {
+            setTaxiDetailsPage("needs");
+            return;
+          }
+
           if (isTaxiFlow && taxiDetailsPage === "needs") {
             setTaxiDetailsPage("type");
             return;
@@ -2583,6 +2784,10 @@ function PeopleVehicleStep({
             <h1 className="text-[30px] font-black leading-tight text-[var(--rp-text)]">
               {isTaxiFlow && taxiDetailsPage === "needs"
                 ? "Luggage"
+                : isTaxiFlow && taxiDetailsPage === "join"
+                  ? "Who can join?"
+                : isTaxiFlow && taxiDetailsPage === "partner"
+                  ? "Taxi partner preference"
                 : isTaxiFlow && taxiDetailsPage === "type"
                   ? "Choose Taxi Type"
                   : "How do you want to ride?"}
@@ -2590,6 +2795,10 @@ function PeopleVehicleStep({
             <p className="mx-auto mt-2 max-w-[280px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]">
               {isTaxiFlow && taxiDetailsPage === "needs"
                 ? "Tell taxi partners your bag count before they quote."
+                : isTaxiFlow && taxiDetailsPage === "join"
+                  ? "Choose who can join this shared taxi pod."
+                : isTaxiFlow && taxiDetailsPage === "partner"
+                  ? "Choose what kind of taxi partner you prefer for this ride."
                 : isTaxiFlow && taxiDetailsPage === "type"
                   ? "Choose based on riders and luggage."
                 : "RidePod groups riders first, then helps the group request the right ride."}
@@ -2601,6 +2810,18 @@ function PeopleVehicleStep({
               <TaxiNeedsSelector
                 peopleVehicle={peopleVehicle}
                 onPeopleVehicleChange={onPeopleVehicleChange}
+              />
+            ) : isTaxiFlow && taxiDetailsPage === "join" ? (
+              <WhoCanJoinSelector
+                genderMode={genderMode}
+                accessMode={accessMode}
+                onGenderModeChange={onGenderModeChange}
+                onAccessModeChange={onAccessModeChange}
+              />
+            ) : isTaxiFlow && taxiDetailsPage === "partner" ? (
+              <TaxiPartnerPreferenceSelector
+                value={taxiPartnerPreference}
+                onChange={onTaxiPartnerPreferenceChange}
               />
             ) : isTaxiFlow && taxiDetailsPage === "type" ? (
               <>
@@ -2895,6 +3116,25 @@ function getLuggageNeedsSummary(peopleVehicle: PeopleVehicleState) {
   return parts.join(" / ");
 }
 
+function getWhoCanJoinId(genderMode: GenderMode, accessMode: AccessMode): WhoCanJoinId {
+  if (genderMode === "women_only") return "women_only";
+  if (accessMode === "verified_only") return "verified_only";
+  if (accessMode === "invite_only") return "invite_only";
+  return "mixed";
+}
+
+function getWhoCanJoinLabel(genderMode: GenderMode, accessMode: AccessMode) {
+  const whoCanJoin = getWhoCanJoinId(genderMode, accessMode);
+  if (whoCanJoin === "women_only") return "Women-only, including host";
+  if (whoCanJoin === "verified_only") return "Verified-only";
+  if (whoCanJoin === "invite_only") return "Invite-only";
+  return "Mixed pod";
+}
+
+function getTaxiPartnerPreferenceLabel(preference: TaxiPartnerPreference) {
+  return taxiPartnerPreferenceOptions.find((option) => option.id === preference)?.title ?? "Standard taxi partner";
+}
+
 function TaxiReviewSummaryCard({
   peopleVehicle,
   pickupAddress,
@@ -2902,6 +3142,7 @@ function TaxiReviewSummaryCard({
   dateTime,
   genderMode,
   accessMode,
+  taxiPartnerPreference,
 }: {
   peopleVehicle: PeopleVehicleState;
   pickupAddress: string;
@@ -2909,8 +3150,8 @@ function TaxiReviewSummaryCard({
   dateTime: DateTimeState;
   genderMode: GenderMode;
   accessMode: AccessMode;
+  taxiPartnerPreference: TaxiPartnerPreference;
 }) {
-  const selectedAccessMode = accessModeOptions.find((option) => option.id === accessMode)?.label ?? "Open";
   const taxiType = getTaxiTypeLabel(peopleVehicle.taxiType);
   const summaryRows = [
     ["Route", `${pickupAddress || "Pickup point"} \u2192 ${dropoffAddress || "Dropoff point"}`],
@@ -2931,10 +3172,7 @@ function TaxiReviewSummaryCard({
     ["Pickup point", pickupAddress || "Not specified"],
     ["Dropoff point", dropoffAddress || "Not specified"],
   ];
-  const joinChips: string[] = [
-    genderMode === "women_only" ? "Women-only" : "Mixed pod",
-    accessMode !== "open" ? selectedAccessMode : null,
-  ].filter((chip): chip is string => Boolean(chip));
+  const taxiPartnerPreferenceLabel = getTaxiPartnerPreferenceLabel(taxiPartnerPreference);
 
   return (
     <section className="grid gap-4">
@@ -2997,16 +3235,19 @@ function TaxiReviewSummaryCard({
 
       <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
         <h2 className="text-lg font-black text-[var(--rp-text)]">Who can join</h2>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {joinChips.map((chip) => (
-            <span
-              key={chip}
-              className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-1 text-xs font-black text-[var(--rp-muted-strong)]"
-            >
-              {chip}
-            </span>
-          ))}
-        </div>
+        <p className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-3 text-sm font-black leading-5 text-[var(--rp-text)]">
+          {getWhoCanJoinLabel(genderMode, accessMode)}
+        </p>
+      </section>
+
+      <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+        <h2 className="text-lg font-black text-[var(--rp-text)]">Taxi partner preference</h2>
+        <p className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-3 text-sm font-black leading-5 text-[var(--rp-text)]">
+          {taxiPartnerPreferenceLabel}
+        </p>
+        <p className="mt-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
+          Taxi partner preferences depend on availability.
+        </p>
       </section>
 
       <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
@@ -3840,6 +4081,11 @@ function ReviewPodStep({
   dateTime,
   peopleVehicle,
   pricing,
+  genderMode,
+  accessMode,
+  taxiPartnerPreference,
+  onGenderModeChange,
+  onAccessModeChange,
   onBack,
   onCreate,
 }: {
@@ -3849,6 +4095,11 @@ function ReviewPodStep({
   dateTime: DateTimeState;
   peopleVehicle: PeopleVehicleState;
   pricing: PricingState;
+  genderMode: GenderMode;
+  accessMode: AccessMode;
+  taxiPartnerPreference: TaxiPartnerPreference;
+  onGenderModeChange: (genderMode: GenderMode) => void;
+  onAccessModeChange: (accessMode: AccessMode) => void;
   onBack: () => void;
   onCreate: () => void;
 }) {
@@ -3882,11 +4133,9 @@ function ReviewPodStep({
     trafficBufferPercent: 0,
     routeRiskLevel: "NORMAL",
   });
-  const [genderMode, setGenderMode] = useState<GenderMode>("mixed");
-  const [accessMode, setAccessMode] = useState<AccessMode>("verified_only");
   const isTaxiPartnerQuoteReview = normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote";
-  const safetyPanelIndex = isTaxiPartnerQuoteReview ? 1 : 2;
-  const previewPanelIndex = isTaxiPartnerQuoteReview ? 2 : 3;
+  const safetyPanelIndex = 2;
+  const previewPanelIndex = isTaxiPartnerQuoteReview ? 1 : 3;
   const moneyProtectionError =
     moneyProtection.approvedMaxTotalFare < moneyProtection.estimatedTotalFare
       ? `Approved max must be at least ${formatMoney(moneyProtection.estimatedTotalFare)} before you continue.`
@@ -3978,6 +4227,7 @@ function ReviewPodStep({
                 dateTime={dateTime}
                 genderMode={genderMode}
                 accessMode={accessMode}
+                taxiPartnerPreference={taxiPartnerPreference}
               />
             ) : (
               <PricingSummaryCard money={moneyProtection} rideOption={peopleVehicle.rideOption} />
@@ -3992,12 +4242,12 @@ function ReviewPodStep({
             />
           ) : null}
 
-          {reviewPanel === safetyPanelIndex ? (
+          {!isTaxiPartnerQuoteReview && reviewPanel === safetyPanelIndex ? (
             <SafetyTrustPanel
               genderMode={genderMode}
               accessMode={accessMode}
-              onGenderModeChange={setGenderMode}
-              onAccessModeChange={setAccessMode}
+              onGenderModeChange={onGenderModeChange}
+              onAccessModeChange={onAccessModeChange}
             />
           ) : null}
 
@@ -4041,7 +4291,7 @@ function ReviewPodStep({
           createLabel={isTaxiPartnerQuoteReview ? "Create taxi pod" : "Create Pod"}
           panelLabels={
             isTaxiPartnerQuoteReview
-              ? ["Taxi review", "Who can join", "Preview your pod"]
+              ? ["Taxi review", "Preview your pod"]
               : undefined
           }
         />
@@ -4306,6 +4556,9 @@ export function CreatePodChooseType() {
     vehicleType: "Standard taxi",
     priceSource: "Licensed taxi partner quote for the shared pod",
   });
+  const [genderMode, setGenderMode] = useState<GenderMode>("mixed");
+  const [accessMode, setAccessMode] = useState<AccessMode>("open");
+  const [taxiPartnerPreference, setTaxiPartnerPreference] = useState<TaxiPartnerPreference>("standard");
   const [pricing] = useState<PricingState>({
     estimatedFare: 84,
     estimatedShare: 21,
@@ -4331,6 +4584,11 @@ export function CreatePodChooseType() {
           dateTime={dateTime}
           peopleVehicle={peopleVehicle}
           pricing={pricing}
+          genderMode={genderMode}
+          accessMode={accessMode}
+          taxiPartnerPreference={taxiPartnerPreference}
+          onGenderModeChange={setGenderMode}
+          onAccessModeChange={setAccessMode}
           onBack={() => setStep(3)}
           onCreate={() => setStep(5)}
         />
@@ -4338,7 +4596,13 @@ export function CreatePodChooseType() {
         <PeopleVehicleStep
           podType={podType}
           peopleVehicle={peopleVehicle}
+          genderMode={genderMode}
+          accessMode={accessMode}
+          taxiPartnerPreference={taxiPartnerPreference}
           onPeopleVehicleChange={setPeopleVehicle}
+          onGenderModeChange={setGenderMode}
+          onAccessModeChange={setAccessMode}
+          onTaxiPartnerPreferenceChange={setTaxiPartnerPreference}
           onBack={() => setStep(2)}
           onContinue={() => setStep(4)}
         />
