@@ -2340,7 +2340,7 @@ function TaxiTypeOptionCard({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "grid w-full gap-3 rounded-[22px] border bg-[linear-gradient(135deg,rgba(15,23,42,0.74),rgba(2,6,23,0.54))] p-3 text-left transition min-[390px]:grid-cols-[42%_1fr_36px] min-[390px]:items-center",
+        "grid w-full gap-3 rounded-[22px] border bg-[linear-gradient(135deg,rgba(15,23,42,0.74),rgba(2,6,23,0.54))] p-3 text-left transition min-[390px]:grid-cols-[42%_1fr] min-[390px]:items-center",
         selected
           ? "border-[var(--rp-primary)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--rp-primary)_42%,transparent),0_16px_36px_rgba(250,204,21,0.12)]"
           : "border-[var(--rp-border)] hover:border-sky-400/45",
@@ -2376,17 +2376,6 @@ function TaxiTypeOptionCard({
         </span>
       </span>
 
-      <span
-        aria-hidden="true"
-        className={cn(
-          "grid h-9 w-9 place-items-center justify-self-end rounded-full border-2",
-          selected
-            ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
-            : "border-[var(--rp-muted)] text-transparent",
-        )}
-      >
-        <Check className="h-5 w-5" />
-      </span>
     </button>
   );
 }
