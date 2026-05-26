@@ -2178,9 +2178,6 @@ function TaxiTypeSelector({
       peopleVehicle.seatsAvailable <= option.maxRiders && peopleVehicle.bags <= option.maxBags,
   );
   const maxBagsForRiders = getMaxBagsForRiders(peopleVehicle.seatsAvailable);
-  const visibleTaxiOptions = taxiTypeOptions.map(
-    (_, offset) => taxiTypeOptions[(selectedIndex + offset) % taxiTypeOptions.length],
-  );
   const accessibilityRequired =
     peopleVehicle.wheelchairAccessibleRequested || peopleVehicle.stepFreeSupportRequested;
   const doesNotFit =
@@ -2310,52 +2307,17 @@ function TaxiTypeSelector({
           </button>
         </div>
 
-        <div className="grid gap-3" role="radiogroup" aria-label="Taxi type">
-          {visibleTaxiOptions.map((option) => {
-            const selected = option.id === selectedOption.id;
-            const recommended = option.id === recommendedOption.id;
-            const fits =
-              peopleVehicle.seatsAvailable <= option.maxRiders && peopleVehicle.bags <= option.maxBags;
-
-            return (
-              <TaxiTypeOptionCard
-                key={option.id}
-                option={option}
-                selected={selected}
-                recommended={recommended}
-                fits={fits}
-                onSelect={() => updateTaxiType(option)}
-              />
-            );
-          })}
+        <div role="radiogroup" aria-label="Taxi type">
+          <TaxiTypeOptionCard
+            key={selectedOption.id}
+            option={selectedOption}
+            selected
+            recommended={selectedOption.id === recommendedOption.id}
+            fits={peopleVehicle.seatsAvailable <= selectedOption.maxRiders && peopleVehicle.bags <= selectedOption.maxBags}
+            onSelect={() => updateTaxiType(selectedOption)}
+          />
         </div>
 
-        <div className="grid grid-cols-[48px_1fr_48px] items-center gap-3 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-2">
-          <button
-            type="button"
-            aria-label="Previous taxi type"
-            onClick={() => moveTaxiOption(-1)}
-            className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card)] text-[var(--rp-muted-strong)] transition hover:border-[var(--rp-primary)] hover:text-[var(--rp-primary)]"
-          >
-            <ChevronLeft className="h-6 w-6" />
-          </button>
-          <div className="min-w-0 text-center">
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
-              {selectedIndex + 1} of {taxiTypeOptions.length}
-            </p>
-            <p className="mt-1 truncate text-sm font-black text-[var(--rp-text)]">
-              {selectedOption.title}
-            </p>
-          </div>
-          <button
-            type="button"
-            aria-label="Next taxi type"
-            onClick={() => moveTaxiOption(1)}
-            className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card)] text-[var(--rp-muted-strong)] transition hover:border-[var(--rp-primary)] hover:text-[var(--rp-primary)]"
-          >
-            <ChevronRight className="h-6 w-6" />
-          </button>
-        </div>
       </div>
 
       {doesNotFit || !hasAnyFit ? (
