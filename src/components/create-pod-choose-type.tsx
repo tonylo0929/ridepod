@@ -3272,10 +3272,9 @@ function TaxiReviewSummaryCard({
   taxiPartnerPreference: TaxiPartnerPreference;
 }) {
   const taxiType = getTaxiTypeLabel(peopleVehicle.taxiType);
-  const summaryRows = [
-    ["Route", `${pickupAddress || "Pickup point"} \u2192 ${dropoffAddress || "Dropoff point"}`],
+  const routeSummary = `${pickupAddress || "Pickup point"} \u2192 ${dropoffAddress || "Dropoff point"}`;
+  const tripRows = [
     ["Date/time", `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}`],
-    ["Taxi type", taxiType],
     ["Seats / guests", `${peopleVehicle.seatsAvailable} seats total`],
     ...(dateTime.scheduleType === "RECURRING" ? [["Trip pattern", getRecurringWeekdaySummary(dateTime)]] : []),
   ];
@@ -3288,78 +3287,64 @@ function TaxiReviewSummaryCard({
   const taxiPartnerPreferenceLabel = getTaxiPartnerPreferenceLabel(taxiPartnerPreference);
 
   return (
-    <section className="grid gap-4">
-      <section className="rounded-[22px] border border-sky-400/30 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(15,23,42,0.16)),var(--rp-card)] p-4 shadow-[0_18px_42px_rgba(14,165,233,0.1)]">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="mt-2 text-2xl font-black leading-tight text-[var(--rp-text)]">Shared taxi pod</h2>
-            <p className="mt-2 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
-              RidePod groups riders first, then requests one shared quote from a licensed taxi partner.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-xs font-black text-sky-200">
-              Taxi
-            </span>
-            <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-xs font-black text-sky-200">
-              Taxi partner quote
-            </span>
-            <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-3 py-1 text-xs font-black text-sky-200">
-              Beta
-            </span>
-          </div>
-        </div>
+    <section className="grid gap-3">
+      <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[linear-gradient(135deg,rgba(246,196,83,0.08),rgba(15,23,42,0.16)),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+        <h2 className="text-lg font-black text-[var(--rp-text)]">Trip</h2>
+        <p className="mt-3 text-2xl font-black leading-tight text-[var(--rp-text)]">{routeSummary}</p>
         <dl className="mt-4 grid gap-2">
-          {summaryRows.map(([label, value]) => (
-            <div key={label} className="rounded-2xl border border-sky-400/20 bg-sky-400/10 px-3 py-3">
-              <dt className="text-xs font-black uppercase tracking-[0.1em] text-sky-300">{label}</dt>
-              <dd className="mt-1 text-sm font-black leading-5 text-[var(--rp-text)]">{value}</dd>
-            </div>
+          {tripRows.map(([label, value]) => (
+            <SummaryLine key={label} label={label} value={value} />
           ))}
         </dl>
       </section>
 
-      <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+      <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
         <h2 className="text-lg font-black text-[var(--rp-text)]">Taxi needs</h2>
         <dl className="mt-3 grid gap-2">
           {taxiNeeds.map(([label, value]) => (
-            <div key={label} className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-3">
-              <dt className="text-xs font-black uppercase tracking-[0.1em] text-sky-300">{label}</dt>
-              <dd className="mt-1 text-sm font-black leading-5 text-[var(--rp-text)]">{value}</dd>
-            </div>
+            <SummaryLine key={label} label={label} value={value} />
           ))}
         </dl>
-        <p className="mt-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
+        <p className="mt-3 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
           Taxi type and luggage capacity depend on taxi partner availability.
         </p>
       </section>
 
-      <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+      <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
         <h2 className="text-lg font-black text-[var(--rp-text)]">Who can join</h2>
-        <p className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-3 text-sm font-black leading-5 text-[var(--rp-text)]">
+        <p className="mt-3 text-base font-black leading-5 text-[var(--rp-text)]">
           {getWhoCanJoinLabel(genderMode, accessMode)}
         </p>
+        {genderMode === "women_only" ? (
+          <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
+            Controls who can join the pod. Does not guarantee a female taxi driver.
+          </p>
+        ) : null}
       </section>
 
-      <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-        <h2 className="text-lg font-black text-[var(--rp-text)]">Taxi partner preference</h2>
-        <p className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-3 text-sm font-black leading-5 text-[var(--rp-text)]">
+      <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+        <h2 className="text-lg font-black text-[var(--rp-text)]">Taxi partner</h2>
+        <p className="mt-3 text-base font-black leading-5 text-[var(--rp-text)]">
           {taxiPartnerPreferenceLabel}
         </p>
-        <p className="mt-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
+        <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
           Taxi partner preferences depend on availability.
         </p>
       </section>
 
-      <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-        <p className="text-sm font-black leading-6 text-[var(--rp-text)]">
-          No live payment or payout is enabled. Guests accept the selected taxi quote before the ride proceeds.
-        </p>
-        <p className="mt-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-          Final guest price appears after the taxi partner quote.
-        </p>
-      </section>
+      <p className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+        No live payment or payout is enabled. Final guest price appears after the taxi partner quote.
+      </p>
     </section>
+  );
+}
+
+function SummaryLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 border-t border-[var(--rp-border)] pt-2 first:border-t-0 first:pt-0">
+      <dt className="text-sm font-semibold leading-5 text-[var(--rp-muted)]">{label}</dt>
+      <dd className="max-w-[58%] text-right text-sm font-black leading-5 text-[var(--rp-text)]">{value}</dd>
+    </div>
   );
 }
 
@@ -4313,7 +4298,7 @@ function ReviewPodStep({
               Final check
             </h1>
             <p className="mx-auto mt-2 max-w-[280px] text-center text-sm font-medium text-[var(--rp-muted)]">
-              Confirm the details before creating your pod.
+              Confirm your shared taxi pod before creating it.
             </p>
           </section>
         )}
@@ -4380,22 +4365,39 @@ function ReviewPodStep({
           ) : null}
         </div>
 
-        <ReviewPanelControls
-          currentPanel={reviewPanel}
-          onPanelChange={setReviewPanel}
-          onCreate={() => {
-            setCreateConfirmChecked(false);
-            setShowCreateConfirm(true);
-          }}
-          canProceed={isTaxiPartnerQuoteReview ? true : !moneyProtectionError}
-          blockedReason={isTaxiPartnerQuoteReview ? undefined : moneyProtectionError ?? undefined}
-          createLabel={isTaxiPartnerQuoteReview ? "Create taxi pod" : "Create Pod"}
-          panelLabels={
-            isTaxiPartnerQuoteReview
-              ? ["Taxi review", "Preview your pod"]
-              : undefined
-          }
-        />
+        {isTaxiPartnerQuoteReview ? (
+          <div className="mt-5 grid grid-cols-[0.8fr_1.2fr] gap-3">
+            <button
+              type="button"
+              onClick={onBack}
+              className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCreateConfirmChecked(false);
+                setShowCreateConfirm(true);
+              }}
+              className="review-create-pod-button min-h-12 rounded-2xl border px-4 text-sm font-black shadow-[0_14px_28px_rgba(246,196,83,0.34)] transition hover:brightness-105"
+            >
+              Create taxi pod
+            </button>
+          </div>
+        ) : (
+          <ReviewPanelControls
+            currentPanel={reviewPanel}
+            onPanelChange={setReviewPanel}
+            onCreate={() => {
+              setCreateConfirmChecked(false);
+              setShowCreateConfirm(true);
+            }}
+            canProceed={!moneyProtectionError}
+            blockedReason={moneyProtectionError ?? undefined}
+            createLabel="Create Pod"
+          />
+        )}
 
         <p className="mt-3 text-center text-sm font-medium text-[var(--rp-muted)]">
           You can move back to edit details before publishing.
