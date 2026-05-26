@@ -1943,7 +1943,7 @@ function SeatCounter({
   onChange: (value: number) => void;
 }) {
   const minSeats = 2;
-  const maxSeats = 8;
+  const maxSeats = 6;
 
   return (
     <section>
