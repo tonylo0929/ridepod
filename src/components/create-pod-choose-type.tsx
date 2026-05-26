@@ -2704,7 +2704,7 @@ function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxi
         fill
         sizes={isTaxiSelector || isLuggage ? "(max-width: 768px) 40vw, 360px" : "(max-width: 768px) 52vw, 360px"}
         quality={100}
-        className={cn("object-cover", isTaxiSelector ? "object-center" : isLuggage ? "object-center" : "object-[38%_center]")}
+        className={cn("object-cover", isTaxiSelector ? "object-center" : isLuggage ? "object-left" : "object-[38%_center]")}
         onError={() => {
           if (isLuggage) setImageFailed(true);
         }}
@@ -2830,7 +2830,11 @@ function PeopleVehicleStep({
         }}
       />
 
-      <main className={cn("people-vehicle-layout scrollbar-hide min-h-0 flex-1 overflow-y-auto", usesSplitTaxiLayout && "taxi-selector-layout")}>
+      <main className={cn(
+        "people-vehicle-layout scrollbar-hide min-h-0 flex-1 overflow-y-auto",
+        isTaxiTypePage && "taxi-selector-layout",
+        isLuggagePage && "luggage-selector-layout",
+      )}>
         <VehicleDarkPanel variant={isTaxiTypePage ? "taxiSelector" : isLuggagePage ? "luggage" : "default"} />
         <section className={cn("people-vehicle-content flex min-h-0 flex-col px-6 pb-10 pt-8", usesSplitTaxiLayout && "taxi-selector-content")}>
           <div className="text-center">
