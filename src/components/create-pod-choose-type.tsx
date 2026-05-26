@@ -356,7 +356,6 @@ const taxiPartnerPreferenceOptions: Array<{
     id: "higher_trust",
     title: "Higher-trust taxi partner",
     description: "Prioritize partners with stronger RidePod trust signals.",
-    helper: "Trust signals may include completed rides, partner rating, low issue rate, and safe-driving commitment.",
   },
   {
     id: "airport_luggage_friendly",
