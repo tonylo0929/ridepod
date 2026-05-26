@@ -2338,7 +2338,9 @@ function TaxiTypeOptionCard({
       )}
     >
       <span className="relative flex min-h-28 items-center justify-center overflow-hidden rounded-[18px] bg-[radial-gradient(circle_at_50%_70%,rgba(250,204,21,0.2),transparent_56%)]">
-        <TaxiOptionImage src={option.imageSrc} alt={option.title} />
+        <span className={cn("block h-full w-full", option.id === "large_luggage_4_seat" && "scale-[1.22]")}>
+          <TaxiOptionImage src={option.imageSrc} alt={option.title} />
+        </span>
       </span>
 
       <span className="min-w-0">
