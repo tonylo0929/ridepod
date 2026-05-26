@@ -1986,7 +1986,7 @@ const rideCategories: Array<{
   id: RideCategoryId;
   title: string;
   description: string;
-  badge: string;
+  badge?: string;
   helper: string;
   icon: typeof CarFront;
   disabled?: boolean;
@@ -1995,7 +1995,6 @@ const rideCategories: Array<{
     id: "taxi",
     title: "Taxi",
     description: "Licensed taxi partner quote for your shared pod.",
-    badge: "Available in beta",
     helper: "Choose taxi type, luggage needs, and safety mode next.",
     icon: CarFront,
   },
@@ -2135,14 +2134,16 @@ function RideCategoryCard({
       <span className="min-w-0">
         <span className="flex flex-wrap items-center gap-2 text-base font-black text-[var(--rp-text)]">
           <span>{category.title}</span>
-          <span
-            className={cn(
-              "rounded-full border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,var(--rp-card))] px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]",
-              taxiCategory && "border-sky-400/35 bg-sky-400/10 text-sky-200",
-            )}
-          >
-            {category.badge}
-          </span>
+          {category.badge ? (
+            <span
+              className={cn(
+                "rounded-full border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,var(--rp-card))] px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]",
+                taxiCategory && "border-sky-400/35 bg-sky-400/10 text-sky-200",
+              )}
+            >
+              {category.badge}
+            </span>
+          ) : null}
         </span>
         <span className="mt-1 block text-xs font-semibold leading-4 text-[var(--rp-muted)]">
           {category.description}
