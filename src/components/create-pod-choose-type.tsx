@@ -2428,13 +2428,13 @@ function TaxiNeedsSelector({
 
         <div className="mt-6 rounded-[22px] border border-[var(--rp-primary)]/35 bg-[rgba(7,19,38,0.62)] p-3">
           <p className="text-center text-[11px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">Luggage count</p>
-          <div className="mt-4 grid grid-cols-[42px_minmax(0,1fr)_42px] items-center gap-2">
+          <div className="relative mt-4 flex min-h-[84px] items-center justify-center">
             <button
               type="button"
               aria-label="Decrease luggage count"
               disabled={peopleVehicle.bags <= minBags}
               onClick={() => onPeopleVehicleChange({ ...peopleVehicle, bags: Math.max(minBags, peopleVehicle.bags - 1) })}
-              className="grid h-10 w-10 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)] disabled:opacity-35"
+              className="absolute left-0 grid h-10 w-10 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)] disabled:opacity-35"
             >
               <Minus className="h-5 w-5" />
             </button>
@@ -2449,7 +2449,7 @@ function TaxiNeedsSelector({
               aria-label="Increase luggage count"
               disabled={peopleVehicle.bags >= maxBags}
               onClick={() => onPeopleVehicleChange({ ...peopleVehicle, bags: Math.min(maxBags, peopleVehicle.bags + 1) })}
-              className="grid h-10 w-10 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)] disabled:opacity-35"
+              className="absolute right-0 grid h-10 w-10 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)] disabled:opacity-35"
             >
               <Plus className="h-5 w-5" />
             </button>
