@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -2301,6 +2301,33 @@ function TaxiTypeSelector({
               />
             );
           })}
+        </div>
+
+        <div className="grid grid-cols-[48px_1fr_48px] items-center gap-3 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-2">
+          <button
+            type="button"
+            aria-label="Previous taxi type"
+            onClick={() => moveTaxiOption(-1)}
+            className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card)] text-[var(--rp-muted-strong)] transition hover:border-[var(--rp-primary)] hover:text-[var(--rp-primary)]"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <div className="min-w-0 text-center">
+            <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
+              {selectedIndex + 1} of {taxiTypeOptions.length}
+            </p>
+            <p className="mt-1 truncate text-sm font-black text-[var(--rp-text)]">
+              {selectedOption.title}
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Next taxi type"
+            onClick={() => moveTaxiOption(1)}
+            className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card)] text-[var(--rp-muted-strong)] transition hover:border-[var(--rp-primary)] hover:text-[var(--rp-primary)]"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
         </div>
       </div>
 
@@ -4639,3 +4666,4 @@ export function CreatePodChooseType() {
     </div>
   );
 }
+
