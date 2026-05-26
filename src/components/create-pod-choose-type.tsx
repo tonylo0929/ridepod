@@ -2346,10 +2346,10 @@ function TaxiNeedsSelector({
       <div>
         <div className="flex items-center gap-2">
           <Luggage className="h-5 w-5 text-sky-300" />
-          <h2 className="text-[26px] font-black leading-tight text-[var(--rp-text)]">Luggage and access needs</h2>
+          <h2 className="text-[26px] font-black leading-tight text-[var(--rp-text)]">Luggage</h2>
         </div>
         <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-          Add bags, extra space, and accessibility requests before the taxi partner quotes.
+          Add bag details before the taxi partner quotes.
         </p>
       </div>
 
@@ -2381,9 +2381,6 @@ function TaxiNeedsSelector({
 
         {[
           ["largeLuggage", "Large luggage"] as const,
-          ["extraSpaceNeeded", "Extra space needed"] as const,
-          ["wheelchairAccessibleRequested", "Wheelchair-accessible taxi requested"] as const,
-          ["stepFreeSupportRequested", "Step-free support requested"] as const,
         ].map(([key, label]) => (
           <label
             key={key}
@@ -2401,10 +2398,7 @@ function TaxiNeedsSelector({
       </div>
 
       <p className="mt-4 rounded-[16px] border border-sky-400/25 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
-        Taxi type and accessibility requests depend on taxi partner availability.
-      </p>
-      <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-        Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner.
+        Luggage capacity is a guide and may vary by bag size.
       </p>
     </section>
   );
@@ -2589,16 +2583,16 @@ function PeopleVehicleStep({
             <ScheduleTypeEyebrow podType={podType} />
             <h1 className="text-[30px] font-black leading-tight text-[var(--rp-text)]">
               {isTaxiFlow && taxiDetailsPage === "needs"
-                ? "Luggage and access needs"
+                ? "Luggage"
                 : isTaxiFlow && taxiDetailsPage === "type"
                   ? "Choose Taxi Type"
                   : "How do you want to ride?"}
             </h1>
             <p className="mx-auto mt-2 max-w-[280px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]">
               {isTaxiFlow && taxiDetailsPage === "needs"
-                ? "Tell taxi partners what your group needs before they quote."
+                ? "Tell taxi partners your bag count before they quote."
                 : isTaxiFlow && taxiDetailsPage === "type"
-                  ? "Choose based on riders, luggage, and access needs."
+                  ? "Choose based on riders and luggage."
                 : "RidePod groups riders first, then helps the group request the right ride."}
             </p>
           </div>
@@ -2902,16 +2896,6 @@ function getLuggageNeedsSummary(peopleVehicle: PeopleVehicleState) {
   return parts.join(" / ");
 }
 
-function getAccessibilityNeedsSummary(peopleVehicle: PeopleVehicleState) {
-  const needs = [
-    peopleVehicle.extraSpaceNeeded ? "Extra space needed" : null,
-    peopleVehicle.wheelchairAccessibleRequested ? "Wheelchair-accessible taxi requested" : null,
-    peopleVehicle.stepFreeSupportRequested ? "Step-free support requested" : null,
-  ].filter(Boolean);
-
-  return needs.length ? needs.join(", ") : "Not specified";
-}
-
 function TaxiReviewSummaryCard({
   peopleVehicle,
   pickupAddress,
@@ -2945,7 +2929,6 @@ function TaxiReviewSummaryCard({
   const taxiNeeds = [
     ["Taxi type", taxiType],
     ["Luggage", getLuggageNeedsSummary(peopleVehicle)],
-    ["Accessibility", getAccessibilityNeedsSummary(peopleVehicle)],
     ["Pickup point", pickupAddress || "Not specified"],
     ["Dropoff point", dropoffAddress || "Not specified"],
   ];
@@ -3009,7 +2992,7 @@ function TaxiReviewSummaryCard({
           ))}
         </dl>
         <p className="mt-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
-          Taxi type and accessibility requests depend on taxi partner availability.
+          Taxi type and luggage capacity depend on taxi partner availability.
         </p>
       </section>
 
