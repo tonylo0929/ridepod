@@ -2753,15 +2753,10 @@ function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxi
   const isTaxiSelector = variant === "taxiSelector";
   const isLuggage = variant === "luggage";
   const isWhoCanJoin = variant === "whoCanJoin";
-  const [imageFailed, setImageFailed] = useState(false);
   const imageSrc =
-    isLuggage && !imageFailed
-      ? "/images/ridepod/create/luggage-airport-terminal.png"
-      : isWhoCanJoin && !imageFailed
-        ? "/images/ridepod/create/who-can-join-lifestyle.png"
-      : isTaxiSelector
-        ? "/images/ridepod/taxi-selector-left.jpg"
-        : "/images/ridepod/people-vehicle-dark.png";
+    isTaxiSelector || isLuggage || isWhoCanJoin
+      ? "/images/ridepod/taxi-selector-left.jpg"
+      : "/images/ridepod/people-vehicle-dark.png";
 
   return (
     <aside className="people-vehicle-dark-panel ridepod-theme-image-dark relative min-h-[650px] overflow-hidden border-r border-[var(--rp-border-strong)]">
@@ -2771,10 +2766,7 @@ function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxi
         fill
         sizes={isTaxiSelector || isLuggage || isWhoCanJoin ? "(max-width: 768px) 40vw, 360px" : "(max-width: 768px) 52vw, 360px"}
         quality={100}
-        className={cn("object-cover", isTaxiSelector ? "object-center" : isLuggage ? "object-left" : isWhoCanJoin ? "object-center" : "object-[38%_center]")}
-        onError={() => {
-          if (isLuggage || isWhoCanJoin) setImageFailed(true);
-        }}
+        className={cn("object-cover", isTaxiSelector || isLuggage || isWhoCanJoin ? "object-center" : "object-[38%_center]")}
         priority
       />
       <div className={cn(
@@ -2783,15 +2775,6 @@ function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxi
           ? "bg-[linear-gradient(90deg,rgba(5,11,18,0.1),rgba(5,11,18,0.02)_48%,rgba(5,11,18,0.34)),linear-gradient(180deg,rgba(5,11,18,0.02),rgba(5,11,18,0.1)_58%,rgba(5,11,18,0.48))]"
           : "bg-[linear-gradient(90deg,rgba(5,11,18,0.2),rgba(5,11,18,0.02)_45%,rgba(5,11,18,0.32)),linear-gradient(180deg,rgba(5,11,18,0.03),rgba(5,11,18,0.18)_58%,rgba(5,11,18,0.7))]",
       )} />
-      {isWhoCanJoin ? (
-        <div className="absolute bottom-6 left-4 right-4 text-left">
-          <div className="mb-3 grid h-8 w-8 place-items-center rounded-[10px] border border-[var(--rp-primary)]/45 bg-black/20 text-[var(--rp-primary)]">
-            <UsersRound className="h-5 w-5" />
-          </div>
-          <p className="text-sm font-bold leading-5 text-white">Better together. Smarter travel.</p>
-          <p className="mt-2 text-[11px] font-bold leading-4 text-[var(--rp-primary)]">Ride together. Save together.</p>
-        </div>
-      ) : null}
     </aside>
   );
 }
