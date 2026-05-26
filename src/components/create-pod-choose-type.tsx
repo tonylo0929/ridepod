@@ -2161,6 +2161,9 @@ function TaxiTypeSelector({
     (option) =>
       peopleVehicle.seatsAvailable <= option.maxRiders && peopleVehicle.bags <= option.maxBags,
   );
+  const visibleTaxiOptions = taxiTypeOptions.map(
+    (_, offset) => taxiTypeOptions[(selectedIndex + offset) % taxiTypeOptions.length],
+  );
   const accessibilityRequired =
     peopleVehicle.wheelchairAccessibleRequested || peopleVehicle.stepFreeSupportRequested;
   const doesNotFit =
@@ -2200,6 +2203,11 @@ function TaxiTypeSelector({
 
   function switchToRecommended() {
     updateTaxiType(recommendedOption);
+  }
+
+  function moveTaxiOption(direction: -1 | 1) {
+    const nextIndex = (selectedIndex + direction + taxiTypeOptions.length) % taxiTypeOptions.length;
+    updateTaxiType(taxiTypeOptions[nextIndex]);
   }
 
   return (
@@ -2247,17 +2255,36 @@ function TaxiTypeSelector({
       </div>
 
       <div className="space-y-3 rounded-[24px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.12)),var(--rp-card)] p-3 shadow-[0_18px_42px_rgba(14,165,233,0.1)]">
-        <div className="flex flex-wrap items-center justify-between gap-2 px-1">
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
-            Choose taxi type
-          </p>
-          <p className="text-xs font-bold text-[var(--rp-muted-strong)]">
-            Recommended: <span className="text-[var(--rp-text)]">{recommendedOption.title}</span>
-          </p>
+        <div className="flex items-center justify-between gap-3 px-1">
+          <button
+            type="button"
+            aria-label="Previous taxi type"
+            onClick={() => moveTaxiOption(-1)}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)] transition hover:border-[var(--rp-primary)] hover:text-[var(--rp-primary)]"
+          >
+            <ChevronLeft className="h-6 w-6" />
+          </button>
+          <div className="min-w-0 text-center">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
+              Choose taxi type
+            </p>
+            <p className="mt-1 text-xs font-bold leading-4 text-[var(--rp-muted-strong)]">
+              {selectedIndex + 1} of {taxiTypeOptions.length} · Recommended:{" "}
+              <span className="text-[var(--rp-text)]">{recommendedOption.title}</span>
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Next taxi type"
+            onClick={() => moveTaxiOption(1)}
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)] transition hover:border-[var(--rp-primary)] hover:text-[var(--rp-primary)]"
+          >
+            <ChevronRight className="h-6 w-6" />
+          </button>
         </div>
 
         <div className="grid gap-3" role="radiogroup" aria-label="Taxi type">
-          {taxiTypeOptions.map((option) => {
+          {visibleTaxiOptions.map((option) => {
             const selected = option.id === selectedOption.id;
             const recommended = option.id === recommendedOption.id;
             const fits =
