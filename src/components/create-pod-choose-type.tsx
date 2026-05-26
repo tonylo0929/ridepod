@@ -2096,7 +2096,10 @@ function RideCategoryCard({
         disabled={category.disabled}
         className="grid min-h-24 w-full cursor-not-allowed place-items-center rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-center opacity-70 shadow-[var(--rp-shadow-soft)]"
       >
-        <span className="text-lg font-black text-[var(--rp-primary)]">Coming soon</span>
+        <span>
+          <span className="block text-lg font-black text-[var(--rp-text)]">Ride app</span>
+          <span className="mt-1 block text-sm font-black text-[var(--rp-primary)]">Coming soon</span>
+        </span>
       </button>
     );
   }
