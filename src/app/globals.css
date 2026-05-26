@@ -190,7 +190,7 @@ select {
 }
 
 .luggage-selector-layout {
-  grid-template-columns: minmax(146px, 36%) minmax(0, 1fr);
+  grid-template-columns: minmax(104px, 28%) minmax(0, 1fr);
   min-height: 100%;
 }
 
@@ -220,7 +220,7 @@ select {
   }
 
   .luggage-selector-layout {
-    grid-template-columns: minmax(118px, 34%) minmax(0, 1fr);
+    grid-template-columns: minmax(88px, 26%) minmax(0, 1fr);
   }
 
   .who-can-join-layout {

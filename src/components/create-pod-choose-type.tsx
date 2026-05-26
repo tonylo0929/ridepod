@@ -2490,7 +2490,7 @@ function TaxiNeedsSelector({
         </label>
       </div>
 
-      <p className="rounded-[20px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+      <p className="rounded-[20px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-4 text-left text-xs font-medium leading-5 text-[var(--rp-muted-strong)]">
         <Info className="mr-2 inline h-5 w-5 align-[-4px] text-[var(--rp-primary)]" />
         Luggage capacity is a guide and may vary by bag size. Actual space may vary by vehicle type and taxi partner.
       </p>
