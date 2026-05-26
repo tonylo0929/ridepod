@@ -348,14 +348,6 @@ function HostPodCard({ pod }: { pod: RidePod }) {
               <p><span className="text-[var(--rp-muted)]">Pickup point:</span> {pod.pickupHub}</p>
               <p><span className="text-[var(--rp-muted)]">Dropoff point:</span> {pod.dropoffHub}</p>
             </div>
-            <p className="mt-3 text-[11px] font-semibold leading-4 text-[var(--rp-muted)]">
-              Taxi type and accessibility requests depend on taxi partner availability.
-            </p>
-            {pod.genderMode === "women_only" ? (
-              <p className="mt-2 text-[11px] font-semibold leading-4 text-[var(--rp-muted)]">
-                Women-only controls who can join the pod. It does not guarantee a female taxi driver.
-              </p>
-            ) : null}
           </section>
         ) : null}
 

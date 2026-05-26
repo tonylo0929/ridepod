@@ -3008,11 +3008,6 @@ function TaxiReviewSummaryCard({
             </span>
           ))}
         </div>
-        {genderMode === "women_only" ? (
-          <p className="mt-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-            Women-only controls who can join the pod. It does not guarantee a female taxi driver.
-          </p>
-        ) : null}
       </section>
 
       <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
@@ -3310,11 +3305,6 @@ function SafetyTrustPanel({
               </button>
             ))}
           </div>
-          {genderMode === "women_only" ? (
-            <p className="mt-3 rounded-xl bg-[var(--rp-card-soft)] p-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-              Women-only controls who can join the pod. It does not guarantee a female taxi driver.
-            </p>
-          ) : null}
         </div>
 
         <div>
