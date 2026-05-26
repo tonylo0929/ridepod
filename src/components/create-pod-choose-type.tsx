@@ -323,7 +323,6 @@ const whoCanJoinOptions: Array<{
     id: "women_only",
     title: "Women-only pod",
     description: "Only eligible women can join this shared pod, including the host.",
-    helper: "This controls who can join the pod. It does not guarantee a female taxi driver.",
   },
   {
     id: "mixed",
