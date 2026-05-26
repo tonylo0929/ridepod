@@ -2653,19 +2653,26 @@ function HostChoiceConfirmationDialog({
   );
 }
 
-function VehicleDarkPanel() {
+function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxiSelector" }) {
+  const isTaxiSelector = variant === "taxiSelector";
+
   return (
     <aside className="people-vehicle-dark-panel ridepod-theme-image-dark relative min-h-[650px] overflow-hidden border-r border-[var(--rp-border-strong)]">
       <Image
-        src="/images/ridepod/people-vehicle-dark.png"
+        src={isTaxiSelector ? "/images/ridepod/taxi-selector-left.jpg" : "/images/ridepod/people-vehicle-dark.png"}
         alt=""
         fill
-        sizes="(max-width: 768px) 52vw, 360px"
+        sizes={isTaxiSelector ? "(max-width: 768px) 40vw, 360px" : "(max-width: 768px) 52vw, 360px"}
         quality={100}
-        className="object-cover object-[38%_center]"
+        className={cn("object-cover", isTaxiSelector ? "object-center" : "object-[38%_center]")}
         priority
       />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,11,18,0.2),rgba(5,11,18,0.02)_45%,rgba(5,11,18,0.32)),linear-gradient(180deg,rgba(5,11,18,0.03),rgba(5,11,18,0.18)_58%,rgba(5,11,18,0.7))]" />
+      <div className={cn(
+        "absolute inset-0",
+        isTaxiSelector
+          ? "bg-[linear-gradient(90deg,rgba(5,11,18,0.1),rgba(5,11,18,0.02)_48%,rgba(5,11,18,0.34)),linear-gradient(180deg,rgba(5,11,18,0.02),rgba(5,11,18,0.1)_58%,rgba(5,11,18,0.48))]"
+          : "bg-[linear-gradient(90deg,rgba(5,11,18,0.2),rgba(5,11,18,0.02)_45%,rgba(5,11,18,0.32)),linear-gradient(180deg,rgba(5,11,18,0.03),rgba(5,11,18,0.18)_58%,rgba(5,11,18,0.7))]",
+      )} />
     </aside>
   );
 }
@@ -2713,6 +2720,7 @@ function PeopleVehicleStep({
   const selectedRideOptionId = normalizeRideOptionId(peopleVehicle.rideOption);
   const isTaxiFlow = selectedRideOptionId === "taxi_partner_quote" || selectedRideOptionId === "taxi_meter";
   const [taxiDetailsPage, setTaxiDetailsPage] = useState<"category" | "type" | "needs" | "join" | "partner">("category");
+  const isTaxiTypePage = isTaxiFlow && taxiDetailsPage === "type";
   const [showRideConfirm, setShowRideConfirm] = useState(false);
   const [rideConfirmChecked, setRideConfirmChecked] = useState(false);
   const [confirmedRideOption, setConfirmedRideOption] = useState<ActiveRideOptionId | null>(null);
@@ -2776,9 +2784,9 @@ function PeopleVehicleStep({
         }}
       />
 
-      <main className="people-vehicle-layout scrollbar-hide min-h-0 flex-1 overflow-y-auto">
-        <VehicleDarkPanel />
-        <section className="people-vehicle-content flex min-h-0 flex-col px-6 pb-10 pt-8">
+      <main className={cn("people-vehicle-layout scrollbar-hide min-h-0 flex-1 overflow-y-auto", isTaxiTypePage && "taxi-selector-layout")}>
+        <VehicleDarkPanel variant={isTaxiTypePage ? "taxiSelector" : "default"} />
+        <section className={cn("people-vehicle-content flex min-h-0 flex-col px-6 pb-10 pt-8", isTaxiTypePage && "taxi-selector-content")}>
           <div className="text-center">
             <ScheduleTypeEyebrow podType={podType} />
             <h1 className="text-[30px] font-black leading-tight text-[var(--rp-text)]">

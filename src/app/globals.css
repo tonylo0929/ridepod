@@ -177,6 +177,40 @@ select {
 .people-vehicle-layout {
   display: grid;
   grid-template-columns: minmax(132px, 36%) minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.people-vehicle-dark-panel {
+  align-self: stretch;
+}
+
+.taxi-selector-layout {
+  grid-template-columns: minmax(150px, 38%) minmax(0, 1fr);
+  min-height: 100%;
+}
+
+.taxi-selector-layout .people-vehicle-dark-panel {
+  min-height: 100%;
+}
+
+.taxi-selector-content {
+  align-items: center;
+}
+
+.taxi-selector-content > * {
+  width: 100%;
+  max-width: 300px;
+}
+
+@media (max-width: 390px) {
+  .taxi-selector-layout {
+    grid-template-columns: minmax(96px, 30%) minmax(0, 1fr);
+  }
+
+  .taxi-selector-content {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }
 
 .review-create-pod-button {
