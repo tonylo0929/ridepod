@@ -100,7 +100,7 @@ type PricingState = {
 type GenderMode = "women_only" | "mixed";
 type AccessMode = "open" | "verified_only" | "community_only" | "high_trust_only" | "invite_only";
 type WhoCanJoinId = "women_only" | "mixed" | "verified_only" | "invite_only";
-type TaxiPartnerPreference = "standard" | "higher_trust" | "airport_luggage_friendly" | "accessibility_support";
+type TaxiPartnerPreference = "standard" | "higher_trust" | "airport_luggage_friendly";
 type TaxiTypeId =
   | "standard"
   | "compact_4_seat"
@@ -362,12 +362,6 @@ const taxiPartnerPreferenceOptions: Array<{
     id: "airport_luggage_friendly",
     title: "Airport / luggage-friendly",
     description: "Prioritize partners comfortable with airport trips and luggage.",
-  },
-  {
-    id: "accessibility_support",
-    title: "Accessibility support",
-    description: "Request a partner who can support access needs when available.",
-    helper: "Availability depends on taxi partner support.",
   },
 ];
 
