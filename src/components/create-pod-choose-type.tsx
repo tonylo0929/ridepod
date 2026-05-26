@@ -3272,7 +3272,6 @@ function TaxiReviewSummaryCard({
   taxiPartnerPreference: TaxiPartnerPreference;
 }) {
   const taxiType = getTaxiTypeLabel(peopleVehicle.taxiType);
-  const routeSummary = `${pickupAddress || "Pickup point"} \u2192 ${dropoffAddress || "Dropoff point"}`;
   const tripRows = [
     ["Date/time", `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}`],
     ["Seats / guests", `${peopleVehicle.seatsAvailable} seats total`],
@@ -3290,7 +3289,10 @@ function TaxiReviewSummaryCard({
     <section className="grid gap-3">
       <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[linear-gradient(135deg,rgba(246,196,83,0.08),rgba(15,23,42,0.16)),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
         <h2 className="text-lg font-black text-[var(--rp-text)]">Trip</h2>
-        <p className="mt-3 text-2xl font-black leading-tight text-[var(--rp-text)]">{routeSummary}</p>
+        <dl className="mt-3 grid gap-2">
+          <SummaryLine label="Pickup" value={pickupAddress || "Pickup point"} />
+          <SummaryLine label="Dropoff" value={dropoffAddress || "Dropoff point"} />
+        </dl>
         <dl className="mt-4 grid gap-2">
           {tripRows.map(([label, value]) => (
             <SummaryLine key={label} label={label} value={value} />
@@ -3333,7 +3335,7 @@ function TaxiReviewSummaryCard({
       </section>
 
       <p className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-        No live payment or payout is enabled. Final guest price appears after the taxi partner quote.
+        No live payment or payout is enabled. Guests see the final price after the taxi partner quote.
       </p>
     </section>
   );
