@@ -3175,12 +3175,6 @@ function TaxiReviewSummaryCard({
     ["Seats / guests", `${peopleVehicle.seatsAvailable} seats total`],
     ...(dateTime.scheduleType === "RECURRING" ? [["Trip pattern", getRecurringWeekdaySummary(dateTime)]] : []),
   ];
-  const quoteSteps = [
-    ["Group first", "Guests join before quote request."],
-    ["Partner quote", "A licensed taxi partner quotes one shared price."],
-    ["Guests accept", "The ride proceeds after guests accept the quote."],
-    ["Review window", "Payout stays pending during the dispute window."],
-  ];
   const taxiNeeds = [
     ["Taxi type", taxiType],
     ["Luggage", getLuggageNeedsSummary(peopleVehicle)],
@@ -3219,18 +3213,6 @@ function TaxiReviewSummaryCard({
             </div>
           ))}
         </dl>
-      </section>
-
-      <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-        <h2 className="text-lg font-black text-[var(--rp-text)]">How the taxi quote works</h2>
-        <div className="mt-3 grid gap-2">
-          {quoteSteps.map(([title, body]) => (
-            <div key={title} className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-              <p className="text-sm font-black text-[var(--rp-text)]">{title}</p>
-              <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">{body}</p>
-            </div>
-          ))}
-        </div>
       </section>
 
       <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
