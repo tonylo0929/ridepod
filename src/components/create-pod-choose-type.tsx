@@ -2717,7 +2717,7 @@ function PeopleVehicleStep({
               {isTaxiFlow && taxiDetailsPage === "needs"
                 ? "Luggage and access needs"
                 : isTaxiFlow && taxiDetailsPage === "type"
-                  ? "What taxi type fits your group?"
+                  ? "Choose Taxi Type"
                   : "How do you want to ride?"}
             </h1>
             <p className="mx-auto mt-2 max-w-[280px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]">
