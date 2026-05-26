@@ -2410,65 +2410,87 @@ function TaxiNeedsSelector({
 }) {
   const minBags = 0;
   const maxBags = 8;
+  const largeLuggageId = "large-luggage-toggle";
 
   return (
-    <section className="mt-7 rounded-[22px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.12)),var(--rp-card)] p-4 shadow-[0_18px_42px_rgba(14,165,233,0.1)]">
-      <div>
-        <div className="flex items-center gap-2">
-          <Luggage className="h-5 w-5 text-sky-300" />
-          <h2 className="text-[26px] font-black leading-tight text-[var(--rp-text)]">Luggage</h2>
+    <section className="mt-7 space-y-4">
+      <div className="rounded-[26px] border border-[var(--rp-border-strong)] bg-[linear-gradient(145deg,rgba(14,165,233,0.08),rgba(15,23,42,0.28)),var(--rp-card)] p-5 text-center shadow-[0_22px_54px_rgba(3,7,18,0.28)]">
+        <div className="mx-auto grid h-20 w-20 place-items-center rounded-full border border-[var(--rp-primary)] bg-[radial-gradient(circle,rgba(255,210,101,0.2),rgba(15,23,42,0.52))] text-[var(--rp-primary)] shadow-[0_0_34px_rgba(246,196,83,0.14)]">
+          <Luggage className="h-9 w-9" />
         </div>
-        <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+        <h2 className="mt-4 text-[28px] font-black leading-tight text-[var(--rp-text)]">Luggage</h2>
+        <p className="mx-auto mt-2 max-w-[230px] text-sm font-semibold leading-6 text-[var(--rp-muted)]">
           Add bag details before the taxi partner quotes.
         </p>
-      </div>
 
-      <div className="mt-4 grid gap-3">
-        <div className="rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
-          <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">Luggage count</p>
-          <div className="mt-2 grid grid-cols-[44px_1fr_44px] items-center gap-3">
+        <div className="mt-6 rounded-[22px] border border-[var(--rp-primary)]/35 bg-[rgba(7,19,38,0.62)] p-4">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-muted)]">Luggage count</p>
+          <div className="mt-4 grid grid-cols-[52px_1fr_52px] items-center gap-4">
             <button
               type="button"
               aria-label="Decrease luggage count"
               disabled={peopleVehicle.bags <= minBags}
               onClick={() => onPeopleVehicleChange({ ...peopleVehicle, bags: Math.max(minBags, peopleVehicle.bags - 1) })}
-              className="grid h-11 w-11 place-items-center rounded-full border border-sky-400/25 text-sky-300 transition hover:bg-sky-400/10 disabled:opacity-35"
+              className="grid h-12 w-12 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)] disabled:opacity-35"
             >
               <Minus className="h-5 w-5" />
             </button>
-            <p className="text-center text-3xl font-black text-sky-300">{peopleVehicle.bags}</p>
+            <div>
+              <p className="text-5xl font-black leading-none text-[var(--rp-text)]">{peopleVehicle.bags}</p>
+              <p className="mt-2 text-xs font-semibold text-[var(--rp-muted)]">
+                {peopleVehicle.bags === 1 ? "Standard piece" : "Standard pieces"}
+              </p>
+            </div>
             <button
               type="button"
               aria-label="Increase luggage count"
               disabled={peopleVehicle.bags >= maxBags}
               onClick={() => onPeopleVehicleChange({ ...peopleVehicle, bags: Math.min(maxBags, peopleVehicle.bags + 1) })}
-              className="grid h-11 w-11 place-items-center rounded-full border border-sky-400/25 text-sky-300 transition hover:bg-sky-400/10 disabled:opacity-35"
+              className="grid h-12 w-12 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)] disabled:opacity-35"
             >
               <Plus className="h-5 w-5" />
             </button>
           </div>
         </div>
 
-        {[
-          ["largeLuggage", "Large luggage"] as const,
-        ].map(([key, label]) => (
-          <label
-            key={key}
-            className="flex gap-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]"
+        <label
+          htmlFor={largeLuggageId}
+          className="mt-5 flex cursor-pointer items-center justify-between gap-4 text-left"
+        >
+          <span>
+            <span className="block text-xl font-black leading-6 text-[var(--rp-text)]">Large luggage</span>
+            <span className="mt-2 block text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+              Items longer than 75 cm or bulky equipment.
+            </span>
+          </span>
+          <span
+            className={cn(
+              "relative h-10 w-[70px] shrink-0 rounded-full border transition",
+              peopleVehicle.largeLuggage
+                ? "border-[var(--rp-primary)] bg-[var(--rp-primary)]"
+                : "border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)]",
+            )}
           >
-            <input
-              type="checkbox"
-              checked={peopleVehicle[key]}
-              onChange={(event) => onPeopleVehicleChange({ ...peopleVehicle, [key]: event.target.checked })}
-              className="mt-1 h-4 w-4 accent-sky-500"
+            <span
+              className={cn(
+                "absolute top-1 grid h-8 w-8 place-items-center rounded-full bg-[var(--rp-text)] transition",
+                peopleVehicle.largeLuggage ? "left-[33px] text-[var(--rp-primary)]" : "left-1 text-[var(--rp-muted)]",
+              )}
             />
-            <span>{label}</span>
-          </label>
-        ))}
+          </span>
+          <input
+            id={largeLuggageId}
+            type="checkbox"
+            checked={peopleVehicle.largeLuggage}
+            onChange={(event) => onPeopleVehicleChange({ ...peopleVehicle, largeLuggage: event.target.checked })}
+            className="sr-only"
+          />
+        </label>
       </div>
 
-      <p className="mt-4 rounded-[16px] border border-sky-400/25 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
-        Luggage capacity is a guide and may vary by bag size.
+      <p className="rounded-[20px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+        <Info className="mr-2 inline h-5 w-5 align-[-4px] text-[var(--rp-primary)]" />
+        Luggage capacity is a guide and may vary by bag size. Actual space may vary by vehicle type and taxi partner.
       </p>
     </section>
   );
@@ -2663,23 +2685,34 @@ function HostChoiceConfirmationDialog({
   );
 }
 
-function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxiSelector" }) {
+function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxiSelector" | "luggage" }) {
   const isTaxiSelector = variant === "taxiSelector";
+  const isLuggage = variant === "luggage";
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageSrc =
+    isLuggage && !imageFailed
+      ? "/images/ridepod/create/luggage-airport-terminal.png"
+      : isTaxiSelector
+        ? "/images/ridepod/taxi-selector-left.jpg"
+        : "/images/ridepod/people-vehicle-dark.png";
 
   return (
     <aside className="people-vehicle-dark-panel ridepod-theme-image-dark relative min-h-[650px] overflow-hidden border-r border-[var(--rp-border-strong)]">
       <Image
-        src={isTaxiSelector ? "/images/ridepod/taxi-selector-left.jpg" : "/images/ridepod/people-vehicle-dark.png"}
+        src={imageSrc}
         alt=""
         fill
-        sizes={isTaxiSelector ? "(max-width: 768px) 40vw, 360px" : "(max-width: 768px) 52vw, 360px"}
+        sizes={isTaxiSelector || isLuggage ? "(max-width: 768px) 40vw, 360px" : "(max-width: 768px) 52vw, 360px"}
         quality={100}
-        className={cn("object-cover", isTaxiSelector ? "object-center" : "object-[38%_center]")}
+        className={cn("object-cover", isTaxiSelector ? "object-center" : isLuggage ? "object-center" : "object-[38%_center]")}
+        onError={() => {
+          if (isLuggage) setImageFailed(true);
+        }}
         priority
       />
       <div className={cn(
         "absolute inset-0",
-        isTaxiSelector
+        isTaxiSelector || isLuggage
           ? "bg-[linear-gradient(90deg,rgba(5,11,18,0.1),rgba(5,11,18,0.02)_48%,rgba(5,11,18,0.34)),linear-gradient(180deg,rgba(5,11,18,0.02),rgba(5,11,18,0.1)_58%,rgba(5,11,18,0.48))]"
           : "bg-[linear-gradient(90deg,rgba(5,11,18,0.2),rgba(5,11,18,0.02)_45%,rgba(5,11,18,0.32)),linear-gradient(180deg,rgba(5,11,18,0.03),rgba(5,11,18,0.18)_58%,rgba(5,11,18,0.7))]",
       )} />
@@ -2765,6 +2798,9 @@ function PeopleVehicleStep({
     onContinue();
   }
 
+  const isLuggagePage = isTaxiFlow && taxiDetailsPage === "needs";
+  const usesSplitTaxiLayout = isTaxiTypePage || isLuggagePage;
+
   return (
     <>
       <CreatePodTopBar
@@ -2794,9 +2830,9 @@ function PeopleVehicleStep({
         }}
       />
 
-      <main className={cn("people-vehicle-layout scrollbar-hide min-h-0 flex-1 overflow-y-auto", isTaxiTypePage && "taxi-selector-layout")}>
-        <VehicleDarkPanel variant={isTaxiTypePage ? "taxiSelector" : "default"} />
-        <section className={cn("people-vehicle-content flex min-h-0 flex-col px-6 pb-10 pt-8", isTaxiTypePage && "taxi-selector-content")}>
+      <main className={cn("people-vehicle-layout scrollbar-hide min-h-0 flex-1 overflow-y-auto", usesSplitTaxiLayout && "taxi-selector-layout")}>
+        <VehicleDarkPanel variant={isTaxiTypePage ? "taxiSelector" : isLuggagePage ? "luggage" : "default"} />
+        <section className={cn("people-vehicle-content flex min-h-0 flex-col px-6 pb-10 pt-8", usesSplitTaxiLayout && "taxi-selector-content")}>
           <div className="text-center">
             <ScheduleTypeEyebrow podType={podType} />
             <h1 className="text-[30px] font-black leading-tight text-[var(--rp-text)]">
