@@ -2110,16 +2110,7 @@ function TaxiTypeSelector({
 }) {
   return (
     <section className="mt-7 rounded-[22px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.12)),var(--rp-card)] p-4 shadow-[0_18px_42px_rgba(14,165,233,0.1)]">
-      <div>
-        <h2 className="text-[26px] font-black leading-tight text-[var(--rp-text)]">
-          What kind of taxi do you need?
-        </h2>
-        <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-          Choose the taxi type that fits your group, luggage, and accessibility needs.
-        </p>
-      </div>
-
-      <div className="mt-4 grid gap-2" role="radiogroup" aria-label="Taxi type">
+      <div className="grid gap-2" role="radiogroup" aria-label="Taxi type">
         {taxiTypeOptions.map((option) => {
           const selected = peopleVehicle.taxiType === option.id;
 
@@ -2379,12 +2370,17 @@ function PeopleVehicleStep({
 }) {
   const selectedRideOptionId = normalizeRideOptionId(peopleVehicle.rideOption);
   const isTaxiFlow = selectedRideOptionId === "taxi_partner_quote" || selectedRideOptionId === "taxi_meter";
-  const [taxiDetailsPage, setTaxiDetailsPage] = useState<"type" | "needs">("type");
+  const [taxiDetailsPage, setTaxiDetailsPage] = useState<"category" | "type" | "needs">("category");
   const [showRideConfirm, setShowRideConfirm] = useState(false);
   const [rideConfirmChecked, setRideConfirmChecked] = useState(false);
   const [confirmedRideOption, setConfirmedRideOption] = useState<ActiveRideOptionId | null>(null);
 
   function handleContinue() {
+    if (isTaxiFlow && taxiDetailsPage === "category") {
+      setTaxiDetailsPage("type");
+      return;
+    }
+
     if (isTaxiFlow && taxiDetailsPage === "type") {
       setTaxiDetailsPage("needs");
       return;
@@ -2409,6 +2405,11 @@ function PeopleVehicleStep({
             return;
           }
 
+          if (isTaxiFlow && taxiDetailsPage === "type") {
+            setTaxiDetailsPage("category");
+            return;
+          }
+
           onBack();
         }}
       />
@@ -2419,11 +2420,17 @@ function PeopleVehicleStep({
           <div className="text-center">
             <ScheduleTypeEyebrow podType={podType} />
             <h1 className="text-[30px] font-black leading-tight text-[var(--rp-text)]">
-              {isTaxiFlow && taxiDetailsPage === "needs" ? "Luggage and access needs" : "How do you want to ride?"}
+              {isTaxiFlow && taxiDetailsPage === "needs"
+                ? "Luggage and access needs"
+                : isTaxiFlow && taxiDetailsPage === "type"
+                  ? "What kind of taxi do you need?"
+                  : "How do you want to ride?"}
             </h1>
             <p className="mt-2 text-base font-medium text-[var(--rp-muted)]">
               {isTaxiFlow && taxiDetailsPage === "needs"
                 ? "Tell taxi partners what your group needs before they quote."
+                : isTaxiFlow && taxiDetailsPage === "type"
+                  ? "Choose the taxi type that fits your group, luggage, and accessibility needs."
                 : "RidePod groups riders first, then helps the group request the right ride."}
             </p>
           </div>
@@ -2434,6 +2441,14 @@ function PeopleVehicleStep({
                 peopleVehicle={peopleVehicle}
                 onPeopleVehicleChange={onPeopleVehicleChange}
               />
+            ) : isTaxiFlow && taxiDetailsPage === "type" ? (
+              <>
+                <TaxiTypeSelector
+                  peopleVehicle={peopleVehicle}
+                  onPeopleVehicleChange={onPeopleVehicleChange}
+                />
+                <VehicleLightArt />
+              </>
             ) : (
               <>
                 <SeatCounter
@@ -2446,7 +2461,7 @@ function PeopleVehicleStep({
                   value={peopleVehicle.rideOption}
                   onChange={(rideOption) =>
                     {
-                      setTaxiDetailsPage("type");
+                      setTaxiDetailsPage("category");
                       setRideConfirmChecked(false);
                       setConfirmedRideOption(null);
                       onPeopleVehicleChange({
@@ -2460,12 +2475,6 @@ function PeopleVehicleStep({
                     }
                   }
                 />
-                {isTaxiFlow ? (
-                  <TaxiTypeSelector
-                    peopleVehicle={peopleVehicle}
-                    onPeopleVehicleChange={onPeopleVehicleChange}
-                  />
-                ) : null}
                 <VehicleLightArt />
               </>
             )}
