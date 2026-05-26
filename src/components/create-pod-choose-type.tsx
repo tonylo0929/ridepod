@@ -17,6 +17,7 @@ import {
   DollarSign,
   Info,
   Luggage,
+  Mail,
   MapPin,
   Minus,
   Plus,
@@ -24,6 +25,7 @@ import {
   ShieldCheck,
   Smartphone,
   Trash2,
+  UserRound,
   UserPlus,
   UsersRound,
 } from "lucide-react";
@@ -322,22 +324,22 @@ const whoCanJoinOptions: Array<{
   {
     id: "women_only",
     title: "Women-only pod",
-    description: "Only eligible women can join this shared pod, including the host.",
+    description: "Only women can join this pod for a safe and comfortable ride.",
   },
   {
     id: "mixed",
     title: "Mixed pod",
-    description: "Open to eligible riders who match the pod rules.",
+    description: "Anyone can join. Open to all riders.",
   },
   {
     id: "verified_only",
     title: "Verified-only",
-    description: "Only riders with RidePod trust review can join.",
+    description: "Only RidePod verified users can join this pod.",
   },
   {
     id: "invite_only",
     title: "Invite-only",
-    description: "Only people with your invite link can join.",
+    description: "Only riders you invite will be able to join.",
   },
 ];
 
@@ -2568,16 +2570,77 @@ function WhoCanJoinSelector({
   return (
     <section className="mt-7 grid gap-3" role="radiogroup" aria-label="Who can join">
       {whoCanJoinOptions.map((option) => (
-        <PreferenceOptionCard
+        <WhoCanJoinOptionCard
           key={option.id}
+          id={option.id}
           title={option.title}
           description={option.description}
-          helper={option.helper}
           selected={selectedWhoCanJoin === option.id}
           onSelect={() => updateWhoCanJoin(option.id)}
         />
       ))}
     </section>
+  );
+}
+
+function WhoCanJoinOptionCard({
+  id,
+  title,
+  description,
+  selected,
+  onSelect,
+}: {
+  id: WhoCanJoinId;
+  title: string;
+  description: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const Icon =
+    id === "women_only"
+      ? UserRound
+      : id === "mixed"
+        ? UsersRound
+        : id === "verified_only"
+          ? ShieldCheck
+          : Mail;
+
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={cn(
+        "group flex min-h-[78px] w-full items-center gap-3 rounded-[15px] border p-3 text-left transition",
+        selected
+          ? "border-[var(--rp-primary)] bg-[linear-gradient(135deg,rgba(246,196,83,0.12),rgba(15,23,42,0.76))] shadow-[0_0_0_1px_rgba(246,196,83,0.24),0_0_24px_rgba(246,196,83,0.18)]"
+          : "border-[var(--rp-border)] bg-[rgba(15,23,42,0.74)] hover:border-[var(--rp-primary)]/45",
+      )}
+    >
+      <span
+        className={cn(
+          "grid h-14 w-14 shrink-0 place-items-center rounded-[14px] border text-[var(--rp-primary)] transition",
+          selected
+            ? "border-[var(--rp-primary)]/45 bg-[rgba(246,196,83,0.12)]"
+            : "border-[var(--rp-border)] bg-[var(--rp-card-muted)]",
+        )}
+      >
+        <Icon className="h-7 w-7" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-base font-black leading-5 text-[var(--rp-text)]">{title}</span>
+        <span className="mt-1 block text-xs font-semibold leading-4 text-[var(--rp-muted-strong)]">{description}</span>
+      </span>
+      <span
+        className={cn(
+          "grid h-5 w-5 shrink-0 place-items-center rounded-full border transition",
+          selected ? "border-[var(--rp-primary)]" : "border-[var(--rp-muted)]",
+        )}
+      >
+        {selected ? <span className="h-2.5 w-2.5 rounded-full bg-[var(--rp-primary)]" /> : null}
+      </span>
+    </button>
   );
 }
 
@@ -2685,13 +2748,16 @@ function HostChoiceConfirmationDialog({
   );
 }
 
-function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxiSelector" | "luggage" }) {
+function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxiSelector" | "luggage" | "whoCanJoin" }) {
   const isTaxiSelector = variant === "taxiSelector";
   const isLuggage = variant === "luggage";
+  const isWhoCanJoin = variant === "whoCanJoin";
   const [imageFailed, setImageFailed] = useState(false);
   const imageSrc =
     isLuggage && !imageFailed
       ? "/images/ridepod/create/luggage-airport-terminal.png"
+      : isWhoCanJoin && !imageFailed
+        ? "/images/ridepod/create/who-can-join-lifestyle.png"
       : isTaxiSelector
         ? "/images/ridepod/taxi-selector-left.jpg"
         : "/images/ridepod/people-vehicle-dark.png";
@@ -2702,20 +2768,29 @@ function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxi
         src={imageSrc}
         alt=""
         fill
-        sizes={isTaxiSelector || isLuggage ? "(max-width: 768px) 40vw, 360px" : "(max-width: 768px) 52vw, 360px"}
+        sizes={isTaxiSelector || isLuggage || isWhoCanJoin ? "(max-width: 768px) 40vw, 360px" : "(max-width: 768px) 52vw, 360px"}
         quality={100}
-        className={cn("object-cover", isTaxiSelector ? "object-center" : isLuggage ? "object-left" : "object-[38%_center]")}
+        className={cn("object-cover", isTaxiSelector ? "object-center" : isLuggage ? "object-left" : isWhoCanJoin ? "object-center" : "object-[38%_center]")}
         onError={() => {
-          if (isLuggage) setImageFailed(true);
+          if (isLuggage || isWhoCanJoin) setImageFailed(true);
         }}
         priority
       />
       <div className={cn(
         "absolute inset-0",
-        isTaxiSelector || isLuggage
+        isTaxiSelector || isLuggage || isWhoCanJoin
           ? "bg-[linear-gradient(90deg,rgba(5,11,18,0.1),rgba(5,11,18,0.02)_48%,rgba(5,11,18,0.34)),linear-gradient(180deg,rgba(5,11,18,0.02),rgba(5,11,18,0.1)_58%,rgba(5,11,18,0.48))]"
           : "bg-[linear-gradient(90deg,rgba(5,11,18,0.2),rgba(5,11,18,0.02)_45%,rgba(5,11,18,0.32)),linear-gradient(180deg,rgba(5,11,18,0.03),rgba(5,11,18,0.18)_58%,rgba(5,11,18,0.7))]",
       )} />
+      {isWhoCanJoin ? (
+        <div className="absolute bottom-6 left-4 right-4 text-left">
+          <div className="mb-3 grid h-8 w-8 place-items-center rounded-[10px] border border-[var(--rp-primary)]/45 bg-black/20 text-[var(--rp-primary)]">
+            <UsersRound className="h-5 w-5" />
+          </div>
+          <p className="text-sm font-bold leading-5 text-white">Better together. Smarter travel.</p>
+          <p className="mt-2 text-[11px] font-bold leading-4 text-[var(--rp-primary)]">Ride together. Save together.</p>
+        </div>
+      ) : null}
     </aside>
   );
 }
@@ -2799,7 +2874,8 @@ function PeopleVehicleStep({
   }
 
   const isLuggagePage = isTaxiFlow && taxiDetailsPage === "needs";
-  const usesSplitTaxiLayout = isTaxiTypePage || isLuggagePage;
+  const isWhoCanJoinPage = isTaxiFlow && taxiDetailsPage === "join";
+  const usesSplitTaxiLayout = isTaxiTypePage || isLuggagePage || isWhoCanJoinPage;
 
   return (
     <>
@@ -2834,8 +2910,9 @@ function PeopleVehicleStep({
         "people-vehicle-layout scrollbar-hide min-h-0 flex-1 overflow-y-auto",
         isTaxiTypePage && "taxi-selector-layout",
         isLuggagePage && "luggage-selector-layout",
+        isWhoCanJoinPage && "who-can-join-layout",
       )}>
-        <VehicleDarkPanel variant={isTaxiTypePage ? "taxiSelector" : isLuggagePage ? "luggage" : "default"} />
+        <VehicleDarkPanel variant={isTaxiTypePage ? "taxiSelector" : isLuggagePage ? "luggage" : isWhoCanJoinPage ? "whoCanJoin" : "default"} />
         <section className={cn("people-vehicle-content flex min-h-0 flex-col px-6 pb-10 pt-8", usesSplitTaxiLayout && "taxi-selector-content")}>
           <div className="text-center">
             <ScheduleTypeEyebrow podType={podType} />

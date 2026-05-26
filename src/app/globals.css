@@ -194,8 +194,14 @@ select {
   min-height: 100%;
 }
 
+.who-can-join-layout {
+  grid-template-columns: minmax(118px, 30%) minmax(0, 1fr);
+  min-height: 100%;
+}
+
 .taxi-selector-layout .people-vehicle-dark-panel,
-.luggage-selector-layout .people-vehicle-dark-panel {
+.luggage-selector-layout .people-vehicle-dark-panel,
+.who-can-join-layout .people-vehicle-dark-panel {
   min-height: 100%;
 }
 
@@ -215,6 +221,10 @@ select {
 
   .luggage-selector-layout {
     grid-template-columns: minmax(118px, 34%) minmax(0, 1fr);
+  }
+
+  .who-can-join-layout {
+    grid-template-columns: minmax(104px, 30%) minmax(0, 1fr);
   }
 
   .taxi-selector-content {
