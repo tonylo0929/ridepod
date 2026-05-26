@@ -2859,6 +2859,7 @@ function PeopleVehicleStep({
 
   const isLuggagePage = isTaxiFlow && taxiDetailsPage === "needs";
   const isWhoCanJoinPage = isTaxiFlow && taxiDetailsPage === "join";
+  const isTaxiPartnerPreferencePage = isTaxiFlow && taxiDetailsPage === "partner";
   const usesSplitTaxiLayout = isTaxiTypePage || isLuggagePage || isWhoCanJoinPage;
 
   return (
@@ -2896,7 +2897,17 @@ function PeopleVehicleStep({
         isLuggagePage && "luggage-selector-layout",
         isWhoCanJoinPage && "who-can-join-layout",
       )}>
-        <VehicleDarkPanel variant={isTaxiTypePage ? "taxiSelector" : isLuggagePage ? "luggage" : isWhoCanJoinPage ? "whoCanJoin" : "default"} />
+        <VehicleDarkPanel
+          variant={
+            isTaxiTypePage || isTaxiPartnerPreferencePage
+              ? "taxiSelector"
+              : isLuggagePage
+                ? "luggage"
+                : isWhoCanJoinPage
+                  ? "whoCanJoin"
+                  : "default"
+          }
+        />
         <section className={cn("people-vehicle-content flex min-h-0 flex-col px-6 pb-10 pt-8", usesSplitTaxiLayout && "taxi-selector-content")}>
           <div className="text-center">
             <ScheduleTypeEyebrow podType={podType} />
