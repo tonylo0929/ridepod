@@ -222,11 +222,10 @@ const rideConfirmationCopy: Record<ActiveRideOptionId, { title: string; body: st
   taxi_partner_quote: {
     title: "Confirm shared taxi pod",
     body: [
-      "RidePod will group riders first, then request one shared quote from a licensed taxi partner.",
-      "Guests accept the quote before the ride proceeds.",
+      "RidePod will request one shared quote from a licensed taxi partner after guests join.",
+      "Guests must accept the selected quote before the ride proceeds.",
     ],
-    checkbox:
-      "I understand guests must accept the taxi quote before the ride proceeds.",
+    checkbox: "I understand how taxi quotes work.",
   },
 };
 
