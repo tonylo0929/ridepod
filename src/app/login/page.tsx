@@ -54,7 +54,7 @@ export default function LoginPage() {
           </span>
           <h1 className="text-3xl font-black text-[var(--rp-text)]">Log in</h1>
           <p className="text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-            Log in to continue to protected RidePod actions.
+            Log in to continue with shared taxi pods and beta RidePod actions.
           </p>
         </div>
 

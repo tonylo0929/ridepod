@@ -280,7 +280,7 @@ function HostPodCard({ pod }: { pod: RidePod }) {
                   Taxi partner quote - Licensed taxi partner quotes one shared price.
                 </p>
                 <p className="text-xs font-bold leading-5 text-[var(--rp-muted)]">
-                  {getTaxiTypeLabel(taxiPartnerRequest)} - Beta prototype. No real taxi dispatch or payout yet.
+                  {getTaxiTypeLabel(taxiPartnerRequest)} - Demo mode. No real taxi dispatch or payout yet.
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {safetyChips.map((chip) => (

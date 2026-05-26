@@ -825,7 +825,7 @@ export function ReceiptUploadCard({
             </label>
 
             <p className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] px-3 py-2 text-xs font-bold leading-5 text-[var(--rp-warning)]">
-              False or misleading proof may lead to reimbursement denial, account suspension, dispute review, and further action where required.
+              Misleading or unsupported proof may go to manual review and account action if needed.
             </p>
 
             <div className="mt-5 grid grid-cols-2 gap-3">

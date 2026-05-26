@@ -507,14 +507,6 @@ function optionalCount(count: number | null | undefined, fallback = "Not availab
   return typeof count === "number" ? String(count) : fallback;
 }
 
-function taxiPartnerRideStatusLabel(reviewCase: AdminReviewCaseViewModel) {
-  if (reviewCase.reviewState === "RESOLVED" || reviewCase.payoutStatus === "RELEASED") return "Closed";
-  if (reviewCase.payoutStatus === "HELD_FOR_REVIEW" || reviewCase.disputeStatus !== "None") return "Dispute review";
-  if (reviewCase.payoutStatus === "PENDING") return "Payout pending";
-  if (reviewCase.taxiPartnerRideCompletionStatus?.toLowerCase().includes("completed")) return "Ride completed";
-  return reviewCase.taxiPartnerRideCompletionStatus ?? "Ready for pickup";
-}
-
 function aboveCapDifferenceLabel(quoteCents: number | null | undefined, fareCapCents: number | null | undefined) {
   if (typeof quoteCents !== "number" || typeof fareCapCents !== "number" || fareCapCents <= 0 || quoteCents <= fareCapCents) {
     return "Not above cap";

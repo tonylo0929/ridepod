@@ -84,7 +84,7 @@ function getBody(label: string) {
     return "Guests accepted the quote. Coordinate pickup next.";
   }
 
-  return "Taxi partner quote is a future beta prototype.";
+  return "Taxi partner quote is in demo mode.";
 }
 
 function getStatusChipClass(label: string) {
@@ -137,7 +137,7 @@ function createRequestedQuote({
     payoutStatus: "NOT_READY",
     luggageCount,
     ...accessibility,
-    notes: "Future beta prototype. No real taxi dispatch yet.",
+    notes: "Demo quote request. No real taxi dispatch yet.",
   };
 }
 
@@ -321,7 +321,7 @@ export function TaxiPartnerQuoteRequestCard({
           </Badge>
         ))}
         <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">
-          Future beta prototype
+          Demo mode
         </Badge>
         {requestDetailBadges.map((badge) => (
           <Badge key={badge} className="bg-[var(--rp-card-muted)] text-[var(--rp-muted-strong)] ring-[var(--rp-border)]">

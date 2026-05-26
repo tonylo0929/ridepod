@@ -118,8 +118,7 @@ export function TaxiPartnerCompletionCard({
           Guests accepted
         </Badge>
         <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">
-          Future beta
-          <span className="sr-only"> Beta prototype</span>
+          Demo mode
         </Badge>
         {["Taxi partner", "Quote", "Mock payment", "Shared pod"].map((badge) => (
           <Badge key={badge} className="border border-sky-400/20 bg-sky-400/10 text-sky-100 ring-sky-400/25">
@@ -221,13 +220,13 @@ export function TaxiPartnerCompletionCard({
               <div className="mt-4 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3">
                 <p className="text-sm font-black text-sky-100">Live pickup tracking</p>
                 <p className="mt-1 text-xs font-bold leading-5 text-sky-100">
-                  Future: show taxi partner location and pickup progress here. No live GPS is shared in this beta prototype.
+                  Pickup progress display is coming later. No live GPS is shared in this beta flow.
                 </p>
               </div>
               <div className="mt-4 grid gap-3 min-[520px]:grid-cols-2">
                 <button
                   type="button"
-                  onClick={() => setMessage("Pickup details shown. No live GPS is shared in this beta prototype.")}
+                  onClick={() => setMessage("Pickup details shown. No live GPS is shared in this beta flow.")}
                   className="inline-flex min-h-12 items-center justify-center rounded-[16px] bg-sky-500 px-5 text-sm font-black text-white shadow-[0_14px_28px_rgba(14,165,233,0.22)] transition hover:bg-sky-400"
                 >
                   View pickup details

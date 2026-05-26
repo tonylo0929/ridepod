@@ -554,7 +554,7 @@ function SettlementDetailsScreen({
           <div>
             <h3 className="text-lg font-black text-[var(--rp-text)]">Dispute window</h3>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              Guests can report an issue until the dispute window ends. If no issue is reported, settlement finalizes automatically.
+              Guests can report an issue until the dispute window ends. Review can be marked closed in app state after the window clears.
             </p>
           </div>
           <Badge className={disputeSubmitted ? "bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border)]" : "bg-[var(--rp-success-bg)] text-[var(--rp-badge-success-text)] ring-[var(--rp-border)]"}>
@@ -1207,7 +1207,7 @@ export function RecurringInstanceProofFlow({
           </label>
 
           <p className="mt-4 rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-warning-bg)] p-3 text-sm font-bold leading-6 text-[var(--rp-warning)]">
-            False or misleading proof may lead to review, reimbursement denial, or account action.
+            Misleading or unsupported proof may go to manual review and account action if needed.
           </p>
 
           {receiptAboveCap ? (
@@ -1408,7 +1408,7 @@ export function RecurringInstanceProofFlow({
 
           <p className="mt-4 flex gap-3 rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-warning-bg)] p-3 text-sm font-bold leading-6 text-[var(--rp-warning)]">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
-            <span>False or misleading proof may lead to review, reimbursement denial, or account action.</span>
+            <span>Misleading or unsupported proof may go to manual review and account action if needed.</span>
           </p>
 
           {meterAboveCap ? (
@@ -1594,7 +1594,7 @@ export function RecurringInstanceProofFlow({
                   <span>I confirm this receipt is real, accurate, unaltered, and belongs to this ride.</span>
                 </label>
                 <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-warning)]">
-                  False or misleading proof may lead to reimbursement denial, account suspension, dispute review, and manual review.
+                  Misleading or unsupported proof may go to manual review and account action if needed.
                 </p>
                 <button
                   type="button"
@@ -1764,7 +1764,7 @@ export function RecurringInstanceProofFlow({
                   </span>
                 </label>
                 <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-warning-bg)] p-3 text-xs font-bold leading-5 text-[var(--rp-warning)]">
-                  False or misleading proof may lead to booking denial, reimbursement denial, account suspension, and manual review.
+                  Misleading or unsupported proof may go to manual review and account action if needed.
                 </p>
                 <button
                   type="button"

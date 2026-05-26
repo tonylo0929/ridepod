@@ -1015,7 +1015,7 @@ export const ridePods: RidePod[] = [
     recurringPattern: "one_way",
     recurringScheduleLine: "Tue - 7:45 AM outbound",
     outboundTime: "7:45 AM",
-    protectionStatus: "Future beta prototype. No real taxi dispatch or payout yet.",
+    protectionStatus: "Demo mode. No real taxi dispatch or payout yet.",
     rideOption: "taxi_partner_quote",
     vehicleType: "Taxi",
     maxFare: 280,

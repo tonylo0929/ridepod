@@ -182,8 +182,8 @@ const rideOptions: Array<{
     id: "taxi_partner_quote",
     title: "Taxi partner quote",
     description: "Licensed taxi partner quotes one price for the shared pod.",
-    helper: "Future beta mode. No real taxi dispatch or payout yet.",
-    recurringHelper: "Future beta mode. No real taxi dispatch or payout yet.",
+    helper: "Demo mode. No real taxi dispatch or payout yet.",
+    recurringHelper: "Demo mode. No real taxi dispatch or payout yet.",
     icon: CarFront,
     badge: "Future beta",
     taxiTypeChips: ["Standard", "Electric", "Luggage-friendly", "Large", "Comfort", "Accessible"],
@@ -195,7 +195,7 @@ const rideConfirmationCopy: Record<ActiveRideOptionId, { title: string; body: st
     title: "Confirm External Ride",
     body: [
       "The host books the ride outside RidePod using an app or provider with an upfront quote.",
-      "RidePod protection applies only when the fresh quote is within the approved max. Final settlement uses the verified receipt.",
+      "RidePod review applies only when the fresh quote is within the approved max. Final settlement uses the verified receipt.",
     ],
     checkbox:
       "I understand the fresh quote must be approved before booking, and final settlement uses the verified receipt.",

@@ -549,7 +549,7 @@ function RecurringPodCard({ pod, compact = false }: { pod: RidePod; compact?: bo
             </p>
             {isTaxiPartnerQuote ? (
               <p className="mt-1 text-xs font-bold text-[var(--rp-muted)]">
-                {getTaxiFirstTaxiTypeLabel(taxiPartnerRequest)} - Beta prototype. No real taxi dispatch or payout yet.
+                {getTaxiFirstTaxiTypeLabel(taxiPartnerRequest)} - Demo mode. No real taxi dispatch or payout yet.
               </p>
             ) : null}
             <p className="mt-2 flex items-center gap-1.5 text-xs font-black text-[var(--rp-muted-strong)]">

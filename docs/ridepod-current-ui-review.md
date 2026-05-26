@@ -873,3 +873,5 @@ UI-FIX-4 completed: Guest quote acceptance now shows one payment mode at a time.
 UI-FIX-5 completed: Create Pod Review was simplified into a Taxi summary, quote process, taxi needs, who-can-join summary, concise beta/payment note, and clearer Taxi-first CTA.
 
 UI-FIX-6 completed: Homepage and How RidePod Works visual hierarchy were checked for Taxi-first positioning, CTA clarity, mock/payment wording, and old-mode prominence.
+
+UI-FIX-7 completed: full UI smoke QA after Taxi-first copy cleanup, settlement cleanup, admin hierarchy cleanup, guest payment-mode simplification, Review Pod simplification, and public page hierarchy QA.

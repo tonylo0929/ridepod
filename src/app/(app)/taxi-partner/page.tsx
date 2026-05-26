@@ -447,7 +447,7 @@ export default function TaxiPartnerDashboardPage() {
         <section className="overflow-hidden rounded-[32px] border border-sky-400/35 bg-[radial-gradient(circle_at_top_right,rgba(14,165,233,0.18),transparent_38%),var(--rp-card)] p-5 shadow-[0_18px_46px_rgba(14,165,233,0.12)] sm:p-7">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">Future beta prototype</Badge>
+              <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">Demo mode</Badge>
               <h1 className="mt-4 text-3xl font-black leading-tight sm:text-4xl">Taxi Partner Dashboard</h1>
               <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
                 Demo dashboard for licensed taxi partner quote requests.
@@ -464,7 +464,7 @@ export default function TaxiPartnerDashboardPage() {
           <div className="mt-5 flex items-start gap-3 rounded-[18px] border border-sky-400/25 bg-sky-400/10 p-4 text-sky-100">
             <Info className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" />
             <p className="text-sm font-bold leading-6">
-              Future beta prototype. RidePod does not provide drivers. Taxi partners are external licensed providers. No real dispatch or payout yet.
+              Demo mode. RidePod does not provide drivers. Taxi partners are external licensed providers. No real dispatch or payout yet.
             </p>
           </div>
         </section>
@@ -1015,7 +1015,7 @@ export default function TaxiPartnerDashboardPage() {
                 </div>
               </div>
               <p className="mt-4 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
-                No live GPS is shared in this beta prototype.
+                No live GPS is shared in this beta flow.
               </p>
             </Card>
 

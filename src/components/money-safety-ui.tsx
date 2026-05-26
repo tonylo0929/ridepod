@@ -686,7 +686,7 @@ export function HostQuoteUploadPanel({ pod }: { pod: RidePod }) {
           title="Confirm quote proof"
         body="This quote will be used to decide whether the host can book through the RidePod review flow."
           checkboxText="I confirm this quote screenshot is real, accurate, unaltered, and belongs to this ride."
-          warningText="False or misleading proof may lead to booking denial, reimbursement denial, account suspension, and manual review."
+          warningText="Misleading or unsupported proof may go to manual review and account action if needed."
           submitLabel="Submit quote"
           checked={quoteCertified}
           onCheckedChange={setQuoteCertified}
