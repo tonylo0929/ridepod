@@ -185,7 +185,7 @@ select {
 }
 
 .taxi-selector-layout {
-  grid-template-columns: minmax(150px, 38%) minmax(0, 1fr);
+  grid-template-columns: minmax(104px, 30%) minmax(0, 1fr);
   min-height: 100%;
 }
 
@@ -199,17 +199,17 @@ select {
 
 .taxi-selector-content > * {
   width: 100%;
-  max-width: 300px;
+  max-width: 330px;
 }
 
 @media (max-width: 390px) {
   .taxi-selector-layout {
-    grid-template-columns: minmax(96px, 30%) minmax(0, 1fr);
+    grid-template-columns: minmax(74px, 24%) minmax(0, 1fr);
   }
 
   .taxi-selector-content {
-    padding-left: 1rem;
-    padding-right: 1rem;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
   }
 }
 

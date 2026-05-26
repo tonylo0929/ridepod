@@ -2331,7 +2331,7 @@ function TaxiTypeOptionCard({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "grid w-full gap-3 rounded-[22px] border bg-[linear-gradient(135deg,rgba(15,23,42,0.74),rgba(2,6,23,0.54))] p-3 text-left transition min-[390px]:grid-cols-[42%_1fr] min-[390px]:items-center",
+        "grid w-full gap-3 rounded-[22px] border bg-[linear-gradient(135deg,rgba(15,23,42,0.74),rgba(2,6,23,0.54))] p-3 text-left transition",
         selected
           ? "border-[var(--rp-primary)] shadow-[0_0_0_1px_color-mix(in_srgb,var(--rp-primary)_42%,transparent),0_16px_36px_rgba(250,204,21,0.12)]"
           : "border-[var(--rp-border)] hover:border-sky-400/45",
@@ -2349,13 +2349,13 @@ function TaxiTypeOptionCard({
             May not fit
           </span>
         ) : null}
-        <span className="block text-xl font-black leading-tight text-[var(--rp-text)]">
+        <span className="block text-[22px] font-black leading-tight text-[var(--rp-text)]">
           {option.title}
         </span>
         <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
           {option.description}
         </span>
-        <span className="mt-3 grid grid-cols-2 gap-3">
+        <span className="mt-3 grid grid-cols-2 gap-4">
           <TaxiCapacityStat
             icon={<UsersRound className="h-5 w-5" />}
             value={`x${option.maxRiders}`}
