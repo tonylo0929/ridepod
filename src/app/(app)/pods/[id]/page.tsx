@@ -14,6 +14,10 @@ import { currentUserId, formatMoney, getPod, getUser } from "@/lib/mock-data";
 import { PremiumPodDetailPage } from "@/components/premium-pod-detail";
 import { PublicMemberCard } from "@/components/public-member-card";
 import { TaxiPartnerQuoteAcceptanceCard } from "@/components/taxi-partner-quote-acceptance-card";
+import { HomePodDetailPage } from "@/components/home-pod-detail-page";
+import { NormalPodDetailPage } from "@/components/normal-pod-detail-page";
+import { AirportPodDetailPage } from "@/components/airport-pod-detail-page";
+import { RecurringPodDetailPage } from "@/components/recurring-pod-detail-page";
 import {
   MoneySafetyTimeline,
   PodChatSafetyPanel,
@@ -21,6 +25,7 @@ import {
 } from "@/components/money-safety-ui";
 import { getProtectedPod } from "@/lib/money-safety-mock";
 import { mapMemberToPublicProfileViewModel } from "@/lib/public-profile";
+import { getHomeRide } from "@/lib/home-ride-mock";
 
 export default async function PodDetailPage({
   params,
@@ -31,6 +36,23 @@ export default async function PodDetailPage({
 
   if (id === "usc-lax-001" || id === "usc-lax-commute") {
     return <PremiumPodDetailPage />;
+  }
+
+  const homeRide = getHomeRide(id);
+  if (homeRide) {
+    if (homeRide.rideKind === "airport" || homeRide.airportDirection) {
+      return <AirportPodDetailPage ride={homeRide} />;
+    }
+
+    if (homeRide.rideKind === "recurring" || homeRide.repeatsPattern || homeRide.scheduleLabel) {
+      return <RecurringPodDetailPage ride={homeRide} />;
+    }
+
+    if (homeRide.rideKind === "one_off" && !homeRide.airportDirection) {
+      return <NormalPodDetailPage ride={homeRide} />;
+    }
+
+    return <HomePodDetailPage ride={homeRide} />;
   }
 
   const pod = getPod(id);

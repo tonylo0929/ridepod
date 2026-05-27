@@ -53,7 +53,7 @@ import {
 
 type PodType = "scheduled" | "recurring";
 type CreateStep = 0 | 1 | 2 | 3 | 4 | 5;
-type RecurringSchedulePage = "rides" | "settings";
+type RecurringScheduleSubstep = "weekdays" | "times";
 type RouteStop = {
   id: number;
   address: string;
@@ -102,7 +102,7 @@ type PricingState = {
 type GenderMode = "women_only" | "mixed";
 type AccessMode = "open" | "verified_only" | "community_only" | "high_trust_only" | "invite_only";
 type WhoCanJoinId = "women_only" | "mixed" | "verified_only" | "invite_only";
-type TaxiPartnerPreference = "standard" | "higher_trust" | "airport_luggage_friendly";
+type TaxiPartnerPreference = "standard" | "higher_trust" | "airport_luggage_friendly" | "accessibility_support";
 type TaxiTypeId =
   | "standard"
   | "compact_4_seat"
@@ -304,7 +304,7 @@ function getRideProofCopy(rideOption: RideOptionId) {
 
 const genderModeOptions: Array<{ id: GenderMode; label: string }> = [
   { id: "women_only", label: "Women-only" },
-  { id: "mixed", label: "Mixed pod" },
+  { id: "mixed", label: "Open pod" },
 ];
 
 const accessModeOptions: Array<{ id: AccessMode; label: string }> = [
@@ -324,12 +324,13 @@ const whoCanJoinOptions: Array<{
   {
     id: "women_only",
     title: "Women-only pod",
-    description: "Only women can join this pod for a safe and comfortable ride.",
+    description: "Only eligible women can join this pod, including the host.",
+    helper: "This controls riders joining the pod. It does not guarantee a female taxi driver.",
   },
   {
     id: "mixed",
-    title: "Mixed pod",
-    description: "Anyone can join. Open to all riders.",
+    title: "Open pod",
+    description: "Open to eligible riders who match the pod rules.",
   },
   {
     id: "verified_only",
@@ -358,11 +359,18 @@ const taxiPartnerPreferenceOptions: Array<{
     id: "higher_trust",
     title: "Higher-trust taxi partner",
     description: "Prioritize partners with stronger RidePod trust signals.",
+    helper: "Trust signals may include completed rides, partner rating, low issue rate, and safe-driving commitment.",
   },
   {
     id: "airport_luggage_friendly",
     title: "Airport / luggage-friendly",
     description: "Prioritize partners comfortable with airport trips and luggage.",
+  },
+  {
+    id: "accessibility_support",
+    title: "Accessibility support",
+    description: "Request a partner who can support access needs when available.",
+    helper: "Availability depends on taxi partner support.",
   },
 ];
 
@@ -680,6 +688,21 @@ function routeCode(address: string, fallback: string) {
   if (upperAddress.includes("LAX")) return "LAX";
 
   return fallback;
+}
+
+function isAirportAddress(address: string) {
+  const normalizedAddress = address.toUpperCase();
+
+  return (
+    normalizedAddress.includes("AIRPORT") ||
+    normalizedAddress.includes("TERMINAL") ||
+    normalizedAddress.includes("LAX") ||
+    normalizedAddress.includes("HKIA")
+  );
+}
+
+function isAirportTaxiRoute(pickupAddress: string, dropoffAddress: string) {
+  return isAirportAddress(pickupAddress) || isAirportAddress(dropoffAddress);
 }
 
 function CreatePodStepper({ currentStep }: { currentStep: number }) {
@@ -1084,28 +1107,24 @@ function RouteStopsStep({
   pickupAddress,
   dropoffAddress,
   stops,
-  recurringPattern,
   onBack,
   onPickupChange,
   onDropoffChange,
   onAddStop,
   onStopChange,
   onRemoveStop,
-  onRecurringPatternChange,
   onContinue,
 }: {
   podType: PodType;
   pickupAddress: string;
   dropoffAddress: string;
   stops: RouteStop[];
-  recurringPattern: RecurringPattern;
   onBack: () => void;
   onPickupChange: (value: string) => void;
   onDropoffChange: (value: string) => void;
   onAddStop: () => void;
   onStopChange: (id: number, value: string) => void;
   onRemoveStop: (id: number) => void;
-  onRecurringPatternChange: (recurringPattern: RecurringPattern) => void;
   onContinue: () => void;
 }) {
   const canContinue = pickupAddress.trim().length > 0 && dropoffAddress.trim().length > 0;
@@ -1165,36 +1184,6 @@ function RouteStopsStep({
           <AddStopButton onAddStop={onAddStop} />
         </div>
 
-        {podType === "recurring" ? (
-          <section className="mt-5 rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-            <p className="text-sm font-black text-[var(--rp-text)]">Return trip</p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {[
-                { id: "ONE_WAY" as const, label: "One-way" },
-                { id: "BACK_AND_FORTH" as const, label: "Return Trip" },
-              ].map((option) => {
-                const selected = recurringPattern === option.id;
-
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => onRecurringPatternChange(option.id)}
-                    aria-pressed={selected}
-                    className={cn(
-                      "min-h-12 rounded-xl border px-3 text-sm font-black transition",
-                      selected
-                        ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
-                        : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-muted)]",
-                    )}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-          </section>
-        ) : null}
       </main>
 
       <footer className="fixed inset-x-0 bottom-[88px] z-50 mx-auto max-w-[430px] px-6 pb-4 pt-8 md:static md:mx-0 md:max-w-none md:px-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pt-0">
@@ -1505,13 +1494,13 @@ function RecurringProtectionDialog({
 }
 
 function RecurringScheduleFields({
-  page,
+  substep,
   dateTime,
   onDateTimeChange,
   pickupAddress,
   dropoffAddress,
 }: {
-  page: RecurringSchedulePage;
+  substep: RecurringScheduleSubstep;
   dateTime: DateTimeState;
   onDateTimeChange: (dateTime: DateTimeState) => void;
   pickupAddress: string;
@@ -1519,10 +1508,10 @@ function RecurringScheduleFields({
 }) {
   const visibleLegs = getRecurringLegsForSelection({ dateTime, pickupAddress, dropoffAddress });
   const selectedWeekdays = sortedWeekdays(dateTime.recurringWeekdays);
-  const validationError =
-    page === "rides"
-      ? validateRecurringRideSchedule(dateTime, pickupAddress, dropoffAddress)
-      : validateRecurringDateSettings(dateTime);
+  const selectedDaysSummary = selectedWeekdays
+    .map((weekday) => recurringWeekdayOptions.find((option) => option.id === weekday)?.label ?? weekday)
+    .join(", ");
+  const validationError = getRecurringScheduleSubstepError(substep, dateTime, visibleLegs);
   const syncLegs = (nextDateTime: DateTimeState) =>
     getRecurringLegsForSelection({ dateTime: nextDateTime, pickupAddress, dropoffAddress });
 
@@ -1556,18 +1545,11 @@ function RecurringScheduleFields({
 
   return (
     <section className="mt-7 grid gap-6 border-t border-[var(--rp-border)] pt-7">
-      {page === "rides" ? (
+      {substep === "weekdays" ? (
         <>
-          <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
-            <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
-              Repeats
-            </p>
-            <p className="mt-1 text-lg font-black text-[var(--rp-text)]">Weekly</p>
-          </div>
-
           <fieldset>
-            <legend className="text-base font-bold text-[var(--rp-muted-strong)]">Repeat on</legend>
-            <div className="mt-3 grid grid-cols-4 gap-2 min-[390px]:grid-cols-7">
+            <legend className="sr-only">Choose weekdays</legend>
+            <div className="mx-auto flex max-w-[320px] flex-wrap justify-center gap-3 pt-4">
               {recurringWeekdayOptions.map((option) => {
                 const selected = dateTime.recurringWeekdays.includes(option.id);
 
@@ -1578,27 +1560,42 @@ function RecurringScheduleFields({
                     onClick={() => toggleWeekday(option.id)}
                     aria-pressed={selected}
                     className={cn(
-                      "h-11 rounded-xl border text-sm font-black transition",
+                      "relative grid h-[68px] w-[68px] place-items-center rounded-[16px] border text-base font-black transition",
                       selected
-                        ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
-                        : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-muted)]",
+                        ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)] shadow-[0_16px_34px_color-mix(in_srgb,var(--rp-primary)_22%,transparent)]"
+                        : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-text)] hover:border-[var(--rp-primary)]",
                     )}
                   >
                     {option.label}
+                    {selected ? (
+                      <span className="absolute -bottom-2 grid h-6 w-6 place-items-center rounded-full border border-[var(--rp-shell)] bg-[#071326] text-[var(--rp-primary)]">
+                        <Check className="h-4 w-4" />
+                      </span>
+                    ) : null}
                   </button>
                 );
               })}
             </div>
           </fieldset>
+        </>
+      ) : null}
+
+      {substep === "times" ? (
+        <>
+          <div className="mx-auto inline-flex items-center gap-2 rounded-full border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_8%,transparent)] px-4 py-2 text-sm font-black text-[var(--rp-primary)]">
+            <CalendarDays className="h-4 w-4" />
+            Repeats on {selectedDaysSummary || "selected days"}
+          </div>
 
           <fieldset>
-            <legend className="text-base font-bold text-[var(--rp-muted-strong)]">Trip pattern</legend>
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <legend className="sr-only">Trip pattern</legend>
+            <div className="grid grid-cols-2 overflow-hidden rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-1">
               {[
                 { id: "ONE_WAY" as const, label: "One-way" },
                 { id: "BACK_AND_FORTH" as const, label: "Back-and-forth" },
               ].map((option) => {
                 const selected = dateTime.recurringPattern === option.id;
+                const Icon = option.id === "ONE_WAY" ? ArrowRight : RefreshCcw;
 
                 return (
                   <button
@@ -1607,12 +1604,13 @@ function RecurringScheduleFields({
                     onClick={() => updatePattern(option.id)}
                     aria-pressed={selected}
                     className={cn(
-                      "min-h-12 rounded-xl border px-3 text-sm font-black transition",
+                      "flex min-h-11 items-center justify-center gap-2 rounded-[12px] border px-3 text-sm font-black transition",
                       selected
-                        ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
-                        : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-muted)]",
+                        ? "border-[var(--rp-primary)] bg-transparent text-[var(--rp-primary)]"
+                        : "border-transparent text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-muted)]",
                     )}
                   >
+                    <Icon className="h-4 w-4" />
                     {option.label}
                   </button>
                 );
@@ -1620,120 +1618,25 @@ function RecurringScheduleFields({
             </div>
           </fieldset>
 
-          <section className="grid gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-base font-bold text-[var(--rp-muted-strong)]">
-                {dateTime.recurringPattern === "BACK_AND_FORTH"
-                  ? "Weekly ride times"
-                  : "Weekly ride time"}
-              </h2>
-            </div>
-
-            {selectedWeekdays.length === 0 ? (
-              <div className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-sm font-bold text-[var(--rp-muted)]">
-                Select at least one repeat day.
-              </div>
-            ) : sharedOutbound ? (
-              <div className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-                <p className="text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
-                  Same start time for every selected day.
-                </p>
-                <div className="mt-4 grid gap-3">
-                  <RecurringLegEditor
-                    title="Outbound ride"
-                    leg={sharedOutbound}
-                    onChange={(patch) => updateSharedLeg("OUTBOUND", patch)}
-                  />
-                  {dateTime.recurringPattern === "BACK_AND_FORTH" && sharedReturn ? (
-                    <RecurringLegEditor
-                      title="Return ride"
-                      leg={sharedReturn}
-                      onChange={(patch) => updateSharedLeg("RETURN", patch)}
-                    />
-                  ) : null}
-                </div>
-              </div>
+          <section className="relative grid gap-4">
+            {sharedOutbound ? (
+              <RecurringLegEditor
+                title={dateTime.recurringPattern === "BACK_AND_FORTH" ? "Outbound ride" : "One-way ride"}
+                leg={sharedOutbound}
+                onChange={(patch) => updateSharedLeg("OUTBOUND", patch)}
+              />
+            ) : null}
+            {dateTime.recurringPattern === "BACK_AND_FORTH" && sharedReturn ? (
+              <>
+                <div className="mx-auto -my-4 h-7 w-px bg-[var(--rp-primary)]" />
+                <RecurringLegEditor
+                  title="Return ride"
+                  leg={sharedReturn}
+                  onChange={(patch) => updateSharedLeg("RETURN", patch)}
+                />
+              </>
             ) : null}
           </section>
-        </>
-      ) : null}
-
-      {page === "settings" ? (
-        <>
-          <label className="grid gap-3 text-base font-bold text-[var(--rp-muted-strong)]">
-            Start date
-            <input
-              type="date"
-              min={getTodayIsoDate()}
-              value={dateTime.recurringStartDate}
-              onChange={(event) => onDateTimeChange({ ...dateTime, recurringStartDate: event.target.value })}
-              className="h-14 rounded-[12px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
-            />
-          </label>
-
-          <fieldset className="grid gap-3">
-            <legend className="text-base font-bold text-[var(--rp-muted-strong)]">End</legend>
-            <div className="grid gap-2">
-              {[
-                { id: "after", label: "After N rides" },
-                { id: "on_date", label: "On date" },
-                { id: "none", label: "No end date" },
-              ].map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() =>
-                    onDateTimeChange({
-                      ...dateTime,
-                      recurringEndMode: option.id as DateTimeState["recurringEndMode"],
-                    })
-                  }
-                  className={cn(
-                    "flex min-h-12 items-center justify-between rounded-xl border px-4 text-sm font-black",
-                    dateTime.recurringEndMode === option.id
-                      ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
-                      : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
-                  )}
-                >
-                  {option.label}
-                  {dateTime.recurringEndMode === option.id ? <Check className="h-4 w-4" /> : null}
-                </button>
-              ))}
-            </div>
-
-            {dateTime.recurringEndMode === "after" ? (
-              <label className="grid gap-2 text-sm font-black text-[var(--rp-text)]">
-                Number of rides
-                <input
-                  type="number"
-                  min={1}
-                  max={12}
-                  value={dateTime.recurringOccurrenceLimit}
-                  onChange={(event) =>
-                    onDateTimeChange({
-                      ...dateTime,
-                      recurringOccurrenceLimit: Number(event.target.value),
-                    })
-                  }
-                  className="h-12 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
-                />
-              </label>
-            ) : null}
-
-            {dateTime.recurringEndMode === "on_date" ? (
-              <label className="grid gap-2 text-sm font-black text-[var(--rp-text)]">
-                End date
-                <input
-                  type="date"
-                  min={dateTime.recurringStartDate || getTodayIsoDate()}
-                  value={dateTime.recurringEndDate}
-                  onChange={(event) => onDateTimeChange({ ...dateTime, recurringEndDate: event.target.value })}
-                  className="h-12 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
-                />
-              </label>
-            ) : null}
-          </fieldset>
-
         </>
       ) : null}
 
@@ -1746,6 +1649,26 @@ function RecurringScheduleFields({
   );
 }
 
+function getRecurringScheduleSubstepError(
+  substep: RecurringScheduleSubstep,
+  dateTime: DateTimeState,
+  visibleLegs: RecurringScheduleLeg[],
+) {
+  if (substep === "weekdays") {
+    return dateTime.recurringWeekdays.length === 0 ? "Choose at least one weekday." : null;
+  }
+
+  const outbound = visibleLegs.find((leg) => leg.legType === "OUTBOUND");
+  if (!outbound?.departureTime.trim()) return "Add a departure time.";
+
+  if (dateTime.recurringPattern === "BACK_AND_FORTH") {
+    const returnLeg = visibleLegs.find((leg) => leg.legType === "RETURN");
+    if (!returnLeg?.departureTime.trim()) return "Add a return time.";
+  }
+
+  return null;
+}
+
 function RecurringLegEditor({
   title,
   leg,
@@ -1755,46 +1678,75 @@ function RecurringLegEditor({
   leg: RecurringScheduleLeg;
   onChange: (patch: Partial<RecurringScheduleLeg>) => void;
 }) {
+  const isReturnRide = title === "Return ride";
+
   return (
-    <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-black text-[var(--rp-text)]">{title}</p>
-        <span className="text-xs font-black text-[var(--rp-primary)]">
-          {formatLocalTimeLabel(leg.departureTime)}
+    <div className="rounded-[20px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_92%,transparent),var(--rp-card-soft))] p-4 shadow-[var(--rp-shadow-soft)]">
+      <div className="flex items-center gap-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)] text-[var(--rp-primary)]">
+          {isReturnRide ? <ArrowLeft className="h-5 w-5" /> : <ArrowRight className="h-5 w-5" />}
         </span>
+        <p className="text-base font-black text-[var(--rp-text)]">{title}</p>
       </div>
-      <div className="mt-3 grid gap-3">
-        <label className="grid gap-2 text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">
-          Departure time
-          <input
-            type="time"
-            value={leg.departureTime}
-            onChange={(event) => onChange({ departureTime: event.target.value })}
-            className="h-11 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-3 text-sm font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
-          />
-        </label>
-        <div className="grid gap-3 min-[390px]:grid-cols-2">
-          <label className="grid gap-2 text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">
-            From
-            <input
-              type="text"
-              value={leg.originLabel}
-              onChange={(event) => onChange({ originLabel: event.target.value })}
-              className="h-11 min-w-0 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-3 text-sm font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
-            />
-          </label>
-          <label className="grid gap-2 text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">
-            To
-            <input
-              type="text"
-              value={leg.destinationLabel}
-              onChange={(event) => onChange({ destinationLabel: event.target.value })}
-              className="h-11 min-w-0 rounded-xl border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-3 text-sm font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
-            />
-          </label>
-        </div>
+      <div className="mt-4 grid gap-0 divide-y divide-[var(--rp-border)]">
+        <RecurringRideTimeRow
+          icon={<Clock3 className="h-4 w-4" />}
+          label="Departure time"
+          value={leg.departureTime}
+          displayValue={formatLocalTimeLabel(leg.departureTime)}
+          type="time"
+          onChange={(value) => onChange({ departureTime: value })}
+        />
+        <RecurringRideTimeRow
+          icon={<MapPin className="h-4 w-4" />}
+          label="From"
+          value={leg.originLabel}
+          onChange={(value) => onChange({ originLabel: value })}
+        />
+        <RecurringRideTimeRow
+          icon={<ArrowRight className="h-4 w-4" />}
+          label="To"
+          value={leg.destinationLabel}
+          onChange={(value) => onChange({ destinationLabel: value })}
+        />
       </div>
     </div>
+  );
+}
+
+function RecurringRideTimeRow({
+  icon,
+  label,
+  value,
+  displayValue,
+  type = "text",
+  onChange,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  displayValue?: string;
+  type?: "text" | "time";
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="grid min-h-12 grid-cols-[1fr_minmax(0,48%)] items-center gap-3 py-2">
+      <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-[var(--rp-muted-strong)]">
+        <span className="text-[var(--rp-primary)]">{icon}</span>
+        {label}
+      </span>
+      <input
+        type={type}
+        value={value}
+        aria-label={label}
+        onChange={(event) => onChange(event.target.value)}
+        className={cn(
+          "h-9 min-w-0 rounded-lg border border-transparent bg-transparent px-1 text-right text-base font-black text-[var(--rp-text)] outline-none transition focus:border-[var(--rp-primary)] focus:bg-[var(--rp-input-bg)]",
+          type === "time" && "text-[var(--rp-primary)]",
+        )}
+      />
+      {type === "time" && displayValue ? <span className="sr-only">{displayValue}</span> : null}
+    </label>
   );
 }
 
@@ -1815,44 +1767,33 @@ function DateTimeStep({
   onBack: () => void;
   onContinue: () => void;
 }) {
-  const [showRecurringProtectionDialog, setShowRecurringProtectionDialog] = useState(false);
-  const [recurringProtectionAccepted, setRecurringProtectionAccepted] = useState(false);
-  const [recurringSchedulePage, setRecurringSchedulePage] = useState<RecurringSchedulePage>("rides");
+  const [recurringScheduleSubstep, setRecurringScheduleSubstep] = useState<RecurringScheduleSubstep>("weekdays");
   const activeScheduleType: ScheduleType = podType === "recurring" ? "RECURRING" : "ONE_TIME";
-  const recurringRideValidationError =
-    activeScheduleType === "RECURRING"
-      ? validateRecurringRideSchedule(dateTime, pickupAddress, dropoffAddress)
-      : null;
-  const recurringSettingsValidationError =
-    activeScheduleType === "RECURRING"
-      ? validateRecurringDateSettings(dateTime)
-      : null;
+  const recurringVisibleLegs = getRecurringLegsForSelection({ dateTime, pickupAddress, dropoffAddress });
   const activeRecurringValidationError =
-    recurringSchedulePage === "rides"
-      ? recurringRideValidationError
-      : recurringRideValidationError ?? recurringSettingsValidationError;
+    activeScheduleType === "RECURRING"
+      ? getRecurringScheduleSubstepError(recurringScheduleSubstep, dateTime, recurringVisibleLegs)
+      : null;
   const canContinue =
     activeScheduleType === "ONE_TIME"
       ? dateTime.selectedDate.length > 0 && dateTime.time.length > 0
       : !activeRecurringValidationError;
   const handleBack = () => {
-    if (activeScheduleType === "RECURRING" && recurringSchedulePage === "settings") {
-      setRecurringSchedulePage("rides");
+    if (activeScheduleType === "RECURRING" && recurringScheduleSubstep === "times") {
+      setRecurringScheduleSubstep("weekdays");
       return;
     }
 
     onBack();
   };
   const handleContinue = () => {
-    if (activeScheduleType === "RECURRING" && recurringSchedulePage === "rides") {
-      setRecurringSchedulePage("settings");
+    if (activeScheduleType === "RECURRING" && recurringScheduleSubstep === "weekdays") {
+      if (activeRecurringValidationError) return;
+      setRecurringScheduleSubstep("times");
       return;
     }
 
-    if (activeScheduleType === "RECURRING" && !recurringProtectionAccepted) {
-      setShowRecurringProtectionDialog(true);
-      return;
-    }
+    if (activeScheduleType === "RECURRING" && activeRecurringValidationError) return;
 
     onContinue();
   };
@@ -1863,19 +1804,25 @@ function DateTimeStep({
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-40 pt-8 md:pb-5">
         <section className="text-center">
-          <ScheduleTypeEyebrow podType={podType} />
+          {activeScheduleType === "RECURRING" ? (
+            <p className="text-sm font-semibold text-[var(--rp-muted-strong)]">Step 3 of 6</p>
+          ) : (
+            <ScheduleTypeEyebrow podType={podType} />
+          )}
           <h1 className="text-[28px] font-black leading-tight text-[var(--rp-text)]">
             {activeScheduleType === "RECURRING"
-              ? recurringSchedulePage === "settings"
-                ? "Set start and end"
-                : "When does this pod repeat?"
+              ? recurringScheduleSubstep === "weekdays"
+                ? "Which days repeat?"
+                : "Set ride times"
               : "When are you leaving?"}
           </h1>
           <p className="mt-3 text-base font-medium text-[var(--rp-muted)]">
             {activeScheduleType === "RECURRING"
-              ? recurringSchedulePage === "settings"
-                ? "Choose when this weekly template starts and ends."
-                : "Create a weekly ride template for your recurring route."
+              ? recurringScheduleSubstep === "weekdays"
+                ? "Choose the weekdays for this recurring taxi pod."
+                : dateTime.recurringPattern === "BACK_AND_FORTH"
+                  ? "Set outbound and return times for selected weekdays."
+                  : "Set the departure time for selected weekdays."
               : "Select your date and departure time."}
           </p>
         </section>
@@ -1904,7 +1851,7 @@ function DateTimeStep({
           </>
         ) : (
           <RecurringScheduleFields
-            page={recurringSchedulePage}
+            substep={recurringScheduleSubstep}
             dateTime={dateTime}
             onDateTimeChange={onDateTimeChange}
             pickupAddress={pickupAddress}
@@ -1918,19 +1865,6 @@ function DateTimeStep({
         <PrimaryButton onClick={handleContinue} disabled={!canContinue}>Continue</PrimaryButton>
       </footer>
 
-      <RecurringProtectionDialog
-        dateTime={dateTime}
-        pickupAddress={pickupAddress}
-        dropoffAddress={dropoffAddress}
-        open={showRecurringProtectionDialog}
-        accepted={recurringProtectionAccepted}
-        onAcceptedChange={setRecurringProtectionAccepted}
-        onClose={() => setShowRecurringProtectionDialog(false)}
-        onConfirm={() => {
-          setShowRecurringProtectionDialog(false);
-          onContinue();
-        }}
-      />
     </>
   );
 }
@@ -2458,7 +2392,7 @@ function TaxiNeedsSelector({
 
         <label
           htmlFor={largeLuggageId}
-          className="mt-5 flex cursor-pointer items-center justify-between gap-4 text-left"
+          className="mx-auto mt-6 grid max-w-[220px] cursor-pointer justify-items-center gap-4 text-center"
         >
           <span>
             <span className="block text-xl font-black leading-6 text-[var(--rp-text)]">Large luggage</span>
@@ -2503,12 +2437,14 @@ function PreferenceOptionCard({
   title,
   description,
   helper,
+  badge,
   selected,
   onSelect,
 }: {
   title: string;
   description: string;
   helper?: string;
+  badge?: string;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -2525,7 +2461,14 @@ function PreferenceOptionCard({
           : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] hover:border-sky-400/45",
       )}
     >
-      <span className="block text-base font-black leading-5 text-[var(--rp-text)]">{title}</span>
+      <span className="flex flex-wrap items-center gap-2">
+        <span className="text-base font-black leading-5 text-[var(--rp-text)]">{title}</span>
+        {badge ? (
+          <span className="rounded-full border border-[var(--rp-primary)]/45 bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]">
+            {badge}
+          </span>
+        ) : null}
+      </span>
       <span className="mt-2 block text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">{description}</span>
       {helper ? (
         <span className="mt-3 block rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
@@ -2537,11 +2480,13 @@ function PreferenceOptionCard({
 }
 
 function WhoCanJoinSelector({
+  podType,
   genderMode,
   accessMode,
   onGenderModeChange,
   onAccessModeChange,
 }: {
+  podType: PodType;
   genderMode: GenderMode;
   accessMode: AccessMode;
   onGenderModeChange: (genderMode: GenderMode) => void;
@@ -2569,17 +2514,25 @@ function WhoCanJoinSelector({
   }
 
   return (
-    <section className="mt-7 grid gap-3" role="radiogroup" aria-label="Who can join">
-      {whoCanJoinOptions.map((option) => (
-        <WhoCanJoinOptionCard
-          key={option.id}
-          id={option.id}
-          title={option.title}
-          description={option.description}
-          selected={selectedWhoCanJoin === option.id}
-          onSelect={() => updateWhoCanJoin(option.id)}
-        />
-      ))}
+    <section className="mt-7 grid gap-3">
+      <div className="grid gap-3" role="radiogroup" aria-label="Who can join">
+        {whoCanJoinOptions.map((option) => (
+          <WhoCanJoinOptionCard
+            key={option.id}
+            id={option.id}
+            title={option.title}
+            description={option.description}
+            helper={option.helper}
+            selected={selectedWhoCanJoin === option.id}
+            onSelect={() => updateWhoCanJoin(option.id)}
+          />
+        ))}
+      </div>
+      {podType === "recurring" ? (
+        <p className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+          This applies to every ride in this recurring pod.
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -2588,12 +2541,14 @@ function WhoCanJoinOptionCard({
   id,
   title,
   description,
+  helper,
   selected,
   onSelect,
 }: {
   id: WhoCanJoinId;
   title: string;
   description: string;
+  helper?: string;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -2632,6 +2587,11 @@ function WhoCanJoinOptionCard({
       <span className="min-w-0 flex-1">
         <span className="block text-base font-black leading-5 text-[var(--rp-text)]">{title}</span>
         <span className="mt-1 block text-xs font-semibold leading-4 text-[var(--rp-muted-strong)]">{description}</span>
+        {helper ? (
+          <span className="mt-2 block text-xs font-semibold leading-4 text-[var(--rp-primary)]">
+            {helper}
+          </span>
+        ) : null}
       </span>
       <span
         className={cn(
@@ -2646,23 +2606,48 @@ function WhoCanJoinOptionCard({
 }
 
 function TaxiPartnerPreferenceSelector({
+  podType,
+  isAirportTrip,
   value,
   onChange,
 }: {
+  podType: PodType;
+  isAirportTrip: boolean;
   value: TaxiPartnerPreference;
   onChange: (value: TaxiPartnerPreference) => void;
 }) {
+  const contextNotes = podType === "recurring" ? ["This preference applies to recurring quote requests."] : [];
+
   return (
-    <section className="mt-7 grid gap-3" role="radiogroup" aria-label="Taxi partner preference">
-      {taxiPartnerPreferenceOptions.map((option) => (
-        <PreferenceOptionCard
-          key={option.id}
-          title={option.title}
-          description={option.description}
-          helper={option.helper}
-          selected={value === option.id}
-          onSelect={() => onChange(option.id)}
-        />
+    <section className="mt-7 grid gap-3">
+      <div className="grid gap-3" role="radiogroup" aria-label="Taxi partner preference">
+        {taxiPartnerPreferenceOptions.map((option) => {
+          const recommendedAirportOption = isAirportTrip && option.id === "airport_luggage_friendly";
+
+          return (
+            <PreferenceOptionCard
+              key={option.id}
+              title={option.title}
+              description={option.description}
+              helper={
+                recommendedAirportOption
+                  ? "Airport and luggage support depends on taxi partner availability."
+                  : option.helper
+              }
+              badge={recommendedAirportOption ? "Recommended" : undefined}
+              selected={value === option.id}
+              onSelect={() => onChange(option.id)}
+            />
+          );
+        })}
+      </div>
+      {contextNotes.map((note) => (
+        <p
+          key={note}
+          className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]"
+        >
+          {note}
+        </p>
       ))}
     </section>
   );
@@ -2753,6 +2738,7 @@ function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxi
   const isTaxiSelector = variant === "taxiSelector";
   const isLuggage = variant === "luggage";
   const isWhoCanJoin = variant === "whoCanJoin";
+  // TODO: Replace with rider group image for Who Can Join step.
   const imageSrc =
     isTaxiSelector || isLuggage || isWhoCanJoin
       ? "/images/ridepod/taxi-selector-left.jpg"
@@ -2796,6 +2782,7 @@ function VehicleLightArt() {
 
 function PeopleVehicleStep({
   podType,
+  isAirportTrip,
   peopleVehicle,
   genderMode,
   accessMode,
@@ -2808,6 +2795,7 @@ function PeopleVehicleStep({
   onContinue,
 }: {
   podType: PodType;
+  isAirportTrip: boolean;
   peopleVehicle: PeopleVehicleState;
   genderMode: GenderMode;
   accessMode: AccessMode;
@@ -2845,6 +2833,12 @@ function PeopleVehicleStep({
 
     if (isTaxiFlow && taxiDetailsPage === "join") {
       setTaxiDetailsPage("partner");
+      return;
+    }
+
+    if (selectedRideOptionId === "taxi_partner_quote") {
+      setConfirmedRideOption(selectedRideOptionId);
+      onContinue();
       return;
     }
 
@@ -2943,6 +2937,7 @@ function PeopleVehicleStep({
               />
             ) : isTaxiFlow && taxiDetailsPage === "join" ? (
               <WhoCanJoinSelector
+                podType={podType}
                 genderMode={genderMode}
                 accessMode={accessMode}
                 onGenderModeChange={onGenderModeChange}
@@ -2950,6 +2945,8 @@ function PeopleVehicleStep({
               />
             ) : isTaxiFlow && taxiDetailsPage === "partner" ? (
               <TaxiPartnerPreferenceSelector
+                podType={podType}
+                isAirportTrip={isAirportTrip}
                 value={taxiPartnerPreference}
                 onChange={onTaxiPartnerPreferenceChange}
               />
@@ -3255,10 +3252,10 @@ function getWhoCanJoinId(genderMode: GenderMode, accessMode: AccessMode): WhoCan
 
 function getWhoCanJoinLabel(genderMode: GenderMode, accessMode: AccessMode) {
   const whoCanJoin = getWhoCanJoinId(genderMode, accessMode);
-  if (whoCanJoin === "women_only") return "Women-only, including host";
+  if (whoCanJoin === "women_only") return "Women-only pod";
   if (whoCanJoin === "verified_only") return "Verified-only";
   if (whoCanJoin === "invite_only") return "Invite-only";
-  return "Mixed pod";
+  return "Open pod";
 }
 
 function getTaxiPartnerPreferenceLabel(preference: TaxiPartnerPreference) {
@@ -3285,7 +3282,7 @@ function TaxiReviewSummaryCard({
   const taxiType = getTaxiTypeLabel(peopleVehicle.taxiType);
   const tripRows = [
     ["Date/time", `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}`],
-    ["Seats / guests", `${peopleVehicle.seatsAvailable} seats total`],
+    ["Seats", `${peopleVehicle.seatsAvailable} seats total`],
     ...(dateTime.scheduleType === "RECURRING" ? [["Trip pattern", getRecurringWeekdaySummary(dateTime)]] : []),
   ];
   const taxiNeeds = [
@@ -3295,14 +3292,18 @@ function TaxiReviewSummaryCard({
     ["Dropoff point", dropoffAddress || "Not specified"],
   ];
   const taxiPartnerPreferenceLabel = getTaxiPartnerPreferenceLabel(taxiPartnerPreference);
+  const taxiPartnerPreferenceHelper =
+    taxiPartnerPreference === "airport_luggage_friendly"
+      ? "Taxi partner preferences depend on availability. Airport and luggage support depends on taxi partner availability."
+      : "Taxi partner preferences depend on availability.";
 
   return (
     <section className="grid gap-3">
       <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[linear-gradient(135deg,rgba(246,196,83,0.08),rgba(15,23,42,0.16)),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-        <h2 className="text-lg font-black text-[var(--rp-text)]">Trip</h2>
+        <h2 className="text-lg font-black text-[var(--rp-primary)]">Trip</h2>
         <dl className="mt-3 grid gap-2">
-          <SummaryLine label="Pickup" value={pickupAddress || "Pickup point"} />
-          <SummaryLine label="Dropoff" value={dropoffAddress || "Dropoff point"} />
+          <RouteSummaryLine label="Pickup" value={pickupAddress || "Pickup point"} />
+          <RouteSummaryLine label="Dropoff" value={dropoffAddress || "Dropoff point"} />
         </dl>
         <dl className="mt-4 grid gap-2">
           {tripRows.map(([label, value]) => (
@@ -3312,7 +3313,7 @@ function TaxiReviewSummaryCard({
       </section>
 
       <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-        <h2 className="text-lg font-black text-[var(--rp-text)]">Taxi needs</h2>
+        <h2 className="text-lg font-black text-[var(--rp-primary)]">Taxi needs</h2>
         <dl className="mt-3 grid gap-2">
           {taxiNeeds.map(([label, value]) => (
             <SummaryLine key={label} label={label} value={value} />
@@ -3324,24 +3325,24 @@ function TaxiReviewSummaryCard({
       </section>
 
       <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-        <h2 className="text-lg font-black text-[var(--rp-text)]">Who can join</h2>
+        <h2 className="text-lg font-black text-[var(--rp-primary)]">Who can join</h2>
         <p className="mt-3 text-base font-black leading-5 text-[var(--rp-text)]">
           {getWhoCanJoinLabel(genderMode, accessMode)}
         </p>
         {genderMode === "women_only" ? (
           <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
-            Controls who can join the pod. Does not guarantee a female taxi driver.
+            This controls riders joining the pod. It does not guarantee a female taxi driver.
           </p>
         ) : null}
       </section>
 
       <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-        <h2 className="text-lg font-black text-[var(--rp-text)]">Taxi partner</h2>
+        <h2 className="text-lg font-black text-[var(--rp-primary)]">Taxi partner preference</h2>
         <p className="mt-3 text-base font-black leading-5 text-[var(--rp-text)]">
           {taxiPartnerPreferenceLabel}
         </p>
         <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
-          Taxi partner preferences depend on availability.
+          {taxiPartnerPreferenceHelper}
         </p>
       </section>
 
@@ -3350,6 +3351,32 @@ function TaxiReviewSummaryCard({
       </p>
     </section>
   );
+}
+
+function RouteSummaryLine({ label, value }: { label: string; value: string }) {
+  const lines = formatRouteAddressLines(value);
+
+  return (
+    <div className="flex items-start justify-between gap-4 border-t border-[var(--rp-border)] pt-2 first:border-t-0 first:pt-0">
+      <dt className="text-sm font-semibold leading-5 text-[var(--rp-muted)]">{label}</dt>
+      <dd className="max-w-[62%] text-right text-sm font-black leading-5 text-[var(--rp-text)]">
+        {lines.map((line, index) => (
+          <span key={`${line}-${index}`} className={index === 0 ? "block" : "block font-semibold text-[var(--rp-muted-strong)]"}>
+            {line}
+          </span>
+        ))}
+      </dd>
+    </div>
+  );
+}
+
+function formatRouteAddressLines(value: string) {
+  const lines = value
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return lines.length > 0 ? lines : [value];
 }
 
 function SummaryLine({ label, value }: { label: string; value: string }) {
@@ -3667,7 +3694,7 @@ function SafetyTrustPanel({
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <span className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-1 text-xs font-black text-[var(--rp-muted-strong)]">
-              {genderMode === "women_only" ? "Women-only" : "Mixed pod"}
+              {genderMode === "women_only" ? "Women-only pod" : "Open pod"}
             </span>
             {accessMode !== "open" ? (
               <span className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-1 text-xs font-black text-[var(--rp-muted-strong)]">
@@ -3784,11 +3811,11 @@ function CreatePodConfirmationDialog({
       ? {
           title: "Create this taxi pod?",
           body: [
-            "Guests can join and lock their seats after the pod is created.",
-            "RidePod groups riders first, then requests one shared quote from a licensed taxi partner.",
-            "Demo mode: no live payment or payout.",
+            "Guests can join and lock seats after the pod is created.",
+            "Next, you'll request one shared quote from a licensed taxi partner.",
+            "Guests accept the selected quote before the ride proceeds.",
           ],
-          checkbox: "I understand guests must accept the taxi quote before the ride proceeds.",
+          checkbox: "I understand guests accept the quote before the ride proceeds.",
           submitLabel: "Create taxi pod",
         }
       : normalizedRideOption === "taxi_meter"
@@ -3980,25 +4007,83 @@ function getRecurringRideLine(leg?: RecurringScheduleLeg) {
   return `${formatLocalTimeLabel(leg.departureTime)} \u2014 ${leg.originLabel} \u2192 ${leg.destinationLabel}`;
 }
 
-function getRecurringOccurrenceLine(occurrence: ReturnType<typeof generateRecurringOccurrences>[number]) {
+function getRecurringOccurrenceTime(occurrence: ReturnType<typeof generateRecurringOccurrences>[number]) {
   const localTime = occurrence.departureAt.split("T")[1]?.slice(0, 5) ?? "";
-  const legLabel = occurrence.recurringLegType === "RETURN" ? "Return" : "Outbound";
 
-  return `${formatDateForPreview(occurrence.occurrenceDate)} \u00b7 ${formatLocalTimeLabel(localTime)} \u00b7 ${legLabel}`;
+  return formatLocalTimeLabel(localTime);
 }
 
 function RecurringReviewCard({
   title,
   children,
+  icon,
+  action,
 }: {
   title: string;
-  children: React.ReactNode;
+  children: ReactNode;
+  icon?: ReactNode;
+  action?: ReactNode;
 }) {
   return (
-    <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-      <h2 className="text-lg font-black text-[var(--rp-text)]">{title}</h2>
+    <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_94%,transparent),var(--rp-card-soft))] p-4 shadow-[var(--rp-shadow-soft)]">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          {icon ? (
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] text-[var(--rp-primary)]">
+              {icon}
+            </span>
+          ) : null}
+          <h2 className="min-w-0 text-base font-black text-[var(--rp-text)]">{title}</h2>
+        </div>
+        {action}
+      </div>
       <div className="mt-3">{children}</div>
     </section>
+  );
+}
+
+function RecurringSummaryCell({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-3">
+      <div className="mb-2 text-[var(--rp-primary)]">{icon}</div>
+      <p className="text-xs font-semibold text-[var(--rp-muted-strong)]">{label}</p>
+      <p className="mt-1 text-sm font-black leading-5 text-[var(--rp-text)]">{value}</p>
+    </div>
+  );
+}
+
+function RecurringPatternReviewRow({ label, leg }: { label: string; leg?: RecurringScheduleLeg }) {
+  return (
+    <div className="grid grid-cols-[72px_74px_1fr] items-center gap-3 border-t border-[var(--rp-border)] py-3 first:border-t-0 first:pt-0 last:pb-0">
+      <p className="text-sm font-black text-[var(--rp-primary)]">{label}</p>
+      <p className="text-sm font-black text-[var(--rp-text)]">{leg ? formatLocalTimeLabel(leg.departureTime) : "--"}</p>
+      <p className="min-w-0 text-right text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
+        {leg ? `${leg.originLabel} \u2192 ${leg.destinationLabel}` : "Set ride route"}
+      </p>
+    </div>
+  );
+}
+
+function UpcomingRideCard({ occurrence }: { occurrence: ReturnType<typeof generateRecurringOccurrences>[number] }) {
+  const legLabel = occurrence.recurringLegType === "RETURN" ? "Return" : "Outbound";
+
+  return (
+    <article className="min-w-[132px] rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+      <p className="text-sm font-black leading-5 text-[var(--rp-text)]">{formatDateForPreview(occurrence.occurrenceDate)}</p>
+      <p className="mt-1 text-sm font-black text-[var(--rp-muted-strong)]">{getRecurringOccurrenceTime(occurrence)}</p>
+      <p className="mt-2 text-xs font-black text-[var(--rp-primary)]">{legLabel}</p>
+      <p className="mt-2 text-xs font-semibold leading-4 text-[var(--rp-muted-strong)]">
+        {occurrence.originLabel} {"\u2192"} {occurrence.destinationLabel}
+      </p>
+    </article>
   );
 }
 
@@ -4007,94 +4092,146 @@ function RecurringPodReview({
   pickupAddress,
   dropoffAddress,
   peopleVehicle,
+  genderMode,
+  accessMode,
+  taxiPartnerPreference,
 }: {
   dateTime: DateTimeState;
   pickupAddress: string;
   dropoffAddress: string;
   peopleVehicle: PeopleVehicleState;
+  genderMode: GenderMode;
+  accessMode: AccessMode;
+  taxiPartnerPreference: TaxiPartnerPreference;
 }) {
   const recurringLegs = getRecurringLegsForSelection({ dateTime, pickupAddress, dropoffAddress });
   const outboundLeg = recurringLegs.find((leg) => leg.legType === "OUTBOUND");
   const returnLeg = recurringLegs.find((leg) => leg.legType === "RETURN");
   const rideOption = getRideOption(peopleVehicle.rideOption);
-  const upcomingRides = generateRecurringOccurrences(
+  const allUpcomingRides = generateRecurringOccurrences(
     buildPreviewTemplate({ dateTime, pickupAddress, dropoffAddress }),
     { defaultOccurrenceLimit: 6, generatedAt: new Date(0).toISOString() },
-  ).slice(0, 6);
+  );
+  const upcomingRides = allUpcomingRides.slice(0, 6);
+  const patternLabel = dateTime.recurringPattern === "BACK_AND_FORTH" ? "Back-and-forth" : "One-way";
+  const taxiPartnerPreferenceLabel = getTaxiPartnerPreferenceLabel(taxiPartnerPreference);
+  const recurringTaxiPreferenceHelper =
+    taxiPartnerPreference === "airport_luggage_friendly"
+      ? "Taxi partner preferences depend on availability. Airport and luggage support depends on taxi partner availability. This preference applies to recurring quote requests."
+      : "Taxi partner preferences depend on availability. This preference applies to recurring quote requests.";
 
   return (
     <section className="grid gap-4">
-      <RecurringReviewCard title="Template summary">
-        <div className="grid gap-2 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
-          <p className="text-[var(--rp-primary)]">Recurring pod</p>
-          <p>{getRecurringWeekdaySummary(dateTime)}</p>
-          <p>Starts {formatReviewDate(dateTime.recurringStartDate)}</p>
-          <p>{getRecurringEndRuleSummary(dateTime)}</p>
+      <RecurringReviewCard title="Template summary" icon={<CalendarDays className="h-5 w-5" />}>
+        <div className="grid grid-cols-2 gap-2">
+          <RecurringSummaryCell icon={<RefreshCcw className="h-4 w-4" />} label="Type" value="Recurring pod" />
+          <RecurringSummaryCell icon={<CalendarDays className="h-4 w-4" />} label="Repeats" value={getRecurringWeekdaySummary(dateTime)} />
+          <RecurringSummaryCell icon={<CalendarPlus className="h-4 w-4" />} label="Starts" value={formatReviewDate(dateTime.recurringStartDate)} />
+          <RecurringSummaryCell icon={<Check className="h-4 w-4" />} label="Ends" value={getRecurringEndRuleSummary(dateTime)} />
         </div>
       </RecurringReviewCard>
 
-      <RecurringReviewCard title="Trip pattern">
-        <div className="grid gap-3 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
+      <RecurringReviewCard
+        title="Trip pattern"
+        icon={<ArrowRight className="h-5 w-5" />}
+        action={
+          <span className="shrink-0 rounded-full border border-[var(--rp-primary)] px-3 py-1 text-xs font-black text-[var(--rp-primary)]">
+            {patternLabel}
+          </span>
+        }
+      >
+        <div className="grid gap-0">
           {dateTime.recurringPattern === "BACK_AND_FORTH" ? (
             <>
-              <p className="text-[var(--rp-primary)]">Back-and-forth</p>
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-primary)]">Outbound</p>
-                <p className="mt-1 text-[var(--rp-text)]">{getRecurringRideLine(outboundLeg)}</p>
-              </div>
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-primary)]">Return</p>
-                <p className="mt-1 text-[var(--rp-text)]">{getRecurringRideLine(returnLeg)}</p>
-              </div>
+              <RecurringPatternReviewRow label="Outbound" leg={outboundLeg} />
+              <RecurringPatternReviewRow label="Return" leg={returnLeg} />
             </>
           ) : (
-            <>
-              <p className="text-[var(--rp-primary)]">One-way</p>
-              <p className="text-[var(--rp-text)]">{getRecurringRideLine(outboundLeg)}</p>
-            </>
+            <RecurringPatternReviewRow label="Outbound" leg={outboundLeg} />
           )}
         </div>
       </RecurringReviewCard>
 
-      <RecurringReviewCard title="Ride option">
-        <div className="grid gap-2 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
-          <p className="text-[var(--rp-text)]">{rideOption.title}</p>
+      <RecurringReviewCard title="Ride option" icon={<CarFront className="h-5 w-5" />}>
+        <div className="grid gap-3">
+          <div className="grid gap-2 border-b border-[var(--rp-border)] pb-3 min-[390px]:grid-cols-2">
+            <div>
+              <p className="text-xs font-semibold text-[var(--rp-muted-strong)]">Ride option</p>
+              <p className="mt-1 text-sm font-black text-[var(--rp-text)]">{rideOption.title}</p>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-[var(--rp-muted-strong)]">Taxi type</p>
+              <p className="mt-1 text-sm font-black text-[var(--rp-text)]">{getTaxiTypeLabel(peopleVehicle.taxiType)}</p>
+            </div>
+          </div>
           {normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote" ? (
-            <p>Taxi type: {getTaxiTypeLabel(peopleVehicle.taxiType)}</p>
-          ) : null}
-          <p>{rideOption.recurringHelper}</p>
+            <p className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              Demo mode. No real taxi dispatch or payout yet.
+            </p>
+          ) : (
+            <p className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{rideOption.recurringHelper}</p>
+          )}
         </div>
       </RecurringReviewCard>
 
-      <RecurringReviewCard title="Upcoming rides">
+      <RecurringReviewCard title="Who can join" icon={<UsersRound className="h-5 w-5" />}>
+        <div className="grid gap-3">
+          <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <p className="text-xs font-semibold text-[var(--rp-muted-strong)]">Who can join</p>
+            <p className="mt-1 text-sm font-black text-[var(--rp-text)]">
+              {getWhoCanJoinLabel(genderMode, accessMode)}
+            </p>
+            {genderMode === "women_only" ? (
+              <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                This controls riders joining the pod. It does not guarantee a female taxi driver.
+              </p>
+            ) : null}
+          </div>
+          <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <p className="text-xs font-semibold text-[var(--rp-muted-strong)]">Taxi partner preference</p>
+            <p className="mt-1 text-sm font-black text-[var(--rp-text)]">
+              {taxiPartnerPreferenceLabel}
+            </p>
+            <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              {recurringTaxiPreferenceHelper}
+            </p>
+          </div>
+        </div>
+      </RecurringReviewCard>
+
+      <RecurringReviewCard
+        title="Upcoming rides"
+        icon={<CalendarDays className="h-5 w-5" />}
+        action={
+          allUpcomingRides.length > 4 ? (
+            <button type="button" className="text-xs font-black text-[var(--rp-primary)]">
+              View all
+            </button>
+          ) : null
+        }
+      >
         {upcomingRides.length > 0 ? (
-          <div className="grid gap-2">
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
             {upcomingRides.map((occurrence) => (
-              <div
-                key={occurrence.id}
-                className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-2"
-              >
-                <p className="text-sm font-black text-[var(--rp-text)]">{getRecurringOccurrenceLine(occurrence)}</p>
-                <p className="mt-1 text-xs font-bold text-[var(--rp-muted-strong)]">
-                  {occurrence.originLabel} \u2192 {occurrence.destinationLabel}
-                </p>
-              </div>
+              <UpcomingRideCard key={occurrence.id} occurrence={occurrence} />
             ))}
           </div>
         ) : (
           <p className="text-sm font-bold text-[var(--rp-muted-strong)]">
-            Pick at least one weekday to preview rides.
+            Upcoming ride dates will appear after the recurring pod is created.
           </p>
         )}
       </RecurringReviewCard>
 
-      <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+      <section className="rounded-[18px] border border-[var(--rp-primary)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--rp-primary)_14%,transparent),var(--rp-card))] p-4 shadow-[0_20px_50px_color-mix(in_srgb,var(--rp-primary)_16%,transparent)]">
         <div className="flex items-start gap-3">
-          <ShieldCheck className="mt-1 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)] text-[var(--rp-primary)]">
+            <ShieldCheck className="h-5 w-5" />
+          </span>
           <div>
-            <h2 className="text-lg font-black text-[var(--rp-text)]">Protected separately</h2>
+            <h2 className="text-lg font-black text-[var(--rp-text)]">Each ride is reviewed separately</h2>
             <p className="mt-2 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
-              Each ride has its own guest lock, proof, receipt, and settlement.
+              Each ride has its own guest lock, quote, proof, dispute window, and settlement state.
             </p>
           </div>
         </div>
@@ -4131,7 +4268,7 @@ function CreateRecurringPodConfirmationDialog({
               Create recurring pod?
             </h2>
             <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              This creates a weekly template. Each ride date will lock guests, collect proof, and settle separately.
+              This creates the recurring pod. Each ride has its own guest lock, quote, and review state.
             </p>
           </div>
         </div>
@@ -4165,7 +4302,7 @@ function CreateRecurringPodConfirmationDialog({
                 : "border-[#8f7a3e] bg-[#6f6135] text-[#c9c3b6]",
             )}
           >
-            Create Pod
+            Create recurring pod
           </button>
         </div>
       </section>
@@ -4252,7 +4389,7 @@ function ReviewPodStep({
               Review recurring pod
             </h1>
             <p className="mt-2 text-sm font-medium text-[var(--rp-muted)]">
-              Check the weekly template before creating your pod.
+              Check the weekly plan before creating your pod.
             </p>
           </section>
 
@@ -4262,18 +4399,30 @@ function ReviewPodStep({
               pickupAddress={pickupAddress}
               dropoffAddress={dropoffAddress}
               peopleVehicle={peopleVehicle}
+              genderMode={genderMode}
+              accessMode={accessMode}
+              taxiPartnerPreference={taxiPartnerPreference}
             />
           </div>
 
-          <div className="mt-5 grid gap-3">
+          <div className="mt-5 grid grid-cols-[0.8fr_1.2fr] gap-3">
+            <button
+              type="button"
+              onClick={onBack}
+              className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+            >
+              Back
+            </button>
             <PrimaryButton
               onClick={() => {
                 setCreateConfirmChecked(false);
                 setShowCreateConfirm(true);
               }}
             >
-              Create Recurring Pod
+              Create recurring pod
             </PrimaryButton>
+          </div>
+          <div className="mt-3 grid gap-3">
             <p className="text-center text-sm font-medium text-[var(--rp-muted)]">
               You can move back to edit details before publishing.
             </p>
@@ -4675,11 +4824,24 @@ export function CreatePodChooseType() {
   const [genderMode, setGenderMode] = useState<GenderMode>("mixed");
   const [accessMode, setAccessMode] = useState<AccessMode>("open");
   const [taxiPartnerPreference, setTaxiPartnerPreference] = useState<TaxiPartnerPreference>("standard");
+  const [taxiPartnerPreferenceTouched, setTaxiPartnerPreferenceTouched] = useState(false);
   const [pricing] = useState<PricingState>({
     estimatedFare: 84,
     estimatedShare: 21,
     maxFare: 96,
   });
+  const isAirportTrip = isAirportTaxiRoute(pickupAddress, dropoffAddress);
+
+  useEffect(() => {
+    if (taxiPartnerPreferenceTouched) return;
+
+    setTaxiPartnerPreference(isAirportTrip ? "airport_luggage_friendly" : "standard");
+  }, [isAirportTrip, taxiPartnerPreferenceTouched]);
+
+  function handleTaxiPartnerPreferenceChange(preference: TaxiPartnerPreference) {
+    setTaxiPartnerPreferenceTouched(true);
+    setTaxiPartnerPreference(preference);
+  }
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[430px] flex-col overflow-hidden rounded-[34px] border border-[var(--rp-border)] bg-[var(--rp-bg)] shadow-[var(--rp-shadow-soft)] md:min-h-[760px]">
@@ -4711,6 +4873,7 @@ export function CreatePodChooseType() {
       ) : step === 3 ? (
         <PeopleVehicleStep
           podType={podType}
+          isAirportTrip={isAirportTrip}
           peopleVehicle={peopleVehicle}
           genderMode={genderMode}
           accessMode={accessMode}
@@ -4718,7 +4881,7 @@ export function CreatePodChooseType() {
           onPeopleVehicleChange={setPeopleVehicle}
           onGenderModeChange={setGenderMode}
           onAccessModeChange={setAccessMode}
-          onTaxiPartnerPreferenceChange={setTaxiPartnerPreference}
+          onTaxiPartnerPreferenceChange={handleTaxiPartnerPreferenceChange}
           onBack={() => setStep(2)}
           onContinue={() => setStep(4)}
         />
@@ -4738,7 +4901,6 @@ export function CreatePodChooseType() {
           pickupAddress={pickupAddress}
           dropoffAddress={dropoffAddress}
           stops={stops}
-          recurringPattern={dateTime.recurringPattern}
           onBack={() => setStep(0)}
           onPickupChange={setPickupAddress}
           onDropoffChange={setDropoffAddress}
@@ -4754,9 +4916,6 @@ export function CreatePodChooseType() {
           onRemoveStop={(id) => {
             setStops((currentStops) => currentStops.filter((stop) => stop.id !== id));
           }}
-          onRecurringPatternChange={(recurringPattern) =>
-            setDateTime((current) => ({ ...current, recurringPattern }))
-          }
           onContinue={() => setStep(2)}
         />
       ) : (
