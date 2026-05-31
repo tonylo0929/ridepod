@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { useEffect, useId, useState } from "react";
+import { useId, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -31,13 +32,18 @@ import {
 } from "lucide-react";
 import { cn } from "@/components/ui";
 import {
-  calculateHkTaxiFareEstimate,
+  calculateHkTaxiFareEstimate as calculateMoneyHkTaxiFareEstimate,
   suggestApprovedMaxFare,
   type EstimateConfidence,
   type EstimateSource,
   type HkTaxiZone,
   type RouteRiskLevel,
 } from "@/lib/fare-estimates";
+import {
+  calculateHkTaxiFareEstimate,
+  formatHkdRange,
+  type TaxiType,
+} from "@/lib/hkTaxiFare";
 import {
   calculateMoneyProtection,
 } from "@/lib/money-protection";
@@ -50,6 +56,7 @@ import {
   type ScheduleType,
   type Weekday,
 } from "@/lib/pod-schedule";
+import { useAuth } from "@/providers/AuthProvider";
 
 type PodType = "scheduled" | "recurring";
 type CreateStep = 0 | 1 | 2 | 3 | 4 | 5;
@@ -93,6 +100,10 @@ type PeopleVehicleState = {
   rideOption: RideOptionId;
   vehicleType: string;
   priceSource: string;
+  pickupVenue: string;
+  estimatedRideAppFare: string;
+  splitMethod: SelfSettleSplitMethod;
+  paymentMethod: SelfSettlePaymentMethod;
 };
 type PricingState = {
   estimatedFare: number;
@@ -103,6 +114,9 @@ type GenderMode = "women_only" | "mixed";
 type AccessMode = "open" | "verified_only" | "community_only" | "high_trust_only" | "invite_only";
 type WhoCanJoinId = "women_only" | "mixed" | "verified_only" | "invite_only";
 type TaxiPartnerPreference = "standard" | "higher_trust" | "airport_luggage_friendly" | "accessibility_support";
+type StopRequestPolicy = "direct_only" | "host_approved_before_quote";
+type SelfSettleSplitMethod = "equal_split" | "pay_host_after_ride" | "agree_in_chat";
+type SelfSettlePaymentMethod = "cash" | "payme" | "fps" | "other";
 type TaxiTypeId =
   | "standard"
   | "compact_4_seat"
@@ -114,7 +128,7 @@ type TaxiTypeId =
   | "comfort"
   | "accessible";
 
-const steps = ["Choose Type", "Route & Stops", "Date & Time", "People & Vehicle", "Review", "Success"];
+const steps = ["People & Vehicle", "Choose Type", "Route & Stops", "Date & Time", "Review", "Success"];
 
 const podTypes: Array<{
   id: PodType;
@@ -156,6 +170,24 @@ const timeMinutes = Array.from({ length: 12 }, (_, index) =>
 const timePeriods = ["AM", "PM"] as const;
 
 const weekdayLabels = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
+const stopRequestPolicyOptions: Array<{
+  id: StopRequestPolicy;
+  title: string;
+  description: string;
+  helper?: string;
+}> = [
+  {
+    id: "direct_only",
+    title: "Direct route only",
+    description: "Riders cannot propose extra stops.",
+  },
+  {
+    id: "host_approved_before_quote",
+    title: "Host-approved stop requests",
+    description: "Joined riders can propose one extra stop before taxi quote acceptance.",
+    helper: "Approved stops may change the taxi partner quote.",
+  },
+];
 const recurringWeekdayOptions: Array<{ id: Weekday; label: string }> = [
   { id: "MO", label: "Mon" },
   { id: "TU", label: "Tue" },
@@ -178,11 +210,11 @@ const rideOptions: Array<{
 }> = [
   {
     id: "ride_app_fixed_quote",
-    title: "Ride app / fixed quote",
-    description: "Host books through an app or provider that shows the fare before booking.",
-    helper: "Fresh quote required before booking.",
-    recurringHelper: "Fresh quote required before each ride booking.",
-    icon: ShieldCheck,
+    title: "Ride app / Self-settle",
+    description: "Host or group books outside RidePod and settles the ride fare directly.",
+    helper: "Coordination-only. No live payment is charged.",
+    recurringHelper: "Each ride is coordinated and settled outside RidePod.",
+    icon: Smartphone,
   },
   {
     id: "taxi_meter",
@@ -206,13 +238,14 @@ const rideOptions: Array<{
 
 const rideConfirmationCopy: Record<ActiveRideOptionId, { title: string; body: string[]; checkbox: string }> = {
   ride_app_fixed_quote: {
-    title: "Confirm External Ride",
+    title: "Confirm self-settle ride app pod",
     body: [
-      "The host books the ride outside RidePod using an app or provider with an upfront quote.",
-      "RidePod review applies only when the fresh quote is within the approved max. Final settlement uses the verified receipt.",
+      "RidePod only helps the group coordinate and chat.",
+      "The ride app booking and fare payment happen outside RidePod.",
+      "No live payment is charged in this version.",
     ],
     checkbox:
-      "I understand the fresh quote must be approved before booking, and final settlement uses the verified receipt.",
+      "I understand this pod uses self-settle ride app coordination.",
   },
   taxi_meter: {
     title: "Confirm Taxi Meter Ride",
@@ -291,13 +324,14 @@ function getRideProofCopy(rideOption: RideOptionId) {
       }
     : {
         moneyIntro:
-          "RidePod sets a fare cap. Host uploads proof before booking. Final charge uses the verified receipt.",
-        fareCapHelper: "Quote must stay within this before host books.",
-        bookingProofStatus: "Required screenshot later",
-        bookingProofHelper: "Fresh quote after guests lock.",
+          "RidePod helps the group coordinate only. Ride fare is paid outside RidePod.",
+        fareCapHelper: "RidePod does not verify the final ride app fare.",
+        bookingProofStatus: "No screenshot required",
+        bookingProofHelper: "No receipt proof required for self-settle ride app pods.",
         reviewRows: [
-          { label: "Booking proof", value: "Required screenshot later" },
-          { label: "Final charge", value: "Uses verified receipt and may be lower" },
+          { label: "Ride type", value: "Ride app / Self-settle" },
+          { label: "Payment rule", value: "Ride fare paid outside RidePod" },
+          { label: "Protection", value: "No fare protection" },
         ],
       };
 }
@@ -330,7 +364,8 @@ const whoCanJoinOptions: Array<{
   {
     id: "mixed",
     title: "Open pod",
-    description: "Open to eligible riders who match the pod rules.",
+    description: "All eligible riders are welcome.",
+    helper: "Anyone who matches the pod rules can join.",
   },
   {
     id: "verified_only",
@@ -348,7 +383,6 @@ const taxiPartnerPreferenceOptions: Array<{
   id: TaxiPartnerPreference;
   title: string;
   description: string;
-  helper?: string;
 }> = [
   {
     id: "standard",
@@ -359,7 +393,6 @@ const taxiPartnerPreferenceOptions: Array<{
     id: "higher_trust",
     title: "Higher-trust taxi partner",
     description: "Prioritize partners with stronger RidePod trust signals.",
-    helper: "Trust signals may include completed rides, partner rating, low issue rate, and safe-driving commitment.",
   },
   {
     id: "airport_luggage_friendly",
@@ -370,8 +403,39 @@ const taxiPartnerPreferenceOptions: Array<{
     id: "accessibility_support",
     title: "Accessibility support",
     description: "Request a partner who can support access needs when available.",
-    helper: "Availability depends on taxi partner support.",
   },
+];
+
+const selfSettleSplitMethodOptions: Array<{
+  id: SelfSettleSplitMethod;
+  title: string;
+  description: string;
+}> = [
+  {
+    id: "equal_split",
+    title: "Equal split",
+    description: "Split the estimated ride app fare evenly.",
+  },
+  {
+    id: "pay_host_after_ride",
+    title: "Pay host after ride",
+    description: "Riders settle directly with the host outside RidePod.",
+  },
+  {
+    id: "agree_in_chat",
+    title: "Agree in chat",
+    description: "Use pod chat to agree on the fare split before pickup.",
+  },
+];
+
+const selfSettlePaymentMethodOptions: Array<{
+  id: SelfSettlePaymentMethod;
+  title: string;
+}> = [
+  { id: "cash", title: "Cash" },
+  { id: "payme", title: "PayMe" },
+  { id: "fps", title: "FPS" },
+  { id: "other", title: "Other" },
 ];
 
 function formatCalendarLabel(label: string) {
@@ -419,7 +483,7 @@ function buildCalendarDays(selectedDate: string): { monthLabel: string; days: Ca
   const gridStart = new Date(firstOfMonth);
   gridStart.setDate(firstOfMonth.getDate() - firstOfMonth.getDay());
 
-  const days = Array.from({ length: 35 }, (_, index) => {
+  const days = Array.from({ length: 42 }, (_, index) => {
     const date = new Date(gridStart);
     date.setDate(gridStart.getDate() + index);
     const isoDate = toLocalIsoDate(date);
@@ -879,16 +943,7 @@ function ThemeAwareHeroStrip() {
         sizes="(max-width: 768px) 52vw, 360px"
         quality={100}
         priority
-        className="ridepod-theme-image-dark object-cover object-[52%_center]"
-      />
-      <Image
-        src="/ridepod/light-mode-background.png"
-        alt=""
-        fill
-        sizes="(max-width: 768px) 52vw, 360px"
-        quality={100}
-        priority
-        className="ridepod-theme-image-light object-cover object-[66%_center]"
+        className="object-cover object-[52%_center]"
       />
       <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,color-mix(in_srgb,var(--rp-bg)_24%,transparent)_100%)]" />
     </div>
@@ -932,8 +987,18 @@ function RouteJourneyPreview({
     },
   ];
   return (
-    <div className="overflow-hidden rounded-[28px] border border-white/10 bg-[rgba(15,27,39,0.88)] p-3 shadow-[0_22px_60px_rgba(0,0,0,0.35)]">
-      <div className="relative h-[260px] overflow-hidden rounded-[22px] border border-white/10 bg-[#06111d]">
+    <div className="overflow-hidden rounded-[24px] border border-[color-mix(in_srgb,var(--rp-primary)_28%,var(--rp-border))] bg-[linear-gradient(180deg,rgba(15,27,39,0.94),rgba(8,17,29,0.94))] p-3 shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
+      <div className="flex items-center justify-between gap-3 px-1 pb-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Route preview</p>
+          <p className="mt-1 text-sm font-bold text-slate-300">Pickup to final dropoff</p>
+        </div>
+        <span className="rounded-full border border-[var(--rp-border)] bg-[#0b1724] px-3 py-1 text-xs font-black text-[var(--rp-text)]">
+          {points.length} points
+        </span>
+      </div>
+
+      <div className="relative h-[150px] overflow-hidden rounded-[18px] border border-white/10 bg-[#06111d]">
         <Image
           src="/images/ridepod/route-map-dark.png"
           alt="Route map preview"
@@ -943,20 +1008,30 @@ function RouteJourneyPreview({
           sizes="(max-width: 430px) calc(100vw - 72px), 382px"
           className="object-cover"
         />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,9,18,0.04),rgba(2,9,18,0.18))]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,9,18,0.04),rgba(2,9,18,0.26))]" />
       </div>
 
-      <div className="mt-3 grid gap-2">
+      <div className="mt-3 grid gap-1.5">
         {points.map((point) => (
           <div
             key={point.id}
-            className="flex min-h-12 items-center justify-between gap-3 rounded-2xl border border-white/10 bg-[#0b1724]/90 px-3 py-2"
+            className="grid min-h-11 grid-cols-[18px_1fr_auto] items-center gap-3 rounded-[14px] px-2.5 py-2"
           >
-            <span className="text-[11px] font-black uppercase tracking-[0.14em] text-[#f6c453]">
-              {point.label}
-            </span>
-            <span className="min-w-0 truncate text-right text-sm font-black text-[#f8fafc]">
+            <span
+              className={cn(
+                "h-2.5 w-2.5 rounded-full",
+                point.type === "pickup"
+                  ? "bg-[var(--rp-primary)]"
+                  : point.type === "dropoff"
+                    ? "bg-orange-400"
+                    : "border border-[var(--rp-primary)] bg-transparent",
+              )}
+            />
+            <span className="min-w-0 truncate text-sm font-black text-[#f8fafc]">
               {point.value}
+            </span>
+            <span className="text-[10px] font-black uppercase tracking-[0.12em] text-[#f6c453]">
+              {point.label}
             </span>
           </div>
         ))}
@@ -986,13 +1061,13 @@ function AddressField({
   return (
     <div
       className={cn(
-        "grid min-h-[94px] w-full grid-cols-[48px_1fr] items-center gap-3 rounded-[18px] border border-white/10 bg-[rgba(15,27,39,0.88)] px-4 py-3 text-left shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition focus-within:border-[#f6c453] focus-within:shadow-[0_0_0_1px_rgba(246,196,83,0.45),0_18px_40px_rgba(0,0,0,0.28)]",
+        "grid min-h-[76px] w-full grid-cols-[42px_1fr] items-center gap-3 rounded-[18px] border border-white/10 bg-[rgba(15,27,39,0.9)] px-3 py-3 text-left shadow-[0_12px_28px_rgba(0,0,0,0.2)] transition focus-within:border-[#f6c453] focus-within:shadow-[0_0_0_1px_rgba(246,196,83,0.38),0_16px_34px_rgba(0,0,0,0.24)]",
         onRemove ? "pr-3" : "",
       )}
     >
-      <span className="grid h-11 w-11 place-items-center rounded-full bg-[#1b2936] text-[#ffc94d]">
+      <span className="grid h-10 w-10 place-items-center rounded-full border border-[#f6c453]/25 bg-[#1b2936] text-[#ffc94d]">
         <span className="sr-only">{iconLabel}</span>
-        <MapPin className="h-6 w-6 fill-[#ffc94d]/10 stroke-[2.3]" />
+        <MapPin className="h-5 w-5 fill-[#ffc94d]/10 stroke-[2.3]" />
       </span>
       <span className="min-w-0">
         <label
@@ -1009,7 +1084,7 @@ function AddressField({
             onChange={(event) => onChange(event.target.value)}
             placeholder={placeholder}
             autoComplete="street-address"
-            className="min-h-8 min-w-0 flex-1 border-0 bg-transparent p-0 text-base font-semibold leading-5 text-[#f8fafc] outline-none placeholder:text-slate-500"
+            className="min-h-8 min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-black leading-5 text-[#f8fafc] outline-none placeholder:text-slate-500"
           />
           {onRemove ? (
             <button
@@ -1032,11 +1107,42 @@ function AddStopButton({ onAddStop }: { onAddStop: () => void }) {
     <button
       type="button"
       onClick={onAddStop}
-      className="flex min-h-[76px] w-full items-center justify-center gap-4 rounded-[18px] border border-dashed border-[#f6c453] bg-[#06111d] px-4 text-base font-black text-[#f6c453] shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition hover:bg-[#0b1724]"
+      className="flex min-h-14 w-full items-center justify-center gap-3 rounded-[18px] border border-dashed border-[#f6c453] bg-[rgba(246,196,83,0.05)] px-4 text-sm font-black text-[#f6c453] shadow-[0_12px_28px_rgba(0,0,0,0.18)] transition hover:bg-[rgba(246,196,83,0.1)]"
     >
-      <Plus className="h-7 w-7 text-[#f6c453]" />
+      <Plus className="h-5 w-5 text-[#f6c453]" />
       Add stop
     </button>
+  );
+}
+
+function SelfSettleTextField({
+  label,
+  value,
+  placeholder,
+  helper,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  placeholder: string;
+  helper?: string;
+  onChange: (value: string) => void;
+}) {
+  const fieldId = useId();
+
+  return (
+    <label htmlFor={fieldId} className="grid gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-left">
+      <span className="text-xs font-black uppercase tracking-[0.13em] text-[var(--rp-primary)]">{label}</span>
+      <input
+        id={fieldId}
+        type="text"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="min-h-11 rounded-xl border border-[var(--rp-border)] bg-[rgba(5,12,20,0.48)] px-3 text-base font-black text-[var(--rp-text)] outline-none placeholder:text-[var(--rp-muted)] focus:border-[var(--rp-primary)]"
+      />
+      {helper ? <span className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{helper}</span> : null}
+    </label>
   );
 }
 
@@ -1058,28 +1164,9 @@ function PrimaryButton({
         background: "var(--rp-gradient-primary)",
         color: "var(--rp-primary-text)",
       }}
-      className="relative z-20 flex h-14 w-full items-center justify-center rounded-[12px] border border-[var(--rp-border-strong)] text-base font-black shadow-[0_18px_34px_color-mix(in_srgb,var(--rp-primary)_34%,transparent)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
+      className="relative z-20 flex h-14 w-full items-center justify-center gap-3 rounded-[12px] border border-[var(--rp-border-strong)] text-base font-black shadow-[0_18px_34px_color-mix(in_srgb,var(--rp-primary)_34%,transparent)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
     >
       {children}
-    </button>
-  );
-}
-
-function RouteContinueButton({
-  onClick,
-  disabled,
-}: {
-  onClick: () => void;
-  disabled: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="relative z-20 flex h-14 w-full items-center justify-center rounded-[18px] border border-[#ffd56a]/55 bg-[linear-gradient(180deg,#ffe082_0%,#f6c453_54%,#d99a24_100%)] text-base font-black text-[#071326] shadow-[0_20px_42px_rgba(246,196,83,0.32)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100"
-    >
-      Continue
     </button>
   );
 }
@@ -1102,94 +1189,242 @@ function SecondaryButton({
   );
 }
 
+function CreatePodStepActions({
+  onBack,
+  onContinue,
+  continueLabel = "Continue",
+  disabled = false,
+  showBack = true,
+  continueIcon,
+}: {
+  onBack: () => void;
+  onContinue: () => void;
+  continueLabel?: React.ReactNode;
+  disabled?: boolean;
+  showBack?: boolean;
+  continueIcon?: React.ReactNode;
+}) {
+  return (
+    <div className={cn("grid gap-3", showBack ? "grid-cols-2" : "grid-cols-1")}>
+      {showBack ? <SecondaryButton onClick={onBack}>Back</SecondaryButton> : null}
+      <PrimaryButton onClick={onContinue} disabled={disabled}>
+        {continueLabel}
+        {continueIcon}
+      </PrimaryButton>
+    </div>
+  );
+}
+
 function RouteStopsStep({
   podType,
   pickupAddress,
   dropoffAddress,
+  pickupVenue,
   stops,
+  stopRequestPolicy,
+  isAirportTrip,
+  isRideAppSelfSettle,
   onBack,
   onPickupChange,
   onDropoffChange,
+  onPickupVenueChange,
   onAddStop,
   onStopChange,
   onRemoveStop,
+  onStopRequestPolicyChange,
   onContinue,
 }: {
   podType: PodType;
   pickupAddress: string;
   dropoffAddress: string;
+  pickupVenue: string;
   stops: RouteStop[];
+  stopRequestPolicy: StopRequestPolicy;
+  isAirportTrip: boolean;
+  isRideAppSelfSettle: boolean;
   onBack: () => void;
   onPickupChange: (value: string) => void;
   onDropoffChange: (value: string) => void;
+  onPickupVenueChange: (value: string) => void;
   onAddStop: () => void;
   onStopChange: (id: number, value: string) => void;
   onRemoveStop: (id: number) => void;
+  onStopRequestPolicyChange: (value: StopRequestPolicy) => void;
   onContinue: () => void;
 }) {
   const canContinue = pickupAddress.trim().length > 0 && dropoffAddress.trim().length > 0;
+  const [routePanel, setRoutePanel] = useState<"route" | "requests">("route");
+  const isRoutePanel = routePanel === "route";
+  const routePanelCount = isRideAppSelfSettle ? 1 : 2;
+
+  function handleRouteBack() {
+    if (!isRoutePanel) {
+      setRoutePanel("route");
+      return;
+    }
+
+    onBack();
+  }
+
+  function handleRouteForward() {
+    if (isRoutePanel) {
+      if (isRideAppSelfSettle) {
+        if (canContinue) onContinue();
+        return;
+      }
+      if (!canContinue) return;
+      setRoutePanel("requests");
+      return;
+    }
+
+    onContinue();
+  }
 
   return (
     <>
-      <CreatePodTopBar currentStep={1} onBack={onBack} />
+      <CreatePodTopBar currentStep={2} />
 
-      <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#020912] px-6 pb-40 pt-8 text-[#f8fafc] md:pb-5">
+      <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#020912] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-7 text-[#f8fafc]">
         <section className="text-center">
           <ScheduleTypeEyebrow podType={podType} />
-          <h1 className="text-[34px] font-black leading-tight tracking-[-0.03em] text-[#f8fafc]">
+          <h1 className="text-[31px] font-black leading-tight tracking-[-0.03em] text-[#f8fafc]">
             Route &amp; stops
           </h1>
-          <p className="mt-3 text-lg font-medium text-[#cbd5e1]">
-            Add your pickup and dropoff.
+          <p className="mx-auto mt-2 max-w-[260px] text-base font-medium leading-6 text-[#cbd5e1]">
+            {isRoutePanel
+              ? isRideAppSelfSettle
+                ? "Add pickup, dropoff, and where riders should meet."
+                : "Add your pickup and dropoff."
+              : "Choose whether riders can request one extra stop."}
           </p>
         </section>
 
-        <section className="mt-8 grid gap-5">
-          <RouteJourneyPreview
-            pickupAddress={pickupAddress}
-            dropoffAddress={dropoffAddress}
-            stops={stops}
-          />
-
-          <div className="grid gap-4">
-            <AddressField
-              label="Pickup point"
-              type="pickup"
-              value={pickupAddress}
-              placeholder="Enter pickup address"
-              onChange={onPickupChange}
-            />
-            {stops.map((stop, index) => (
-              <AddressField
-                key={stop.id}
-                label={`Stop ${index + 1}`}
-                type="stop"
-                value={stop.address}
-                placeholder="Enter stop address"
-                onChange={(value) => onStopChange(stop.id, value)}
-                onRemove={() => onRemoveStop(stop.id)}
-              />
-            ))}
-            <AddressField
-              label="Dropoff point"
-              type="dropoff"
-              value={dropoffAddress}
-              placeholder="Enter dropoff address"
-              onChange={onDropoffChange}
-            />
+        <div className="mt-5 grid grid-cols-[44px_1fr_44px] items-center gap-3 rounded-full border border-white/10 bg-[rgba(15,27,39,0.72)] p-1.5">
+          <button
+            type="button"
+            aria-label="Previous route section"
+            onClick={handleRouteBack}
+            className="grid h-10 w-10 place-items-center rounded-full text-[var(--rp-primary)] transition hover:bg-[#1b2936]"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <div className="text-center">
+            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
+              {isRoutePanel ? "1 of 2" : "2 of 2"}
+            </p>
+            <p className="text-sm font-black text-[var(--rp-text)]">
+              {isRoutePanel ? `From & to${routePanelCount === 1 ? "" : ""}` : "Allow / not allow"}
+            </p>
           </div>
-        </section>
-
-        <div className="mt-8">
-          <AddStopButton onAddStop={onAddStop} />
+          <button
+            type="button"
+            aria-label="Next route section"
+            disabled={isRoutePanel && !canContinue}
+            onClick={() => {
+              if (isRoutePanel) {
+                if (isRideAppSelfSettle) {
+                  if (canContinue) onContinue();
+                  return;
+                }
+                if (canContinue) setRoutePanel("requests");
+                return;
+              }
+              onContinue();
+            }}
+            className="grid h-10 w-10 place-items-center rounded-full text-[var(--rp-primary)] transition hover:bg-[#1b2936] disabled:cursor-not-allowed disabled:opacity-35"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
         </div>
 
-      </main>
+        {isRoutePanel ? (
+          <>
+            <section className="mt-6 grid gap-4">
+              <RouteJourneyPreview
+                pickupAddress={pickupAddress}
+                dropoffAddress={dropoffAddress}
+                stops={stops}
+              />
 
-      <footer className="fixed inset-x-0 bottom-[88px] z-50 mx-auto max-w-[430px] px-6 pb-4 pt-8 md:static md:mx-0 md:max-w-none md:px-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pt-0">
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-28 bg-[linear-gradient(180deg,transparent,#020912_42%)] md:hidden" />
-        <RouteContinueButton onClick={onContinue} disabled={!canContinue} />
-      </footer>
+              <div className="grid gap-3">
+                <AddressField
+                  label="Pickup point"
+                  type="pickup"
+                  value={pickupAddress}
+                  placeholder="Enter pickup address"
+                  onChange={onPickupChange}
+                />
+                {stops.map((stop, index) => (
+                  <AddressField
+                    key={stop.id}
+                    label={`Stop ${index + 1}`}
+                    type="stop"
+                    value={stop.address}
+                    placeholder="Enter stop address"
+                    onChange={(value) => onStopChange(stop.id, value)}
+                    onRemove={() => onRemoveStop(stop.id)}
+                  />
+                ))}
+                <AddressField
+                  label="Dropoff point"
+                  type="dropoff"
+                  value={dropoffAddress}
+                  placeholder="Enter dropoff address"
+                  onChange={onDropoffChange}
+                />
+                {isRideAppSelfSettle ? (
+                  <SelfSettleTextField
+                    label="Pickup venue"
+                    value={pickupVenue}
+                    placeholder="e.g. IFC Mall entrance, Central Market, MTR Exit A"
+                    helper="Tell riders where to meet before the external ride app booking."
+                    onChange={onPickupVenueChange}
+                  />
+                ) : null}
+              </div>
+
+            </section>
+
+            {!isRideAppSelfSettle ? <div className="mt-4">
+              <AddStopButton onAddStop={onAddStop} />
+            </div> : null}
+          </>
+        ) : (
+          <div className="mt-6 grid gap-4">
+            <div className="rounded-[18px] border border-white/10 bg-[rgba(15,27,39,0.72)] px-4 py-3">
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
+                Route summary
+              </p>
+              <p className="mt-2 text-sm font-black leading-5 text-[var(--rp-text)]">
+                {routePointSummary(pickupAddress, "Pickup")} {"\u2192"} {routePointSummary(dropoffAddress, "Dropoff")}
+              </p>
+            </div>
+            <StopRequestPolicySelector
+              value={stopRequestPolicy}
+              isAirportTrip={isAirportTrip}
+              onChange={onStopRequestPolicyChange}
+            />
+          </div>
+        )}
+
+        <div className="mt-7">
+          <div className="grid grid-cols-2 gap-3">
+            <SecondaryButton onClick={handleRouteBack}>
+              <ChevronLeft className="h-5 w-5" />
+              Back
+            </SecondaryButton>
+            <PrimaryButton
+              onClick={handleRouteForward}
+              disabled={isRoutePanel && !canContinue}
+            >
+              <span className="inline-flex items-center gap-2">
+                {isRoutePanel ? (isRideAppSelfSettle ? "Confirm" : "Next") : "Confirm"}
+                <ChevronRight className="h-5 w-5" />
+              </span>
+            </PrimaryButton>
+          </div>
+        </div>
+      </main>
     </>
   );
 }
@@ -1203,7 +1438,32 @@ function CalendarPicker({
   selectedDay: number;
   onSelectDay: (day: number, label: string, isoDate: string) => void;
 }) {
-  const calendar = buildCalendarDays(selectedDate);
+  const [displayedMonthDate, setDisplayedMonthDate] = useState(() => {
+    const todayIso = getTodayIsoDate();
+    const safeSelectedDate = selectedDate < todayIso ? todayIso : selectedDate;
+    const date = parseIsoDateToLocalDate(safeSelectedDate);
+    date.setDate(1);
+    return toLocalIsoDate(date);
+  });
+  const calendar = buildCalendarDays(displayedMonthDate);
+  const today = new Date();
+  const firstVisibleMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  const visibleMonth = parseIsoDateToLocalDate(displayedMonthDate);
+  visibleMonth.setDate(1);
+  const canShowPreviousMonth = visibleMonth.getTime() > firstVisibleMonth.getTime();
+
+  function moveDisplayedMonth(direction: -1 | 1) {
+    const nextMonth = parseIsoDateToLocalDate(displayedMonthDate);
+    nextMonth.setDate(1);
+    nextMonth.setMonth(nextMonth.getMonth() + direction);
+
+    if (nextMonth.getTime() < firstVisibleMonth.getTime()) {
+      setDisplayedMonthDate(toLocalIsoDate(firstVisibleMonth));
+      return;
+    }
+
+    setDisplayedMonthDate(toLocalIsoDate(nextMonth));
+  }
 
   return (
     <section aria-label="Calendar picker" className="mt-9">
@@ -1215,13 +1475,16 @@ function CalendarPicker({
           <button
             type="button"
             aria-label="Previous month"
-            className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-[var(--rp-card-muted)]"
+            disabled={!canShowPreviousMonth}
+            onClick={() => moveDisplayedMonth(-1)}
+            className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-[var(--rp-card-muted)] disabled:cursor-not-allowed disabled:opacity-35"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <button
             type="button"
             aria-label="Next month"
+            onClick={() => moveDisplayedMonth(1)}
             className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-[var(--rp-card-muted)]"
           >
             <ChevronRight className="h-6 w-6" />
@@ -1253,7 +1516,7 @@ function CalendarPicker({
                 className={cn(
                   "mx-auto grid h-10 w-10 place-items-center rounded-full text-base font-bold transition",
                   selected
-                    ? "bg-[var(--rp-primary)] text-[var(--rp-primary-text)] ring-2 ring-[var(--rp-focus)]"
+                    ? "bg-[var(--rp-primary)] text-[var(--rp-text)] ring-2 ring-[var(--rp-focus)]"
                     : date.inMonth && !date.disabled
                       ? "text-[var(--rp-text)] hover:bg-[var(--rp-card-muted)]"
                       : "cursor-not-allowed text-[var(--rp-muted)] opacity-35",
@@ -1800,12 +2063,12 @@ function DateTimeStep({
 
   return (
     <>
-      <CreatePodTopBar currentStep={2} onBack={handleBack} />
+      <CreatePodTopBar currentStep={3} />
 
-      <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-40 pt-8 md:pb-5">
+      <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-8">
         <section className="text-center">
           {activeScheduleType === "RECURRING" ? (
-            <p className="text-sm font-semibold text-[var(--rp-muted-strong)]">Step 3 of 6</p>
+            <p className="text-sm font-semibold text-[var(--rp-muted-strong)]">Step 4 of 6</p>
           ) : (
             <ScheduleTypeEyebrow podType={podType} />
           )}
@@ -1858,12 +2121,11 @@ function DateTimeStep({
             dropoffAddress={dropoffAddress}
           />
         )}
-      </main>
 
-      <footer className="fixed inset-x-0 bottom-[88px] z-50 mx-auto max-w-[430px] px-6 pb-4 pt-8 md:static md:mx-0 md:max-w-none md:px-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pt-0">
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-28 bg-[linear-gradient(180deg,transparent,var(--rp-bg)_42%)] md:hidden" />
-        <PrimaryButton onClick={handleContinue} disabled={!canContinue}>Continue</PrimaryButton>
-      </footer>
+        <div className="mt-7">
+          <CreatePodStepActions onBack={handleBack} onContinue={handleContinue} disabled={!canContinue} />
+        </div>
+      </main>
 
     </>
   );
@@ -1881,19 +2143,19 @@ function SeatCounter({
 
   return (
     <section>
-      <h2 className="text-base font-black text-[var(--rp-text)]">Seats available</h2>
-      <div className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-input-bg)] px-4 py-3 shadow-[var(--rp-shadow-soft)]">
+      <h2 className="text-[17px] font-black leading-6 text-[var(--rp-text)]">Seats available</h2>
+      <div className="mt-4 rounded-[22px] border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_40px_rgba(0,0,0,0.22)]">
         <div className="grid grid-cols-[52px_1fr_52px] items-center gap-3">
           <button
             type="button"
             aria-label="Decrease seats"
             disabled={value <= minSeats}
             onClick={() => onChange(Math.max(minSeats, value - 1))}
-            className="grid h-12 w-12 place-items-center rounded-full border border-[var(--rp-input-border)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)] disabled:opacity-35"
+            className="grid h-14 w-14 place-items-center rounded-full border border-white/18 bg-black/10 text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)] disabled:opacity-35"
           >
-            <Minus className="h-6 w-6" />
+            <Minus className="h-7 w-7" />
           </button>
-          <div className="text-center text-5xl font-black leading-none text-[var(--rp-primary)]">
+          <div className="text-center text-[54px] font-black leading-none text-[var(--rp-primary)]">
             {value}
           </div>
           <button
@@ -1901,13 +2163,13 @@ function SeatCounter({
             aria-label="Increase seats"
             disabled={value >= maxSeats}
             onClick={() => onChange(Math.min(maxSeats, value + 1))}
-            className="grid h-12 w-12 place-items-center rounded-full border border-[var(--rp-input-border)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)] disabled:opacity-35"
+            className="grid h-14 w-14 place-items-center rounded-full border border-white/18 bg-black/10 text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)] disabled:opacity-35"
           >
-            <Plus className="h-6 w-6" />
+            <Plus className="h-7 w-7" />
           </button>
         </div>
       </div>
-      <p className="mt-2 text-center text-sm font-bold text-[var(--rp-muted)]">
+      <p className="mt-3 text-center text-base font-black text-[var(--rp-muted-strong)]">
         {value - 1} guests + host
       </p>
     </section>
@@ -1922,24 +2184,32 @@ const rideCategories: Array<{
   description: string;
   badge?: string;
   helper: string;
+  notes?: string[];
+  footnote?: string;
   icon: typeof CarFront;
   disabled?: boolean;
 }> = [
   {
     id: "taxi",
     title: "Taxi",
-    description: "Licensed taxi partner quote for your shared pod.",
-    helper: "Choose taxi type, luggage needs, and safety mode next.",
+    badge: "Taxi partner quote",
+    description: "Licensed taxi partner quotes one shared price for your pod.",
+    helper: "Taxi still uses the quote acceptance and review flow.",
     icon: CarFront,
   },
   {
     id: "ride_app",
     title: "Ride app",
-    description: "",
-    badge: "Coming soon",
-    helper: "",
+    badge: "Self-settle",
+    description: "Use your own ride app and settle the fare directly with your group.",
+    helper: "Coordination-only.",
+    notes: [
+      "No screenshot required.",
+      "Ride fare paid outside RidePod.",
+      "No fare protection.",
+    ],
+    footnote: "HK$5 RidePod join fee shown as demo/test state. No live payment is charged in this version.",
     icon: Smartphone,
-    disabled: true,
   },
 ];
 
@@ -2008,6 +2278,115 @@ function getTaxiTypeLabel(taxiType: TaxiTypeId) {
   return taxiTypeOptions.find((option) => option.id === taxiType)?.title ?? legacyLabels[taxiType] ?? "Standard 4-seat taxi";
 }
 
+function estimateMockRouteDistanceMeters(pickupAddress: string, dropoffAddress: string) {
+  const pickup = pickupAddress.trim().toLowerCase();
+  const dropoff = dropoffAddress.trim().toLowerCase();
+  if (!pickup || !dropoff) return 0;
+
+  const routeKey = `${pickup} -> ${dropoff}`;
+  const knownRoutes: Array<[RegExp, number]> = [
+    [/central.*tsim sha tsui|tsim sha tsui.*central/, 8600],
+    [/wan chai.*mong kok|mong kok.*wan chai/, 7200],
+    [/central.*mong kok|mong kok.*central/, 7600],
+    [/airport|hk international airport|lax/i, 32000],
+    [/sha tin.*central|central.*sha tin/, 17000],
+    [/tsuen wan.*airport|airport.*tsuen wan/, 24000],
+    [/tung chung|lantau/i, 15000],
+  ];
+  const matched = knownRoutes.find(([pattern]) => pattern.test(routeKey));
+
+  return matched?.[1] ?? 6000;
+}
+
+function inferTaxiFareTypeFromRoute(pickupAddress: string, dropoffAddress: string): TaxiType {
+  const routeText = `${pickupAddress} ${dropoffAddress}`.toLowerCase();
+  const lantauKeywords = ["lantau", "tung chung", "airport", "hk international airport", "chek lap kok", "disneyland", "mui wo", "tai o"];
+  const ntKeywords = [
+    "new territories",
+    "sha tin",
+    "shatin",
+    "tsuen wan",
+    "yuen long",
+    "tuen mun",
+    "tai po",
+    "fanling",
+    "sheung shui",
+    "ma on shan",
+    "sai kung",
+    "tseung kwan o",
+  ];
+
+  if (lantauKeywords.some((keyword) => routeText.includes(keyword))) return "lantau";
+  if (ntKeywords.some((keyword) => routeText.includes(keyword))) return "nt";
+
+  return "urban";
+}
+
+function getSuggestedFareReference(
+  pickupAddress: string,
+  dropoffAddress: string,
+  peopleVehicle: PeopleVehicleState,
+) {
+  const distanceMeters = estimateMockRouteDistanceMeters(pickupAddress, dropoffAddress);
+  const taxiFareType = inferTaxiFareTypeFromRoute(pickupAddress, dropoffAddress);
+  const fareEstimate = calculateHkTaxiFareEstimate({
+    taxiType: taxiFareType,
+    distanceMeters,
+    baggageCount: peopleVehicle.bags,
+    tollAmount: 0,
+    uncertaintyPercent: 0.15,
+  });
+
+  return fareEstimate;
+}
+
+function TaxiFareReferenceCard({
+  pickupAddress,
+  dropoffAddress,
+  peopleVehicle,
+}: {
+  pickupAddress: string;
+  dropoffAddress: string;
+  peopleVehicle: PeopleVehicleState;
+}) {
+  const fareEstimate = getSuggestedFareReference(
+    pickupAddress,
+    dropoffAddress,
+    peopleVehicle,
+  );
+
+  if (!fareEstimate.available) {
+    return (
+      <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+        <h2 className="text-lg font-black text-[var(--rp-primary)]">Fare reference</h2>
+        <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+          Fare reference unavailable until pickup and dropoff are selected.
+        </p>
+      </section>
+    );
+  }
+
+  const fareRange = formatHkdRange(fareEstimate.roundedLowEstimate, fareEstimate.roundedHighEstimate);
+
+  return (
+    <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[linear-gradient(135deg,rgba(246,196,83,0.1),rgba(15,23,42,0.18)),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+      <div>
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">
+            Fare reference
+          </p>
+          <h2 className="mt-2 text-3xl font-black leading-none text-[var(--rp-text)]">
+            {fareRange}
+          </h2>
+          <p className="mt-1 text-sm font-bold text-[var(--rp-muted-strong)]">
+            Total taxi fare reference
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function RideCategoryCard({
   category,
   selected,
@@ -2021,24 +2400,6 @@ function RideCategoryCard({
   const taxiCategory = category.id === "taxi";
   const rideAppCategory = category.id === "ride_app";
 
-  if (rideAppCategory) {
-    return (
-      <button
-        type="button"
-        role="radio"
-        aria-checked={selected}
-        aria-disabled={category.disabled}
-        disabled={category.disabled}
-        className="grid min-h-24 w-full cursor-not-allowed place-items-center rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-center opacity-70 shadow-[var(--rp-shadow-soft)]"
-      >
-        <span>
-          <span className="block text-lg font-black text-[var(--rp-text)]">Ride app</span>
-          <span className="mt-1 block text-sm font-black text-[var(--rp-primary)]">Coming soon</span>
-        </span>
-      </button>
-    );
-  }
-
   return (
     <button
       type="button"
@@ -2048,9 +2409,9 @@ function RideCategoryCard({
       disabled={category.disabled}
       onClick={onSelect}
       className={cn(
-        "grid w-full grid-cols-[52px_1fr_34px] items-center gap-3 rounded-[14px] border bg-[var(--rp-card)] p-3 text-left shadow-[var(--rp-shadow-soft)] transition",
+        "grid min-h-[142px] w-full grid-cols-[72px_1fr_34px] items-center gap-4 rounded-[22px] border bg-[linear-gradient(135deg,rgba(15,23,42,0.72),rgba(3,7,18,0.44))] p-4 text-left shadow-[var(--rp-shadow-soft)] transition",
         selected && taxiCategory
-          ? "border-sky-400/70 bg-[linear-gradient(135deg,rgba(14,165,233,0.14),rgba(2,6,23,0.02))] ring-1 ring-sky-400/45"
+          ? "border-sky-400/90 bg-[linear-gradient(135deg,rgba(14,165,233,0.18),rgba(2,6,23,0.12))] ring-1 ring-sky-400/50"
           : selected
             ? "border-[var(--rp-primary)] ring-1 ring-[var(--rp-primary)]"
             : "border-[var(--rp-border)] hover:border-[var(--rp-border-strong)]",
@@ -2059,14 +2420,16 @@ function RideCategoryCard({
     >
       <span
         className={cn(
-          "grid h-12 w-12 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]",
-          taxiCategory && "border border-sky-400/25 bg-sky-400/10 text-sky-300",
+          "grid h-16 w-16 place-items-center rounded-full border bg-[var(--rp-card-muted)] text-[var(--rp-primary)]",
+          taxiCategory
+            ? "border-sky-400/30 bg-sky-400/12 text-sky-300"
+            : "border-white/12 bg-white/5 text-[var(--rp-muted-strong)]",
         )}
       >
-        <Icon className="h-7 w-7" />
+        <Icon className="h-8 w-8" />
       </span>
       <span className="min-w-0">
-        <span className="flex flex-wrap items-center gap-2 text-base font-black text-[var(--rp-text)]">
+        <span className="flex flex-wrap items-center gap-2 text-[24px] font-black leading-7 text-[var(--rp-text)]">
           <span>{category.title}</span>
           {category.badge ? (
             <span
@@ -2079,12 +2442,27 @@ function RideCategoryCard({
             </span>
           ) : null}
         </span>
-        <span className="mt-1 block text-xs font-semibold leading-4 text-[var(--rp-muted)]">
+        <span className="mt-3 block text-base font-semibold leading-6 text-[var(--rp-muted-strong)]">
           {category.description}
         </span>
-        <span className={cn("mt-1 block text-[11px] font-black leading-4 text-[var(--rp-primary)]", taxiCategory && "text-sky-300")}>
+        <span className={cn("mt-2 block text-base font-black leading-6 text-[var(--rp-primary)]", taxiCategory && "text-sky-300", rideAppCategory && "text-[var(--rp-primary)]")}>
           {category.helper}
         </span>
+        {category.notes ? (
+          <span className="mt-3 grid gap-1.5">
+            {category.notes.map((note) => (
+              <span key={note} className="flex items-center gap-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                <Check className="h-3.5 w-3.5 shrink-0 text-[var(--rp-primary)]" />
+                {note}
+              </span>
+            ))}
+          </span>
+        ) : null}
+        {category.footnote ? (
+          <span className="mt-3 block rounded-xl border border-[var(--rp-border)] bg-[rgba(15,23,42,0.68)] px-3 py-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+            {category.footnote}
+          </span>
+        ) : null}
       </span>
       <span
         aria-hidden="true"
@@ -2120,9 +2498,9 @@ function RideOptionSelector({
       : "ride_app";
 
   return (
-    <section className="mt-7">
-      <h2 className="text-base font-black text-[var(--rp-text)]">Ride category</h2>
-      <div className="mt-4 grid gap-3" role="radiogroup" aria-label="Ride category">
+    <section className="mt-9">
+      <h2 className="text-[19px] font-black leading-6 text-[var(--rp-text)]">Ride category</h2>
+      <div className="mt-5 grid gap-4" role="radiogroup" aria-label="Ride category">
         {rideCategories.map((category) => (
           <RideCategoryCard
             key={category.id}
@@ -2130,7 +2508,7 @@ function RideOptionSelector({
             selected={selectedCategory === category.id}
             onSelect={() => {
               if (category.disabled) return;
-              onChange("taxi_partner_quote");
+              onChange(category.id === "taxi" ? "taxi_partner_quote" : "ride_app_fixed_quote");
             }}
           />
         ))}
@@ -2207,7 +2585,6 @@ function TaxiTypeSelector({
             key={selectedOption.id}
             option={selectedOption}
             selected
-            fits={peopleVehicle.seatsAvailable <= selectedOption.maxRiders && peopleVehicle.bags <= selectedOption.maxBags}
             onSelect={() => updateTaxiType(selectedOption)}
           />
         </div>
@@ -2218,7 +2595,7 @@ function TaxiTypeSelector({
         <div className="rounded-[18px] border border-amber-300/35 bg-amber-300/10 p-3">
           <p className="text-sm font-bold leading-5 text-amber-100">
             {hasAnyFit
-              ? "This taxi may not fit your group or luggage."
+              ? "Choose another taxi type or reduce luggage."
               : "No single taxi type clearly fits this group."}
           </p>
           <p className="mt-1 text-xs font-bold leading-5 text-amber-100/85">
@@ -2238,11 +2615,8 @@ function TaxiTypeSelector({
 }
 
 function TaxiOptionImage({ src, alt }: { src: string; alt: string }) {
-  const [imageSrc, setImageSrc] = useState(src);
-
-  useEffect(() => {
-    setImageSrc(src);
-  }, [src]);
+  const [fallbackImage, setFallbackImage] = useState<{ originalSrc: string; imageSrc: string } | null>(null);
+  const imageSrc = fallbackImage?.originalSrc === src ? fallbackImage.imageSrc : src;
 
   return (
     <Image
@@ -2253,7 +2627,7 @@ function TaxiOptionImage({ src, alt }: { src: string; alt: string }) {
       sizes="(max-width: 640px) 320px, 360px"
       unoptimized
       className="h-full w-full object-contain"
-      onError={() => setImageSrc(TAXI_IMAGE_FALLBACK_SRC)}
+      onError={() => setFallbackImage({ originalSrc: src, imageSrc: TAXI_IMAGE_FALLBACK_SRC })}
     />
   );
 }
@@ -2261,12 +2635,10 @@ function TaxiOptionImage({ src, alt }: { src: string; alt: string }) {
 function TaxiTypeOptionCard({
   option,
   selected,
-  fits,
   onSelect,
 }: {
   option: (typeof taxiTypeOptions)[number];
   selected: boolean;
-  fits: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -2289,11 +2661,6 @@ function TaxiTypeOptionCard({
       </span>
 
       <span className="min-w-0">
-        {!fits ? (
-          <span className="mb-2 inline-flex rounded-full border border-amber-300/45 bg-amber-300/15 px-2.5 py-1 text-[10px] font-black uppercase text-amber-100">
-            May not fit
-          </span>
-        ) : null}
         <span className="block text-[22px] font-black leading-tight text-[var(--rp-text)]">
           {option.title}
         </span>
@@ -2362,19 +2729,19 @@ function TaxiNeedsSelector({
 
         <div className="mt-6 rounded-[22px] border border-[var(--rp-primary)]/35 bg-[rgba(7,19,38,0.62)] p-3">
           <p className="text-center text-[11px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">Luggage count</p>
-          <div className="relative mt-4 flex min-h-[84px] items-center justify-center">
+          <div className="mt-4 grid min-h-[84px] grid-cols-[48px_1fr_48px] items-center gap-2">
             <button
               type="button"
               aria-label="Decrease luggage count"
               disabled={peopleVehicle.bags <= minBags}
               onClick={() => onPeopleVehicleChange({ ...peopleVehicle, bags: Math.max(minBags, peopleVehicle.bags - 1) })}
-              className="absolute left-0 grid h-10 w-10 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)] disabled:opacity-35"
+              className="grid h-10 w-10 place-items-center justify-self-start rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)] disabled:opacity-35"
             >
               <Minus className="h-5 w-5" />
             </button>
-            <div className="min-w-0 text-center">
+            <div className="grid min-w-0 justify-items-center text-center">
               <p className="text-5xl font-black leading-none text-[var(--rp-text)]">{peopleVehicle.bags}</p>
-              <p className="mx-auto mt-2 max-w-[74px] text-xs font-semibold leading-4 text-[var(--rp-muted)]">
+              <p className="mt-2 max-w-[96px] text-center text-xs font-semibold leading-4 text-[var(--rp-muted)]">
                 {peopleVehicle.bags === 1 ? "Standard piece" : "Standard pieces"}
               </p>
             </div>
@@ -2383,7 +2750,7 @@ function TaxiNeedsSelector({
               aria-label="Increase luggage count"
               disabled={peopleVehicle.bags >= maxBags}
               onClick={() => onPeopleVehicleChange({ ...peopleVehicle, bags: Math.min(maxBags, peopleVehicle.bags + 1) })}
-              className="absolute right-0 grid h-10 w-10 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)] disabled:opacity-35"
+              className="grid h-10 w-10 place-items-center justify-self-end rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)] disabled:opacity-35"
             >
               <Plus className="h-5 w-5" />
             </button>
@@ -2436,14 +2803,12 @@ function TaxiNeedsSelector({
 function PreferenceOptionCard({
   title,
   description,
-  helper,
   badge,
   selected,
   onSelect,
 }: {
   title: string;
   description: string;
-  helper?: string;
   badge?: string;
   selected: boolean;
   onSelect: () => void;
@@ -2462,7 +2827,7 @@ function PreferenceOptionCard({
       )}
     >
       <span className="flex flex-wrap items-center gap-2">
-        <span className="text-base font-black leading-5 text-[var(--rp-text)]">{title}</span>
+        <span className="text-base font-black leading-5 text-[var(--rp-primary)]">{title}</span>
         {badge ? (
           <span className="rounded-full border border-[var(--rp-primary)]/45 bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]">
             {badge}
@@ -2470,11 +2835,6 @@ function PreferenceOptionCard({
         ) : null}
       </span>
       <span className="mt-2 block text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">{description}</span>
-      {helper ? (
-        <span className="mt-3 block rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-          {helper}
-        </span>
-      ) : null}
     </button>
   );
 }
@@ -2607,12 +2967,10 @@ function WhoCanJoinOptionCard({
 
 function TaxiPartnerPreferenceSelector({
   podType,
-  isAirportTrip,
   value,
   onChange,
 }: {
   podType: PodType;
-  isAirportTrip: boolean;
   value: TaxiPartnerPreference;
   onChange: (value: TaxiPartnerPreference) => void;
 }) {
@@ -2622,19 +2980,11 @@ function TaxiPartnerPreferenceSelector({
     <section className="mt-7 grid gap-3">
       <div className="grid gap-3" role="radiogroup" aria-label="Taxi partner preference">
         {taxiPartnerPreferenceOptions.map((option) => {
-          const recommendedAirportOption = isAirportTrip && option.id === "airport_luggage_friendly";
-
           return (
             <PreferenceOptionCard
               key={option.id}
               title={option.title}
               description={option.description}
-              helper={
-                recommendedAirportOption
-                  ? "Airport and luggage support depends on taxi partner availability."
-                  : option.helper
-              }
-              badge={recommendedAirportOption ? "Recommended" : undefined}
               selected={value === option.id}
               onSelect={() => onChange(option.id)}
             />
@@ -2649,6 +2999,106 @@ function TaxiPartnerPreferenceSelector({
           {note}
         </p>
       ))}
+    </section>
+  );
+}
+
+function SelfSettleOptionGrid<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: Array<{ id: T; title: string; description?: string }>;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div>
+      <p className="text-sm font-black text-[var(--rp-text)]">{label}</p>
+      <div className="mt-2 grid gap-2">
+        {options.map((option) => {
+          const selected = value === option.id;
+
+          return (
+            <button
+              key={option.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option.id)}
+              className={cn(
+                "rounded-[16px] border px-3 py-3 text-left transition",
+                selected
+                  ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_13%,var(--rp-card))]"
+                  : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] hover:border-[var(--rp-border-strong)]",
+              )}
+            >
+              <span className={cn("block text-sm font-black", selected ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]")}>
+                {option.title}
+              </span>
+              {option.description ? (
+                <span className="mt-1 block text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                  {option.description}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SelfSettleDetailsSelector({
+  peopleVehicle,
+  onPeopleVehicleChange,
+}: {
+  peopleVehicle: PeopleVehicleState;
+  onPeopleVehicleChange: (peopleVehicle: PeopleVehicleState) => void;
+}) {
+  return (
+    <section className="grid gap-4">
+      <SelfSettleTextField
+        label="Estimated ride app fare"
+        value={peopleVehicle.estimatedRideAppFare}
+        placeholder="HK$120-160"
+        helper="This is only an estimate. RidePod does not verify the final ride app fare."
+        onChange={(estimatedRideAppFare) => onPeopleVehicleChange({ ...peopleVehicle, estimatedRideAppFare })}
+      />
+
+      <SelfSettleOptionGrid
+        label="Split method"
+        value={peopleVehicle.splitMethod}
+        options={selfSettleSplitMethodOptions}
+        onChange={(splitMethod) => onPeopleVehicleChange({ ...peopleVehicle, splitMethod })}
+      />
+
+      <SelfSettleOptionGrid
+        label="Payment method"
+        value={peopleVehicle.paymentMethod}
+        options={selfSettlePaymentMethodOptions}
+        onChange={(paymentMethod) => onPeopleVehicleChange({ ...peopleVehicle, paymentMethod })}
+      />
+
+      <section className="rounded-[20px] border border-[var(--rp-primary)]/45 bg-[color-mix(in_srgb,var(--rp-primary)_9%,var(--rp-card))] p-4">
+        <div className="flex items-start gap-3">
+          <Info className="mt-0.5 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
+          <div>
+            <h2 className="text-base font-black text-[var(--rp-primary)]">Self-settle ride app pod</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              RidePod only helps the group coordinate. The ride app booking and fare payment happen outside RidePod.
+            </p>
+          </div>
+        </div>
+        <ul className="mt-3 grid gap-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+          <li>RidePod does not verify the ride app fare.</li>
+          <li>RidePod does not collect or split the ride fare.</li>
+          <li>Agree on the fare split before the ride starts.</li>
+          <li>External payment disputes may not be refundable by RidePod.</li>
+        </ul>
+      </section>
     </section>
   );
 }
@@ -2738,6 +3188,7 @@ function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxi
   const isTaxiSelector = variant === "taxiSelector";
   const isLuggage = variant === "luggage";
   const isWhoCanJoin = variant === "whoCanJoin";
+  const isDefault = variant === "default";
   // TODO: Replace with rider group image for Who Can Join step.
   const imageSrc =
     isTaxiSelector || isLuggage || isWhoCanJoin
@@ -2745,7 +3196,7 @@ function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxi
       : "/images/ridepod/people-vehicle-dark.png";
 
   return (
-    <aside className="people-vehicle-dark-panel ridepod-theme-image-dark relative min-h-[650px] overflow-hidden border-r border-[var(--rp-border-strong)]">
+    <aside className="people-vehicle-dark-panel relative min-h-[650px] overflow-hidden border-r border-[var(--rp-border-strong)]">
       <Image
         src={imageSrc}
         alt=""
@@ -2761,61 +3212,111 @@ function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxi
           ? "bg-[linear-gradient(90deg,rgba(5,11,18,0.1),rgba(5,11,18,0.02)_48%,rgba(5,11,18,0.34)),linear-gradient(180deg,rgba(5,11,18,0.02),rgba(5,11,18,0.1)_58%,rgba(5,11,18,0.48))]"
           : "bg-[linear-gradient(90deg,rgba(5,11,18,0.2),rgba(5,11,18,0.02)_45%,rgba(5,11,18,0.32)),linear-gradient(180deg,rgba(5,11,18,0.03),rgba(5,11,18,0.18)_58%,rgba(5,11,18,0.7))]",
       )} />
+      {isDefault ? (
+        <>
+          <div className="absolute inset-x-[24%] top-[25%] h-[30%]">
+            <svg viewBox="0 0 92 220" className="h-full w-full overflow-visible drop-shadow-[0_0_14px_rgba(246,196,83,0.65)]" aria-hidden="true">
+              <path
+                d="M17 13 C 24 45, 53 58, 61 91 S 29 136, 35 169 S 52 197, 70 211"
+                fill="none"
+                stroke="#f6c453"
+                strokeLinecap="round"
+                strokeWidth="8"
+              />
+              <circle cx="17" cy="13" r="13" fill="#07111a" stroke="#ffd36a" strokeWidth="6" />
+              <circle cx="70" cy="211" r="15" fill="#07111a" stroke="#ffd36a" strokeWidth="7" />
+              <circle cx="70" cy="211" r="5" fill="#ffd36a" />
+            </svg>
+          </div>
+          <div className="absolute left-[42%] top-[25%] rounded-xl bg-[#07111a]/45 px-2 py-1 text-sm font-semibold leading-5 text-slate-200 backdrop-blur-sm">
+            <p>Pickup</p>
+            <p>7:10 PM</p>
+          </div>
+          <div className="absolute left-[24%] top-[47%] rounded-xl bg-[#07111a]/45 px-2 py-1 text-sm font-semibold leading-5 text-slate-200 backdrop-blur-sm">
+            <p>Drop-off</p>
+            <p>7:43 PM</p>
+          </div>
+          <div className="absolute bottom-8 left-5 right-5 rounded-[12px] border border-white/12 bg-[#07111a]/68 p-3 text-white shadow-[0_18px_40px_rgba(0,0,0,0.28)] backdrop-blur-md">
+            <p className="flex items-center gap-2 text-sm font-black text-[#ffd36a]">
+              <UsersRound className="h-5 w-5" />
+              Group ride
+            </p>
+            <p className="mt-3 text-sm font-medium leading-5 text-slate-200">
+              Coordinated pickup. One seamless ride.
+            </p>
+          </div>
+        </>
+      ) : null}
     </aside>
-  );
-}
-
-function VehicleLightArt() {
-  return (
-    <div className="people-vehicle-light-art ridepod-theme-image-light relative mt-5 h-36 overflow-hidden rounded-[18px]">
-      <Image
-        src="/ridepod/people-vehicle-light-background.png"
-        alt=""
-        fill
-        sizes="390px"
-        className="object-contain object-center"
-        priority
-      />
-    </div>
   );
 }
 
 function PeopleVehicleStep({
   podType,
-  isAirportTrip,
   peopleVehicle,
   genderMode,
   accessMode,
   taxiPartnerPreference,
+  stopRequestPolicy,
+  isAirportTrip,
   onPeopleVehicleChange,
   onGenderModeChange,
   onAccessModeChange,
   onTaxiPartnerPreferenceChange,
+  onStopRequestPolicyChange,
   onBack,
   onContinue,
+  currentStep = 0,
+  onRequireAuth,
+  showBackAction = true,
 }: {
   podType: PodType;
-  isAirportTrip: boolean;
   peopleVehicle: PeopleVehicleState;
   genderMode: GenderMode;
   accessMode: AccessMode;
   taxiPartnerPreference: TaxiPartnerPreference;
+  stopRequestPolicy: StopRequestPolicy;
+  isAirportTrip: boolean;
   onPeopleVehicleChange: (peopleVehicle: PeopleVehicleState) => void;
   onGenderModeChange: (genderMode: GenderMode) => void;
   onAccessModeChange: (accessMode: AccessMode) => void;
   onTaxiPartnerPreferenceChange: (preference: TaxiPartnerPreference) => void;
+  onStopRequestPolicyChange: (value: StopRequestPolicy) => void;
   onBack: () => void;
   onContinue: () => void;
+  currentStep?: CreateStep;
+  onRequireAuth?: () => boolean;
+  showBackAction?: boolean;
 }) {
   const selectedRideOptionId = normalizeRideOptionId(peopleVehicle.rideOption);
   const isTaxiFlow = selectedRideOptionId === "taxi_partner_quote" || selectedRideOptionId === "taxi_meter";
-  const [taxiDetailsPage, setTaxiDetailsPage] = useState<"category" | "type" | "needs" | "join" | "partner">("category");
+  const isRideAppSelfSettle = selectedRideOptionId === "ride_app_fixed_quote";
+  const [taxiDetailsPage, setTaxiDetailsPage] = useState<"category" | "type" | "needs" | "join" | "partner" | "selfSettle">("category");
   const isTaxiTypePage = isTaxiFlow && taxiDetailsPage === "type";
+  const isRideCategoryPage = taxiDetailsPage === "category";
   const [showRideConfirm, setShowRideConfirm] = useState(false);
   const [rideConfirmChecked, setRideConfirmChecked] = useState(false);
   const [confirmedRideOption, setConfirmedRideOption] = useState<ActiveRideOptionId | null>(null);
 
   function handleContinue() {
+    if (onRequireAuth && !onRequireAuth()) return;
+
+    if (isRideAppSelfSettle && taxiDetailsPage === "category") {
+      setTaxiDetailsPage("selfSettle");
+      return;
+    }
+
+    if (isRideAppSelfSettle && taxiDetailsPage === "selfSettle") {
+      setTaxiDetailsPage("join");
+      return;
+    }
+
+    if (isRideAppSelfSettle && taxiDetailsPage === "join") {
+      setConfirmedRideOption(selectedRideOptionId);
+      onContinue();
+      return;
+    }
+
     if (isTaxiFlow && taxiDetailsPage === "category") {
       setTaxiDetailsPage("type");
       return;
@@ -2851,76 +3352,101 @@ function PeopleVehicleStep({
     onContinue();
   }
 
+  function handleBack() {
+    if (isRideAppSelfSettle && taxiDetailsPage === "join") {
+      setTaxiDetailsPage("selfSettle");
+      return;
+    }
+
+    if (isRideAppSelfSettle && taxiDetailsPage === "selfSettle") {
+      setTaxiDetailsPage("category");
+      return;
+    }
+
+    if (isTaxiFlow && taxiDetailsPage === "partner") {
+      setTaxiDetailsPage("join");
+      return;
+    }
+
+    if (isTaxiFlow && taxiDetailsPage === "join") {
+      setTaxiDetailsPage("needs");
+      return;
+    }
+
+    if (isTaxiFlow && taxiDetailsPage === "needs") {
+      setTaxiDetailsPage("type");
+      return;
+    }
+
+    if (isTaxiFlow && taxiDetailsPage === "type") {
+      setTaxiDetailsPage("category");
+      return;
+    }
+
+    onBack();
+  }
+
   const isLuggagePage = isTaxiFlow && taxiDetailsPage === "needs";
-  const isWhoCanJoinPage = isTaxiFlow && taxiDetailsPage === "join";
+  const isWhoCanJoinPage = (isTaxiFlow || isRideAppSelfSettle) && taxiDetailsPage === "join";
   const isTaxiPartnerPreferencePage = isTaxiFlow && taxiDetailsPage === "partner";
-  const usesSplitTaxiLayout = isTaxiTypePage || isLuggagePage || isWhoCanJoinPage;
+  const isSelfSettleDetailsPage = isRideAppSelfSettle && taxiDetailsPage === "selfSettle";
+  const usesSplitTaxiLayout = isTaxiTypePage || isLuggagePage || isWhoCanJoinPage || isSelfSettleDetailsPage;
 
   return (
     <>
-      <CreatePodTopBar
-        currentStep={3}
-        onBack={() => {
-          if (isTaxiFlow && taxiDetailsPage === "partner") {
-            setTaxiDetailsPage("join");
-            return;
-          }
-
-          if (isTaxiFlow && taxiDetailsPage === "join") {
-            setTaxiDetailsPage("needs");
-            return;
-          }
-
-          if (isTaxiFlow && taxiDetailsPage === "needs") {
-            setTaxiDetailsPage("type");
-            return;
-          }
-
-          if (isTaxiFlow && taxiDetailsPage === "type") {
-            setTaxiDetailsPage("category");
-            return;
-          }
-
-          onBack();
-        }}
-      />
+      <CreatePodTopBar currentStep={currentStep} />
 
       <main className={cn(
         "people-vehicle-layout scrollbar-hide min-h-0 flex-1 overflow-y-auto",
+        isRideCategoryPage && "ride-category-layout",
         isTaxiTypePage && "taxi-selector-layout",
         isLuggagePage && "luggage-selector-layout",
         isWhoCanJoinPage && "who-can-join-layout",
+        isSelfSettleDetailsPage && "who-can-join-layout",
       )}>
         <VehicleDarkPanel
           variant={
             isTaxiTypePage || isTaxiPartnerPreferencePage
               ? "taxiSelector"
-              : isLuggagePage
+              : isLuggagePage || isSelfSettleDetailsPage
                 ? "luggage"
                 : isWhoCanJoinPage
                   ? "whoCanJoin"
                   : "default"
           }
         />
-        <section className={cn("people-vehicle-content flex min-h-0 flex-col px-6 pb-10 pt-8", usesSplitTaxiLayout && "taxi-selector-content")}>
-          <div className="text-center">
+        <section className={cn("people-vehicle-content flex min-h-0 flex-col px-6 pb-10 pt-8", usesSplitTaxiLayout && "taxi-selector-content", isRideCategoryPage && "ride-category-content")}>
+          <div className={cn("text-center", isRideCategoryPage && "text-left")}>
             <ScheduleTypeEyebrow podType={podType} />
-            <h1 className="text-[30px] font-black leading-tight text-[var(--rp-text)]">
+            <h1
+              className={cn(
+                "font-black leading-tight text-[var(--rp-text)]",
+                isTaxiTypePage
+                  ? "whitespace-nowrap text-[28px] min-[390px]:text-[30px]"
+                  : isRideCategoryPage
+                    ? "mt-7 text-[41px] tracking-[-0.04em] min-[390px]:text-[45px]"
+                    : "text-[30px]",
+              )}
+            >
               {isTaxiFlow && taxiDetailsPage === "needs"
                 ? "Luggage"
-                : isTaxiFlow && taxiDetailsPage === "join"
+                : isWhoCanJoinPage
                   ? "Who can join?"
+                : isSelfSettleDetailsPage
+                  ? "Self-settle details"
                 : isTaxiFlow && taxiDetailsPage === "partner"
                   ? "Taxi partner preference"
                 : isTaxiFlow && taxiDetailsPage === "type"
                   ? "Choose Taxi Type"
                   : "How do you want to ride?"}
             </h1>
-            <p className="mx-auto mt-2 max-w-[280px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]">
+            <p className={cn("mx-auto mt-2 max-w-[280px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]", isRideCategoryPage && "mx-0 mt-5 max-w-[330px] text-left text-[22px] leading-9 text-[var(--rp-muted-strong)]")}>
               {isTaxiFlow && taxiDetailsPage === "needs"
                 ? "Tell taxi partners your bag count before they quote."
-                : isTaxiFlow && taxiDetailsPage === "join"
+                : isWhoCanJoinPage
                   ? "Choose who can join this shared taxi pod."
+                : isSelfSettleDetailsPage
+                  ? "Set the estimate and how riders will settle outside RidePod."
                 : isTaxiFlow && taxiDetailsPage === "partner"
                   ? "Choose what kind of taxi partner you prefer for this ride."
                 : isTaxiFlow && taxiDetailsPage === "type"
@@ -2929,13 +3455,18 @@ function PeopleVehicleStep({
             </p>
           </div>
 
-          <div className="mt-7">
+          <div className={cn("mt-7", isRideCategoryPage && "mt-14")}>
             {isTaxiFlow && taxiDetailsPage === "needs" ? (
               <TaxiNeedsSelector
                 peopleVehicle={peopleVehicle}
                 onPeopleVehicleChange={onPeopleVehicleChange}
               />
-            ) : isTaxiFlow && taxiDetailsPage === "join" ? (
+            ) : isSelfSettleDetailsPage ? (
+              <SelfSettleDetailsSelector
+                peopleVehicle={peopleVehicle}
+                onPeopleVehicleChange={onPeopleVehicleChange}
+              />
+            ) : isWhoCanJoinPage ? (
               <WhoCanJoinSelector
                 podType={podType}
                 genderMode={genderMode}
@@ -2946,18 +3477,14 @@ function PeopleVehicleStep({
             ) : isTaxiFlow && taxiDetailsPage === "partner" ? (
               <TaxiPartnerPreferenceSelector
                 podType={podType}
-                isAirportTrip={isAirportTrip}
                 value={taxiPartnerPreference}
                 onChange={onTaxiPartnerPreferenceChange}
               />
             ) : isTaxiFlow && taxiDetailsPage === "type" ? (
-              <>
-                <TaxiTypeSelector
-                  peopleVehicle={peopleVehicle}
-                  onPeopleVehicleChange={onPeopleVehicleChange}
-                />
-                <VehicleLightArt />
-              </>
+              <TaxiTypeSelector
+                peopleVehicle={peopleVehicle}
+                onPeopleVehicleChange={onPeopleVehicleChange}
+              />
             ) : (
               <>
                 <SeatCounter
@@ -2984,13 +3511,17 @@ function PeopleVehicleStep({
                     }
                   }
                 />
-                <VehicleLightArt />
               </>
             )}
           </div>
 
           <div className="mt-auto pt-7">
-            <PrimaryButton onClick={handleContinue}>Continue</PrimaryButton>
+            <CreatePodStepActions
+              onBack={handleBack}
+              onContinue={handleContinue}
+              showBack={showBackAction}
+              continueIcon={isRideCategoryPage ? <ArrowRight className="h-6 w-6" /> : undefined}
+            />
           </div>
         </section>
       </main>
@@ -3034,15 +3565,7 @@ function ReviewHeroCard({
           alt=""
           fill
           sizes="390px"
-          className="ridepod-theme-image-dark object-cover object-center"
-          priority
-        />
-        <Image
-          src="/ridepod/review-light-background.png"
-          alt=""
-          fill
-          sizes="390px"
-          className="ridepod-theme-image-light object-cover object-center"
+          className="object-cover object-center"
           priority
         />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent,color-mix(in_srgb,var(--rp-card)_50%,transparent)_72%,var(--rp-card)_100%)]" />
@@ -3262,6 +3785,107 @@ function getTaxiPartnerPreferenceLabel(preference: TaxiPartnerPreference) {
   return taxiPartnerPreferenceOptions.find((option) => option.id === preference)?.title ?? "Standard taxi partner";
 }
 
+function getSelfSettleSplitMethodLabel(splitMethod: SelfSettleSplitMethod) {
+  return selfSettleSplitMethodOptions.find((option) => option.id === splitMethod)?.title ?? "Equal split";
+}
+
+function getSelfSettlePaymentMethodLabel(paymentMethod: SelfSettlePaymentMethod) {
+  return selfSettlePaymentMethodOptions.find((option) => option.id === paymentMethod)?.title ?? "PayMe";
+}
+
+function getStopRequestPolicyLabel(policy: StopRequestPolicy) {
+  return policy === "host_approved_before_quote" ? "Host-approved before quote" : "Direct route only";
+}
+
+function getRoutePlanSummary(pickupAddress: string, dropoffAddress: string, stops: RouteStop[]) {
+  const parts = [
+    routePointSummary(pickupAddress, "Pickup"),
+    ...stops.map((_, index) => `Stop ${index + 1}`),
+    routePointSummary(dropoffAddress, "Dropoff"),
+  ];
+
+  return parts.join(" \u2192 ");
+}
+
+function StopRequestPolicySelector({
+  value,
+  isAirportTrip,
+  onChange,
+}: {
+  value: StopRequestPolicy;
+  isAirportTrip: boolean;
+  onChange: (value: StopRequestPolicy) => void;
+}) {
+  return (
+    <section className="rounded-[22px] border border-[color-mix(in_srgb,var(--rp-primary)_28%,var(--rp-border))] bg-[linear-gradient(180deg,rgba(17,28,40,0.92),rgba(10,19,31,0.92))] p-3 shadow-[var(--rp-shadow-soft)]">
+      <div className="flex items-start justify-between gap-3 px-1">
+        <div>
+          <h2 className="text-base font-black text-[var(--rp-text)]">Stop requests from other riders</h2>
+          <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+            Choose whether joined riders can request one extra stop.
+          </p>
+        </div>
+        <span className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-muted)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-[var(--rp-primary)]">
+          Beta
+        </span>
+      </div>
+
+      <div className="mt-3 grid gap-2" role="radiogroup" aria-label="Stop requests">
+        {stopRequestPolicyOptions.map((option) => {
+          const selected = value === option.id;
+          const directOnly = option.id === "direct_only";
+
+          return (
+            <button
+              key={option.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option.id)}
+              className={cn(
+                "grid grid-cols-[20px_1fr] gap-3 rounded-[16px] border p-3 text-left transition",
+                selected
+                  ? "border-[var(--rp-primary)] bg-[rgba(242,193,91,0.11)] shadow-[0_10px_22px_rgba(242,193,91,0.08)]"
+                  : "border-[var(--rp-border)] bg-[rgba(15,27,39,0.58)] hover:border-[var(--rp-border-strong)]",
+              )}
+            >
+              <span
+                className={cn(
+                  "mt-0.5 grid h-5 w-5 place-items-center rounded-full border",
+                  selected ? "border-[var(--rp-primary)]" : "border-[var(--rp-muted)]",
+                )}
+              >
+                <span className={cn("h-2.5 w-2.5 rounded-full", selected ? "bg-[var(--rp-primary)]" : "bg-transparent")} />
+              </span>
+              <span>
+                <span
+                  className={cn(
+                    "block text-sm font-black",
+                    selected ? "text-[var(--rp-primary)]" : directOnly ? "text-[var(--rp-muted-strong)]" : "text-[var(--rp-text)]",
+                  )}
+                >
+                  {option.title}
+                </span>
+                <span className="mt-1 block text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                  {option.description}
+                </span>
+                {selected && option.helper ? (
+                  <span className="mt-1 block text-[11px] font-bold leading-5 text-[var(--rp-primary)]">{option.helper}</span>
+                ) : null}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {isAirportTrip ? (
+        <p className="mt-3 rounded-[14px] border border-blue-300/15 bg-blue-400/10 px-3 py-2 text-xs font-bold leading-5 text-blue-100">
+          Airport rides usually work best without extra stops.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
 function TaxiReviewSummaryCard({
   peopleVehicle,
   pickupAddress,
@@ -3270,6 +3894,8 @@ function TaxiReviewSummaryCard({
   genderMode,
   accessMode,
   taxiPartnerPreference,
+  stopRequestPolicy,
+  stops,
 }: {
   peopleVehicle: PeopleVehicleState;
   pickupAddress: string;
@@ -3278,6 +3904,8 @@ function TaxiReviewSummaryCard({
   genderMode: GenderMode;
   accessMode: AccessMode;
   taxiPartnerPreference: TaxiPartnerPreference;
+  stopRequestPolicy: StopRequestPolicy;
+  stops: RouteStop[];
 }) {
   const taxiType = getTaxiTypeLabel(peopleVehicle.taxiType);
   const tripRows = [
@@ -3292,10 +3920,6 @@ function TaxiReviewSummaryCard({
     ["Dropoff point", dropoffAddress || "Not specified"],
   ];
   const taxiPartnerPreferenceLabel = getTaxiPartnerPreferenceLabel(taxiPartnerPreference);
-  const taxiPartnerPreferenceHelper =
-    taxiPartnerPreference === "airport_luggage_friendly"
-      ? "Taxi partner preferences depend on availability. Airport and luggage support depends on taxi partner availability."
-      : "Taxi partner preferences depend on availability.";
 
   return (
     <section className="grid gap-3">
@@ -3303,8 +3927,14 @@ function TaxiReviewSummaryCard({
         <h2 className="text-lg font-black text-[var(--rp-primary)]">Trip</h2>
         <dl className="mt-3 grid gap-2">
           <RouteSummaryLine label="Pickup" value={pickupAddress || "Pickup point"} />
+          {stops.map((stop, index) => (
+            <RouteSummaryLine key={stop.id} label={`Stop ${index + 1}`} value={stop.address || "Optional stop"} />
+          ))}
           <RouteSummaryLine label="Dropoff" value={dropoffAddress || "Dropoff point"} />
         </dl>
+        <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-black text-[var(--rp-primary)]">
+          Route: {getRoutePlanSummary(pickupAddress, dropoffAddress, stops)}
+        </p>
         <dl className="mt-4 grid gap-2">
           {tripRows.map(([label, value]) => (
             <SummaryLine key={label} label={label} value={value} />
@@ -3324,6 +3954,12 @@ function TaxiReviewSummaryCard({
         </p>
       </section>
 
+      <TaxiFareReferenceCard
+        pickupAddress={pickupAddress}
+        dropoffAddress={dropoffAddress}
+        peopleVehicle={peopleVehicle}
+      />
+
       <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
         <h2 className="text-lg font-black text-[var(--rp-primary)]">Who can join</h2>
         <p className="mt-3 text-base font-black leading-5 text-[var(--rp-text)]">
@@ -3341,13 +3977,72 @@ function TaxiReviewSummaryCard({
         <p className="mt-3 text-base font-black leading-5 text-[var(--rp-text)]">
           {taxiPartnerPreferenceLabel}
         </p>
-        <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
-          {taxiPartnerPreferenceHelper}
+      </section>
+
+      <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+        <h2 className="text-lg font-black text-[var(--rp-primary)]">Stop requests</h2>
+        <p className="mt-3 text-base font-black leading-5 text-[var(--rp-text)]">
+          {getStopRequestPolicyLabel(stopRequestPolicy)}
         </p>
       </section>
 
       <p className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
         No live payment or payout is enabled. Guests see the final price after the taxi partner quote.
+      </p>
+    </section>
+  );
+}
+
+function SelfSettleReviewSummaryCard({
+  peopleVehicle,
+  pickupAddress,
+  dropoffAddress,
+  dateTime,
+  genderMode,
+  accessMode,
+}: {
+  peopleVehicle: PeopleVehicleState;
+  pickupAddress: string;
+  dropoffAddress: string;
+  dateTime: DateTimeState;
+  genderMode: GenderMode;
+  accessMode: AccessMode;
+}) {
+  const rows = [
+    ["Ride type", "Ride app / Self-settle"],
+    ["Route", `${routePointSummary(pickupAddress, "Pickup")} \u2192 ${routePointSummary(dropoffAddress, "Dropoff")}`],
+    ["Pickup venue", peopleVehicle.pickupVenue || "Not specified"],
+    ["Date/time", `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}`],
+    ["Seats", `${peopleVehicle.seatsAvailable} seats total`],
+    ["Estimated ride app fare", peopleVehicle.estimatedRideAppFare || "Not specified"],
+    ["Split method", getSelfSettleSplitMethodLabel(peopleVehicle.splitMethod)],
+    ["Payment method", getSelfSettlePaymentMethodLabel(peopleVehicle.paymentMethod)],
+    ["Who can join", getWhoCanJoinLabel(genderMode, accessMode)],
+  ];
+
+  return (
+    <section className="grid gap-3">
+      <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[linear-gradient(135deg,rgba(246,196,83,0.08),rgba(15,23,42,0.18)),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+        <div className="flex items-start gap-3">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] text-[var(--rp-primary)]">
+            <Smartphone className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-lg font-black text-[var(--rp-primary)]">Ride app / Self-settle</h2>
+            <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              Coordination-only pod. Ride fare is paid outside RidePod.
+            </p>
+          </div>
+        </div>
+        <dl className="mt-4 grid gap-2">
+          {rows.map(([label, value]) => (
+            <SummaryLine key={label} label={label} value={value} />
+          ))}
+        </dl>
+      </section>
+
+      <p className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+        Ride fare is paid outside RidePod. No fare protection is provided. No screenshot required. No live payment is charged in this version.
       </p>
     </section>
   );
@@ -3433,7 +4128,7 @@ function getMinimumLockedSummary(money: Pick<MoneyProtectionState, "minSeatsToBo
 }
 
 function getHkTaxiEstimateForMoney(money: MoneyProtectionState) {
-  return calculateHkTaxiFareEstimate({
+  return calculateMoneyHkTaxiFareEstimate({
     zone: money.taxiZone,
     distanceMeters: Math.round(Math.max(0, money.estimatedDistanceKm) * 1000),
     baggageCount: money.baggageCount,
@@ -3711,6 +4406,7 @@ function SafetyTrustPanel({
 function ReviewPanelControls({
   currentPanel,
   onPanelChange,
+  onBack,
   onCreate,
   canProceed,
   blockedReason,
@@ -3719,6 +4415,7 @@ function ReviewPanelControls({
 }: {
   currentPanel: number;
   onPanelChange: (panel: number) => void;
+  onBack: () => void;
   onCreate: () => void;
   canProceed: boolean;
   blockedReason?: string;
@@ -3755,12 +4452,16 @@ function ReviewPanelControls({
       <div className="grid grid-cols-2 gap-3">
         <button
           type="button"
-          disabled={isFirst}
-          onClick={() => onPanelChange(Math.max(0, currentPanel - 1))}
-          className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[22px] font-black text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)] disabled:cursor-not-allowed disabled:opacity-35"
-          aria-label="Previous review section"
+          onClick={() => {
+            if (isFirst) {
+              onBack();
+              return;
+            }
+            onPanelChange(Math.max(0, currentPanel - 1));
+          }}
+          className="flex min-h-12 items-center justify-center rounded-2xl border border-[var(--rp-primary)] bg-transparent px-4 text-base font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)]"
         >
-          {"<"}
+          Back
         </button>
         {isLast ? (
           <button
@@ -3829,14 +4530,14 @@ function CreatePodConfirmationDialog({
             submitLabel: "Create Pod",
           }
         : {
-            title: "Create this pod?",
+            title: "Create self-settle pod?",
             body: [
-              "Guests can join and lock their seats after the pod is created.",
-              "Before you book the external ride, RidePod will ask you to upload a fresh quote or fare screenshot. You do not need to upload it now.",
-              "After the ride, final settlement uses the verified receipt.",
+              "Riders can join and chat after the pod is created.",
+              "Host or group members will book the ride app outside RidePod.",
+              "Ride fare is paid and settled outside RidePod.",
             ],
-            checkbox: "I understand quote proof is required before booking and receipt proof is required after the ride.",
-            submitLabel: "Confirm",
+            checkbox: "I understand this pod uses self-settle ride app coordination.",
+            submitLabel: "Create pod",
           };
 
   return (
@@ -3906,12 +4607,16 @@ function DetailSummaryCard({
   pickupAddress,
   dropoffAddress,
   peopleVehicle,
+  stops,
+  stopRequestPolicy,
 }: {
   routeFrom: string;
   routeTo: string;
   pickupAddress: string;
   dropoffAddress: string;
   peopleVehicle: PeopleVehicleState;
+  stops: RouteStop[];
+  stopRequestPolicy: StopRequestPolicy;
 }) {
   const pickup = pickupAddress.replace(",", "");
   const dropoff = dropoffAddress.replace(",", "");
@@ -3940,10 +4645,20 @@ function DetailSummaryCard({
       label: "Pickup point",
       value: pickup || "USC Village rideshare zone",
     },
+    ...stops.map((stop, index) => ({
+      icon: MapPin,
+      label: `Stop ${index + 1}`,
+      value: stop.address.replace(",", "") || "Optional stop",
+    })),
     {
       icon: MapPin,
       label: "Dropoff point",
       value: dropoff || "LAX Terminal 3 departures",
+    },
+    {
+      icon: ShieldCheck,
+      label: "Stop requests",
+      value: getStopRequestPolicyLabel(stopRequestPolicy),
     },
   ];
 
@@ -4095,6 +4810,8 @@ function RecurringPodReview({
   genderMode,
   accessMode,
   taxiPartnerPreference,
+  stopRequestPolicy,
+  stops,
 }: {
   dateTime: DateTimeState;
   pickupAddress: string;
@@ -4103,6 +4820,8 @@ function RecurringPodReview({
   genderMode: GenderMode;
   accessMode: AccessMode;
   taxiPartnerPreference: TaxiPartnerPreference;
+  stopRequestPolicy: StopRequestPolicy;
+  stops: RouteStop[];
 }) {
   const recurringLegs = getRecurringLegsForSelection({ dateTime, pickupAddress, dropoffAddress });
   const outboundLeg = recurringLegs.find((leg) => leg.legType === "OUTBOUND");
@@ -4115,10 +4834,6 @@ function RecurringPodReview({
   const upcomingRides = allUpcomingRides.slice(0, 6);
   const patternLabel = dateTime.recurringPattern === "BACK_AND_FORTH" ? "Back-and-forth" : "One-way";
   const taxiPartnerPreferenceLabel = getTaxiPartnerPreferenceLabel(taxiPartnerPreference);
-  const recurringTaxiPreferenceHelper =
-    taxiPartnerPreference === "airport_luggage_friendly"
-      ? "Taxi partner preferences depend on availability. Airport and luggage support depends on taxi partner availability. This preference applies to recurring quote requests."
-      : "Taxi partner preferences depend on availability. This preference applies to recurring quote requests.";
 
   return (
     <section className="grid gap-4">
@@ -4174,6 +4889,19 @@ function RecurringPodReview({
         </div>
       </RecurringReviewCard>
 
+      <RecurringReviewCard title="Route plan" icon={<MapPin className="h-5 w-5" />}>
+        <div className="grid gap-2">
+          <RouteSummaryLine label="Pickup" value={pickupAddress || "Pickup point"} />
+          {stops.map((stop, index) => (
+            <RouteSummaryLine key={stop.id} label={`Stop ${index + 1}`} value={stop.address || "Optional stop"} />
+          ))}
+          <RouteSummaryLine label="Dropoff" value={dropoffAddress || "Dropoff point"} />
+          <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-black text-[var(--rp-primary)]">
+            Stop requests: {getStopRequestPolicyLabel(stopRequestPolicy)}
+          </p>
+        </div>
+      </RecurringReviewCard>
+
       <RecurringReviewCard title="Who can join" icon={<UsersRound className="h-5 w-5" />}>
         <div className="grid gap-3">
           <div className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
@@ -4191,9 +4919,6 @@ function RecurringPodReview({
             <p className="text-xs font-semibold text-[var(--rp-muted-strong)]">Taxi partner preference</p>
             <p className="mt-1 text-sm font-black text-[var(--rp-text)]">
               {taxiPartnerPreferenceLabel}
-            </p>
-            <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-              {recurringTaxiPreferenceHelper}
             </p>
           </div>
         </div>
@@ -4320,6 +5045,8 @@ function ReviewPodStep({
   genderMode,
   accessMode,
   taxiPartnerPreference,
+  stopRequestPolicy,
+  stops,
   onGenderModeChange,
   onAccessModeChange,
   onBack,
@@ -4334,6 +5061,8 @@ function ReviewPodStep({
   genderMode: GenderMode;
   accessMode: AccessMode;
   taxiPartnerPreference: TaxiPartnerPreference;
+  stopRequestPolicy: StopRequestPolicy;
+  stops: RouteStop[];
   onGenderModeChange: (genderMode: GenderMode) => void;
   onAccessModeChange: (accessMode: AccessMode) => void;
   onBack: () => void;
@@ -4344,7 +5073,7 @@ function ReviewPodStep({
   const [reviewPanel, setReviewPanel] = useState(0);
   const [showCreateConfirm, setShowCreateConfirm] = useState(false);
   const [createConfirmChecked, setCreateConfirmChecked] = useState(false);
-  const defaultTaxiEstimate = calculateHkTaxiFareEstimate({
+  const defaultTaxiEstimate = calculateMoneyHkTaxiFareEstimate({
     zone: "URBAN",
     distanceMeters: 6000,
     baggageCount: peopleVehicle.bags,
@@ -4369,7 +5098,9 @@ function ReviewPodStep({
     trafficBufferPercent: 0,
     routeRiskLevel: "NORMAL",
   });
-  const isTaxiPartnerQuoteReview = normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote";
+  const normalizedRideOption = normalizeRideOptionId(peopleVehicle.rideOption);
+  const isTaxiPartnerQuoteReview = normalizedRideOption === "taxi_partner_quote";
+  const isRideAppSelfSettleReview = normalizedRideOption === "ride_app_fixed_quote";
   const safetyPanelIndex = 2;
   const previewPanelIndex = isTaxiPartnerQuoteReview ? 1 : 3;
   const moneyProtectionError =
@@ -4380,7 +5111,7 @@ function ReviewPodStep({
   if (podType === "recurring") {
     return (
       <>
-        <CreatePodTopBar currentStep={4} onBack={onBack} />
+        <CreatePodTopBar currentStep={4} />
 
         <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-7">
           <section className="text-center">
@@ -4402,25 +5133,20 @@ function ReviewPodStep({
               genderMode={genderMode}
               accessMode={accessMode}
               taxiPartnerPreference={taxiPartnerPreference}
+              stopRequestPolicy={stopRequestPolicy}
+              stops={stops}
             />
           </div>
 
-          <div className="mt-5 grid grid-cols-[0.8fr_1.2fr] gap-3">
-            <button
-              type="button"
-              onClick={onBack}
-              className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
-            >
-              Back
-            </button>
-            <PrimaryButton
-              onClick={() => {
+          <div className="mt-5">
+            <CreatePodStepActions
+              onBack={onBack}
+              onContinue={() => {
                 setCreateConfirmChecked(false);
                 setShowCreateConfirm(true);
               }}
-            >
-              Create recurring pod
-            </PrimaryButton>
+              continueLabel="Create recurring pod"
+            />
           </div>
           <div className="mt-3 grid gap-3">
             <p className="text-center text-sm font-medium text-[var(--rp-muted)]">
@@ -4450,7 +5176,7 @@ function ReviewPodStep({
 
   return (
     <>
-      <CreatePodTopBar currentStep={4} onBack={onBack} />
+      <CreatePodTopBar currentStep={4} />
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-7">
         {reviewPanel === previewPanelIndex ? null : (
@@ -4476,6 +5202,17 @@ function ReviewPodStep({
                 genderMode={genderMode}
                 accessMode={accessMode}
                 taxiPartnerPreference={taxiPartnerPreference}
+                stopRequestPolicy={stopRequestPolicy}
+                stops={stops}
+              />
+            ) : isRideAppSelfSettleReview ? (
+              <SelfSettleReviewSummaryCard
+                peopleVehicle={peopleVehicle}
+                pickupAddress={pickupAddress}
+                dropoffAddress={dropoffAddress}
+                dateTime={dateTime}
+                genderMode={genderMode}
+                accessMode={accessMode}
               />
             ) : (
               <PricingSummaryCard money={moneyProtection} rideOption={peopleVehicle.rideOption} />
@@ -4522,35 +5259,29 @@ function ReviewPodStep({
                 pickupAddress={pickupAddress}
                 dropoffAddress={dropoffAddress}
                 peopleVehicle={peopleVehicle}
+                stops={stops}
+                stopRequestPolicy={stopRequestPolicy}
               />
             </section>
           ) : null}
         </div>
 
-        {isTaxiPartnerQuoteReview ? (
-          <div className="mt-5 grid grid-cols-[0.8fr_1.2fr] gap-3">
-            <button
-              type="button"
-              onClick={onBack}
-              className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
-            >
-              Back
-            </button>
-            <button
-              type="button"
-              onClick={() => {
+        {isTaxiPartnerQuoteReview || isRideAppSelfSettleReview ? (
+          <div className="mt-5">
+            <CreatePodStepActions
+              onBack={onBack}
+              onContinue={() => {
                 setCreateConfirmChecked(false);
                 setShowCreateConfirm(true);
               }}
-              className="review-create-pod-button min-h-12 rounded-2xl border px-4 text-sm font-black shadow-[0_14px_28px_rgba(246,196,83,0.34)] transition hover:brightness-105"
-            >
-              Create taxi pod
-            </button>
+              continueLabel={isRideAppSelfSettleReview ? "Create self-settle pod" : "Create taxi pod"}
+            />
           </div>
         ) : (
           <ReviewPanelControls
             currentPanel={reviewPanel}
             onPanelChange={setReviewPanel}
+            onBack={onBack}
             onCreate={() => {
               setCreateConfirmChecked(false);
               setShowCreateConfirm(true);
@@ -4595,15 +5326,7 @@ function SuccessHero() {
           alt=""
           fill
           sizes="390px"
-          className="ridepod-theme-image-dark object-cover object-center"
-          priority
-        />
-        <Image
-          src="/ridepod/success-light-background.png"
-          alt=""
-          fill
-          sizes="390px"
-          className="ridepod-theme-image-light object-cover object-center"
+          className="object-cover object-center"
           priority
         />
       </div>
@@ -4631,19 +5354,28 @@ function PodCreatedSummaryCard({
   dateTime,
   peopleVehicle,
   pricing,
+  stops,
+  stopRequestPolicy,
 }: {
   routeFrom: string;
   routeTo: string;
   dateTime: DateTimeState;
   peopleVehicle: PeopleVehicleState;
   pricing: PricingState;
+  stops: RouteStop[];
+  stopRequestPolicy: StopRequestPolicy;
 }) {
   const rows = [
     {
       icon: MapPin,
       label: "Route",
-      value: `${routeFrom} \u2192 ${routeTo}`,
+      value: stops.length ? `${routeFrom} \u2192 Stop 1 \u2192 ${routeTo}` : `${routeFrom} \u2192 ${routeTo}`,
       aside: <StatusBadge label="Forming" />,
+    },
+    {
+      icon: ShieldCheck,
+      label: "Stop requests",
+      value: getStopRequestPolicyLabel(stopRequestPolicy),
     },
     {
       icon: CalendarDays,
@@ -4717,6 +5449,8 @@ function SuccessStep({
   dateTime,
   peopleVehicle,
   pricing,
+  stops,
+  stopRequestPolicy,
 }: {
   podType: PodType;
   pickupAddress: string;
@@ -4724,6 +5458,8 @@ function SuccessStep({
   dateTime: DateTimeState;
   peopleVehicle: PeopleVehicleState;
   pricing: PricingState;
+  stops: RouteStop[];
+  stopRequestPolicy: StopRequestPolicy;
 }) {
   const routeFrom = routeCode(pickupAddress, "USC");
   const routeTo = routeCode(dropoffAddress, "LAX");
@@ -4744,6 +5480,8 @@ function SuccessStep({
             dateTime={dateTime}
             peopleVehicle={peopleVehicle}
             pricing={pricing}
+            stops={stops}
+            stopRequestPolicy={stopRequestPolicy}
           />
         </div>
 
@@ -4778,6 +5516,8 @@ function SuccessStep({
 }
 
 export function CreatePodChooseType() {
+  const router = useRouter();
+  const { user, isLoading: isAuthLoading } = useAuth();
   const todayIsoDate = getTodayIsoDate();
   const todayDate = parseIsoDateToLocalDate(todayIsoDate);
   const [step, setStep] = useState<CreateStep>(0);
@@ -4820,27 +5560,48 @@ export function CreatePodChooseType() {
     rideOption: "taxi_partner_quote",
     vehicleType: "Standard taxi",
     priceSource: "Licensed taxi partner quote for the shared pod",
+    pickupVenue: "IFC Mall entrance",
+    estimatedRideAppFare: "HK$120-160",
+    splitMethod: "equal_split",
+    paymentMethod: "payme",
   });
   const [genderMode, setGenderMode] = useState<GenderMode>("mixed");
   const [accessMode, setAccessMode] = useState<AccessMode>("open");
   const [taxiPartnerPreference, setTaxiPartnerPreference] = useState<TaxiPartnerPreference>("standard");
   const [taxiPartnerPreferenceTouched, setTaxiPartnerPreferenceTouched] = useState(false);
+  const [stopRequestPolicy, setStopRequestPolicy] = useState<StopRequestPolicy>("direct_only");
+  const [stopRequestPolicyTouched, setStopRequestPolicyTouched] = useState(false);
   const [pricing] = useState<PricingState>({
     estimatedFare: 84,
     estimatedShare: 21,
     maxFare: 96,
   });
   const isAirportTrip = isAirportTaxiRoute(pickupAddress, dropoffAddress);
-
-  useEffect(() => {
-    if (taxiPartnerPreferenceTouched) return;
-
-    setTaxiPartnerPreference(isAirportTrip ? "airport_luggage_friendly" : "standard");
-  }, [isAirportTrip, taxiPartnerPreferenceTouched]);
+  const displayedTaxiPartnerPreference =
+    taxiPartnerPreferenceTouched
+      ? taxiPartnerPreference
+      : isAirportTrip
+        ? "airport_luggage_friendly"
+        : "standard";
+  const displayedStopRequestPolicy = stopRequestPolicyTouched ? stopRequestPolicy : "direct_only";
 
   function handleTaxiPartnerPreferenceChange(preference: TaxiPartnerPreference) {
     setTaxiPartnerPreferenceTouched(true);
     setTaxiPartnerPreference(preference);
+  }
+
+  function handleStopRequestPolicyChange(policy: StopRequestPolicy) {
+    setStopRequestPolicyTouched(true);
+    setStopRequestPolicy(policy);
+  }
+
+  function ensureCreateAuth() {
+    if (isAuthLoading) return false;
+    if (!user) {
+      router.push(`/login?next=${encodeURIComponent("/create")}`);
+      return false;
+    }
+    return true;
   }
 
   return (
@@ -4853,6 +5614,8 @@ export function CreatePodChooseType() {
           dateTime={dateTime}
           peopleVehicle={peopleVehicle}
           pricing={pricing}
+          stops={stops}
+          stopRequestPolicy={displayedStopRequestPolicy}
         />
       ) : step === 4 ? (
         <ReviewPodStep
@@ -4864,46 +5627,38 @@ export function CreatePodChooseType() {
           pricing={pricing}
           genderMode={genderMode}
           accessMode={accessMode}
-          taxiPartnerPreference={taxiPartnerPreference}
+          taxiPartnerPreference={displayedTaxiPartnerPreference}
+          stopRequestPolicy={displayedStopRequestPolicy}
+          stops={stops}
           onGenderModeChange={setGenderMode}
           onAccessModeChange={setAccessMode}
           onBack={() => setStep(3)}
           onCreate={() => setStep(5)}
         />
       ) : step === 3 ? (
-        <PeopleVehicleStep
-          podType={podType}
-          isAirportTrip={isAirportTrip}
-          peopleVehicle={peopleVehicle}
-          genderMode={genderMode}
-          accessMode={accessMode}
-          taxiPartnerPreference={taxiPartnerPreference}
-          onPeopleVehicleChange={setPeopleVehicle}
-          onGenderModeChange={setGenderMode}
-          onAccessModeChange={setAccessMode}
-          onTaxiPartnerPreferenceChange={handleTaxiPartnerPreferenceChange}
-          onBack={() => setStep(2)}
-          onContinue={() => setStep(4)}
-        />
-      ) : step === 2 ? (
         <DateTimeStep
           podType={podType}
           pickupAddress={pickupAddress}
           dropoffAddress={dropoffAddress}
           dateTime={dateTime}
           onDateTimeChange={setDateTime}
-          onBack={() => setStep(1)}
-          onContinue={() => setStep(3)}
+          onBack={() => setStep(2)}
+          onContinue={() => setStep(4)}
         />
-      ) : step === 1 ? (
+      ) : step === 2 ? (
         <RouteStopsStep
           podType={podType}
           pickupAddress={pickupAddress}
           dropoffAddress={dropoffAddress}
+          pickupVenue={peopleVehicle.pickupVenue}
           stops={stops}
-          onBack={() => setStep(0)}
+          stopRequestPolicy={displayedStopRequestPolicy}
+          isAirportTrip={isAirportTrip}
+          isRideAppSelfSettle={normalizeRideOptionId(peopleVehicle.rideOption) === "ride_app_fixed_quote"}
+          onBack={() => setStep(1)}
           onPickupChange={setPickupAddress}
           onDropoffChange={setDropoffAddress}
+          onPickupVenueChange={(pickupVenue) => setPeopleVehicle((current) => ({ ...current, pickupVenue }))}
           onAddStop={() => {
             setStops((currentStops) => [...currentStops, { id: nextStopId, address: "" }]);
             setNextStopId((id) => id + 1);
@@ -4916,11 +5671,12 @@ export function CreatePodChooseType() {
           onRemoveStop={(id) => {
             setStops((currentStops) => currentStops.filter((stop) => stop.id !== id));
           }}
-          onContinue={() => setStep(2)}
+          onStopRequestPolicyChange={handleStopRequestPolicyChange}
+          onContinue={() => setStep(3)}
         />
-      ) : (
+      ) : step === 1 ? (
         <>
-          <CreatePodTopBar currentStep={0} />
+          <CreatePodTopBar currentStep={1} />
 
           <main className="grid flex-1 grid-cols-[minmax(104px,32%)_1fr] px-6 pb-5 pt-7">
             <ThemeAwareHeroStrip />
@@ -4954,11 +5710,30 @@ export function CreatePodChooseType() {
             </section>
           </main>
 
-          <footer className="fixed inset-x-0 bottom-[88px] z-50 mx-auto max-w-[430px] px-6 pb-4 pt-8 md:static md:mx-0 md:max-w-none md:px-6 md:pb-[max(1.5rem,env(safe-area-inset-bottom))] md:pt-0">
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-28 bg-[linear-gradient(180deg,transparent,var(--rp-bg)_42%)] md:hidden" />
-            <PrimaryButton onClick={() => setStep(1)}>Continue</PrimaryButton>
+          <footer className="px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
+            <CreatePodStepActions onBack={() => setStep(0)} onContinue={() => setStep(2)} />
           </footer>
         </>
+      ) : (
+        <PeopleVehicleStep
+          podType={podType}
+          peopleVehicle={peopleVehicle}
+          genderMode={genderMode}
+          accessMode={accessMode}
+          taxiPartnerPreference={displayedTaxiPartnerPreference}
+          stopRequestPolicy={displayedStopRequestPolicy}
+          isAirportTrip={isAirportTrip}
+          onPeopleVehicleChange={setPeopleVehicle}
+          onGenderModeChange={setGenderMode}
+          onAccessModeChange={setAccessMode}
+          onTaxiPartnerPreferenceChange={handleTaxiPartnerPreferenceChange}
+          onStopRequestPolicyChange={handleStopRequestPolicyChange}
+          onBack={() => undefined}
+          onContinue={() => setStep(1)}
+          currentStep={0}
+          onRequireAuth={ensureCreateAuth}
+          showBackAction={false}
+        />
       )}
     </div>
   );
