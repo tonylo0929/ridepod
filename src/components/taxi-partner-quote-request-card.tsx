@@ -227,7 +227,7 @@ export function TaxiPartnerQuoteRequestCard({
       activeRequest.quoteAmountCents > rideInstance.bookingFareCapCents,
   );
   const safetyBadges = [
-    pod.genderMode === "women_only" ? "Women-only" : "Mixed pod",
+    pod.genderMode === "women_only" ? "Women-only" : "Open pod",
     pod.accessMode ? accessModeLabels[pod.accessMode] : null,
   ].filter(Boolean);
   const requestDetailBadges = [
@@ -357,7 +357,7 @@ export function TaxiPartnerQuoteRequestCard({
                 ["Quote", formatHkdCents(moneyDisplay.quoteAmountCents)],
                 ["Guests", String(moneyDisplay.guestCount)],
                 ["Fare share", `${formatHkdCents(moneyDisplay.fareShareCents)} / guest`],
-                ["Platform fee", `${formatHkdCents(moneyDisplay.platformFeeCents)} / guest`],
+                ["RidePod fee", `${formatHkdCents(moneyDisplay.platformFeeCents)} / guest`],
                 ["Guest charge", formatHkdCents(moneyDisplay.guestChargeCents)],
                 ["Taxi partner payout", formatHkdCents(moneyDisplay.driverPayoutCents)],
               ].map(([label, value]) => (

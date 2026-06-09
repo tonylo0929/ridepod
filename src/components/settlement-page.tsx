@@ -97,7 +97,7 @@ export function SettlementPage({ pod }: { pod: RidePod }) {
     { label: "Base fare", value: baseFare, colorVar: "--rp-chart-base" },
     { label: "Tolls", value: tolls, colorVar: "--rp-chart-tolls" },
     { label: "Tip", value: tip, colorVar: "--rp-chart-tip" },
-    { label: "Platform fee", value: platformFee, colorVar: "--rp-chart-platform" },
+    { label: "RidePod fee", value: platformFee, colorVar: "--rp-chart-platform" },
   ];
 
   if (isTaxiPartnerQuote) {
@@ -238,7 +238,7 @@ function TaxiPartnerQuoteSettlement({ pod }: { pod: RidePod }) {
             Taxi Partner Quote uses the selected partner quote and guest acceptance state. No live payment or payout is enabled unless clearly stated.
           </p>
           <p className="mt-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-2 text-xs font-black text-[var(--rp-primary)]">
-            Beta uses mock/test payment states. No live payment or payout is enabled.
+            Mock/demo payment states only. No live payment or payout is enabled.
           </p>
         </section>
       </header>
@@ -328,13 +328,13 @@ function TaxiSettlementMoneyCard({
       <dl className="mt-4 grid gap-2 text-sm">
         <SettlementRow label="Taxi partner quote" value={formatCents(quoteAmountCents, "HKD")} />
         <SettlementRow label="Fare share" value={formatCents(fareShareCents, "HKD")} />
-        <SettlementRow label="Platform fee" value={formatCents(platformFeeCents, "HKD")} />
+        <SettlementRow label="RidePod fee" value={formatCents(platformFeeCents, "HKD")} />
         <SettlementRow label="Guest total" value={formatCents(guestChargeCents, "HKD")} />
-        <SettlementRow label="Platform fee total" value={formatCents(platformFeeTotalCents, "HKD")} />
+        <SettlementRow label="RidePod fee total" value={formatCents(platformFeeTotalCents, "HKD")} />
         <SettlementRow label="Taxi partner payout" value={formatCents(taxiPartnerPayoutCents, "HKD")} />
       </dl>
       <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-        Platform fee is paid by guests. Taxi partner payout equals the accepted quote in this demo.
+        RidePod fee is paid by guests in this demo. Taxi partner payout equals the accepted quote in this demo.
       </p>
     </section>
   );
@@ -929,7 +929,7 @@ export function FareBreakdownCard({
           <MoneyInput label="Base fare" value={baseFare} onChange={setBaseFare} />
           <MoneyInput label="Tolls" value={tolls} onChange={setTolls} />
           <MoneyInput label="Tip" value={tip} onChange={setTip} />
-          <MoneyInput label="Platform fee" value={platformFee} onChange={setPlatformFee} />
+          <MoneyInput label="RidePod fee" value={platformFee} onChange={setPlatformFee} />
         </div>
       </details>
     </section>
@@ -1026,7 +1026,7 @@ function RiderFinalSplitCard({
     ["Verified receipt total", verifiedReceiptTotal],
     ["Approved max", approvedMax],
     ["Fare share", fareShare],
-    ["Platform fee", platformFee],
+    ["RidePod fee", platformFee],
     ["No-show / late fee", noShowLateFee],
     ["Final charge", finalCharge],
     ["Refund / credit", refundCredit],

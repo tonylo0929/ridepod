@@ -1,3 +1,9 @@
+import {
+  calculateTaxiRiderPlatformFee,
+  getRidePodPricingConfig,
+  type RidePodPricingConfig,
+} from "@/lib/ridepod-pricing";
+
 export const TAXI_PARTNER_TAXI_TYPES = [
   "STANDARD",
   "ELECTRIC",
@@ -129,6 +135,9 @@ export type TaxiPartnerQuoteRequest = {
   extraSpaceNeeded?: boolean;
   wheelchairAccessibleRequested?: boolean;
   stepFreeSupportRequested?: boolean;
+  approvedStopLabel?: string;
+  routeChangeRequiresNewQuote?: boolean;
+  quoteUpdatedAfterRouteChange?: boolean;
   acceptedGuestCount?: number;
   disputeWindowEndsAt?: string | null;
   quoteAboveCap?: boolean;
@@ -222,7 +231,8 @@ export const mockTaxiPartnerQuoteRequests: TaxiPartnerQuoteRequest[] = [
     driverAssignmentStatus: "NOT_ASSIGNED",
     payoutStatus: "NOT_READY",
     luggageCount: 2,
-    notes: "Guests are locked. Request a shared pod quote from a licensed taxi partner.",
+    approvedStopLabel: "Admiralty Station Exit A",
+    notes: "Host-approved stop included in route plan.",
   },
   {
     id: "taxi_partner_quote_received",
@@ -975,21 +985,26 @@ export function getTaxiPartnerQuoteDisplayStatus(
 export function getTaxiPartnerQuoteMoneyDisplay(
   request: Pick<TaxiPartnerQuoteRequest, "quoteAmountCents" | "currency">,
   lockedGuestCount: number,
+  config: RidePodPricingConfig = getRidePodPricingConfig(),
 ): TaxiPartnerQuoteMoneyDisplay | null {
   if (!request.quoteAmountCents) return null;
 
   const guestCount = Math.max(1, Math.floor(lockedGuestCount));
-  const fareShareCents = Math.ceil(request.quoteAmountCents / guestCount);
-  const platformFeeCents = Math.max(Math.ceil(fareShareCents * 0.1), 600);
+  const { riderFareShareCents, ridePodFeeCents, riderTotalCents } = calculateTaxiRiderPlatformFee({
+    taxiPartnerQuoteCents: request.quoteAmountCents,
+    acceptedRiderCount: guestCount,
+    config,
+  });
+  const platformFeeCents = ridePodFeeCents;
   const platformFeeTotalCents = platformFeeCents * guestCount;
 
   return {
     quoteAmountCents: request.quoteAmountCents,
     guestCount,
-    fareShareCents,
+    fareShareCents: riderFareShareCents,
     platformFeeCents,
     platformFeeTotalCents,
-    guestChargeCents: fareShareCents + platformFeeCents,
+    guestChargeCents: riderTotalCents,
     driverPayoutCents: request.quoteAmountCents,
     currency: request.currency,
   };

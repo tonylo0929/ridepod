@@ -4,15 +4,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
   CalendarPlus,
   CalendarDays,
   CarFront,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Check,
   Clock3,
   DollarSign,
@@ -57,9 +59,20 @@ import {
   type Weekday,
 } from "@/lib/pod-schedule";
 import { useAuth } from "@/providers/AuthProvider";
+import { getRideAppAccessNotice, getRideAppTrustSummary } from "@/lib/ride-app-trust";
+import {
+  calculateRideAppJoinFee,
+  calculateRidePodFee,
+  formatHKD,
+  ridePodPricingConfig,
+  ridePodPricingCopy,
+} from "@/lib/ridepod-pricing";
+import { saveCreatedHomeRide } from "@/lib/created-home-rides";
+import { createUserNotificationOnce } from "@/lib/notifications/ridepod-notifications";
+import type { HomeRide } from "@/lib/home-ride-mock";
 
 type PodType = "scheduled" | "recurring";
-type CreateStep = 0 | 1 | 2 | 3 | 4 | 5;
+type CreateStep = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 type RecurringScheduleSubstep = "weekdays" | "times";
 type RouteStop = {
   id: number;
@@ -74,6 +87,16 @@ type RideOptionId =
   | "taxi_partner_quote"
   | "comfort_premium";
 type ActiveRideOptionId = Extract<RideOptionId, "ride_app_fixed_quote" | "taxi_meter" | "taxi_partner_quote">;
+
+const defaultRideAppJoinFeeCents = calculateRideAppJoinFee(ridePodPricingConfig);
+const defaultRideAppJoinFeeLabel = defaultRideAppJoinFeeCents > 0 ? formatHKD(defaultRideAppJoinFeeCents) : "Waived";
+const defaultRideAppHostCreateFeeCents = calculateRidePodFee(ridePodPricingConfig.hostCreateFees.rideAppSelfSettle, 0);
+const defaultRideAppCreateFeeLabel = defaultRideAppHostCreateFeeCents > 0 ? formatHKD(defaultRideAppHostCreateFeeCents) : "Free";
+const defaultRideAppCreateFeeSentence =
+  defaultRideAppHostCreateFeeCents > 0
+    ? `Host create fee: ${defaultRideAppCreateFeeLabel}. No live payment is taken in this version.`
+    : "Free to create.";
+
 type DateTimeState = {
   scheduleType: ScheduleType;
   date: string;
@@ -101,9 +124,15 @@ type PeopleVehicleState = {
   vehicleType: string;
   priceSource: string;
   pickupVenue: string;
+  rideAppProvider: RideAppProvider;
+  rideAppProviderOther: string;
   estimatedRideAppFare: string;
   splitMethod: SelfSettleSplitMethod;
   paymentMethod: SelfSettlePaymentMethod;
+  rideAppBookingTrigger: RideAppBookingTrigger;
+  rideAppMinimumConfirmedRiders: number;
+  rideAppFarePaymentTiming: RideAppFarePaymentTiming;
+  rideAppAcceptedPaymentMethods: SelfSettlePaymentMethod[];
 };
 type PricingState = {
   estimatedFare: number;
@@ -115,8 +144,11 @@ type AccessMode = "open" | "verified_only" | "community_only" | "high_trust_only
 type WhoCanJoinId = "women_only" | "mixed" | "verified_only" | "invite_only";
 type TaxiPartnerPreference = "standard" | "higher_trust" | "airport_luggage_friendly" | "accessibility_support";
 type StopRequestPolicy = "direct_only" | "host_approved_before_quote";
+type RideAppProvider = "uber" | "didi" | "hk_taxi" | "amap" | "other";
 type SelfSettleSplitMethod = "equal_split" | "pay_host_after_ride" | "agree_in_chat";
 type SelfSettlePaymentMethod = "cash" | "payme" | "fps" | "other";
+type RideAppBookingTrigger = "all_seats_confirmed" | "minimum_riders_confirmed";
+type RideAppFarePaymentTiming = "after_ride";
 type TaxiTypeId =
   | "standard"
   | "compact_4_seat"
@@ -128,7 +160,16 @@ type TaxiTypeId =
   | "comfort"
   | "accessible";
 
-const steps = ["People & Vehicle", "Choose Type", "Route & Stops", "Date & Time", "Review", "Success"];
+const baseCreateSteps = ["People & Vehicle", "Choose Type", "Route & Stops", "Date & Time", "Review", "Success"];
+const rideAppCreateSteps = [
+  "People & Vehicle",
+  "Choose Type",
+  "Route & Stops",
+  "Date & Time",
+  "Booking & Payment Rules",
+  "Review",
+  "Success",
+];
 
 const podTypes: Array<{
   id: PodType;
@@ -211,9 +252,9 @@ const rideOptions: Array<{
   {
     id: "ride_app_fixed_quote",
     title: "Ride app / Self-settle",
-    description: "Host or group books outside RidePod and settles the ride fare directly.",
-    helper: "Coordination-only. No live payment is charged.",
-    recurringHelper: "Each ride is coordinated and settled outside RidePod.",
+    description: `${defaultRideAppCreateFeeSentence} Fee applies only when riders confirm ride details.`,
+    helper: "Coordination-only. RidePod does not collect or protect the ride fare.",
+    recurringHelper: "Create pod is free. RidePod fee applies only when someone joins an eligible pod.",
     icon: Smartphone,
   },
   {
@@ -241,8 +282,8 @@ const rideConfirmationCopy: Record<ActiveRideOptionId, { title: string; body: st
     title: "Confirm self-settle ride app pod",
     body: [
       "RidePod only helps the group coordinate and chat.",
-      "The ride app booking and fare payment happen outside RidePod.",
-      "No live payment is charged in this version.",
+      `${defaultRideAppCreateFeeSentence} Riders demo-confirm or waive the ${defaultRideAppJoinFeeLabel} RidePod join fee when they confirm ride details.`,
+      ridePodPricingCopy.rideAppJoinFeeHelper,
     ],
     checkbox:
       "I understand this pod uses self-settle ride app coordination.",
@@ -285,7 +326,7 @@ function getRideProofCopy(rideOption: RideOptionId) {
   if (normalizedRideOption === "taxi_partner_quote") {
     return {
       moneyIntro:
-        "Beta uses mock payment state. No live payment or payout is enabled.",
+        "Mock/demo state only. No live payment or payout is enabled.",
       fareCapHelper: "Final guest price appears after taxi partner quote.",
       bookingProofStatus: "Shared quote pending",
       bookingProofHelper: "Guests accept the taxi partner quote before the ride can proceed.",
@@ -324,14 +365,15 @@ function getRideProofCopy(rideOption: RideOptionId) {
       }
     : {
         moneyIntro:
-          "RidePod helps the group coordinate only. Ride fare is paid outside RidePod.",
-        fareCapHelper: "RidePod does not verify the final ride app fare.",
-        bookingProofStatus: "No screenshot required",
-        bookingProofHelper: "No receipt proof required for self-settle ride app pods.",
+          `${defaultRideAppCreateFeeSentence} Riders demo-confirm or waive the ${defaultRideAppJoinFeeLabel} RidePod join fee when they confirm ride details. ${ridePodPricingCopy.rideAppJoinFeeHelper}`,
+        fareCapHelper: "RidePod does not verify, collect, split, or protect the final ride app fare.",
+        bookingProofStatus: "Optional fare estimate screenshot",
+        bookingProofHelper: "RidePod does not verify ride app screenshots.",
         reviewRows: [
           { label: "Ride type", value: "Ride app / Self-settle" },
-          { label: "Payment rule", value: "Ride fare paid outside RidePod" },
-          { label: "Protection", value: "No fare protection" },
+          { label: "Payment rule", value: `${defaultRideAppCreateFeeSentence} Riders demo-confirm or waive the ${defaultRideAppJoinFeeLabel} RidePod join fee when they confirm ride details. ${ridePodPricingCopy.rideAppJoinFeeHelper}` },
+          { label: "Screenshot", value: "Optional, local/mock only, not verified by RidePod." },
+          { label: "Protection", value: "No fare protection is provided." },
         ],
       };
 }
@@ -419,13 +461,24 @@ const selfSettleSplitMethodOptions: Array<{
   {
     id: "pay_host_after_ride",
     title: "Pay host after ride",
-    description: "Riders settle directly with the host outside RidePod.",
+    description: "Riders settle the final fare after the ride with the host/booker.",
   },
   {
     id: "agree_in_chat",
     title: "Agree in chat",
-    description: "Use pod chat to agree on the fare split before pickup.",
+    description: "Use pod chat to agree on split and after-ride payment details.",
   },
+];
+
+const rideAppProviderOptions: Array<{
+  id: RideAppProvider;
+  title: string;
+}> = [
+  { id: "uber", title: "Uber" },
+  { id: "didi", title: "DiDi" },
+  { id: "hk_taxi", title: "HKTaxi" },
+  { id: "amap", title: "Amap" },
+  { id: "other", title: "Other" },
 ];
 
 const selfSettlePaymentMethodOptions: Array<{
@@ -769,12 +822,23 @@ function isAirportTaxiRoute(pickupAddress: string, dropoffAddress: string) {
   return isAirportAddress(pickupAddress) || isAirportAddress(dropoffAddress);
 }
 
-function CreatePodStepper({ currentStep }: { currentStep: number }) {
-  const progressWidth = `${(currentStep / (steps.length - 1)) * 84}%`;
+function CreatePodStepper({
+  currentStep,
+  stepLabels = baseCreateSteps,
+}: {
+  currentStep: number;
+  stepLabels?: string[];
+}) {
+  const progressWidth = `${(currentStep / (stepLabels.length - 1)) * 84}%`;
 
   return (
-    <nav aria-label="Create pod progress" className="mt-8 px-2">
-      <ol className="relative grid grid-cols-6 items-center">
+    <nav aria-label="Create pod progress" className="mx-auto mt-8 w-full max-w-[340px] px-2">
+      <ol
+        className={cn(
+          "relative grid items-center",
+          stepLabels.length === 7 ? "grid-cols-7" : "grid-cols-6",
+        )}
+      >
         <div
           aria-hidden="true"
           className="absolute left-[8%] right-[8%] top-1/2 h-px -translate-y-1/2 bg-[var(--rp-border)]"
@@ -784,7 +848,7 @@ function CreatePodStepper({ currentStep }: { currentStep: number }) {
           className="absolute left-[8%] top-1/2 h-px -translate-y-1/2 bg-[var(--rp-primary)] transition-all"
           style={{ width: progressWidth }}
         />
-        {steps.map((step, index) => {
+        {stepLabels.map((step, index) => {
           const active = index === currentStep;
           const completed = index < currentStep;
 
@@ -819,9 +883,11 @@ function CreatePodStepper({ currentStep }: { currentStep: number }) {
 function CreatePodTopBar({
   currentStep,
   onBack,
+  stepLabels,
 }: {
   currentStep: CreateStep;
   onBack?: () => void;
+  stepLabels?: string[];
 }) {
   return (
     <header className="px-6 pt-5">
@@ -841,7 +907,7 @@ function CreatePodTopBar({
         <span />
         <span />
       </div>
-      <CreatePodStepper currentStep={currentStep} />
+      <CreatePodStepper currentStep={currentStep} stepLabels={stepLabels} />
     </header>
   );
 }
@@ -1146,6 +1212,41 @@ function SelfSettleTextField({
   );
 }
 
+function SelfSettleSelectField<T extends string>({
+  label,
+  value,
+  options,
+  helper,
+  onChange,
+}: {
+  label: string;
+  value: T;
+  options: Array<{ id: T; title: string }>;
+  helper?: string;
+  onChange: (value: T) => void;
+}) {
+  const fieldId = useId();
+
+  return (
+    <label htmlFor={fieldId} className="grid gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-left">
+      <span className="text-xs font-black uppercase tracking-[0.13em] text-[var(--rp-primary)]">{label}</span>
+      <select
+        id={fieldId}
+        value={value}
+        onChange={(event) => onChange(event.target.value as T)}
+        className="min-h-11 rounded-xl border border-[var(--rp-border)] bg-[rgba(5,12,20,0.48)] px-3 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+      >
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>
+            {option.title}
+          </option>
+        ))}
+      </select>
+      {helper ? <span className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{helper}</span> : null}
+    </label>
+  );
+}
+
 function PrimaryButton({
   children = "Continue",
   onClick,
@@ -1224,6 +1325,7 @@ function RouteStopsStep({
   stopRequestPolicy,
   isAirportTrip,
   isRideAppSelfSettle,
+  stepLabels = baseCreateSteps,
   onBack,
   onPickupChange,
   onDropoffChange,
@@ -1242,6 +1344,7 @@ function RouteStopsStep({
   stopRequestPolicy: StopRequestPolicy;
   isAirportTrip: boolean;
   isRideAppSelfSettle: boolean;
+  stepLabels?: string[];
   onBack: () => void;
   onPickupChange: (value: string) => void;
   onDropoffChange: (value: string) => void;
@@ -1255,7 +1358,7 @@ function RouteStopsStep({
   const canContinue = pickupAddress.trim().length > 0 && dropoffAddress.trim().length > 0;
   const [routePanel, setRoutePanel] = useState<"route" | "requests">("route");
   const isRoutePanel = routePanel === "route";
-  const routePanelCount = isRideAppSelfSettle ? 1 : 2;
+  const routePanelCount = 2;
 
   function handleRouteBack() {
     if (!isRoutePanel) {
@@ -1268,10 +1371,6 @@ function RouteStopsStep({
 
   function handleRouteForward() {
     if (isRoutePanel) {
-      if (isRideAppSelfSettle) {
-        if (canContinue) onContinue();
-        return;
-      }
       if (!canContinue) return;
       setRoutePanel("requests");
       return;
@@ -1282,7 +1381,7 @@ function RouteStopsStep({
 
   return (
     <>
-      <CreatePodTopBar currentStep={2} />
+      <CreatePodTopBar currentStep={2} stepLabels={stepLabels} />
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#020912] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-7 text-[#f8fafc]">
         <section className="text-center">
@@ -1295,7 +1394,9 @@ function RouteStopsStep({
               ? isRideAppSelfSettle
                 ? "Add pickup, dropoff, and where riders should meet."
                 : "Add your pickup and dropoff."
-              : "Choose whether riders can request one extra stop."}
+              : isRideAppSelfSettle
+                ? "Choose whether joined riders can ask for a route change."
+                : "Choose whether riders can request one extra stop."}
           </p>
         </section>
 
@@ -1310,10 +1411,10 @@ function RouteStopsStep({
           </button>
           <div className="text-center">
             <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
-              {isRoutePanel ? "1 of 2" : "2 of 2"}
+              {isRoutePanel ? `Step 1 of ${routePanelCount}` : `Step 2 of ${routePanelCount}`}
             </p>
             <p className="text-sm font-black text-[var(--rp-text)]">
-              {isRoutePanel ? `From & to${routePanelCount === 1 ? "" : ""}` : "Allow / not allow"}
+              {isRoutePanel ? "Pickup & dropoff" : isRideAppSelfSettle ? "Route requests" : "Extra stop requests"}
             </p>
           </div>
           <button
@@ -1322,10 +1423,6 @@ function RouteStopsStep({
             disabled={isRoutePanel && !canContinue}
             onClick={() => {
               if (isRoutePanel) {
-                if (isRideAppSelfSettle) {
-                  if (canContinue) onContinue();
-                  return;
-                }
                 if (canContinue) setRoutePanel("requests");
                 return;
               }
@@ -1402,6 +1499,7 @@ function RouteStopsStep({
             <StopRequestPolicySelector
               value={stopRequestPolicy}
               isAirportTrip={isAirportTrip}
+              isRideAppSelfSettle={isRideAppSelfSettle}
               onChange={onStopRequestPolicyChange}
             />
           </div>
@@ -1418,7 +1516,7 @@ function RouteStopsStep({
               disabled={isRoutePanel && !canContinue}
             >
               <span className="inline-flex items-center gap-2">
-                {isRoutePanel ? (isRideAppSelfSettle ? "Confirm" : "Next") : "Confirm"}
+                {isRoutePanel ? "Next" : "Confirm"}
                 <ChevronRight className="h-5 w-5" />
               </span>
             </PrimaryButton>
@@ -1759,12 +1857,14 @@ function RecurringProtectionDialog({
 function RecurringScheduleFields({
   substep,
   dateTime,
+  stepLabels = baseCreateSteps,
   onDateTimeChange,
   pickupAddress,
   dropoffAddress,
 }: {
   substep: RecurringScheduleSubstep;
   dateTime: DateTimeState;
+  stepLabels?: string[];
   onDateTimeChange: (dateTime: DateTimeState) => void;
   pickupAddress: string;
   dropoffAddress: string;
@@ -2018,6 +2118,7 @@ function DateTimeStep({
   pickupAddress,
   dropoffAddress,
   dateTime,
+  stepLabels = baseCreateSteps,
   onDateTimeChange,
   onBack,
   onContinue,
@@ -2026,6 +2127,7 @@ function DateTimeStep({
   pickupAddress: string;
   dropoffAddress: string;
   dateTime: DateTimeState;
+  stepLabels?: string[];
   onDateTimeChange: (dateTime: DateTimeState) => void;
   onBack: () => void;
   onContinue: () => void;
@@ -2063,7 +2165,7 @@ function DateTimeStep({
 
   return (
     <>
-      <CreatePodTopBar currentStep={3} />
+      <CreatePodTopBar currentStep={3} stepLabels={stepLabels} />
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-8">
         <section className="text-center">
@@ -2181,34 +2283,43 @@ type RideCategoryId = "taxi" | "ride_app";
 const rideCategories: Array<{
   id: RideCategoryId;
   title: string;
-  description: string;
-  badge?: string;
-  helper: string;
-  notes?: string[];
-  footnote?: string;
+  modeLabel: string;
+  statusLabel: string;
+  priceLabel: string;
+  priceHelper: string;
+  detailRows: Array<{
+    icon: typeof CalendarDays;
+    label: string;
+  }>;
+  footer: string;
   icon: typeof CarFront;
-  disabled?: boolean;
 }> = [
   {
     id: "taxi",
     title: "Taxi",
-    badge: "Taxi partner quote",
-    description: "Licensed taxi partner quotes one shared price for your pod.",
-    helper: "Taxi still uses the quote acceptance and review flow.",
+    modeLabel: "Protected",
+    statusLabel: "Quote pending",
+    priceLabel: "HK$68",
+    priceHelper: "est. per person",
+    detailRows: [
+      { icon: CalendarDays, label: "Date and time set later" },
+      { icon: UsersRound, label: "Protected shared taxi pod" },
+    ],
+    footer: "Taxi pods use protected pricing with partner quotes.",
     icon: CarFront,
   },
   {
     id: "ride_app",
-    title: "Ride app",
-    badge: "Self-settle",
-    description: "Use your own ride app and settle the fare directly with your group.",
-    helper: "Coordination-only.",
-    notes: [
-      "No screenshot required.",
-      "Ride fare paid outside RidePod.",
-      "No fare protection.",
+    title: "Ride App",
+    modeLabel: "Self-settle",
+    statusLabel: "Self-settle",
+    priceLabel: defaultRideAppCreateFeeLabel,
+    priceHelper: defaultRideAppHostCreateFeeCents > 0 ? "create fee" : "to create",
+    detailRows: [
+      { icon: CalendarDays, label: "Date and time set later" },
+      { icon: UsersRound, label: "Final fare handled by group" },
     ],
-    footnote: "HK$5 RidePod join fee shown as demo/test state. No live payment is charged in this version.",
+    footer: "RidePod fee applies only when someone joins an eligible pod.",
     icon: Smartphone,
   },
 ];
@@ -2405,90 +2516,82 @@ function RideCategoryCard({
       type="button"
       role="radio"
       aria-checked={selected}
-      aria-disabled={category.disabled}
-      disabled={category.disabled}
       onClick={onSelect}
       className={cn(
-        "grid min-h-[142px] w-full grid-cols-[72px_1fr_34px] items-center gap-4 rounded-[22px] border bg-[linear-gradient(135deg,rgba(15,23,42,0.72),rgba(3,7,18,0.44))] p-4 text-left shadow-[var(--rp-shadow-soft)] transition",
-        selected && taxiCategory
-          ? "border-sky-400/90 bg-[linear-gradient(135deg,rgba(14,165,233,0.18),rgba(2,6,23,0.12))] ring-1 ring-sky-400/50"
-          : selected
-            ? "border-[var(--rp-primary)] ring-1 ring-[var(--rp-primary)]"
-            : "border-[var(--rp-border)] hover:border-[var(--rp-border-strong)]",
-        category.disabled && "cursor-not-allowed opacity-70 hover:border-[var(--rp-border)]",
+        "w-full rounded-[22px] border bg-[linear-gradient(135deg,rgba(15,23,42,0.82),rgba(3,7,18,0.66))] p-3 text-left shadow-[var(--rp-shadow-soft)] transition min-[390px]:p-4",
+        taxiCategory
+          ? "border-[rgba(246,196,83,0.42)] hover:border-[rgba(246,196,83,0.72)]"
+          : "border-blue-400/45 hover:border-blue-300/75",
+        selected && taxiCategory && "ring-2 ring-[rgba(246,196,83,0.52)]",
+        selected && rideAppCategory && "ring-2 ring-blue-400/45",
       )}
     >
-      <span
-        className={cn(
-          "grid h-16 w-16 place-items-center rounded-full border bg-[var(--rp-card-muted)] text-[var(--rp-primary)]",
-          taxiCategory
-            ? "border-sky-400/30 bg-sky-400/12 text-sky-300"
-            : "border-white/12 bg-white/5 text-[var(--rp-muted-strong)]",
-        )}
-      >
-        <Icon className="h-8 w-8" />
-      </span>
-      <span className="min-w-0">
-        <span className="flex flex-wrap items-center gap-2 text-[24px] font-black leading-7 text-[var(--rp-text)]">
-          <span>{category.title}</span>
-          {category.badge ? (
+      <span className="grid min-w-0 grid-cols-[46px_minmax(0,1fr)] items-center gap-3 min-[390px]:grid-cols-[52px_minmax(0,1fr)]">
+        <span className="grid justify-items-center gap-2">
+          <span
+            className={cn(
+              "grid h-11 w-11 place-items-center rounded-full border text-[var(--rp-primary)] min-[390px]:h-12 min-[390px]:w-12",
+              taxiCategory
+                ? "border-[rgba(246,196,83,0.48)] bg-[rgba(246,196,83,0.12)] text-[var(--rp-primary-strong)] shadow-[0_0_30px_rgba(246,196,83,0.12)]"
+                : "border-blue-400/45 bg-blue-500/10 text-blue-300 shadow-[0_0_30px_rgba(59,130,246,0.12)]",
+            )}
+          >
+            <Icon className="h-5 w-5 min-[390px]:h-6 min-[390px]:w-6" />
+          </span>
+          <span
+            aria-hidden="true"
+            className={cn(
+              "grid h-6 w-6 place-items-center rounded-full border-2",
+              selected && taxiCategory
+                ? "border-[var(--rp-primary-strong)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                : selected && rideAppCategory
+                  ? "border-blue-400 bg-blue-500 text-white"
+                  : "border-[var(--rp-muted)] text-transparent",
+            )}
+          >
+            <Check className="h-3.5 w-3.5" />
+          </span>
+        </span>
+
+        <span className="min-w-0">
+          <span className="grid min-w-0 gap-2">
+            <span className="min-w-0 whitespace-nowrap text-[18px] font-black leading-6 text-[var(--rp-text)] min-[390px]:text-[22px]">
+              {category.title}
+            </span>
             <span
               className={cn(
-                "rounded-full border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,var(--rp-card))] px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]",
-                taxiCategory && "border-sky-400/35 bg-sky-400/10 text-sky-200",
+                "w-fit max-w-full rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.06em]",
+                taxiCategory
+                  ? "border-[rgba(246,196,83,0.62)] bg-[rgba(246,196,83,0.1)] text-[var(--rp-primary-strong)]"
+                  : "border-blue-400/55 bg-blue-500/10 text-blue-300",
               )}
             >
-              {category.badge}
+              {category.modeLabel}
             </span>
-          ) : null}
-        </span>
-        <span className="mt-3 block text-base font-semibold leading-6 text-[var(--rp-muted-strong)]">
-          {category.description}
-        </span>
-        <span className={cn("mt-2 block text-base font-black leading-6 text-[var(--rp-primary)]", taxiCategory && "text-sky-300", rideAppCategory && "text-[var(--rp-primary)]")}>
-          {category.helper}
-        </span>
-        {category.notes ? (
-          <span className="mt-3 grid gap-1.5">
-            {category.notes.map((note) => (
-              <span key={note} className="flex items-center gap-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-                <Check className="h-3.5 w-3.5 shrink-0 text-[var(--rp-primary)]" />
-                {note}
-              </span>
-            ))}
           </span>
-        ) : null}
-        {category.footnote ? (
-          <span className="mt-3 block rounded-xl border border-[var(--rp-border)] bg-[rgba(15,23,42,0.68)] px-3 py-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-            {category.footnote}
+          <span
+            className={cn(
+              "mt-2 block text-xs font-black",
+              selected && taxiCategory && "text-[var(--rp-primary-strong)]",
+              selected && rideAppCategory && "text-blue-300",
+              !selected && "text-[var(--rp-muted)]",
+            )}
+          >
+            {selected ? "Selected" : "Tap to choose"}
           </span>
-        ) : null}
+        </span>
       </span>
-      <span
-        aria-hidden="true"
-        className={cn(
-          "grid h-7 w-7 place-items-center rounded-full border-2",
-          selected && taxiCategory
-            ? "border-sky-400 bg-sky-500 text-white"
-            : selected
-            ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
-            : category.disabled
-              ? "border-[var(--rp-border)] text-transparent"
-              : "border-[var(--rp-muted)] text-transparent",
-        )}
-      >
-        <Check className="h-4 w-4" />
-      </span>
-      {selected ? <span className="sr-only">Selected</span> : null}
     </button>
   );
 }
 
 function RideOptionSelector({
   value,
+  peopleVehicle,
   onChange,
 }: {
   value: RideOptionId;
+  peopleVehicle: PeopleVehicleState;
   onChange: (value: RideOptionId) => void;
 }) {
   const selectedRideOption = normalizeRideOptionId(value);
@@ -2499,15 +2602,14 @@ function RideOptionSelector({
 
   return (
     <section className="mt-9">
-      <h2 className="text-[19px] font-black leading-6 text-[var(--rp-text)]">Ride category</h2>
-      <div className="mt-5 grid gap-4" role="radiogroup" aria-label="Ride category">
+      <h2 className="text-[19px] font-black leading-6 text-[var(--rp-text)]">Ride mode</h2>
+      <div className="mt-5 grid gap-4" role="radiogroup" aria-label="Ride mode">
         {rideCategories.map((category) => (
           <RideCategoryCard
             key={category.id}
             category={category}
             selected={selectedCategory === category.id}
             onSelect={() => {
-              if (category.disabled) return;
               onChange(category.id === "taxi" ? "taxi_partner_quote" : "ride_app_fixed_quote");
             }}
           />
@@ -3029,17 +3131,17 @@ function SelfSettleOptionGrid<T extends string>({
               aria-checked={selected}
               onClick={() => onChange(option.id)}
               className={cn(
-                "rounded-[16px] border px-3 py-3 text-left transition",
+                "min-w-0 overflow-hidden rounded-[16px] border px-3 py-3 text-left transition",
                 selected
                   ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_13%,var(--rp-card))]"
                   : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] hover:border-[var(--rp-border-strong)]",
               )}
             >
-              <span className={cn("block text-sm font-black", selected ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]")}>
+              <span className={cn("block break-words text-sm font-black leading-5", selected ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]")}>
                 {option.title}
               </span>
               {option.description ? (
-                <span className="mt-1 block text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                <span className="mt-1 block break-words text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
                   {option.description}
                 </span>
               ) : null}
@@ -3060,11 +3162,19 @@ function SelfSettleDetailsSelector({
 }) {
   return (
     <section className="grid gap-4">
+      <SelfSettleSelectField
+        label="Ride app"
+        value={peopleVehicle.rideAppProvider}
+        options={rideAppProviderOptions}
+        helper="Choose the app your group expects to book outside RidePod."
+        onChange={(rideAppProvider) => onPeopleVehicleChange({ ...peopleVehicle, rideAppProvider })}
+      />
+
       <SelfSettleTextField
-        label="Estimated ride app fare"
+        label="Total estimate fee"
         value={peopleVehicle.estimatedRideAppFare}
-        placeholder="HK$120-160"
-        helper="This is only an estimate. RidePod does not verify the final ride app fare."
+        placeholder="e.g. HK$68"
+        helper="Optional. Host can check and update this after the pod is confirmed."
         onChange={(estimatedRideAppFare) => onPeopleVehicleChange({ ...peopleVehicle, estimatedRideAppFare })}
       />
 
@@ -3076,30 +3186,226 @@ function SelfSettleDetailsSelector({
       />
 
       <SelfSettleOptionGrid
-        label="Payment method"
+        label="Payment method after ride"
         value={peopleVehicle.paymentMethod}
         options={selfSettlePaymentMethodOptions}
         onChange={(paymentMethod) => onPeopleVehicleChange({ ...peopleVehicle, paymentMethod })}
       />
 
-      <section className="rounded-[20px] border border-[var(--rp-primary)]/45 bg-[color-mix(in_srgb,var(--rp-primary)_9%,var(--rp-card))] p-4">
-        <div className="flex items-start gap-3">
-          <Info className="mt-0.5 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
+    </section>
+  );
+}
+
+function RideAppProviderSelector({
+  peopleVehicle,
+  onPeopleVehicleChange,
+}: {
+  peopleVehicle: PeopleVehicleState;
+  onPeopleVehicleChange: (peopleVehicle: PeopleVehicleState) => void;
+}) {
+  return (
+    <section className="grid gap-4">
+      <SelfSettleSelectField
+        label="Choose ride app"
+        value={peopleVehicle.rideAppProvider}
+        options={rideAppProviderOptions}
+        onChange={(rideAppProvider) => onPeopleVehicleChange({ ...peopleVehicle, rideAppProvider })}
+      />
+      {peopleVehicle.rideAppProvider === "other" ? (
+        <SelfSettleTextField
+          label="App name"
+          value={peopleVehicle.rideAppProviderOther}
+          placeholder="e.g. Blacklane, local car app"
+          helper="This name will appear on the pod summary."
+          onChange={(rideAppProviderOther) => onPeopleVehicleChange({ ...peopleVehicle, rideAppProviderOther })}
+        />
+      ) : null}
+      <p className="rounded-[16px] border border-blue-300/20 bg-blue-400/10 p-3 text-xs font-bold leading-5 text-blue-100">
+        Riders will see this before joining. The host books with the selected app outside RidePod.
+      </p>
+    </section>
+  );
+}
+
+function RideAppBookingRulesStep({
+  peopleVehicle,
+  onPeopleVehicleChange,
+  onBack,
+  onContinue,
+}: {
+  peopleVehicle: PeopleVehicleState;
+  onPeopleVehicleChange: (peopleVehicle: PeopleVehicleState) => void;
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const maxSuggestedRidersBeforeBooking = Math.max(2, peopleVehicle.seatsAvailable - 1);
+  const minRiderOptions = Array.from(
+    { length: Math.max(1, maxSuggestedRidersBeforeBooking - 1) },
+    (_, index) => index + 2,
+  );
+  const selectedMinimumConfirmedRiders = minRiderOptions.includes(peopleVehicle.rideAppMinimumConfirmedRiders)
+    ? peopleVehicle.rideAppMinimumConfirmedRiders
+    : minRiderOptions[0];
+  const selectedPaymentMethods = peopleVehicle.rideAppAcceptedPaymentMethods;
+  const hasPaymentMethod = selectedPaymentMethods.length > 0;
+  const minRidersValid = minRiderOptions.includes(selectedMinimumConfirmedRiders);
+  const canContinue = hasPaymentMethod && minRidersValid;
+  const [isPaymentTimingOpen, setIsPaymentTimingOpen] = useState(true);
+  const paymentTimingPanelId = useId();
+
+  useEffect(() => {
+    if (
+      peopleVehicle.rideAppBookingTrigger === "minimum_riders_confirmed" &&
+      peopleVehicle.rideAppMinimumConfirmedRiders === selectedMinimumConfirmedRiders
+    ) {
+      return;
+    }
+
+    onPeopleVehicleChange({
+      ...peopleVehicle,
+      rideAppBookingTrigger: "minimum_riders_confirmed",
+      rideAppMinimumConfirmedRiders: selectedMinimumConfirmedRiders,
+    });
+  }, [onPeopleVehicleChange, peopleVehicle, selectedMinimumConfirmedRiders]);
+
+  function togglePaymentMethod(paymentMethod: SelfSettlePaymentMethod) {
+    const nextPaymentMethods = selectedPaymentMethods.includes(paymentMethod)
+      ? selectedPaymentMethods.filter((method) => method !== paymentMethod)
+      : [...selectedPaymentMethods, paymentMethod];
+
+    onPeopleVehicleChange({
+      ...peopleVehicle,
+      rideAppAcceptedPaymentMethods: nextPaymentMethods,
+      paymentMethod: nextPaymentMethods[0] ?? peopleVehicle.paymentMethod,
+    });
+  }
+
+  return (
+    <>
+      <CreatePodTopBar currentStep={4} stepLabels={rideAppCreateSteps} />
+
+      <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-7">
+        <section className="text-center">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Ride app</p>
+          <h1 className="mt-2 text-[26px] font-black leading-tight text-[var(--rp-text)]">
+            Booking & payment rules
+          </h1>
+          <p className="mx-auto mt-2 max-w-[300px] text-sm font-medium leading-6 text-[var(--rp-muted)]">
+            Set when the host should book and how riders will settle after the ride.
+          </p>
+        </section>
+
+        <section className="mt-6 grid gap-4 rounded-[24px] border border-cyan-300/35 bg-[linear-gradient(135deg,rgba(56,189,248,0.12),rgba(124,58,237,0.10),rgba(15,23,42,0.78))] p-4 shadow-[var(--rp-shadow-soft)]">
           <div>
-            <h2 className="text-base font-black text-[var(--rp-primary)]">Self-settle ride app pod</h2>
-            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              RidePod only helps the group coordinate. The ride app booking and fare payment happen outside RidePod.
+            <h2 className="text-lg font-black text-[var(--rp-primary)]">When should the host book?</h2>
+            <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              Choose the rider count the host prefers before booking the ride app.
             </p>
           </div>
+
+          <label className="grid gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[rgba(5,12,20,0.36)] p-4">
+            <span className="text-xs font-black uppercase tracking-[0.13em] text-cyan-100">
+              Preferred riders before booking
+            </span>
+            <select
+              value={selectedMinimumConfirmedRiders}
+              onChange={(event) =>
+                onPeopleVehicleChange({
+                  ...peopleVehicle,
+                  rideAppBookingTrigger: "minimum_riders_confirmed",
+                  rideAppMinimumConfirmedRiders: Number(event.target.value),
+                })
+              }
+              className="min-h-11 rounded-xl border border-[var(--rp-border)] bg-[rgba(5,12,20,0.72)] px-3 text-base font-black text-[var(--rp-text)] outline-none focus:border-cyan-300"
+            >
+              {minRiderOptions.map((count) => (
+                <option key={count} value={count}>
+                  {count} / {peopleVehicle.seatsAvailable} riders
+                </option>
+              ))}
+            </select>
+          </label>
+        </section>
+
+        <section className="mt-4 rounded-[22px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+          <button
+            type="button"
+            onClick={() => setIsPaymentTimingOpen((current) => !current)}
+            aria-expanded={isPaymentTimingOpen}
+            aria-controls={paymentTimingPanelId}
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <h2 className="text-lg font-black text-[var(--rp-primary)]">Ride fare payment timing</h2>
+            {isPaymentTimingOpen ? (
+              <ChevronUp className="h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
+            ) : (
+              <ChevronDown className="h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
+            )}
+          </button>
+          {isPaymentTimingOpen ? (
+            <p id={paymentTimingPanelId} className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              Riders settle the final ride fare directly with the booker after the ride is completed.
+            </p>
+          ) : null}
+        </section>
+
+        <section className="mt-4 rounded-[22px] border border-[var(--rp-border-strong)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+          <h2 className="text-lg font-black text-[var(--rp-primary)]">Accepted payment methods</h2>
+          <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+            Riders will see these methods before joining. Final payment is handled outside RidePod.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {selfSettlePaymentMethodOptions.map((method) => {
+              const selected = selectedPaymentMethods.includes(method.id);
+
+              return (
+                <label
+                  key={method.id}
+                  className={cn(
+                    "flex min-h-12 items-center gap-2 rounded-[16px] border px-3 text-sm font-black transition",
+                    selected
+                      ? "border-cyan-300/80 bg-cyan-300/10 text-cyan-100"
+                      : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    onChange={() => togglePaymentMethod(method.id)}
+                    className="h-4 w-4 accent-cyan-300"
+                  />
+                  {method.title}
+                </label>
+              );
+            })}
+          </div>
+          {!hasPaymentMethod ? (
+            <p className="mt-2 text-xs font-black text-[var(--rp-danger)]">Choose at least one payment method.</p>
+          ) : null}
+        </section>
+
+        <section className="mt-4 rounded-[22px] border border-cyan-300/25 bg-cyan-300/10 p-4 shadow-[var(--rp-shadow-soft)]">
+          <div className="flex items-start gap-3">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cyan-300/30 bg-cyan-300/10 text-cyan-100">
+              <Info className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-lg font-black text-cyan-100">Optional fare estimate screenshot</h2>
+              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                Hosts may add a local/mock screenshot placeholder after creation. RidePod does not verify ride app screenshots.
+              </p>
+              <p className="mt-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                Do not upload screenshots showing phone numbers, payment details, or private account info.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <div className="mt-5">
+          <CreatePodStepActions onBack={onBack} onContinue={onContinue} disabled={!canContinue} />
         </div>
-        <ul className="mt-3 grid gap-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-          <li>RidePod does not verify the ride app fare.</li>
-          <li>RidePod does not collect or split the ride fare.</li>
-          <li>Agree on the fare split before the ride starts.</li>
-          <li>External payment disputes may not be refundable by RidePod.</li>
-        </ul>
-      </section>
-    </section>
+      </main>
+    </>
   );
 }
 
@@ -3267,7 +3573,9 @@ function PeopleVehicleStep({
   onBack,
   onContinue,
   currentStep = 0,
+  stepLabels = baseCreateSteps,
   onRequireAuth,
+  rideAppAccessNotice,
   showBackAction = true,
 }: {
   podType: PodType;
@@ -3285,13 +3593,15 @@ function PeopleVehicleStep({
   onBack: () => void;
   onContinue: () => void;
   currentStep?: CreateStep;
+  stepLabels?: string[];
   onRequireAuth?: () => boolean;
+  rideAppAccessNotice?: { blocked: boolean; message: string } | null;
   showBackAction?: boolean;
 }) {
   const selectedRideOptionId = normalizeRideOptionId(peopleVehicle.rideOption);
   const isTaxiFlow = selectedRideOptionId === "taxi_partner_quote" || selectedRideOptionId === "taxi_meter";
   const isRideAppSelfSettle = selectedRideOptionId === "ride_app_fixed_quote";
-  const [taxiDetailsPage, setTaxiDetailsPage] = useState<"category" | "type" | "needs" | "join" | "partner" | "selfSettle">("category");
+  const [taxiDetailsPage, setTaxiDetailsPage] = useState<"category" | "type" | "needs" | "join" | "partner" | "provider" | "selfSettle">("category");
   const isTaxiTypePage = isTaxiFlow && taxiDetailsPage === "type";
   const isRideCategoryPage = taxiDetailsPage === "category";
   const [showRideConfirm, setShowRideConfirm] = useState(false);
@@ -3301,8 +3611,22 @@ function PeopleVehicleStep({
   function handleContinue() {
     if (onRequireAuth && !onRequireAuth()) return;
 
-    if (isRideAppSelfSettle && taxiDetailsPage === "category") {
-      setTaxiDetailsPage("selfSettle");
+    if (isRideAppSelfSettle && rideAppAccessNotice?.blocked) return;
+
+    if (taxiDetailsPage === "category") {
+      if (isRideAppSelfSettle) {
+        setTaxiDetailsPage("provider");
+        return;
+      }
+
+      setConfirmedRideOption(selectedRideOptionId);
+      onContinue();
+      return;
+    }
+
+    if (isRideAppSelfSettle && taxiDetailsPage === "provider") {
+      setConfirmedRideOption(selectedRideOptionId);
+      onContinue();
       return;
     }
 
@@ -3314,11 +3638,6 @@ function PeopleVehicleStep({
     if (isRideAppSelfSettle && taxiDetailsPage === "join") {
       setConfirmedRideOption(selectedRideOptionId);
       onContinue();
-      return;
-    }
-
-    if (isTaxiFlow && taxiDetailsPage === "category") {
-      setTaxiDetailsPage("type");
       return;
     }
 
@@ -3353,6 +3672,11 @@ function PeopleVehicleStep({
   }
 
   function handleBack() {
+    if (isRideAppSelfSettle && taxiDetailsPage === "provider") {
+      setTaxiDetailsPage("category");
+      return;
+    }
+
     if (isRideAppSelfSettle && taxiDetailsPage === "join") {
       setTaxiDetailsPage("selfSettle");
       return;
@@ -3389,12 +3713,15 @@ function PeopleVehicleStep({
   const isLuggagePage = isTaxiFlow && taxiDetailsPage === "needs";
   const isWhoCanJoinPage = (isTaxiFlow || isRideAppSelfSettle) && taxiDetailsPage === "join";
   const isTaxiPartnerPreferencePage = isTaxiFlow && taxiDetailsPage === "partner";
+  const isRideAppProviderPage = isRideAppSelfSettle && taxiDetailsPage === "provider";
   const isSelfSettleDetailsPage = isRideAppSelfSettle && taxiDetailsPage === "selfSettle";
-  const usesSplitTaxiLayout = isTaxiTypePage || isLuggagePage || isWhoCanJoinPage || isSelfSettleDetailsPage;
+  const usesSplitTaxiLayout = isTaxiTypePage || isLuggagePage || isWhoCanJoinPage || isRideAppProviderPage || isSelfSettleDetailsPage;
+  const providerOtherMissing = isRideAppProviderPage && peopleVehicle.rideAppProvider === "other" && !peopleVehicle.rideAppProviderOther.trim();
+  const continueDisabled = (isRideAppSelfSettle && rideAppAccessNotice?.blocked === true) || providerOtherMissing;
 
   return (
     <>
-      <CreatePodTopBar currentStep={currentStep} />
+      <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} onBack={!isRideCategoryPage || isRideAppProviderPage ? handleBack : undefined} />
 
       <main className={cn(
         "people-vehicle-layout scrollbar-hide min-h-0 flex-1 overflow-y-auto",
@@ -3402,20 +3729,23 @@ function PeopleVehicleStep({
         isTaxiTypePage && "taxi-selector-layout",
         isLuggagePage && "luggage-selector-layout",
         isWhoCanJoinPage && "who-can-join-layout",
-        isSelfSettleDetailsPage && "who-can-join-layout",
+        isRideAppProviderPage && "self-settle-details-layout",
+        isSelfSettleDetailsPage && "self-settle-details-layout",
       )}>
-        <VehicleDarkPanel
-          variant={
-            isTaxiTypePage || isTaxiPartnerPreferencePage
-              ? "taxiSelector"
-              : isLuggagePage || isSelfSettleDetailsPage
-                ? "luggage"
-                : isWhoCanJoinPage
-                  ? "whoCanJoin"
-                  : "default"
-          }
-        />
-        <section className={cn("people-vehicle-content flex min-h-0 flex-col px-6 pb-10 pt-8", usesSplitTaxiLayout && "taxi-selector-content", isRideCategoryPage && "ride-category-content")}>
+        {!isRideCategoryPage && !isRideAppProviderPage && !isSelfSettleDetailsPage ? (
+          <VehicleDarkPanel
+            variant={
+              isTaxiTypePage || isTaxiPartnerPreferencePage
+                ? "taxiSelector"
+                : isLuggagePage || isSelfSettleDetailsPage
+                  ? "luggage"
+                  : isWhoCanJoinPage
+                    ? "whoCanJoin"
+                    : "default"
+            }
+          />
+        ) : null}
+        <section className={cn("people-vehicle-content flex min-h-0 flex-col px-6 pb-10 pt-8", usesSplitTaxiLayout && "taxi-selector-content", isRideCategoryPage && "ride-category-content", (isRideAppProviderPage || isSelfSettleDetailsPage) && "self-settle-details-content")}>
           <div className={cn("text-center", isRideCategoryPage && "text-left")}>
             <ScheduleTypeEyebrow podType={podType} />
             <h1
@@ -3424,7 +3754,7 @@ function PeopleVehicleStep({
                 isTaxiTypePage
                   ? "whitespace-nowrap text-[28px] min-[390px]:text-[30px]"
                   : isRideCategoryPage
-                    ? "mt-7 text-[41px] tracking-[-0.04em] min-[390px]:text-[45px]"
+                    ? "mt-7 whitespace-nowrap text-[27px] min-[390px]:text-[31px]"
                     : "text-[30px]",
               )}
             >
@@ -3432,32 +3762,43 @@ function PeopleVehicleStep({
                 ? "Luggage"
                 : isWhoCanJoinPage
                   ? "Who can join?"
+                : isRideAppProviderPage
+                  ? "Which ride app?"
                 : isSelfSettleDetailsPage
-                  ? "Self-settle details"
+                  ? "Ride app self-settle"
                 : isTaxiFlow && taxiDetailsPage === "partner"
                   ? "Taxi partner preference"
                 : isTaxiFlow && taxiDetailsPage === "type"
                   ? "Choose Taxi Type"
                   : "How do you want to ride?"}
             </h1>
-            <p className={cn("mx-auto mt-2 max-w-[280px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]", isRideCategoryPage && "mx-0 mt-5 max-w-[330px] text-left text-[22px] leading-9 text-[var(--rp-muted-strong)]")}>
-              {isTaxiFlow && taxiDetailsPage === "needs"
-                ? "Tell taxi partners your bag count before they quote."
-                : isWhoCanJoinPage
-                  ? "Choose who can join this shared taxi pod."
-                : isSelfSettleDetailsPage
-                  ? "Set the estimate and how riders will settle outside RidePod."
-                : isTaxiFlow && taxiDetailsPage === "partner"
-                  ? "Choose what kind of taxi partner you prefer for this ride."
-                : isTaxiFlow && taxiDetailsPage === "type"
-                  ? "Choose based on riders and luggage."
-                : "RidePod groups riders first, then helps the group request the right ride."}
-            </p>
+            {!isRideCategoryPage ? (
+              <p className="mx-auto mt-2 max-w-[280px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]">
+                {isTaxiFlow && taxiDetailsPage === "needs"
+                  ? "Tell taxi partners your bag count before they quote."
+                  : isWhoCanJoinPage
+                    ? "Choose who can join this shared taxi pod."
+                    : isRideAppProviderPage
+                      ? "Choose the app the host expects to book for this pod."
+                    : isSelfSettleDetailsPage
+                    ? "Set the estimate, split, and how riders will settle the final fare after the ride."
+                  : isTaxiFlow && taxiDetailsPage === "partner"
+                    ? "Choose what kind of taxi partner you prefer for this ride."
+                  : isTaxiFlow && taxiDetailsPage === "type"
+                    ? "Choose based on riders and luggage."
+                  : null}
+              </p>
+            ) : null}
           </div>
 
           <div className={cn("mt-7", isRideCategoryPage && "mt-14")}>
             {isTaxiFlow && taxiDetailsPage === "needs" ? (
               <TaxiNeedsSelector
+                peopleVehicle={peopleVehicle}
+                onPeopleVehicleChange={onPeopleVehicleChange}
+              />
+            ) : isRideAppProviderPage ? (
+              <RideAppProviderSelector
                 peopleVehicle={peopleVehicle}
                 onPeopleVehicleChange={onPeopleVehicleChange}
               />
@@ -3495,6 +3836,7 @@ function PeopleVehicleStep({
                 />
                 <RideOptionSelector
                   value={peopleVehicle.rideOption}
+                  peopleVehicle={peopleVehicle}
                   onChange={(rideOption) =>
                     {
                       setTaxiDetailsPage("category");
@@ -3516,10 +3858,16 @@ function PeopleVehicleStep({
           </div>
 
           <div className="mt-auto pt-7">
+            {isRideAppSelfSettle && rideAppAccessNotice ? (
+              <p className="mb-3 rounded-[16px] border border-blue-300/20 bg-blue-400/10 px-3 py-2 text-center text-xs font-bold leading-5 text-blue-100">
+                {rideAppAccessNotice.message}
+              </p>
+            ) : null}
             <CreatePodStepActions
               onBack={handleBack}
               onContinue={handleContinue}
-              showBack={showBackAction}
+              disabled={continueDisabled}
+              showBack={showBackAction || isRideAppProviderPage}
               continueIcon={isRideCategoryPage ? <ArrowRight className="h-6 w-6" /> : undefined}
             />
           </div>
@@ -3614,7 +3962,7 @@ type PricingExplanation = {
 const pricingExplanations: Record<string, PricingExplanation> = {
   currentEstimate: {
     title: "Current estimate",
-    body: "This is RidePod's best estimate before the ride is booked. It may come from RidePod's route baseline, the host's estimate, or the host's uploaded quote. It is not the final charge. Platform fee is 10% of each guest's fare share, with a HK$6 minimum to cover payment processing and platform protection. Final settlement uses the verified receipt after the ride.",
+    body: "This is RidePod's best estimate before the ride is booked. It may come from RidePod's route baseline, the host's estimate, or the host's uploaded quote. It is not the final charge. RidePod fee is 10% of each guest's fare share, with a HK$6 minimum in the mock/demo model. Final settlement uses the verified receipt after the ride.",
   },
   expectedGuestCost: {
     title: "Expected guest cost",
@@ -3789,12 +4137,158 @@ function getSelfSettleSplitMethodLabel(splitMethod: SelfSettleSplitMethod) {
   return selfSettleSplitMethodOptions.find((option) => option.id === splitMethod)?.title ?? "Equal split";
 }
 
+function getRideAppProviderLabel(provider: RideAppProvider, otherProvider = "") {
+  if (provider === "other") return otherProvider.trim() || "Other";
+  return rideAppProviderOptions.find((option) => option.id === provider)?.title ?? "Uber";
+}
+
 function getSelfSettlePaymentMethodLabel(paymentMethod: SelfSettlePaymentMethod) {
   return selfSettlePaymentMethodOptions.find((option) => option.id === paymentMethod)?.title ?? "PayMe";
 }
 
+function getRideAppBookingTriggerLabel(peopleVehicle: PeopleVehicleState) {
+  return `anytime after group agrees, suggested from ${peopleVehicle.rideAppMinimumConfirmedRiders} riders`;
+}
+
+function getRideAppBookingTriggerSummary(peopleVehicle: PeopleVehicleState) {
+  return `Anytime; suggested from ${peopleVehicle.rideAppMinimumConfirmedRiders} riders`;
+}
+
+function getRideAppAcceptedPaymentMethodsLabel(paymentMethods: SelfSettlePaymentMethod[]) {
+  if (paymentMethods.length === 0) return "To be agreed in chat";
+
+  return paymentMethods.map(getSelfSettlePaymentMethodLabel).join(", ");
+}
+
 function getStopRequestPolicyLabel(policy: StopRequestPolicy) {
   return policy === "host_approved_before_quote" ? "Host-approved before quote" : "Direct route only";
+}
+
+function districtFromLabel(label: string) {
+  const normalized = label.toLowerCase();
+  if (normalized.includes("central") || normalized.includes("ifc")) return "Central";
+  if (normalized.includes("tsim sha tsui") || normalized.includes("tst")) return "Tsim Sha Tsui";
+  if (normalized.includes("airport") || normalized.includes("lax")) return "Airport";
+  return "Central";
+}
+
+function getLuggageLabel(peopleVehicle: PeopleVehicleState) {
+  if (peopleVehicle.largeLuggage || peopleVehicle.extraSpaceNeeded) return "Large luggage";
+  if (peopleVehicle.bags <= 0) return "No luggage";
+  if (peopleVehicle.bags === 1) return "1 bag";
+  return peopleVehicle.bags <= 2 ? "Small bags only" : `${peopleVehicle.bags} bags`;
+}
+
+function getAccessLabel(peopleVehicle: PeopleVehicleState) {
+  const needs = [
+    peopleVehicle.wheelchairAccessibleRequested ? "Wheelchair access" : null,
+    peopleVehicle.stepFreeSupportRequested ? "Step-free support" : null,
+  ].filter((item): item is string => Boolean(item));
+
+  return needs.length ? needs.join(", ") : "No special access needs";
+}
+
+function buildCreatedRideAppHomeRide({
+  pickupAddress,
+  dropoffAddress,
+  dateTime,
+  peopleVehicle,
+  accessMode,
+  stopRequestPolicy,
+}: {
+  pickupAddress: string;
+  dropoffAddress: string;
+  dateTime: DateTimeState;
+  peopleVehicle: PeopleVehicleState;
+  accessMode: AccessMode;
+  stopRequestPolicy: StopRequestPolicy;
+}): HomeRide {
+  const id = `created-ride-app-${Date.now()}`;
+  const rideAppProviderName = getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther);
+  const acceptedPaymentMethods = peopleVehicle.rideAppAcceptedPaymentMethods.map(getSelfSettlePaymentMethodLabel);
+  const splitMethod = getSelfSettleSplitMethodLabel(peopleVehicle.splitMethod);
+  const estimatedFare = peopleVehicle.estimatedRideAppFare.trim();
+
+  return {
+    id,
+    fromDistrict: districtFromLabel(pickupAddress),
+    toDistrict: districtFromLabel(dropoffAddress),
+    fromLabel: pickupAddress || "Pickup",
+    toLabel: dropoffAddress || "Drop-off",
+    dateLabel: getScheduleDateSummary(dateTime),
+    timeLabel: getScheduleTimeSummary(dateTime),
+    seatsUsed: 1,
+    seatsTotal: peopleVehicle.seatsAvailable,
+    pricePerPerson: 24,
+    rideKind: dateTime.scheduleType === "RECURRING" ? "recurring" : "one_off",
+    rideService: "ride_app",
+    rideCategory: "ride_app_self_settle",
+    selfSettleRiskAccepted: true,
+    bookingDetailsShared: false,
+    rideAppBookingDetailsFinalized: false,
+    confirmationDeadlineLabel: "Not set yet",
+    confirmationDeadlineAt: null,
+    currentUserJoinIntentStatus: "not_joined",
+    currentUserConfirmationExpired: false,
+    bookingDetailsVersion: 1,
+    bookingDetailsUpdated: false,
+    currentUserConfirmedBookingDetailsVersion: null,
+    rideAppConfirmBy: null,
+    rideAppChecklist: {
+      pickupPoint: Boolean(peopleVehicle.pickupVenue),
+      dropoffPoint: true,
+      rideApp: true,
+      estimatedFare: Boolean(estimatedFare),
+      booker: true,
+      fareSplit: true,
+      paymentMethod: acceptedPaymentMethods.length > 0,
+      paymentRecipientAfterRide: acceptedPaymentMethods.length > 0,
+      meetingTime: true,
+      updatedAt: null,
+      updatedBy: "You",
+    },
+    rideAppPodStatus: "booking_details_needed",
+    rideAppBookingTrigger: peopleVehicle.rideAppBookingTrigger,
+    rideAppMinimumConfirmedRiders: peopleVehicle.rideAppMinimumConfirmedRiders,
+    rideAppRequiredConfirmations: peopleVehicle.rideAppMinimumConfirmedRiders,
+    rideAppConfirmedRiderIds: [],
+    rideAppFarePaymentTiming: peopleVehicle.rideAppFarePaymentTiming,
+    rideAppProviderName,
+    rideAppSplitMethod: splitMethod,
+    rideAppFareEstimateStatus: estimatedFare ? "accepted" : "pending",
+    rideAppAcceptedPaymentMethods: acceptedPaymentMethods,
+    airportDirection: null,
+    status: "available",
+    quoteStatus: "quote_pending",
+    currentUserRole: "host",
+    currentUserName: "You",
+    currentUserJoined: false,
+    currentUserBookingDetailsConfirmed: false,
+    platformFeeStatus: "pending",
+    confirmedRiderCount: 0,
+    joinedRiderCount: 0,
+    rideAppConfirmedRiderCount: 0,
+    riderConfirmations: [
+      { name: "You", role: "host", status: "host", confirmedBookingDetailsVersion: 1 },
+    ],
+    taxiType: "Ride app",
+    platformFee: 5,
+    estimatedRideAppFare: estimatedFare || undefined,
+    splitMethod,
+    paymentMethod: acceptedPaymentMethods.join(", "),
+    luggage: getLuggageLabel(peopleVehicle),
+    accessibility: getAccessLabel(peopleVehicle),
+    podType: accessMode === "verified_only" ? "Verified-only" : accessMode === "invite_only" ? "Invite-only" : "Open pod",
+    hostName: "You",
+    joinedRiders: [],
+    pickupLabel: peopleVehicle.pickupVenue || pickupAddress,
+    pickupTime: getScheduleTimeSummary(dateTime),
+    dropoffLabel: dropoffAddress,
+    stopRequestPolicy,
+    proposedStops: [],
+    approvedStops: [],
+    declinedStops: [],
+  };
 }
 
 function getRoutePlanSummary(pickupAddress: string, dropoffAddress: string, stops: RouteStop[]) {
@@ -3810,19 +4304,42 @@ function getRoutePlanSummary(pickupAddress: string, dropoffAddress: string, stop
 function StopRequestPolicySelector({
   value,
   isAirportTrip,
+  isRideAppSelfSettle = false,
   onChange,
 }: {
   value: StopRequestPolicy;
   isAirportTrip: boolean;
+  isRideAppSelfSettle?: boolean;
   onChange: (value: StopRequestPolicy) => void;
 }) {
+  const options = isRideAppSelfSettle
+    ? stopRequestPolicyOptions.map((option) =>
+        option.id === "direct_only"
+          ? {
+              ...option,
+              title: "Direct route only",
+              description: "Riders join the pickup and dropoff route set by the host.",
+            }
+          : {
+              ...option,
+              title: "Allow route requests",
+              description: "Joined riders can ask for one route change or extra stop before the host books.",
+              helper: "Host decides before booking the ride app outside RidePod.",
+            },
+      )
+    : stopRequestPolicyOptions;
+
   return (
     <section className="rounded-[22px] border border-[color-mix(in_srgb,var(--rp-primary)_28%,var(--rp-border))] bg-[linear-gradient(180deg,rgba(17,28,40,0.92),rgba(10,19,31,0.92))] p-3 shadow-[var(--rp-shadow-soft)]">
       <div className="flex items-start justify-between gap-3 px-1">
         <div>
-          <h2 className="text-base font-black text-[var(--rp-text)]">Stop requests from other riders</h2>
+          <h2 className="text-base font-black text-[var(--rp-text)]">
+            {isRideAppSelfSettle ? "Route requests from other riders" : "Stop requests from other riders"}
+          </h2>
           <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-            Choose whether joined riders can request one extra stop.
+            {isRideAppSelfSettle
+              ? "Choose whether joined riders can ask for a different route before booking."
+              : "Choose whether joined riders can request one extra stop."}
           </p>
         </div>
         <span className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-muted)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-[var(--rp-primary)]">
@@ -3830,8 +4347,8 @@ function StopRequestPolicySelector({
         </span>
       </div>
 
-      <div className="mt-3 grid gap-2" role="radiogroup" aria-label="Stop requests">
-        {stopRequestPolicyOptions.map((option) => {
+      <div className="mt-3 grid gap-2" role="radiogroup" aria-label={isRideAppSelfSettle ? "Route requests" : "Stop requests"}>
+        {options.map((option) => {
           const selected = value === option.id;
           const directOnly = option.id === "direct_only";
 
@@ -4008,15 +4525,26 @@ function SelfSettleReviewSummaryCard({
   genderMode: GenderMode;
   accessMode: AccessMode;
 }) {
-  const rows = [
-    ["Ride type", "Ride app / Self-settle"],
+  const rows: Array<[string, string]> = [
+    ["Ride type", "Ride app · Self-settle"],
     ["Route", `${routePointSummary(pickupAddress, "Pickup")} \u2192 ${routePointSummary(dropoffAddress, "Dropoff")}`],
     ["Pickup venue", peopleVehicle.pickupVenue || "Not specified"],
+    ["Ride app", getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther)],
     ["Date/time", `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}`],
     ["Seats", `${peopleVehicle.seatsAvailable} seats total`],
-    ["Estimated ride app fare", peopleVehicle.estimatedRideAppFare || "Not specified"],
+    ["Estimated ride app fare", "Ride app estimate after booking"],
+    ["Host books when", getRideAppBookingTriggerLabel(peopleVehicle)],
+    ...(peopleVehicle.rideAppBookingTrigger === "minimum_riders_confirmed"
+      ? ([["Preferred riders before booking", `${peopleVehicle.rideAppMinimumConfirmedRiders} riders`]] as Array<[string, string]>)
+      : []),
+    ["Payment timing", "After ride completion"],
+    ["Accepted payment", getRideAppAcceptedPaymentMethodsLabel(peopleVehicle.rideAppAcceptedPaymentMethods)],
+    ["RidePod join fee", "Demo-confirmed or waived at Confirm ride details"],
+    ["Fare estimate screenshot", "Optional, not verified by RidePod"],
+    ["Ride fare", "Paid after ride directly to booker"],
     ["Split method", getSelfSettleSplitMethodLabel(peopleVehicle.splitMethod)],
-    ["Payment method", getSelfSettlePaymentMethodLabel(peopleVehicle.paymentMethod)],
+    ["Payment method after ride", getSelfSettlePaymentMethodLabel(peopleVehicle.paymentMethod)],
+    ["Payment recipient", "Person who booked the ride"],
     ["Who can join", getWhoCanJoinLabel(genderMode, accessMode)],
   ];
 
@@ -4028,9 +4556,9 @@ function SelfSettleReviewSummaryCard({
             <Smartphone className="h-5 w-5" />
           </span>
           <div>
-            <h2 className="text-lg font-black text-[var(--rp-primary)]">Ride app / Self-settle</h2>
+            <h2 className="text-lg font-black text-[var(--rp-primary)]">Ride app · Self-settle</h2>
             <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              Coordination-only pod. Ride fare is paid outside RidePod.
+              {defaultRideAppCreateFeeSentence} Riders demo-confirm or waive the {defaultRideAppJoinFeeLabel} RidePod join fee when they confirm ride details. {ridePodPricingCopy.rideAppJoinFeeHelper}
             </p>
           </div>
         </div>
@@ -4041,9 +4569,14 @@ function SelfSettleReviewSummaryCard({
         </dl>
       </section>
 
-      <p className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-        Ride fare is paid outside RidePod. No fare protection is provided. No screenshot required. No live payment is charged in this version.
-      </p>
+      <div className="grid gap-2">
+        <p className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+          No fare protection is provided. Settle the final ride fare after the ride with the booker.
+        </p>
+        <p className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+          {defaultRideAppCreateFeeSentence} Fee applies only when riders confirm ride details.
+        </p>
+      </div>
     </section>
   );
 }
@@ -4052,9 +4585,9 @@ function RouteSummaryLine({ label, value }: { label: string; value: string }) {
   const lines = formatRouteAddressLines(value);
 
   return (
-    <div className="flex items-start justify-between gap-4 border-t border-[var(--rp-border)] pt-2 first:border-t-0 first:pt-0">
+    <div className="grid gap-1 border-t border-[var(--rp-border)] pt-3 first:border-t-0 first:pt-0">
       <dt className="text-sm font-semibold leading-5 text-[var(--rp-muted)]">{label}</dt>
-      <dd className="max-w-[62%] text-right text-sm font-black leading-5 text-[var(--rp-text)]">
+      <dd className="min-w-0 text-left text-sm font-black leading-5 text-[var(--rp-text)]">
         {lines.map((line, index) => (
           <span key={`${line}-${index}`} className={index === 0 ? "block" : "block font-semibold text-[var(--rp-muted-strong)]"}>
             {line}
@@ -4075,10 +4608,20 @@ function formatRouteAddressLines(value: string) {
 }
 
 function SummaryLine({ label, value }: { label: string; value: string }) {
+  const oneLineValue = label === "Route";
+
   return (
     <div className="flex items-start justify-between gap-4 border-t border-[var(--rp-border)] pt-2 first:border-t-0 first:pt-0">
       <dt className="text-sm font-semibold leading-5 text-[var(--rp-muted)]">{label}</dt>
-      <dd className="max-w-[58%] text-right text-sm font-black leading-5 text-[var(--rp-text)]">{value}</dd>
+      <dd
+        className={cn(
+          "text-right text-sm font-black leading-5 text-[var(--rp-text)]",
+          oneLineValue ? "min-w-0 flex-1 truncate whitespace-nowrap" : "max-w-[58%]",
+        )}
+        title={oneLineValue ? value : undefined}
+      >
+        {value}
+      </dd>
     </div>
   );
 }
@@ -4298,7 +4841,7 @@ function PreviewMoneyProtectionCard({
           </h2>
           <p className="mt-2 text-sm font-medium leading-5 text-[var(--rp-muted-strong)]">
             {normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote"
-              ? "Beta uses mock payment state. No live payment or payout is enabled."
+              ? "Mock/demo state only. No live payment or payout is enabled."
               : "Riders authorize the protected max before the host books. They may pay less after the final receipt is verified."}
           </p>
         </div>
@@ -4532,12 +5075,13 @@ function CreatePodConfirmationDialog({
         : {
             title: "Create self-settle pod?",
             body: [
-              "Riders can join and chat after the pod is created.",
+              "Riders can join and chat after this pod is created.",
               "Host or group members will book the ride app outside RidePod.",
-              "Ride fare is paid and settled outside RidePod.",
+              `${defaultRideAppCreateFeeSentence} Riders demo-confirm or waive the ${defaultRideAppJoinFeeLabel} RidePod join fee when they confirm ride details in demo/test state.`,
+              ridePodPricingCopy.rideAppJoinFeeHelper,
             ],
             checkbox: "I understand this pod uses self-settle ride app coordination.",
-            submitLabel: "Create pod",
+            submitLabel: "Create",
           };
 
   return (
@@ -4740,7 +5284,7 @@ function RecurringReviewCard({
   action?: ReactNode;
 }) {
   return (
-    <section className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_94%,transparent),var(--rp-card-soft))] p-4 shadow-[var(--rp-shadow-soft)]">
+    <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_94%,transparent),var(--rp-card-soft))] p-5 shadow-[var(--rp-shadow-soft)]">
       <div className="flex items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           {icon ? (
@@ -4748,7 +5292,7 @@ function RecurringReviewCard({
               {icon}
             </span>
           ) : null}
-          <h2 className="min-w-0 text-base font-black text-[var(--rp-text)]">{title}</h2>
+          <h2 className="min-w-0 text-lg font-black leading-6 text-[var(--rp-text)]">{title}</h2>
         </div>
         {action}
       </div>
@@ -4767,20 +5311,22 @@ function RecurringSummaryCell({
   value: string;
 }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-3">
-      <div className="mb-2 text-[var(--rp-primary)]">{icon}</div>
-      <p className="text-xs font-semibold text-[var(--rp-muted-strong)]">{label}</p>
-      <p className="mt-1 text-sm font-black leading-5 text-[var(--rp-text)]">{value}</p>
+    <div className="flex min-w-0 items-start gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-3">
+      <div className="mt-0.5 shrink-0 text-[var(--rp-primary)]">{icon}</div>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">{label}</p>
+        <p className="mt-1 break-words text-base font-black leading-6 text-[var(--rp-text)]">{value}</p>
+      </div>
     </div>
   );
 }
 
 function RecurringPatternReviewRow({ label, leg }: { label: string; leg?: RecurringScheduleLeg }) {
   return (
-    <div className="grid grid-cols-[72px_74px_1fr] items-center gap-3 border-t border-[var(--rp-border)] py-3 first:border-t-0 first:pt-0 last:pb-0">
-      <p className="text-sm font-black text-[var(--rp-primary)]">{label}</p>
-      <p className="text-sm font-black text-[var(--rp-text)]">{leg ? formatLocalTimeLabel(leg.departureTime) : "--"}</p>
-      <p className="min-w-0 text-right text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
+    <div className="grid gap-1 border-t border-[var(--rp-border)] py-3 first:border-t-0 first:pt-0 last:pb-0">
+      <p className="text-xs font-black uppercase tracking-[0.1em] text-[var(--rp-primary)]">{label}</p>
+      <p className="text-base font-black text-[var(--rp-text)]">{leg ? formatLocalTimeLabel(leg.departureTime) : "--"}</p>
+      <p className="min-w-0 break-words text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
         {leg ? `${leg.originLabel} \u2192 ${leg.destinationLabel}` : "Set ride route"}
       </p>
     </div>
@@ -4791,11 +5337,15 @@ function UpcomingRideCard({ occurrence }: { occurrence: ReturnType<typeof genera
   const legLabel = occurrence.recurringLegType === "RETURN" ? "Return" : "Outbound";
 
   return (
-    <article className="min-w-[132px] rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
-      <p className="text-sm font-black leading-5 text-[var(--rp-text)]">{formatDateForPreview(occurrence.occurrenceDate)}</p>
-      <p className="mt-1 text-sm font-black text-[var(--rp-muted-strong)]">{getRecurringOccurrenceTime(occurrence)}</p>
-      <p className="mt-2 text-xs font-black text-[var(--rp-primary)]">{legLabel}</p>
-      <p className="mt-2 text-xs font-semibold leading-4 text-[var(--rp-muted-strong)]">
+    <article className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-base font-black leading-6 text-[var(--rp-text)]">{formatDateForPreview(occurrence.occurrenceDate)}</p>
+          <p className="mt-1 text-sm font-black text-[var(--rp-muted-strong)]">{getRecurringOccurrenceTime(occurrence)}</p>
+        </div>
+        <p className="shrink-0 rounded-full border border-[var(--rp-border-strong)] px-2.5 py-1 text-xs font-black text-[var(--rp-primary)]">{legLabel}</p>
+      </div>
+      <p className="mt-3 break-words text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
         {occurrence.originLabel} {"\u2192"} {occurrence.destinationLabel}
       </p>
     </article>
@@ -4836,9 +5386,9 @@ function RecurringPodReview({
   const taxiPartnerPreferenceLabel = getTaxiPartnerPreferenceLabel(taxiPartnerPreference);
 
   return (
-    <section className="grid gap-4">
+    <section className="grid gap-5">
       <RecurringReviewCard title="Template summary" icon={<CalendarDays className="h-5 w-5" />}>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid gap-3">
           <RecurringSummaryCell icon={<RefreshCcw className="h-4 w-4" />} label="Type" value="Recurring pod" />
           <RecurringSummaryCell icon={<CalendarDays className="h-4 w-4" />} label="Repeats" value={getRecurringWeekdaySummary(dateTime)} />
           <RecurringSummaryCell icon={<CalendarPlus className="h-4 w-4" />} label="Starts" value={formatReviewDate(dateTime.recurringStartDate)} />
@@ -4869,14 +5419,14 @@ function RecurringPodReview({
 
       <RecurringReviewCard title="Ride option" icon={<CarFront className="h-5 w-5" />}>
         <div className="grid gap-3">
-          <div className="grid gap-2 border-b border-[var(--rp-border)] pb-3 min-[390px]:grid-cols-2">
+          <div className="grid gap-3 border-b border-[var(--rp-border)] pb-3">
             <div>
               <p className="text-xs font-semibold text-[var(--rp-muted-strong)]">Ride option</p>
-              <p className="mt-1 text-sm font-black text-[var(--rp-text)]">{rideOption.title}</p>
+              <p className="mt-1 text-base font-black leading-6 text-[var(--rp-text)]">{rideOption.title}</p>
             </div>
             <div>
               <p className="text-xs font-semibold text-[var(--rp-muted-strong)]">Taxi type</p>
-              <p className="mt-1 text-sm font-black text-[var(--rp-text)]">{getTaxiTypeLabel(peopleVehicle.taxiType)}</p>
+              <p className="mt-1 text-base font-black leading-6 text-[var(--rp-text)]">{getTaxiTypeLabel(peopleVehicle.taxiType)}</p>
             </div>
           </div>
           {normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote" ? (
@@ -4936,7 +5486,7 @@ function RecurringPodReview({
         }
       >
         {upcomingRides.length > 0 ? (
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          <div className="grid gap-3">
             {upcomingRides.map((occurrence) => (
               <UpcomingRideCard key={occurrence.id} occurrence={occurrence} />
             ))}
@@ -4953,8 +5503,8 @@ function RecurringPodReview({
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)] text-[var(--rp-primary)]">
             <ShieldCheck className="h-5 w-5" />
           </span>
-          <div>
-            <h2 className="text-lg font-black text-[var(--rp-text)]">Each ride is reviewed separately</h2>
+          <div className="min-w-0">
+            <h2 className="text-lg font-black leading-6 text-[var(--rp-text)]">Each ride is reviewed separately</h2>
             <p className="mt-2 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
               Each ride has its own guest lock, quote, proof, dispute window, and settlement state.
             </p>
@@ -5047,6 +5597,8 @@ function ReviewPodStep({
   taxiPartnerPreference,
   stopRequestPolicy,
   stops,
+  currentStep = 4,
+  stepLabels = baseCreateSteps,
   onGenderModeChange,
   onAccessModeChange,
   onBack,
@@ -5063,6 +5615,8 @@ function ReviewPodStep({
   taxiPartnerPreference: TaxiPartnerPreference;
   stopRequestPolicy: StopRequestPolicy;
   stops: RouteStop[];
+  currentStep?: CreateStep;
+  stepLabels?: string[];
   onGenderModeChange: (genderMode: GenderMode) => void;
   onAccessModeChange: (accessMode: AccessMode) => void;
   onBack: () => void;
@@ -5111,7 +5665,7 @@ function ReviewPodStep({
   if (podType === "recurring") {
     return (
       <>
-        <CreatePodTopBar currentStep={4} />
+        <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
 
         <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-7">
           <section className="text-center">
@@ -5176,7 +5730,7 @@ function ReviewPodStep({
 
   return (
     <>
-      <CreatePodTopBar currentStep={4} />
+      <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-7">
         {reviewPanel === previewPanelIndex ? null : (
@@ -5274,7 +5828,7 @@ function ReviewPodStep({
                 setCreateConfirmChecked(false);
                 setShowCreateConfirm(true);
               }}
-              continueLabel={isRideAppSelfSettleReview ? "Create self-settle pod" : "Create taxi pod"}
+              continueLabel={isRideAppSelfSettleReview ? "Create" : "Create taxi pod"}
             />
           </div>
         ) : (
@@ -5317,7 +5871,7 @@ function ReviewPodStep({
   );
 }
 
-function SuccessHero() {
+function SuccessHero({ selfSettle }: { selfSettle: boolean }) {
   return (
     <section className="text-center">
       <div className="relative mx-auto h-48 overflow-hidden rounded-[26px]">
@@ -5334,7 +5888,9 @@ function SuccessHero() {
         All set!
       </h1>
       <p className="mt-3 text-base font-medium text-[var(--rp-muted-strong)]">
-        Your pod is created and ready to fill.
+        {selfSettle
+          ? "Added to My Ride. Track status in My Ride."
+          : "Your pod is created and ready to fill."}
       </p>
     </section>
   );
@@ -5365,7 +5921,89 @@ function PodCreatedSummaryCard({
   stops: RouteStop[];
   stopRequestPolicy: StopRequestPolicy;
 }) {
-  const rows = [
+  const isRideAppSelfSettle = normalizeRideOptionId(peopleVehicle.rideOption) === "ride_app_fixed_quote";
+  const rows = isRideAppSelfSettle ? [
+    {
+      icon: MapPin,
+      label: "Route",
+      value: `${routeFrom} \u2192 ${routeTo}`,
+      aside: <StatusBadge label="Forming" />,
+    },
+    {
+      icon: Smartphone,
+      label: "Ride type",
+      value: "Ride app \u00b7 Self-settle",
+    },
+    {
+      icon: MapPin,
+      label: "Pickup venue",
+      value: peopleVehicle.pickupVenue || "Not specified",
+    },
+    {
+      icon: Smartphone,
+      label: "Ride app",
+      value: getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther),
+    },
+    {
+      icon: CalendarDays,
+      label: "Date & time",
+      value: `${getScheduleDateSummary(dateTime)} \u2022 ${getScheduleTimeSummary(dateTime)}`,
+    },
+    {
+      icon: UsersRound,
+      label: "Seats",
+      value: `${peopleVehicle.seatsAvailable} seats total`,
+    },
+    {
+      icon: DollarSign,
+      label: "Estimated ride app fare",
+      value: "Ride app estimate after booking",
+    },
+    {
+      icon: Clock3,
+      label: "Host books when",
+      value: getRideAppBookingTriggerSummary(peopleVehicle),
+    },
+    ...(peopleVehicle.rideAppBookingTrigger === "minimum_riders_confirmed"
+      ? [
+          {
+            icon: UsersRound,
+            label: "Preferred riders before booking",
+            value: `${peopleVehicle.rideAppMinimumConfirmedRiders} riders`,
+          },
+        ]
+      : []),
+    {
+      icon: Clock3,
+      label: "Payment timing",
+      value: "After ride completion",
+    },
+    {
+      icon: DollarSign,
+      label: "Accepted payment",
+      value: getRideAppAcceptedPaymentMethodsLabel(peopleVehicle.rideAppAcceptedPaymentMethods),
+    },
+    {
+      icon: DollarSign,
+      label: "RidePod join fee",
+      value: "May apply to joined riders",
+    },
+    {
+      icon: DollarSign,
+      label: "Ride fare",
+      value: "Paid after ride directly to booker",
+    },
+    {
+      icon: UsersRound,
+      label: "Split method",
+      value: getSelfSettleSplitMethodLabel(peopleVehicle.splitMethod),
+    },
+    {
+      icon: DollarSign,
+      label: "Payment method after ride",
+      value: getSelfSettlePaymentMethodLabel(peopleVehicle.paymentMethod),
+    },
+  ] : [
     {
       icon: MapPin,
       label: "Route",
@@ -5413,31 +6051,38 @@ function PodCreatedSummaryCard({
   ];
 
   return (
-    <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-      <h2 className="sr-only">Pod summary</h2>
-      <dl>
-        {rows.map((row) => {
-          const Icon = row.icon;
+    <section className="grid gap-3">
+      <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+        <h2 className="sr-only">Pod summary</h2>
+        <dl>
+          {rows.map((row) => {
+            const Icon = row.icon;
 
-          return (
-            <div
-              key={row.label}
-              className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-[var(--rp-border)] py-3 first:pt-0 last:border-b-0 last:pb-0"
-            >
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
-                <Icon className="h-5 w-5" />
-              </span>
-              <div>
-                <dt className="text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted)]">
-                  {row.label}
-                </dt>
-                <dd className="mt-1 text-base font-black text-[var(--rp-text)]">{row.value}</dd>
+            return (
+              <div
+                key={row.label}
+                className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-[var(--rp-border)] py-3 first:pt-0 last:border-b-0 last:pb-0"
+              >
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <div>
+                  <dt className="text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted)]">
+                    {row.label}
+                  </dt>
+                  <dd className="mt-1 text-base font-black text-[var(--rp-text)]">{row.value}</dd>
+                </div>
+                {row.aside ? <div className="shrink-0">{row.aside}</div> : null}
               </div>
-              {row.aside ? <div className="shrink-0">{row.aside}</div> : null}
-            </div>
-          );
-        })}
-      </dl>
+            );
+          })}
+        </dl>
+      </section>
+      {isRideAppSelfSettle ? (
+        <p className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+          Riders join first as interest / seat hold. Chat opens after required riders confirm current details.
+        </p>
+      ) : null}
     </section>
   );
 }
@@ -5451,6 +6096,8 @@ function SuccessStep({
   pricing,
   stops,
   stopRequestPolicy,
+  currentStep = 5,
+  stepLabels = baseCreateSteps,
 }: {
   podType: PodType;
   pickupAddress: string;
@@ -5460,18 +6107,21 @@ function SuccessStep({
   pricing: PricingState;
   stops: RouteStop[];
   stopRequestPolicy: StopRequestPolicy;
+  currentStep?: CreateStep;
+  stepLabels?: string[];
 }) {
   const routeFrom = routeCode(pickupAddress, "USC");
   const routeTo = routeCode(dropoffAddress, "LAX");
+  const isRideAppSelfSettle = normalizeRideOptionId(peopleVehicle.rideOption) === "ride_app_fixed_quote";
 
   return (
     <>
-      <CreatePodTopBar currentStep={5} />
+      <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-8 pt-6">
         <div className="text-center">
           <ScheduleTypeEyebrow podType={podType} />
         </div>
-        <SuccessHero />
+        <SuccessHero selfSettle={isRideAppSelfSettle} />
 
         <div className="mt-7">
           <PodCreatedSummaryCard
@@ -5498,16 +6148,21 @@ function SuccessStep({
             <ArrowRight className="h-5 w-5" />
           </Link>
           <SecondaryButton onClick={() => undefined}>
-            Invite riders
-            <UserPlus className="h-5 w-5" />
+            {isRideAppSelfSettle ? "Share booking details" : "Invite riders"}
+            {isRideAppSelfSettle ? <Smartphone className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
           </SecondaryButton>
+          {isRideAppSelfSettle ? (
+            <p className="text-center text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              You can track this pod in My Ride. Its calendar color updates as the status changes.
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={() => undefined}
             className="mx-auto flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-base font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)]"
           >
             <CalendarPlus className="h-5 w-5" />
-            Add to calendar
+            Add to phone calendar
           </button>
         </div>
       </main>
@@ -5561,9 +6216,15 @@ export function CreatePodChooseType() {
     vehicleType: "Standard taxi",
     priceSource: "Licensed taxi partner quote for the shared pod",
     pickupVenue: "IFC Mall entrance",
-    estimatedRideAppFare: "HK$120-160",
+    rideAppProvider: "uber",
+    rideAppProviderOther: "",
+    estimatedRideAppFare: "",
     splitMethod: "equal_split",
     paymentMethod: "payme",
+    rideAppBookingTrigger: "minimum_riders_confirmed",
+    rideAppMinimumConfirmedRiders: 2,
+    rideAppFarePaymentTiming: "after_ride",
+    rideAppAcceptedPaymentMethods: ["payme", "fps"],
   });
   const [genderMode, setGenderMode] = useState<GenderMode>("mixed");
   const [accessMode, setAccessMode] = useState<AccessMode>("open");
@@ -5576,6 +6237,9 @@ export function CreatePodChooseType() {
     estimatedShare: 21,
     maxFare: 96,
   });
+  const rideAppAccessNotice = user
+    ? getRideAppAccessNotice(getRideAppTrustSummary(user.id))
+    : null;
   const isAirportTrip = isAirportTaxiRoute(pickupAddress, dropoffAddress);
   const displayedTaxiPartnerPreference =
     taxiPartnerPreferenceTouched
@@ -5584,6 +6248,8 @@ export function CreatePodChooseType() {
         ? "airport_luggage_friendly"
         : "standard";
   const displayedStopRequestPolicy = stopRequestPolicyTouched ? stopRequestPolicy : "direct_only";
+  const isRideAppSelfSettle = normalizeRideOptionId(peopleVehicle.rideOption) === "ride_app_fixed_quote";
+  const activeStepLabels = isRideAppSelfSettle ? rideAppCreateSteps : baseCreateSteps;
 
   function handleTaxiPartnerPreferenceChange(preference: TaxiPartnerPreference) {
     setTaxiPartnerPreferenceTouched(true);
@@ -5604,9 +6270,44 @@ export function CreatePodChooseType() {
     return true;
   }
 
+  function completeCreate() {
+    if (isRideAppSelfSettle) {
+      const createdRide = buildCreatedRideAppHomeRide({
+        pickupAddress,
+        dropoffAddress,
+        dateTime,
+        peopleVehicle,
+        accessMode,
+        stopRequestPolicy: displayedStopRequestPolicy,
+      });
+      saveCreatedHomeRide(createdRide);
+      if (user && !createdRide.estimatedRideAppFare?.trim()) {
+        const rideRouteLabel = `${createdRide.fromLabel} -> ${createdRide.toLabel}`;
+        const rideTimeLabel = `${createdRide.dateLabel} - ${createdRide.timeLabel}`;
+        void createUserNotificationOnce({
+          recipientUserId: user.id,
+          actorUserId: user.id,
+          type: "demo_ride_app_estimate_needed",
+          title: "Update your ride app estimate",
+          body: null,
+          relatedPodId: createdRide.id,
+          relatedUrl: `/pods/${createdRide.id}`,
+          metadata: {
+            action: "update_ride_app_estimate",
+            route: rideRouteLabel,
+            rideTime: rideTimeLabel,
+            screenshotOptional: true,
+          },
+        });
+      }
+    }
+
+    setStep(isRideAppSelfSettle ? 6 : 5);
+  }
+
   return (
     <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[430px] flex-col overflow-hidden rounded-[34px] border border-[var(--rp-border)] bg-[var(--rp-bg)] shadow-[var(--rp-shadow-soft)] md:min-h-[760px]">
-      {step === 5 ? (
+      {step === 6 || (!isRideAppSelfSettle && step === 5) ? (
         <SuccessStep
           podType={podType}
           pickupAddress={pickupAddress}
@@ -5616,8 +6317,10 @@ export function CreatePodChooseType() {
           pricing={pricing}
           stops={stops}
           stopRequestPolicy={displayedStopRequestPolicy}
+          currentStep={isRideAppSelfSettle ? 6 : 5}
+          stepLabels={activeStepLabels}
         />
-      ) : step === 4 ? (
+      ) : step === 5 || (!isRideAppSelfSettle && step === 4) ? (
         <ReviewPodStep
           podType={podType}
           pickupAddress={pickupAddress}
@@ -5630,10 +6333,19 @@ export function CreatePodChooseType() {
           taxiPartnerPreference={displayedTaxiPartnerPreference}
           stopRequestPolicy={displayedStopRequestPolicy}
           stops={stops}
+          currentStep={isRideAppSelfSettle ? 5 : 4}
+          stepLabels={activeStepLabels}
           onGenderModeChange={setGenderMode}
           onAccessModeChange={setAccessMode}
+          onBack={() => setStep(isRideAppSelfSettle ? 4 : 3)}
+          onCreate={completeCreate}
+        />
+      ) : step === 4 && isRideAppSelfSettle ? (
+        <RideAppBookingRulesStep
+          peopleVehicle={peopleVehicle}
+          onPeopleVehicleChange={setPeopleVehicle}
           onBack={() => setStep(3)}
-          onCreate={() => setStep(5)}
+          onContinue={() => setStep(5)}
         />
       ) : step === 3 ? (
         <DateTimeStep
@@ -5641,6 +6353,7 @@ export function CreatePodChooseType() {
           pickupAddress={pickupAddress}
           dropoffAddress={dropoffAddress}
           dateTime={dateTime}
+          stepLabels={activeStepLabels}
           onDateTimeChange={setDateTime}
           onBack={() => setStep(2)}
           onContinue={() => setStep(4)}
@@ -5654,7 +6367,8 @@ export function CreatePodChooseType() {
           stops={stops}
           stopRequestPolicy={displayedStopRequestPolicy}
           isAirportTrip={isAirportTrip}
-          isRideAppSelfSettle={normalizeRideOptionId(peopleVehicle.rideOption) === "ride_app_fixed_quote"}
+          isRideAppSelfSettle={isRideAppSelfSettle}
+          stepLabels={activeStepLabels}
           onBack={() => setStep(1)}
           onPickupChange={setPickupAddress}
           onDropoffChange={setDropoffAddress}
@@ -5676,7 +6390,7 @@ export function CreatePodChooseType() {
         />
       ) : step === 1 ? (
         <>
-          <CreatePodTopBar currentStep={1} />
+          <CreatePodTopBar currentStep={1} stepLabels={activeStepLabels} />
 
           <main className="grid flex-1 grid-cols-[minmax(104px,32%)_1fr] px-6 pb-5 pt-7">
             <ThemeAwareHeroStrip />
@@ -5731,7 +6445,9 @@ export function CreatePodChooseType() {
           onBack={() => undefined}
           onContinue={() => setStep(1)}
           currentStep={0}
+          stepLabels={activeStepLabels}
           onRequireAuth={ensureCreateAuth}
+          rideAppAccessNotice={rideAppAccessNotice}
           showBackAction={false}
         />
       )}

@@ -1,5 +1,4 @@
 import { Bell, Lock, MapPin, ShieldCheck } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { SectionHeader } from "@/components/ui";
 
 const settings = [
@@ -34,14 +33,13 @@ export default function SettingsPage() {
     <div className="grid gap-5">
       <SectionHeader eyebrow="Settings" title="Basic app settings" />
       <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
-        <div className="flex items-center justify-between gap-4">
+        <div>
           <div>
             <h2 className="font-bold text-zinc-950">Appearance</h2>
             <p className="mt-1 text-sm leading-6 text-zinc-600">
-              Switch between premium dark mode and travel itinerary light mode.
+              RidePod now uses the premium dark style across the app.
             </p>
           </div>
-          <ThemeToggle />
         </div>
       </div>
       <div className="grid gap-3">

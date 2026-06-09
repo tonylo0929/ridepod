@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/components/ui";
 
-type ThemeVariant = "light" | "dark";
+type ThemeVariant = "dark";
 
 export type SettlementReceiptVerifiedScreenProps = {
   backHref?: string;
@@ -256,7 +256,7 @@ export function SettlementReceiptVerifiedScreen({
   rideTime = "4:42 PM",
   receiptVerified = true,
   settlementReady = true,
-  themeVariant,
+  themeVariant = "dark",
   settlementBreakdownHref,
   finalSplitHref,
   onViewSettlementBreakdown,

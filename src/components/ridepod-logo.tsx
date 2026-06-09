@@ -18,15 +18,7 @@ export function RidePodLogo({
         width={190}
         height={48}
         priority={priority}
-        className={cn("ridepod-theme-image-dark h-full w-auto object-contain", imageClassName)}
-      />
-      <Image
-        src="/ridepod/lightmode-logo-transparent.png"
-        alt="RidePod"
-        width={260}
-        height={72}
-        priority={priority}
-        className={cn("ridepod-theme-image-light h-full w-auto object-contain", imageClassName)}
+        className={cn("h-full w-auto object-contain", imageClassName)}
       />
     </span>
   );

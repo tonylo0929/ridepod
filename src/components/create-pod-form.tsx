@@ -26,7 +26,7 @@ const inputClass =
 
 const genderModeOptions: Array<{ value: PodGenderMode; label: string }> = [
   { value: "women_only", label: "Women-only" },
-  { value: "mixed", label: "Mixed pod" },
+  { value: "mixed", label: "Open pod" },
 ];
 
 const accessModeOptions: Array<{ value: PodAccessMode; label: string }> = [
@@ -130,7 +130,7 @@ function MoneySafetyFields({
             onChange={(event) => updateMoney("minSeatsToBook", Number(event.target.value))}
           />
         </Field>
-        <Field label="Platform fee note">
+        <Field label="RidePod fee note">
           <div className={cn(inputClass, "flex items-center font-semibold text-zinc-950")}>
             {money.ridepodFeeCents}
           </div>

@@ -14,11 +14,19 @@ import {
   WalletCards,
 } from "lucide-react";
 import { cn } from "@/components/ui";
+import { SelfSettleCompletionCard } from "@/components/self-settle-completion-card";
 import type { HomeRide } from "@/lib/home-ride-mock";
+import { formatRideAppEstimatedFarePerPerson } from "@/lib/ride-app-fare-estimate";
 import {
   podDetailQuoteCopy,
+  PickupReadyCards,
   QuoteReadySummary,
+  RoutePlanCard,
+  SelfSettleHostBookingStatusCard,
   StickyPodDetailCta,
+  getCurrentUserIsHost,
+  getCurrentUserIsJoinedSelfSettlePod,
+  isRideAppSelfSettlePod,
   usePodDetailJoinState,
   type PodDetailJoinView,
 } from "@/components/pod-detail-join-state";
@@ -94,29 +102,49 @@ function QuoteStatusCard({
   status,
   acceptedGuestCount,
   requiredGuestCount,
+  routeChangedAfterQuoteReady,
 }: {
   ride: HomeRide;
   status: PodDetailJoinView;
   acceptedGuestCount: number;
   requiredGuestCount: number;
+  routeChangedAfterQuoteReady: boolean;
 }) {
+  const selfSettlePod = isRideAppSelfSettlePod(ride);
   const copy = podDetailQuoteCopy[status];
+  const selfSettleJoined = getCurrentUserIsJoinedSelfSettlePod(ride, status);
+  const selfSettleHost = selfSettlePod && getCurrentUserIsHost(ride);
+  const selfSettleChatOpen = selfSettleHost || selfSettleJoined;
+  const title = selfSettleChatOpen
+    ? ride.bookingDetailsShared
+      ? "Booking details shared"
+      : "Ride details pending"
+      : selfSettlePod && status === "quote_pending" ? "Forming" : copy.title;
+  const text = selfSettleChatOpen
+    ? ride.bookingDetailsShared
+      ? "Review the host's ride details before chat opens for eligible riders."
+      : "Join first as interest / seat hold. Chat opens after required riders confirm current details."
+      : selfSettlePod && status === "quote_pending"
+    ? "Join first as interest / seat hold. RidePod fee is handled when riders confirm ride details."
+    : copy.text;
 
   return (
     <DetailCard className="scroll-mt-28" id="quote-status">
       <div className="flex items-start gap-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] text-[var(--rp-primary)]">
-          <WalletCards className="h-5 w-5" />
+          {selfSettlePod ? <Sparkles className="h-5 w-5" /> : <WalletCards className="h-5 w-5" />}
         </span>
         <div>
-          <h2 className="text-lg font-black text-[var(--rp-text)]">{copy.title}</h2>
-          <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{copy.text}</p>
-          <QuoteReadySummary
-            ride={ride}
-            joinView={status}
-            acceptedGuestCount={acceptedGuestCount}
-            requiredGuestCount={requiredGuestCount}
-          />
+          <h2 className="text-lg font-black text-[var(--rp-text)]">{title}</h2>
+          <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{text}</p>
+          {routeChangedAfterQuoteReady || selfSettlePod ? null : (
+            <QuoteReadySummary
+              ride={ride}
+              joinView={status}
+              acceptedGuestCount={acceptedGuestCount}
+              requiredGuestCount={requiredGuestCount}
+            />
+          )}
         </div>
       </div>
     </DetailCard>
@@ -124,11 +152,32 @@ function QuoteStatusCard({
 }
 
 export function HomePodDetailPage({ ride }: { ride: HomeRide }) {
-  const { seatsUsed, joinView, acceptedGuestCount, requiredGuestCount, lockSeat, acceptQuote, declineQuote } =
-    usePodDetailJoinState(ride);
+  const {
+    seatsUsed,
+    joinView,
+    acceptedGuestCount,
+    requiredGuestCount,
+    attendanceMessage,
+    attendanceError,
+    isCancellingAttendance,
+    canLockSeatAfterCancel,
+    lockSeat,
+    joinSelfSettlePod,
+    leaveSelfSettlePod,
+    acceptQuote,
+    declineQuote,
+    cancelSeat,
+    cancelQuoteAcceptance,
+    requestCancellation,
+    markAtPickup,
+    cancelAttendance,
+  } = usePodDetailJoinState(ride);
   const openSeats = Math.max(ride.seatsTotal - seatsUsed, 0);
   const isRecurring = ride.rideKind === "recurring";
   const airportBadge = airportLabel(ride);
+  const routeChangedAfterQuoteReady = false;
+  const selfSettlePod = isRideAppSelfSettlePod(ride);
+  const rideAppEstimate = selfSettlePod ? formatRideAppEstimatedFarePerPerson(ride) : null;
 
   return (
     <div className="relative -mx-1 min-h-[calc(100vh-7rem)] pb-48">
@@ -147,14 +196,14 @@ export function HomePodDetailPage({ ride }: { ride: HomeRide }) {
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">
-                Shared taxi pod
+                {selfSettlePod ? "Ride app pod" : "Shared taxi pod"}
               </p>
               <h1 className="mt-3 text-3xl font-black leading-tight tracking-tight text-[var(--rp-text)]">
                 {ride.fromLabel} {"\u2192"} {ride.toLabel}
               </h1>
             </div>
             <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
-              {ride.rideKind === "airport" ? <Plane className="h-7 w-7" /> : isRecurring ? <RefreshCcw className="h-7 w-7" /> : <CarFront className="h-7 w-7" />}
+              {ride.rideKind === "airport" ? <Plane className="h-7 w-7" /> : isRecurring ? <RefreshCcw className="h-7 w-7" /> : selfSettlePod ? <Sparkles className="h-7 w-7" /> : <CarFront className="h-7 w-7" />}
             </span>
           </div>
 
@@ -171,21 +220,27 @@ export function HomePodDetailPage({ ride }: { ride: HomeRide }) {
 
           <div className="mt-5 rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-4">
             <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-muted-strong)]">
-              Estimated share
+              {selfSettlePod ? "Total estimate fee" : "Estimated share"}
             </p>
-            <p className="mt-1 text-4xl font-black text-[var(--rp-primary)]">HK${ride.pricePerPerson}</p>
-            <p className="mt-1 text-sm font-semibold text-[var(--rp-muted-strong)]">per person</p>
+            <p className="mt-1 text-4xl font-black text-[var(--rp-primary)]">
+              {selfSettlePod ? rideAppEstimate ?? "Pending" : `HK${ride.pricePerPerson}`}
+            </p>
+            <p className="mt-1 text-sm font-semibold text-[var(--rp-muted-strong)]">
+              {selfSettlePod ? (rideAppEstimate ? "Ride app estimate" : "Ride app estimate pending") : "per person"}
+            </p>
           </div>
 
           <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            Final share is confirmed after the taxi partner quote.
+            {selfSettlePod
+              ? "Estimate shown from the selected ride app. Final ride fare is paid after the ride."
+              : "Final share is confirmed after the taxi partner quote."}
           </p>
         </section>
 
         <section className="flex flex-wrap gap-2">
           <Badge>
-            <CarFront className="h-3.5 w-3.5" />
-            Taxi
+            {selfSettlePod ? <Sparkles className="h-3.5 w-3.5" /> : <CarFront className="h-3.5 w-3.5" />}
+            {selfSettlePod ? "Ride app" : "Taxi"}
           </Badge>
           <Badge tone={isRecurring ? "gold" : "soft"}>
             {isRecurring ? <RefreshCcw className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
@@ -206,7 +261,10 @@ export function HomePodDetailPage({ ride }: { ride: HomeRide }) {
         <DetailCard>
           <h2 className="text-lg font-black text-[var(--rp-text)]">How it works</h2>
           <div className="mt-4 grid gap-3">
-            {["Join the pod", "Taxi partner sends a quote", "Guests accept the quote", "Ride proceeds"].map((step, index) => (
+            {(selfSettlePod
+              ? ["Join pod", "Chat with the group", "Agree on fare split", "Book outside RidePod"]
+              : ["Join the pod", "Taxi partner sends a quote", "Guests accept the quote", "Ride proceeds"]
+            ).map((step, index) => (
               <div key={step} className="flex items-center gap-3">
                 <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[var(--rp-primary)] text-sm font-black text-[var(--rp-primary-text)]">
                   {index + 1}
@@ -216,16 +274,18 @@ export function HomePodDetailPage({ ride }: { ride: HomeRide }) {
             ))}
           </div>
           <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            No payment is needed yet. Guests accept quote details only after the taxi partner quote is ready.
+            {selfSettlePod
+              ? "Coordination-only. RidePod does not collect or protect the final ride fare."
+              : "No payment is needed yet. Guests accept quote details only after the taxi partner quote is ready."}
           </p>
         </DetailCard>
 
+        <RoutePlanCard ride={ride} joinView={joinView} />
+
         <DetailCard>
-          <h2 className="text-lg font-black text-[var(--rp-text)]">Trip details</h2>
-          <div className="mt-2">
-            <DetailRow label="Pickup" value={ride.fromLabel} />
-            <DetailRow label="Dropoff" value={ride.toLabel} />
-            <DetailRow label="Taxi type" value={ride.taxiType} />
+          <h2 className="text-lg font-black text-[var(--rp-text)]">Ride details</h2>
+          <div className="mt-4">
+            <DetailRow label={selfSettlePod ? "Ride type" : "Taxi type"} value={ride.taxiType} />
             <DetailRow label="Luggage" value={ride.luggage} />
             <DetailRow label="Accessibility" value={ride.accessibility} />
             <DetailRow label="Pod type" value={ride.podType} />
@@ -283,6 +343,22 @@ export function HomePodDetailPage({ ride }: { ride: HomeRide }) {
           status={joinView}
           acceptedGuestCount={acceptedGuestCount}
           requiredGuestCount={requiredGuestCount}
+          routeChangedAfterQuoteReady={routeChangedAfterQuoteReady}
+        />
+        {selfSettlePod ? <SelfSettleHostBookingStatusCard ride={ride} /> : null}
+        {selfSettlePod ? (
+          <SelfSettleCompletionCard
+            ride={ride}
+            currentUserRole={ride.currentUserRole ?? null}
+            canSubmit={getCurrentUserIsHost(ride) || getCurrentUserIsJoinedSelfSettlePod(ride, joinView)}
+            chatHref={`/pods/${ride.id}/chat`}
+          />
+        ) : null}
+        <PickupReadyCards
+          ride={ride}
+          joinView={joinView}
+          acceptedGuestCount={acceptedGuestCount}
+          requiredGuestCount={requiredGuestCount}
         />
       </div>
 
@@ -293,8 +369,20 @@ export function HomePodDetailPage({ ride }: { ride: HomeRide }) {
         acceptedGuestCount={acceptedGuestCount}
         requiredGuestCount={requiredGuestCount}
         onLockSeat={lockSeat}
+        onJoinSelfSettle={joinSelfSettlePod}
+        onLeaveSelfSettle={leaveSelfSettlePod}
         onAcceptQuote={acceptQuote}
         onDeclineQuote={declineQuote}
+        onCancelSeat={cancelSeat}
+        onCancelQuoteAcceptance={cancelQuoteAcceptance}
+        onRequestCancellation={requestCancellation}
+        onMarkAtPickup={markAtPickup}
+        onCancelAttendance={cancelAttendance}
+        attendanceMessage={attendanceMessage}
+        attendanceError={attendanceError}
+        canLockSeatAfterCancel={canLockSeatAfterCancel}
+        isCancellingAttendance={isCancellingAttendance}
+        routeChangedAfterQuoteReady={routeChangedAfterQuoteReady}
       />
     </div>
   );

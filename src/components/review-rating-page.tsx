@@ -29,6 +29,9 @@ const completedPod = {
   host: "Maya Chen",
   hostRole: "RidePod host since 2023",
   hostRating: "4.9",
+  taxiPartner: "Golden Taxi Partner",
+  taxiPartnerRole: "Licensed taxi partner",
+  taxiPartnerRating: "4.8",
 };
 
 const feedbackTags = [
@@ -39,13 +42,23 @@ const feedbackTags = [
   "Safe driving",
 ];
 
+const driverFeedbackTags = [
+  "On time",
+  "Safe driving",
+  "Clear pickup",
+  "Helpful with luggage",
+  "Clean taxi",
+];
+
 const defaultComment = "Great ride! Everyone was on time and super friendly. Cool";
 
 export function ReviewRatingPage() {
   const [overallRating, setOverallRating] = useState(5);
   const [hostRating, setHostRating] = useState(5);
+  const [driverRating, setDriverRating] = useState(5);
   const [wouldRideAgain, setWouldRideAgain] = useState(true);
   const [selectedTags, setSelectedTags] = useState<string[]>(["On time", "Friendly"]);
+  const [selectedDriverTags, setSelectedDriverTags] = useState<string[]>(["On time", "Safe driving"]);
   const [comment, setComment] = useState(defaultComment);
   const [issueModalOpen, setIssueModalOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -58,6 +71,12 @@ export function ReviewRatingPage() {
 
   function toggleTag(tag: string) {
     setSelectedTags((current) =>
+      current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag],
+    );
+  }
+
+  function toggleDriverTag(tag: string) {
+    setSelectedDriverTags((current) =>
       current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag],
     );
   }
@@ -79,6 +98,12 @@ export function ReviewRatingPage() {
         </div>
       </ReviewCard>
       <HostRatingCard value={hostRating} onChange={setHostRating} />
+      <TaxiPartnerRatingCard
+        value={driverRating}
+        selectedTags={selectedDriverTags}
+        onChange={setDriverRating}
+        onToggleTag={toggleDriverTag}
+      />
       <ReviewCard>
         <CardTitle icon={UsersRound} title="Would you ride with this group again?" />
         <p className="mt-1 text-sm font-semibold text-[var(--rp-muted)]">
@@ -128,7 +153,7 @@ function ReviewHeader() {
     <header className="grid grid-cols-[44px_1fr_44px] items-center gap-3">
       <Link
         href="/pods"
-        aria-label="Back to My Pods"
+        aria-label="Back to My Ride"
         className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-text)]"
       >
         <ArrowLeft className="h-5 w-5" />
@@ -225,6 +250,72 @@ function HostRatingCard({ value, onChange }: { value: number; onChange: (value: 
           </div>
         </div>
       </div>
+    </ReviewCard>
+  );
+}
+
+function TaxiPartnerRatingCard({
+  value,
+  selectedTags,
+  onChange,
+  onToggleTag,
+}: {
+  value: number;
+  selectedTags: string[];
+  onChange: (value: number) => void;
+  onToggleTag: (tag: string) => void;
+}) {
+  return (
+    <ReviewCard>
+      <CardTitle icon={CarFront} title="Rate your taxi partner" />
+      <p className="mt-1 text-sm font-semibold text-[var(--rp-muted)]">
+        How was the driver and pickup experience?
+      </p>
+      <div className="mt-4 grid grid-cols-[58px_1fr] gap-3">
+        <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)] ring-2 ring-[var(--rp-card)]">
+          <CarFront className="h-7 w-7" />
+        </span>
+        <div>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-lg font-black text-[var(--rp-text)]">{completedPod.taxiPartner}</p>
+              <p className="mt-1 text-sm font-semibold text-[var(--rp-muted)]">{completedPod.taxiPartnerRole}</p>
+            </div>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--rp-card-muted)] px-2.5 py-1 text-xs font-black text-[var(--rp-primary)]">
+              <Star className="h-3.5 w-3.5 fill-current" />
+              {completedPod.taxiPartnerRating}
+            </span>
+          </div>
+          <div className="mt-4">
+            <StarRating value={value} onChange={onChange} label="Taxi partner driver rating" />
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {driverFeedbackTags.map((tag) => {
+          const selected = selectedTags.includes(tag);
+
+          return (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => onToggleTag(tag)}
+              aria-pressed={selected}
+              className={cn(
+                "min-h-10 rounded-full border px-4 text-sm font-black transition",
+                selected
+                  ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)]"
+                  : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
+              )}
+            >
+              {tag}
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-3 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
+        Driver ratings are demo-only in this beta and help RidePod understand taxi partner quality.
+      </p>
     </ReviewCard>
   );
 }
@@ -355,7 +446,7 @@ function ReviewSubmittedState() {
           href="/pods"
           className="mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-[18px] bg-[var(--rp-gradient-primary)] px-5 text-sm font-black text-[var(--rp-primary-text)]"
         >
-          Back to My Pods
+          Back to My Ride
         </Link>
       </section>
     </div>

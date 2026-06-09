@@ -7,7 +7,6 @@ import {
   Stepper,
   StatusBadge,
 } from "@/components/ui";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 const previewSteps = [
   { label: "Type", icon: CarFront },
@@ -27,7 +26,6 @@ export default function ThemePreviewPage() {
             <p className="text-sm font-black uppercase tracking-[0.28em] text-[var(--rp-primary)]">
               Design System
             </p>
-            <ThemeToggle compact />
           </div>
 
           <div className="max-w-xl pb-8">
@@ -37,7 +35,7 @@ export default function ThemePreviewPage() {
               theme base
             </h1>
             <p className="mt-5 max-w-md text-base font-semibold leading-7 text-[var(--rp-muted-strong)] sm:text-lg">
-              Dark executive and light itinerary modes share one token system, one shell, and reusable UI primitives.
+              RidePod uses one premium dark token system, one shell, and reusable UI primitives.
             </p>
           </div>
         </header>

@@ -1,8 +1,105 @@
-export type HomeTab = "all" | "airport" | "one_off" | "recurring";
+import type { TaxiType } from "@/lib/hkTaxiFare";
+import { getActiveRideAppSelfSettleRide } from "@/lib/ride-app-self-settle-scenarios";
+
+export type HomeTab = "all" | "airport" | "one_off" | "recurring" | "quote_ready";
 export type AirportDirection = "to_airport" | "from_airport" | null;
-export type QuoteStatus = "quote_pending" | "quote_ready" | "full" | "joined";
+export type QuoteStatus = "quote_pending" | "quote_ready" | "ready_for_pickup" | "full" | "joined";
+export type RideStatus = "forming" | "locked" | "available" | "cancelled" | "expired";
 export type QuoteAcceptanceStatus = "PENDING" | "ACCEPTED" | "DECLINED";
+export type DriverAssignmentStatus = "PENDING" | "PARTNER_ACCEPTED";
+export type PickupStatus = "WAITING_FOR_PARTNER" | "READY_FOR_PICKUP" | "PARTNER_ARRIVED" | "RIDE_STARTED";
+export type RiderPickupStatus = "NOT_ARRIVED" | "ARRIVED_AT_PICKUP";
 export type RecurringTripPattern = "one_way" | "back_and_forth";
+export type StopRequestPolicy = "direct_only" | "host_approved_before_quote";
+export type RoutePlanStopStatus = "pending_host_approval" | "approved" | "declined";
+
+export type RoutePlanStop = {
+  id: string;
+  label: string;
+  requestedBy?: string;
+  stopType?: "pickup_stop" | "dropoff_stop" | "quick_stop";
+  reason?: string;
+  status: RoutePlanStopStatus;
+};
+
+export type RideAppChecklist = {
+  pickupPoint: boolean;
+  dropoffPoint: boolean;
+  rideApp: boolean;
+  estimatedFare: boolean;
+  booker: boolean;
+  fareSplit: boolean;
+  paymentMethod: boolean;
+  paymentRecipientAfterRide: boolean;
+  meetingTime: boolean;
+  updatedAt?: string | null;
+  updatedBy?: string | null;
+};
+
+export type RideAppRiderConfirmationStatus =
+  | "host"
+  | "joined_interest"
+  | "confirmed"
+  | "pending"
+  | "needs_review"
+  | "seat_hold_expired"
+  | "expired"
+  | "left";
+
+export type RideAppJoinIntentStatus =
+  | "not_joined"
+  | "joined_interest"
+  | "confirmed"
+  | "needs_review"
+  | "seat_hold_expired"
+  | "left";
+
+export type RideAppPlatformFeeStatus = "pending" | "demo_confirmed" | "paid" | "waived" | "failed";
+
+export type RideAppFareEstimateScreenshot = {
+  fileName?: string;
+  previewUrl?: string;
+  addedAt?: string;
+  note?: string;
+} | null;
+
+export type RideAppSelfSettleReportCategory =
+  | "safety_concern"
+  | "harassment_abuse"
+  | "host_no_show"
+  | "rider_no_show"
+  | "host_cancelled_after_confirmed"
+  | "fare_payment_disagreement"
+  | "suspicious_fake_information"
+  | "pressure_to_pay_outside_agreed_method"
+  | "other";
+
+export type RideAppSelfSettleReport = {
+  id: string;
+  podId: string;
+  reporterUserId: string;
+  reporterRole?: HomeRide["currentUserRole"] | null;
+  category: RideAppSelfSettleReportCategory;
+  description: string;
+  amountInvolved?: string | null;
+  paymentMethodInvolved?: string | null;
+  status: "under_review";
+  submittedAt: string;
+};
+
+export type RideAppHostCancellationStatus =
+  | "active"
+  | "host_cancelled"
+  | "host_replacement_needed"
+  | "replacement_booker_selected"
+  | "cancelled";
+
+export type RideAppFeeResolution =
+  | "not_confirmed"
+  | "remains_active"
+  | "restore_waiver"
+  | "restore_in_live_version"
+  | "review_needed";
 
 export type HomeRide = {
   id: string;
@@ -16,28 +113,151 @@ export type HomeRide = {
   seatsTotal: number;
   pricePerPerson: number;
   rideKind: "airport" | "one_off" | "recurring";
+  rideService?: "taxi" | "ride_app";
+  rideCategory?: "taxi" | "taxi_partner_quote" | "taxi_meter" | "ride_app_self_settle";
+  selfSettleRiskAccepted?: boolean;
+  bookingDetailsShared?: boolean;
+  rideAppBookingDetailsConfirmed?: boolean;
+  rideAppBookingDetailsConfirmedAt?: string | null;
+  rideAppBookingDetailsConfirmedBy?: string | null;
+  rideAppBookingDetailsFinalized?: boolean;
+  rideAppBookingDetailsFinalizedAt?: string | null;
+  rideAppBookingDetailsFinalizedBy?: string | null;
+  confirmationDeadlineLabel?: string;
+  confirmationDeadlineAt?: string | null;
+  currentUserJoinIntentStatus?: RideAppJoinIntentStatus;
+  currentUserConfirmationExpired?: boolean;
+  seatHoldReleasedAt?: string | null;
+  seatHoldExpiredAt?: string | null;
+  bookingDetailsVersion?: number;
+  bookingDetailsUpdated?: boolean;
+  bookingDetailsLastMeaningfulUpdate?:
+    | null
+    | "fare_estimate"
+    | "route"
+    | "pickup"
+    | "dropoff"
+    | "pickup_time"
+    | "ride_app"
+    | "split_method"
+    | "payment_method"
+    | "stop_added";
+  lastBookingDetailsUpdateReason?: string | null;
+  currentUserConfirmedBookingDetailsVersion?: number | null;
+  rideAppDetailVersion?: number;
+  rideAppCurrentDetailVersion?: number;
+  rideAppBookingDetails?: {
+    estimatedFare?: string;
+  };
+  currentUserRideAppDetailVersionConfirmed?: number;
+  rideAppConfirmBy?: string | null;
+  rideAppConfirmByUpdatedAt?: string | null;
+  rideAppFareEstimateScreenshotName?: string | null;
+  rideAppFareEstimateScreenshotAddedAt?: string | null;
+  fareEstimateScreenshot?: RideAppFareEstimateScreenshot;
+  rideAppAcknowledgements?: Array<{ userId: string; acknowledgedAt: string }>;
+  rideAppChecklist?: RideAppChecklist;
+  rideAppPodStatus?:
+    | "open"
+    | "booking_details_needed"
+    | "pending_host_acceptance"
+    | "booking_details_shared"
+    | "awaiting_rider_confirmation"
+    | "needs_review"
+    | "waiting_for_required_riders"
+    | "chat_unlocked"
+    | "ready_to_book"
+    | "seat_hold_expired"
+    | "ride_booked"
+    | "settlement_pending"
+    | "completed"
+    | "cancelled"
+    | "expired";
+  // TODO: Persist these Ride app booking/payment rules in backend pod metadata when create flow writes to storage.
+  rideAppBookingTrigger?: "all_seats_confirmed" | "minimum_riders_confirmed";
+  rideAppMinimumConfirmedRiders?: number;
+  rideAppRequiredConfirmations?: number;
+  rideAppConfirmedRiderIds?: string[];
+  rideAppHostCancellationStatus?: RideAppHostCancellationStatus;
+  rideAppHostCancellationReason?: string | null;
+  rideAppReplacementBookerId?: string | null;
+  rideAppReplacementBookerName?: string | null;
+  rideAppReplacementDeadlineLabel?: string | null;
+  rideAppFeeResolution?: RideAppFeeResolution;
+  rideAppHostCancellationActivity?: string[];
+  chatUnlockedAt?: string | null;
+  rideAppFarePaymentTiming?: "after_ride";
+  rideAppProviderName?: string;
+  rideAppSplitMethod?: string;
+  rideAppFareEstimateStatus?: "pending" | "accepted";
+  rideAppAcceptedPaymentMethods?: string[];
   airportDirection: AirportDirection;
-  status: "forming" | "locked" | "available";
+  status: RideStatus;
   quoteStatus: QuoteStatus;
+  currentUserRole?: "host" | "rider" | "joined_rider" | "taxi_partner";
+  currentUserName?: string;
   currentUserJoined?: boolean;
+  currentUserBookingDetailsConfirmed?: boolean;
+  platformFeeStatus?: RideAppPlatformFeeStatus;
+  selfSettleConfirmationStatus?: "pending" | "confirmed" | "needs_review" | "expired";
+  confirmedRiderCount?: number;
+  joinedRiderCount?: number;
+  rideAppConfirmedRiderCount?: number;
+  riderConfirmations?: Array<{
+    name: string;
+    role: "host" | "rider";
+    status: RideAppRiderConfirmationStatus;
+    isCurrentUser?: boolean;
+    confirmedDetailVersion?: number;
+    confirmedBookingDetailsVersion?: number;
+    confirmBy?: string | null;
+    seatHoldExpiredAt?: string | null;
+  }>;
   currentUserQuoteAccepted?: boolean;
   guestAcceptanceStatus?: QuoteAcceptanceStatus;
   mockPaymentState?: "NOT_STARTED" | "DEMO_ACCEPTED" | "MOCK_ACCEPTED";
+  allGuestsAccepted?: boolean;
+  driverAssignmentStatus?: DriverAssignmentStatus;
+  pickupStatus?: PickupStatus;
+  riderPickupStatus?: RiderPickupStatus;
   taxiPartnerName?: string;
   quoteAmountCents?: number;
   quoteAboveCap?: boolean;
+  routeChangeRequiresNewQuote?: boolean;
+  quoteUpdatedAfterRouteChange?: boolean;
   bookingFareCapCents?: number;
   quoteExpiresInMinutes?: number;
   acceptedGuestCount?: number;
   requiredGuestCount?: number;
   taxiType: string;
+  platformFee?: number;
+  estimatedRideAppFare?: string;
+  rideAppEstimatedFarePerPerson?: number | null;
+  rideAppEstimatedFareTotal?: number | null;
+  rideAppEstimatedFareCurrency?: "HKD";
+  rideAppEstimatedFareUpdatedBy?: string | null;
+  rideAppEstimatedFareUpdatedAt?: string | null;
+  rideAppEstimatedFareNote?: string | null;
+  splitMethod?: string;
+  paymentMethod?: string;
+  fareReferenceTaxiType?: TaxiType;
+  fareReferenceDistanceMeters?: number;
+  ridePodProtectionFeePerSeat?: number;
+  fareReferenceTollAmount?: number;
   luggage: string;
   accessibility: string;
-  podType: "Mixed pod" | "Women-only" | "Verified-only" | "Invite-only";
+  podType: "Open pod" | "Women-only" | "Verified-only" | "Invite-only";
   hostName: string;
   joinedRiders: string[];
   pickupLabel?: string;
+  pickupTime?: string;
   dropoffLabel?: string;
+  stopRequestPolicy?: StopRequestPolicy;
+  proposedStops?: RoutePlanStop[];
+  approvedStops?: RoutePlanStop[];
+  declinedStops?: RoutePlanStop[];
+  selectedRideDate?: string;
+  direction?: "Outbound" | "Return";
   scheduleLabel?: string;
   weekdays?: string[];
   tripPattern?: RecurringTripPattern;
@@ -65,628 +285,19 @@ export const districtOptions = [
   "Sha Tin",
   "Tsuen Wan",
   "Tung Chung",
-  "HK Airport",
+  "Airport",
 ];
 
 export const districtGroups: Record<string, string[]> = {
   "Hong Kong Island": ["Central", "Admiralty", "Wan Chai", "Causeway Bay"],
   Kowloon: ["Tsim Sha Tsui", "Mong Kok", "Jordan"],
   "New Territories": ["Sha Tin", "Tsuen Wan", "Tung Chung"],
-  "HK Airport": ["HK Airport", "Hong Kong International Airport", "Airport", "Chek Lap Kok"],
+  Airport: ["Airport", "Hong Kong International Airport", "Chek Lap Kok"],
 };
 
-export const homeRides: HomeRide[] = [
-  {
-    id: "normal-central-tst-quote-ready",
-    fromDistrict: "Central",
-    toDistrict: "Tsim Sha Tsui",
-    fromLabel: "Central",
-    toLabel: "Tsim Sha Tsui",
-    dateLabel: "Today, 24 May",
-    timeLabel: "7:30 PM",
-    seatsUsed: 4,
-    seatsTotal: 4,
-    pricePerPerson: 66,
-    rideKind: "one_off",
-    airportDirection: null,
-    status: "locked",
-    quoteStatus: "quote_ready",
-    currentUserJoined: true,
-    currentUserQuoteAccepted: false,
-    guestAcceptanceStatus: "PENDING",
-    mockPaymentState: "NOT_STARTED",
-    taxiPartnerName: "Demo Taxi Partner",
-    quoteAmountCents: 24000,
-    quoteExpiresInMinutes: 15,
-    acceptedGuestCount: 1,
-    requiredGuestCount: 4,
-    taxiType: "4-seater",
-    luggage: "Small x 1",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Tony",
-    joinedRiders: ["Ava", "Maya", "You"],
-    pickupLabel: "IFC Mall, Central",
-    dropoffLabel: "K11 Musea, Tsim Sha Tsui",
-  },
-  {
-    id: "recurring-wan-chai-mong-kok",
-    fromDistrict: "Wan Chai",
-    toDistrict: "Mong Kok",
-    fromLabel: "Wan Chai",
-    toLabel: "Mong Kok",
-    dateLabel: "Every Mon / Fri",
-    timeLabel: "7:45 AM",
-    seatsUsed: 3,
-    seatsTotal: 4,
-    pricePerPerson: 78,
-    rideKind: "recurring",
-    airportDirection: null,
-    status: "forming",
-    quoteStatus: "quote_pending",
-    taxiType: "4-seater",
-    luggage: "Small x 1",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Marcus",
-    joinedRiders: ["Hana", "Will"],
-    pickupLabel: "Wan Chai MTR Exit A",
-    dropoffLabel: "Mong Kok Station",
-    scheduleLabel: "Every Mon / Fri \u00b7 7:45 AM",
-    weekdays: ["mon", "fri"],
-    tripPattern: "one_way",
-    startLabel: "May 27, 2026",
-    endLabel: "After 8 rides",
-    repeatsPattern: "Every Mon / Fri",
-    nextRideLabel: "Mon \u00b7 7:45 AM",
-    upcomingRides: [
-      { date: "Mon, May 27", time: "7:45 AM", label: "Wan Chai \u2192 Mong Kok" },
-      { date: "Fri, May 31", time: "7:45 AM", label: "Wan Chai \u2192 Mong Kok" },
-      { date: "Mon, Jun 3", time: "7:45 AM", label: "Wan Chai \u2192 Mong Kok" },
-    ],
-  },
-  {
-    id: "recurring-central-causeway-bay-return",
-    fromDistrict: "Central",
-    toDistrict: "Causeway Bay",
-    fromLabel: "Central",
-    toLabel: "Causeway Bay",
-    dateLabel: "Every weekday",
-    timeLabel: "8:30 AM / 6:00 PM",
-    seatsUsed: 2,
-    seatsTotal: 4,
-    pricePerPerson: 82,
-    rideKind: "recurring",
-    airportDirection: null,
-    status: "forming",
-    quoteStatus: "quote_pending",
-    taxiType: "4-seater",
-    luggage: "Work bags",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Grace",
-    joinedRiders: ["Owen"],
-    pickupLabel: "Central Station Exit K",
-    dropoffLabel: "Causeway Bay Times Square",
-    scheduleLabel: "Every weekday \u00b7 8:30 AM / 6:00 PM",
-    weekdays: ["mon", "tue", "wed", "thu", "fri"],
-    tripPattern: "back_and_forth",
-    startLabel: "May 27, 2026",
-    endLabel: "After 10 rides",
-    outboundLabel: "8:30 AM \u00b7 Central \u2192 Causeway Bay",
-    returnLabel: "6:00 PM \u00b7 Causeway Bay \u2192 Central",
-    repeatsPattern: "Every weekday",
-    nextRideLabel: "Mon \u00b7 8:30 AM",
-    upcomingRides: [
-      { date: "Mon, May 27", time: "8:30 AM", label: "Outbound \u00b7 Central \u2192 Causeway Bay" },
-      { date: "Mon, May 27", time: "6:00 PM", label: "Return \u00b7 Causeway Bay \u2192 Central" },
-      { date: "Tue, May 28", time: "8:30 AM", label: "Outbound \u00b7 Central \u2192 Causeway Bay" },
-      { date: "Tue, May 28", time: "6:00 PM", label: "Return \u00b7 Causeway Bay \u2192 Central" },
-    ],
-  },
-  {
-    id: "airport-t1-central",
-    fromDistrict: "HK Airport",
-    toDistrict: "Central",
-    fromLabel: "Airport (T1)",
-    toLabel: "Central",
-    dateLabel: "25 May (Tomorrow)",
-    timeLabel: "9:00 AM",
-    seatsUsed: 1,
-    seatsTotal: 4,
-    pricePerPerson: 110,
-    rideKind: "airport",
-    airportDirection: "from_airport",
-    status: "forming",
-    quoteStatus: "quote_pending",
-    taxiType: "6-seater",
-    luggage: "Large x 2",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Chris",
-    joinedRiders: [],
-    pickupLabel: "Hong Kong International Airport\nTerminal 1, Arrivals Hall A",
-    dropoffLabel: "IFC Mall, Central",
-  },
-  {
-    id: "kowloon-tong-airport",
-    fromDistrict: "Kowloon",
-    toDistrict: "HK Airport",
-    fromLabel: "Kowloon Tong",
-    toLabel: "HK International Airport",
-    dateLabel: "26 May",
-    timeLabel: "6:45 AM",
-    seatsUsed: 2,
-    seatsTotal: 4,
-    pricePerPerson: 125,
-    rideKind: "airport",
-    airportDirection: "to_airport",
-    status: "forming",
-    quoteStatus: "quote_pending",
-    taxiType: "6-seater",
-    luggage: "Large x 2",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Rachel",
-    joinedRiders: ["Kris"],
-    pickupLabel: "Kowloon Tong MTR Station, Exit D",
-    dropoffLabel: "Hong Kong International Airport\nTerminal 1, Departures",
-  },
-  {
-    id: "normal-central-tst",
-    fromDistrict: "Central",
-    toDistrict: "Tsim Sha Tsui",
-    fromLabel: "Central",
-    toLabel: "Tsim Sha Tsui",
-    dateLabel: "Today, 24 May",
-    timeLabel: "7:30 PM",
-    seatsUsed: 2,
-    seatsTotal: 4,
-    pricePerPerson: 68,
-    rideKind: "one_off",
-    airportDirection: null,
-    status: "forming",
-    quoteStatus: "quote_pending",
-    taxiType: "4-seater",
-    luggage: "Small x 1",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Tony",
-    joinedRiders: ["Ava"],
-    pickupLabel: "IFC Mall, Central",
-    dropoffLabel: "K11 Musea, Tsim Sha Tsui",
-  },
-  {
-    id: "central-airport-today",
-    fromDistrict: "Central",
-    toDistrict: "HK Airport",
-    fromLabel: "Central",
-    toLabel: "HK Airport",
-    dateLabel: "Today",
-    timeLabel: "3:00 PM",
-    seatsUsed: 2,
-    seatsTotal: 4,
-    pricePerPerson: 155,
-    rideKind: "airport",
-    airportDirection: "to_airport",
-    status: "forming",
-    quoteStatus: "quote_pending",
-    taxiType: "Standard 4-seat taxi",
-    luggage: "2 cabin bags",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Tony",
-    joinedRiders: ["Maya"],
-  },
-  {
-    id: "airport-central-evening",
-    fromDistrict: "HK Airport",
-    toDistrict: "Central",
-    fromLabel: "HK Airport",
-    toLabel: "Central",
-    dateLabel: "Today",
-    timeLabel: "6:30 PM",
-    seatsUsed: 1,
-    seatsTotal: 4,
-    pricePerPerson: 170,
-    rideKind: "airport",
-    airportDirection: "from_airport",
-    status: "available",
-    quoteStatus: "quote_ready",
-    taxiType: "Airport / luggage-friendly taxi",
-    luggage: "3 bags",
-    accessibility: "No special access needed",
-    podType: "Verified-only",
-    hostName: "Chris",
-    joinedRiders: [],
-  },
-  {
-    id: "jordan-wanchai",
-    fromDistrict: "Jordan",
-    toDistrict: "Wan Chai",
-    fromLabel: "Jordan",
-    toLabel: "Wan Chai",
-    dateLabel: "Tomorrow",
-    timeLabel: "8:30 AM",
-    seatsUsed: 3,
-    seatsTotal: 4,
-    pricePerPerson: 70,
-    rideKind: "one_off",
-    airportDirection: null,
-    status: "forming",
-    quoteStatus: "quote_pending",
-    taxiType: "Standard 4-seat taxi",
-    luggage: "Light bags",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Jade",
-    joinedRiders: ["Ryan", "Ivy"],
-  },
-  {
-    id: "central-tst-lunch",
-    fromDistrict: "Central",
-    toDistrict: "Tsim Sha Tsui",
-    fromLabel: "Central",
-    toLabel: "Tsim Sha Tsui",
-    dateLabel: "Today",
-    timeLabel: "1:15 PM",
-    seatsUsed: 2,
-    seatsTotal: 4,
-    pricePerPerson: 64,
-    rideKind: "one_off",
-    airportDirection: null,
-    status: "available",
-    quoteStatus: "quote_pending",
-    taxiType: "Compact 4-seat taxi",
-    luggage: "No luggage",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Tony",
-    joinedRiders: ["Ava"],
-  },
-  {
-    id: "admiralty-airport-afternoon",
-    fromDistrict: "Admiralty",
-    toDistrict: "HK Airport",
-    fromLabel: "Admiralty",
-    toLabel: "HK Airport",
-    dateLabel: "Today",
-    timeLabel: "4:45 PM",
-    seatsUsed: 3,
-    seatsTotal: 4,
-    pricePerPerson: 160,
-    rideKind: "airport",
-    airportDirection: "to_airport",
-    status: "forming",
-    quoteStatus: "full",
-    taxiType: "Airport / luggage-friendly taxi",
-    luggage: "4 bags",
-    accessibility: "No special access needed",
-    podType: "Invite-only",
-    hostName: "Sophie",
-    joinedRiders: ["Ben", "Nora"],
-  },
-  {
-    id: "airport-wanchai-late",
-    fromDistrict: "HK Airport",
-    toDistrict: "Wan Chai",
-    fromLabel: "HK Airport",
-    toLabel: "Wan Chai",
-    dateLabel: "Tonight",
-    timeLabel: "10:15 PM",
-    seatsUsed: 2,
-    seatsTotal: 4,
-    pricePerPerson: 168,
-    rideKind: "airport",
-    airportDirection: "from_airport",
-    status: "available",
-    quoteStatus: "joined",
-    taxiType: "Airport / luggage-friendly taxi",
-    luggage: "2 bags",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Leo",
-    joinedRiders: ["You"],
-  },
-  {
-    id: "causewaybay-airport-morning",
-    fromDistrict: "Causeway Bay",
-    toDistrict: "HK Airport",
-    fromLabel: "Causeway Bay",
-    toLabel: "HK Airport",
-    dateLabel: "Tomorrow",
-    timeLabel: "7:00 AM",
-    seatsUsed: 1,
-    seatsTotal: 4,
-    pricePerPerson: 158,
-    rideKind: "airport",
-    airportDirection: "to_airport",
-    status: "forming",
-    quoteStatus: "quote_pending",
-    taxiType: "Standard 4-seat taxi",
-    luggage: "1 cabin bag",
-    accessibility: "No special access needed",
-    podType: "Women-only",
-    hostName: "Mina",
-    joinedRiders: [],
-  },
-  {
-    id: "central-mongkok-evening",
-    fromDistrict: "Central",
-    toDistrict: "Mong Kok",
-    fromLabel: "Central",
-    toLabel: "Mong Kok",
-    dateLabel: "Today",
-    timeLabel: "6:20 PM",
-    seatsUsed: 1,
-    seatsTotal: 4,
-    pricePerPerson: 72,
-    rideKind: "one_off",
-    airportDirection: null,
-    status: "forming",
-    quoteStatus: "quote_ready",
-    taxiType: "Standard 4-seat taxi",
-    luggage: "Light bags",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Ken",
-    joinedRiders: [],
-  },
-  {
-    id: "causewaybay-jordan-dinner",
-    fromDistrict: "Causeway Bay",
-    toDistrict: "Jordan",
-    fromLabel: "Causeway Bay",
-    toLabel: "Jordan",
-    dateLabel: "Tomorrow",
-    timeLabel: "7:40 PM",
-    seatsUsed: 2,
-    seatsTotal: 4,
-    pricePerPerson: 68,
-    rideKind: "one_off",
-    airportDirection: null,
-    status: "available",
-    quoteStatus: "quote_pending",
-    taxiType: "Compact 4-seat taxi",
-    luggage: "No luggage",
-    accessibility: "No special access needed",
-    podType: "Verified-only",
-    hostName: "Ella",
-    joinedRiders: ["Sam"],
-  },
-  {
-    id: "shatin-central",
-    fromDistrict: "Sha Tin",
-    toDistrict: "Central",
-    fromLabel: "Sha Tin",
-    toLabel: "Central",
-    dateLabel: "Every Tue / Thu",
-    timeLabel: "8:00 AM",
-    seatsUsed: 2,
-    seatsTotal: 4,
-    pricePerPerson: 95,
-    rideKind: "recurring",
-    airportDirection: null,
-    status: "locked",
-    quoteStatus: "quote_ready",
-    taxiType: "Standard 4-seat taxi",
-    luggage: "Work bags",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Grace",
-    joinedRiders: ["Owen"],
-    repeatsPattern: "Every Tue / Thu",
-    nextRideLabel: "Tue · 8:00 AM",
-    upcomingRides: [
-      { date: "Tue", time: "8:00 AM", label: "Sha Tin to Central" },
-      { date: "Thu", time: "8:00 AM", label: "Sha Tin to Central" },
-      { date: "Next Tue", time: "8:00 AM", label: "Sha Tin to Central" },
-    ],
-  },
-  {
-    id: "wanchai-mongkok-recurring",
-    fromDistrict: "Wan Chai",
-    toDistrict: "Mong Kok",
-    fromLabel: "Wan Chai",
-    toLabel: "Mong Kok",
-    dateLabel: "Every Mon / Fri",
-    timeLabel: "7:45 AM",
-    seatsUsed: 3,
-    seatsTotal: 4,
-    pricePerPerson: 78,
-    rideKind: "recurring",
-    airportDirection: null,
-    status: "forming",
-    quoteStatus: "quote_pending",
-    taxiType: "Standard 4-seat taxi",
-    luggage: "Work bags",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Marcus",
-    joinedRiders: ["Hana", "Will"],
-    repeatsPattern: "Every Mon / Fri",
-    nextRideLabel: "Fri · 7:45 AM",
-    upcomingRides: [
-      { date: "Fri", time: "7:45 AM", label: "Wan Chai to Mong Kok" },
-      { date: "Mon", time: "7:45 AM", label: "Wan Chai to Mong Kok" },
-      { date: "Next Fri", time: "7:45 AM", label: "Wan Chai to Mong Kok" },
-    ],
-  },
-  {
-    id: "central-tst-recurring",
-    fromDistrict: "Central",
-    toDistrict: "Tsim Sha Tsui",
-    fromLabel: "Central",
-    toLabel: "Tsim Sha Tsui",
-    dateLabel: "Every Tue / Thu",
-    timeLabel: "8:10 AM",
-    seatsUsed: 2,
-    seatsTotal: 4,
-    pricePerPerson: 66,
-    rideKind: "recurring",
-    airportDirection: null,
-    status: "forming",
-    quoteStatus: "quote_pending",
-    taxiType: "Compact 4-seat taxi",
-    luggage: "No luggage",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Natalie",
-    joinedRiders: ["Jay"],
-    repeatsPattern: "Every Tue / Thu",
-    nextRideLabel: "Thu · 8:10 AM",
-    upcomingRides: [
-      { date: "Thu", time: "8:10 AM", label: "Central to Tsim Sha Tsui" },
-      { date: "Tue", time: "8:10 AM", label: "Central to Tsim Sha Tsui" },
-    ],
-  },
-  {
-    id: "admiralty-jordan-recurring",
-    fromDistrict: "Admiralty",
-    toDistrict: "Jordan",
-    fromLabel: "Admiralty",
-    toLabel: "Jordan",
-    dateLabel: "Every weekday",
-    timeLabel: "6:05 PM",
-    seatsUsed: 3,
-    seatsTotal: 4,
-    pricePerPerson: 74,
-    rideKind: "recurring",
-    airportDirection: null,
-    status: "locked",
-    quoteStatus: "full",
-    taxiType: "Standard 4-seat taxi",
-    luggage: "Light bags",
-    accessibility: "No special access needed",
-    podType: "Verified-only",
-    hostName: "Derek",
-    joinedRiders: ["Yuki", "Ana"],
-    repeatsPattern: "Every weekday",
-    nextRideLabel: "Tomorrow · 6:05 PM",
-    upcomingRides: [
-      { date: "Tomorrow", time: "6:05 PM", label: "Admiralty to Jordan" },
-      { date: "Fri", time: "6:05 PM", label: "Admiralty to Jordan" },
-      { date: "Mon", time: "6:05 PM", label: "Admiralty to Jordan" },
-    ],
-  },
-  {
-    id: "tst-airport",
-    fromDistrict: "Tsim Sha Tsui",
-    toDistrict: "HK Airport",
-    fromLabel: "Tsim Sha Tsui",
-    toLabel: "HK Airport",
-    dateLabel: "Tomorrow",
-    timeLabel: "11:00 AM",
-    seatsUsed: 2,
-    seatsTotal: 4,
-    pricePerPerson: 150,
-    rideKind: "airport",
-    airportDirection: "to_airport",
-    status: "forming",
-    quoteStatus: "quote_pending",
-    taxiType: "Airport / luggage-friendly taxi",
-    luggage: "2 bags",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Rachel",
-    joinedRiders: ["Kris"],
-  },
-  {
-    id: "mongkok-tsuenwan",
-    fromDistrict: "Mong Kok",
-    toDistrict: "Tsuen Wan",
-    fromLabel: "Mong Kok",
-    toLabel: "Tsuen Wan",
-    dateLabel: "Fri",
-    timeLabel: "7:15 PM",
-    seatsUsed: 2,
-    seatsTotal: 4,
-    pricePerPerson: 82,
-    rideKind: "one_off",
-    airportDirection: null,
-    status: "available",
-    quoteStatus: "joined",
-    taxiType: "Standard 4-seat taxi",
-    luggage: "Light bags",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Aaron",
-    joinedRiders: ["You"],
-  },
-  {
-    id: "tsuenwan-airport",
-    fromDistrict: "Tsuen Wan",
-    toDistrict: "HK Airport",
-    fromLabel: "Tsuen Wan",
-    toLabel: "HK Airport",
-    dateLabel: "Sat",
-    timeLabel: "9:30 AM",
-    seatsUsed: 2,
-    seatsTotal: 6,
-    pricePerPerson: 130,
-    rideKind: "airport",
-    airportDirection: "to_airport",
-    status: "forming",
-    quoteStatus: "quote_pending",
-    taxiType: "6-seat taxi",
-    luggage: "4 bags",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Vivian",
-    joinedRiders: ["Noah"],
-  },
-  {
-    id: "shatin-tst-weekend",
-    fromDistrict: "Sha Tin",
-    toDistrict: "Tsim Sha Tsui",
-    fromLabel: "Sha Tin",
-    toLabel: "Tsim Sha Tsui",
-    dateLabel: "Sat",
-    timeLabel: "2:00 PM",
-    seatsUsed: 4,
-    seatsTotal: 6,
-    pricePerPerson: 88,
-    rideKind: "one_off",
-    airportDirection: null,
-    status: "locked",
-    quoteStatus: "quote_ready",
-    taxiType: "6-seat taxi",
-    luggage: "Light bags",
-    accessibility: "No special access needed",
-    podType: "Invite-only",
-    hostName: "Calvin",
-    joinedRiders: ["Bea", "Alex", "Ming"],
-  },
-  {
-    id: "tungchung-admiralty",
-    fromDistrict: "Tung Chung",
-    toDistrict: "Admiralty",
-    fromLabel: "Tung Chung",
-    toLabel: "Admiralty",
-    dateLabel: "Every Mon / Wed",
-    timeLabel: "8:20 AM",
-    seatsUsed: 3,
-    seatsTotal: 6,
-    pricePerPerson: 105,
-    rideKind: "recurring",
-    airportDirection: null,
-    status: "forming",
-    quoteStatus: "quote_pending",
-    taxiType: "6-seat taxi",
-    luggage: "Work bags",
-    accessibility: "No special access needed",
-    podType: "Mixed pod",
-    hostName: "Liam",
-    joinedRiders: ["Mei", "Jon"],
-    repeatsPattern: "Every Mon / Wed",
-    nextRideLabel: "Mon · 8:20 AM",
-    upcomingRides: [
-      { date: "Mon", time: "8:20 AM", label: "Tung Chung to Admiralty" },
-      { date: "Wed", time: "8:20 AM", label: "Tung Chung to Admiralty" },
-      { date: "Next Mon", time: "8:20 AM", label: "Tung Chung to Admiralty" },
-    ],
-  },
-];
+const activeRideAppSelfSettleRide = getActiveRideAppSelfSettleRide();
+
+export const homeRides: HomeRide[] = activeRideAppSelfSettleRide ? [activeRideAppSelfSettleRide] : [];
 
 export function matchesDistrict(selectedDistrict: string, rideDistrict: string) {
   if (selectedDistrict === "All districts") return true;
@@ -698,6 +309,9 @@ export function matchesDistrict(selectedDistrict: string, rideDistrict: string) 
 export function rideMatchesTab(tab: HomeTab, ride: HomeRide) {
   if (tab === "all") return true;
   if (tab === "airport") return ride.rideKind === "airport";
+  if (tab === "quote_ready") {
+    return ride.quoteStatus === "quote_ready" && ride.currentUserQuoteAccepted !== true;
+  }
   return ride.rideKind === tab;
 }
 

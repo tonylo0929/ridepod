@@ -4,9 +4,15 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 
 export type RidePodProfileRow = {
   id: string;
+  account_name: string | null;
   display_name: string | null;
   email: string | null;
+  avatar_url: string | null;
+  preferred_name: string | null;
   phone: string | null;
+  home_district: string | null;
+  public_bio: string | null;
+  trust_review_status: string | null;
   gender_identity: "FEMALE" | "MALE" | "NON_BINARY" | "PREFER_NOT_TO_SAY" | "UNKNOWN" | string | null;
   gender_verified_at: string | null;
   verification_status: string | null;
@@ -71,10 +77,14 @@ export type RidePodMemberRow = {
   user_id: string | null;
   role: string;
   member_state: string;
+  status: string;
   max_charge_cents: number | null;
   final_charge_cents: number | null;
   joined_at: string | null;
+  cancelled_at: string | null;
   locked_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 };
 
 export type RidePodSettlementItemRow = {
@@ -162,6 +172,39 @@ export type RidePodPaymentEventRow = {
   created_at: string | null;
 };
 
+export type RidePodUserNotificationRow = {
+  id: string;
+  recipient_user_id: string;
+  actor_user_id: string | null;
+  type: string;
+  title: string;
+  body: string | null;
+  related_pod_id: string | null;
+  related_url: string | null;
+  metadata: Json;
+  read_at: string | null;
+  created_at: string | null;
+};
+
+export type RidePodLiveUpdateRow = {
+  id: string;
+  pod_id: string;
+  user_id: string | null;
+  update_type: string;
+  message: string | null;
+  metadata: Json;
+  created_at: string | null;
+};
+
+export type RidePodMemberStatusRow = {
+  id: string;
+  pod_id: string;
+  user_id: string;
+  status: string;
+  message: string | null;
+  updated_at: string | null;
+};
+
 type TableDefinition<Row> = {
   Row: Row;
   Insert: Partial<Row>;
@@ -182,6 +225,9 @@ export type Database = {
       admin_review_cases: TableDefinition<RidePodAdminReviewCaseRow>;
       pod_events: TableDefinition<RidePodEventRow>;
       payment_events: TableDefinition<RidePodPaymentEventRow>;
+      user_notifications: TableDefinition<RidePodUserNotificationRow>;
+      pod_live_updates: TableDefinition<RidePodLiveUpdateRow>;
+      pod_member_status: TableDefinition<RidePodMemberStatusRow>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

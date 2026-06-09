@@ -513,7 +513,7 @@ function getTaxiFirstAccessibilityLabel(request: TaxiPartnerQuoteRequest | null)
 
 function getTaxiFirstSafetyChips(pod: RidePod) {
   return [
-    pod.genderMode === "women_only" ? "Women-only" : "Mixed pod",
+    pod.genderMode === "women_only" ? "Women-only" : "Open pod",
     accessModeLabels[pod.accessMode ?? "open"],
   ].filter(Boolean);
 }
@@ -939,7 +939,7 @@ export function PodCard({ pod, compact = false }: { pod: RidePod; compact?: bool
   const progress = (pod.seatsFilled / pod.seatsTotal) * 100;
   const remaining = pod.seatsTotal - pod.seatsFilled;
   const reviewHref = pod.status === "completed" ? `/pods/${pod.id}/review` : null;
-  const genderLabel = pod.genderMode === "women_only" ? "Women-only" : "Mixed pod";
+  const genderLabel = pod.genderMode === "women_only" ? "Women-only" : "Open pod";
   const accessLabel = accessModeLabels[pod.accessMode ?? "open"];
   const moneyLabel = moneyStatusLabels[pod.moneyStatus ?? getDefaultMoneyStatus(pod)];
 

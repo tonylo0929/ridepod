@@ -24,9 +24,9 @@ export type CurrentProfileResult = {
 export type UpdateRidePodProfileInput = {
   displayName: string;
   phone?: string | null;
-  genderIdentity: RidePodGenderIdentity;
   communityId?: string | null;
   safetyNote?: string | null;
+  avatarUrl?: string | null;
 };
 
 export type UpdateRidePodProfileResult = {
@@ -47,9 +47,15 @@ export type RequestManualIdVerificationReviewResult = {
 
 export const mockRidePodProfile: RidePodProfileRow = {
   id: "mock-current-user",
+  account_name: "maya",
   display_name: "Maya Chen",
   email: "maya@example.com",
+  avatar_url: null,
+  preferred_name: "Maya",
   phone: "+1 213 555 0101",
+  home_district: "Central",
+  public_bio: null,
+  trust_review_status: "not_requested",
   gender_identity: "FEMALE",
   gender_verified_at: null,
   verification_status: "EMAIL_VERIFIED",
@@ -80,9 +86,9 @@ function normalizeProfileInput(input: UpdateRidePodProfileInput) {
   return {
     display_name: input.displayName.trim(),
     phone: input.phone?.trim() || null,
-    gender_identity: input.genderIdentity,
     community_id: input.communityId?.trim() || null,
     safety_note: input.safetyNote?.trim() || null,
+    ...(input.avatarUrl === undefined ? {} : { avatar_url: input.avatarUrl?.trim() || null }),
     updated_at: nowIso(),
   };
 }
@@ -145,12 +151,29 @@ export async function getCurrentUser() {
   }
 }
 
-export async function ensureProfileForUser(user: Pick<User, "id" | "email">, displayName?: string | null) {
+function metadataText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeAccountName(value: string) {
+  const normalized = value.trim().toLowerCase();
+  return /^[a-z0-9._]{3,24}$/.test(normalized) ? normalized : "";
+}
+
+export async function ensureProfileForUser(
+  user: Pick<User, "id" | "email"> & { user_metadata?: Record<string, unknown> | null },
+  displayName?: string | null,
+) {
   const client = getSupabaseBrowserClient();
+  const metadataDisplayName = metadataText(user.user_metadata?.display_name);
+  const metadataAccountName =
+    normalizeAccountName(metadataText(user.user_metadata?.account_name)) ||
+    normalizeAccountName(metadataDisplayName);
   const profile: Partial<RidePodProfileRow> = {
     id: user.id,
+    account_name: metadataAccountName || null,
     email: user.email ?? null,
-    display_name: displayName?.trim() || user.email?.split("@")[0] || "RidePod user",
+    display_name: displayName?.trim() || metadataDisplayName || metadataAccountName || user.email?.split("@")[0] || "RidePod user",
   };
 
   const result = await client
@@ -160,6 +183,8 @@ export async function ensureProfileForUser(user: Pick<User, "id" | "email">, dis
     .maybeSingle();
 
   if (result.error) {
+    const existing = await client.from("profiles").select("*").eq("id", user.id).maybeSingle();
+    if (!existing.error && existing.data) return existing.data;
     throw new Error(result.error.message);
   }
 
@@ -293,6 +318,144 @@ export async function updateCurrentProfile(input: UpdateRidePodProfileInput): Pr
       source: "supabase",
       profile: null,
       userFacingMessage: "Couldn't save profile. Try again later.",
+      fallbackNote: null,
+    };
+  }
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result ?? "")));
+    reader.addEventListener("error", () => reject(reader.error));
+    reader.readAsDataURL(file);
+  });
+}
+
+function profilePhotoExtension(file: File) {
+  const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "");
+  if (extension) return extension;
+  if (file.type === "image/png") return "png";
+  if (file.type === "image/webp") return "webp";
+  if (file.type === "image/gif") return "gif";
+  return "jpg";
+}
+
+export async function updateCurrentProfilePhoto(file: File): Promise<UpdateRidePodProfileResult> {
+  if (!file.type.startsWith("image/")) {
+    return {
+      ok: false,
+      source: "supabase",
+      profile: null,
+      userFacingMessage: "Choose an image file.",
+      fallbackNote: null,
+    };
+  }
+
+  if (file.size > 3 * 1024 * 1024) {
+    return {
+      ok: false,
+      source: "supabase",
+      profile: null,
+      userFacingMessage: "Profile photo must be under 3 MB.",
+      fallbackNote: null,
+    };
+  }
+
+  try {
+    const currentUser = await getCurrentUser();
+
+    if (currentUser.source === "mock") {
+      const avatarUrl = await readFileAsDataUrl(file);
+      return {
+        ok: true,
+        source: "mock",
+        profile: {
+          ...mockRidePodProfile,
+          avatar_url: avatarUrl,
+          updated_at: nowIso(),
+        },
+        userFacingMessage: "Profile photo saved.",
+        fallbackNote: currentUser.fallbackNote,
+      };
+    }
+
+    if (!currentUser.user) {
+      return {
+        ok: false,
+        source: "supabase",
+        profile: null,
+        userFacingMessage: "Log in to continue",
+        fallbackNote: null,
+      };
+    }
+
+    const client = getSupabaseBrowserClient();
+    await ensureProfileForUser(currentUser.user);
+
+    const storagePath = `${currentUser.user.id}/profile-${Date.now()}.${profilePhotoExtension(file)}`;
+    const upload = await client.storage.from("profile-photos").upload(storagePath, file, {
+      cacheControl: "3600",
+      contentType: file.type,
+      upsert: true,
+    });
+
+    if (upload.error) {
+      return {
+        ok: false,
+        source: "supabase",
+        profile: null,
+        userFacingMessage: "Couldn't upload profile photo. Try again later.",
+        fallbackNote: null,
+      };
+    }
+
+    const publicUrl = client.storage.from("profile-photos").getPublicUrl(storagePath).data.publicUrl;
+    const result = await client
+      .from("profiles")
+      .update({ avatar_url: publicUrl, updated_at: nowIso() })
+      .eq("id", currentUser.user.id)
+      .select("*")
+      .maybeSingle();
+
+    if (result.error) {
+      return {
+        ok: false,
+        source: "supabase",
+        profile: null,
+        userFacingMessage: "Photo uploaded, but couldn't save it to your profile.",
+        fallbackNote: null,
+      };
+    }
+
+    return {
+      ok: true,
+      source: "supabase",
+      profile: result.data,
+      userFacingMessage: "Profile photo saved.",
+      fallbackNote: null,
+    };
+  } catch (error) {
+    if (isMissingSupabaseConfig(error)) {
+      const avatarUrl = await readFileAsDataUrl(file);
+      return {
+        ok: true,
+        source: "mock",
+        profile: {
+          ...mockRidePodProfile,
+          avatar_url: avatarUrl,
+          updated_at: nowIso(),
+        },
+        userFacingMessage: "Profile photo saved.",
+        fallbackNote: "Supabase not configured; using mock profile data.",
+      };
+    }
+
+    return {
+      ok: false,
+      source: "supabase",
+      profile: null,
+      userFacingMessage: "Couldn't upload profile photo. Try again later.",
       fallbackNote: null,
     };
   }

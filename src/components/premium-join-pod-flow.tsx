@@ -220,7 +220,7 @@ function EstimatedCostCard() {
       <h2 className="text-base font-black text-white">Your estimated cost</h2>
       <div className="mt-4 divide-y divide-white/10">
         <CostRow label="Est. share" value={pod.estimatedShare} />
-        <CostRow label="Platform fee" value={pod.platformFee} />
+        <CostRow label="RidePod fee" value={pod.platformFee} />
         <CostRow label="Max charge" value={pod.maxCharge} strong />
       </div>
       <div className="mt-3">
@@ -378,7 +378,7 @@ function PaymentStep({ authorized }: { authorized: boolean }) {
 
         <div className="mt-5 divide-y divide-white/10">
           <CostRow label="Est. share" value={pod.estimatedShare} />
-          <CostRow label="Platform fee" value={pod.platformFee} />
+          <CostRow label="RidePod fee" value={pod.platformFee} />
           <CostRow label="Max charge" value={pod.maxCharge} strong />
         </div>
 
@@ -551,7 +551,7 @@ function StickyCostCTA({
             </div>
             {step === 0 ? (
               <div className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-[#aab3be]">Platform fee</span>
+                <span className="font-semibold text-[#aab3be]">RidePod fee</span>
                 <span className="font-black text-white">{pod.platformFee}</span>
               </div>
             ) : null}

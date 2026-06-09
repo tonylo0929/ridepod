@@ -16,7 +16,7 @@ import { RidePodLogo } from "@/components/ridepod-logo";
 import { cn } from "@/components/ui";
 
 type GenderMode = "WOMEN_ONLY" | "MIXED";
-type ThemeVariant = "light" | "dark";
+type ThemeVariant = "dark";
 
 export type HostReplacementActionsScreenProps = {
   backHref?: string;
@@ -97,12 +97,12 @@ export function HostReplacementActionsScreen({
   genderMode = "WOMEN_ONLY",
   lifecycleState = "HOST_REPLACEMENT_NEEDED",
   paymentCaptureBlocked = true,
-  themeVariant,
+  themeVariant = "dark",
   onStayInPod,
   onBecomeReplacementHost,
   onLeavePod,
 }: HostReplacementActionsScreenProps) {
-  const genderLabel = genderMode === "WOMEN_ONLY" ? "Women-only" : "Mixed pod";
+  const genderLabel = genderMode === "WOMEN_ONLY" ? "Women-only" : "Open pod";
   const replacementActive = lifecycleState === "HOST_REPLACEMENT_NEEDED";
 
   return (

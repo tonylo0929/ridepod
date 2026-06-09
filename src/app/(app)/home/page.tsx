@@ -2,18 +2,23 @@
 
 import Link from "next/link";
 import {
-  ArrowRight,
   ArrowRightLeft,
   CalendarDays,
   CarFront,
   ChevronDown,
+  CheckCircle2,
+  CircleDollarSign,
+  Gift,
   LayoutGrid,
-  MapPin,
   Plane,
   RefreshCcw,
+  ShieldCheck,
+  SlidersHorizontal,
+  Smartphone,
   UsersRound,
+  X,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { cn } from "@/components/ui";
 import {
   districtOptions,
@@ -23,51 +28,166 @@ import {
   type HomeRide,
   type HomeTab,
 } from "@/lib/home-ride-mock";
+import { getRideAppHostFareEstimate, getRideAppHostFareEstimateDisplay } from "@/lib/ride-app-fare-estimate";
+import { ridePodJoinFeeWaiverCopy } from "@/lib/ridepod-membership";
+import { claimRideAppWaiver, useRideAppWaiverState } from "@/lib/ride-app-waiver";
+import { getRideAppPublicTrustBadge, getRideAppTrustSummary } from "@/lib/ride-app-trust";
+import { useCreatedHomeRides } from "@/lib/created-home-rides";
+import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
+import { useAuth } from "@/providers/AuthProvider";
 
-const tabs: Array<{ id: HomeTab; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "airport", label: "Airport" },
-  { id: "one_off", label: "One-off" },
-  { id: "recurring", label: "Recurring" },
-];
+type AirportDirectionFilter = "all" | "to_airport" | "from_airport";
+type PodPreferenceFilter = "all" | "open" | "women_only" | "verified_only" | "invite_only";
+type TaxiDriverFilter = "all" | "accepted" | "waiting";
+type TaxiTypeFilter = "all" | string;
+type RideModeFilter = "all" | "taxi" | "ride_app";
+type SettlementFilter = "all" | "protected" | "self_settle";
+type FareEstimateFilter = "any" | "estimate_available" | "estimate_pending";
+type DeadlineFilter = "any" | "joining_now" | "expiring_soon" | "minimum_reached";
+type SeatFilter = "any" | "one_left" | "two_plus_available" | "minimum_not_reached" | "minimum_reached";
+type OwnershipFilter = "all" | "mine" | "joined";
 
 const categoryCards: Array<{ id: HomeTab; label: string; icon: typeof LayoutGrid; fallbackCount: number }> = [
-  { id: "all", label: "All rides", icon: LayoutGrid, fallbackCount: 128 },
+  { id: "all", label: "All", icon: LayoutGrid, fallbackCount: 128 },
   { id: "airport", label: "Airport", icon: Plane, fallbackCount: 42 },
   { id: "one_off", label: "One-off", icon: CarFront, fallbackCount: 63 },
   { id: "recurring", label: "Recurring", icon: RefreshCcw, fallbackCount: 23 },
+  { id: "quote_ready", label: "Quote ready", icon: CircleDollarSign, fallbackCount: 8 },
 ];
 
-function getEmptyTitle(tab: HomeTab) {
+const airportDirectionFilters: Array<{ id: AirportDirectionFilter; label: string }> = [
+  { id: "all", label: "All airport" },
+  { id: "to_airport", label: "To airport" },
+  { id: "from_airport", label: "From airport" },
+];
+
+const tabLabels: Record<HomeTab, string> = {
+  all: "All rides",
+  airport: "Airport",
+  one_off: "One-off",
+  recurring: "Recurring",
+  quote_ready: "Quote ready",
+};
+
+const podPreferenceFilters: Array<{ id: PodPreferenceFilter; label: string }> = [
+  { id: "all", label: "Any pod" },
+  { id: "open", label: "Open" },
+  { id: "women_only", label: "Women-only" },
+  { id: "verified_only", label: "Verified-only" },
+  { id: "invite_only", label: "Invite-only" },
+];
+
+const taxiDriverFilters: Array<{ id: TaxiDriverFilter; label: string }> = [
+  { id: "all", label: "Any driver status" },
+  { id: "accepted", label: "Taxi driver accepted" },
+  { id: "waiting", label: "Waiting for driver" },
+];
+
+const rideModeFilters: Array<{ id: RideModeFilter; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "taxi", label: "Taxi" },
+  { id: "ride_app", label: "Ride app" },
+];
+
+const settlementFilters: Array<{ id: SettlementFilter; label: string }> = [
+  { id: "all", label: "All settlement" },
+  { id: "protected", label: "Protected quote" },
+  { id: "self_settle", label: "Self-settle" },
+];
+
+const fareEstimateFilters: Array<{ id: FareEstimateFilter; label: string }> = [
+  { id: "any", label: "Any estimate" },
+  { id: "estimate_available", label: "Estimate available" },
+  { id: "estimate_pending", label: "Estimate pending" },
+];
+
+const deadlineFilters: Array<{ id: DeadlineFilter; label: string }> = [
+  { id: "any", label: "Any deadline" },
+  { id: "joining_now", label: "Joining now" },
+  { id: "expiring_soon", label: "Expiring soon" },
+  { id: "minimum_reached", label: "Minimum reached" },
+];
+
+const seatFilters: Array<{ id: SeatFilter; label: string }> = [
+  { id: "any", label: "Any seats" },
+  { id: "one_left", label: "1 seat left" },
+  { id: "two_plus_available", label: "2+ seats" },
+  { id: "minimum_not_reached", label: "Minimum not reached" },
+  { id: "minimum_reached", label: "Minimum reached" },
+];
+
+const ownershipFilters: Array<{ id: OwnershipFilter; label: string }> = [
+  { id: "all", label: "All pods" },
+  { id: "mine", label: "My pods" },
+  { id: "joined", label: "Joined" },
+];
+
+function getEmptyTitle(tab: HomeTab, rideModeFilter: RideModeFilter) {
+  if (rideModeFilter === "taxi") return "No taxi pods found";
+  if (rideModeFilter === "ride_app") return "No ride app pods found";
   if (tab === "airport") return "No airport rides found.";
   if (tab === "one_off") return "No one-off rides found.";
   if (tab === "recurring") return "No recurring rides found.";
+  if (tab === "quote_ready") return "No quotes ready to confirm.";
   return "No rides found.";
 }
 
-function CitySelect() {
-  return (
-    <label className="inline-flex max-w-full items-center gap-2">
-      <MapPin className="h-5 w-5 shrink-0 text-[var(--rp-muted-strong)]" />
-      <span className="sr-only">City</span>
-      <span className="relative inline-flex min-w-0 items-center">
-        <select
-          value="Hong Kong"
-          aria-label="City"
-          className="h-10 max-w-full appearance-none bg-transparent pr-7 text-2xl font-black text-[var(--rp-text)] outline-none"
-          onChange={() => undefined}
-        >
-          <option value="Hong Kong" className="bg-[var(--rp-shell)] text-[var(--rp-text)]">
-            Hong Kong
-          </option>
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-0 h-5 w-5 text-[var(--rp-muted-strong)]" />
-      </span>
-    </label>
-  );
+function getEmptyCopy(rideModeFilter: RideModeFilter, hasAnyRides: boolean) {
+  if (!hasAnyRides) return "Remove some filters to see more rides.";
+  if (rideModeFilter === "taxi") return "Try changing your route, time, or safety filters.";
+  if (rideModeFilter === "ride_app") return "Try widening your time range or create a self-settle pod.";
+  return "Try changing your From / To district filters.";
 }
 
-function DistrictSelect({
+const rideDateMonths: Record<string, number> = {
+  jan: 0,
+  january: 0,
+  feb: 1,
+  february: 1,
+  mar: 2,
+  march: 2,
+  apr: 3,
+  april: 3,
+  may: 4,
+  jun: 5,
+  june: 5,
+  jul: 6,
+  july: 6,
+  aug: 7,
+  august: 7,
+  sep: 8,
+  september: 8,
+  oct: 9,
+  october: 9,
+  nov: 10,
+  november: 10,
+  dec: 11,
+  december: 11,
+};
+
+function startOfLocalDay(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function parseRideDateLabel(dateLabel: string, referenceDate: Date) {
+  const match = dateLabel.match(/(\d{1,2})\s+([A-Za-z]+)/);
+  if (!match) return null;
+
+  const day = Number(match[1]);
+  const month = rideDateMonths[match[2].toLowerCase()];
+  if (!Number.isFinite(day) || month === undefined) return null;
+
+  return new Date(referenceDate.getFullYear(), month, day);
+}
+
+function isRideStillVisible(ride: HomeRide, referenceDate: Date) {
+  const rideDate = parseRideDateLabel(ride.dateLabel, referenceDate);
+  if (!rideDate) return true;
+
+  return startOfLocalDay(rideDate).getTime() >= startOfLocalDay(referenceDate).getTime();
+}
+
+function FilterSelect({
   label,
   value,
   onChange,
@@ -77,12 +197,12 @@ function DistrictSelect({
   onChange: (value: string) => void;
 }) {
   return (
-    <label className="relative min-w-0 px-4 py-4">
-      <span className="block text-sm font-semibold text-[var(--rp-muted-strong)]">{label}</span>
+    <label className="relative block min-w-0">
+      <span className="block text-sm font-black text-[var(--rp-text)]">{label}</span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-2 h-8 w-full appearance-none truncate bg-transparent pr-8 text-xl font-black text-[var(--rp-text)] outline-none"
+        className="mt-2 h-14 w-full appearance-none rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-4 pr-11 text-base font-black text-[var(--rp-text)] outline-none transition focus:border-[var(--rp-primary)]"
       >
         {districtOptions.map((district) => (
           <option key={district} value={district} className="bg-[var(--rp-shell)] text-[var(--rp-text)]">
@@ -90,65 +210,222 @@ function DistrictSelect({
           </option>
         ))}
       </select>
-      <ChevronDown className="pointer-events-none absolute bottom-5 right-4 h-5 w-5 text-[var(--rp-muted-strong)]" />
+      <ChevronDown className="pointer-events-none absolute bottom-4 right-4 h-5 w-5 text-[var(--rp-muted-strong)]" />
     </label>
   );
 }
 
-function DistrictRoutePicker({
+function FilterSummary({
+  rideType,
   fromDistrict,
   toDistrict,
-  onFromChange,
-  onToChange,
-  onSwap,
+  podPreference,
+  taxiDriver,
+  taxiType,
+  airportDirection,
+  rideMode,
+  settlement,
+  fareEstimate,
+  deadline,
+  seats,
+  onOpen,
 }: {
+  rideType: string;
   fromDistrict: string;
   toDistrict: string;
+  podPreference: string;
+  taxiDriver: string;
+  taxiType: string;
+  airportDirection: string;
+  rideMode: string;
+  settlement: string;
+  fareEstimate: string;
+  deadline: string;
+  seats: string;
+  onOpen: () => void;
+}) {
+  const summaryItems = [
+    rideMode,
+    settlement,
+    fareEstimate,
+    deadline,
+    seats,
+    rideType,
+    `${fromDistrict} -> ${toDistrict}`,
+    podPreference,
+    taxiDriver,
+    taxiType,
+    airportDirection,
+  ].filter(Boolean);
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="mb-4 flex w-full items-center justify-between gap-3 rounded-[18px] border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_72%,transparent)] p-3 text-left shadow-[var(--rp-shadow-soft)] backdrop-blur-md transition hover:border-[var(--rp-border-strong)]"
+    >
+      <span className="min-w-0">
+        <span className="block text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
+          Selected filters
+        </span>
+        <span className="mt-2 flex min-w-0 flex-wrap items-center gap-2 text-xs font-black text-[var(--rp-text)]">
+          {summaryItems.map((item) => (
+            <span
+              key={item}
+              className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-2.5 py-1"
+            >
+              {item}
+            </span>
+          ))}
+        </span>
+      </span>
+      <span className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] px-4 text-sm font-black text-[var(--rp-primary)]">
+        <SlidersHorizontal className="h-4 w-4" />
+        Filters
+      </span>
+    </button>
+  );
+}
+
+function DistrictFilterSheet({
+  open,
+  activeTab,
+  fromDistrict,
+  toDistrict,
+  ownership,
+  onFromChange,
+  onToChange,
+  onOwnershipChange,
+  onSwap,
+  onReset,
+  onClose,
+}: {
+  open: boolean;
+  activeTab: HomeTab;
+  fromDistrict: string;
+  toDistrict: string;
+  ownership: OwnershipFilter;
   onFromChange: (district: string) => void;
   onToChange: (district: string) => void;
+  onOwnershipChange: (value: OwnershipFilter) => void;
   onSwap: () => void;
+  onReset: () => void;
+  onClose: () => void;
 }) {
+  if (!open) return null;
+
   return (
-    <section className="mt-6 rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_88%,transparent),var(--rp-card-soft))] shadow-[var(--rp-shadow-soft)]">
-      <div className="grid grid-cols-[1fr_auto_1fr] items-stretch">
-        <DistrictSelect label="From district" value={fromDistrict} onChange={onFromChange} />
-        <button
-          type="button"
-          aria-label="Swap districts"
-          onClick={onSwap}
-          className="self-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-2 text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)]"
-        >
-          <ArrowRightLeft className="h-4 w-4" />
-        </button>
-        <DistrictSelect label="To district" value={toDistrict} onChange={onToChange} />
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/62 px-3 pb-0 pt-10 backdrop-blur-sm">
+      <button type="button" aria-label="Close filters" className="absolute inset-0" onClick={onClose} />
+      <div className="relative z-10 flex max-h-[86dvh] min-h-0 w-full max-w-[520px] flex-col overflow-hidden rounded-t-[28px] border border-[var(--rp-border)] bg-[var(--rp-shell)] shadow-[0_-28px_80px_rgba(0,0,0,0.42)]">
+        <div className="mx-auto mt-3 h-1.5 w-16 shrink-0 rounded-full bg-[var(--rp-border-strong)]" />
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--rp-border)] px-5 pb-4 pt-5">
+          <div>
+            <h2 className="text-2xl font-black text-[var(--rp-text)]">Filters</h2>
+            <p className="mt-1 text-sm font-black text-[var(--rp-primary)]">{tabLabels[activeTab]}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={onReset}
+              className="min-h-11 rounded-full border border-[var(--rp-border-strong)] px-4 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)]"
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              aria-label="Close filters"
+              onClick={onClose}
+              className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border-strong)] text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)] hover:text-[var(--rp-text)]"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="grid min-h-0 flex-1 touch-pan-y gap-5 overflow-y-auto overscroll-contain px-5 py-5">
+          <FilterSection title="Show">
+            <SegmentedFilter
+              value={ownership}
+              options={ownershipFilters}
+              tone={ownership === "joined" ? "ride_app" : "taxi"}
+              onChange={(value) => onOwnershipChange(value as OwnershipFilter)}
+            />
+          </FilterSection>
+
+          <FilterSection title="Route">
+            <FilterSelect label="From district" value={fromDistrict} onChange={onFromChange} />
+            <div className="flex justify-center">
+              <button
+                type="button"
+                aria-label="Swap districts"
+                onClick={onSwap}
+                className="grid h-12 w-12 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)]"
+              >
+                <ArrowRightLeft className="h-5 w-5" />
+              </button>
+            </div>
+            <FilterSelect label="To district" value={toDistrict} onChange={onToChange} />
+          </FilterSection>
+        </div>
+
+        <div className="shrink-0 border-t border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_92%,transparent)] p-5">
+          <button
+            type="button"
+            onClick={onClose}
+            className="min-h-12 w-full rounded-[16px] bg-[linear-gradient(180deg,#ffd36a_0%,#f2c15b_100%)] px-5 text-sm font-black text-[#07111a] shadow-[0_12px_28px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]"
+          >
+            Show rides
+          </button>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function FilterSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="grid gap-3">
+      <h3 className="text-sm font-black text-[var(--rp-text)]">{title}</h3>
+      {children}
     </section>
   );
 }
 
-function CategoryTabs({ activeTab, onChange }: { activeTab: HomeTab; onChange: (tab: HomeTab) => void }) {
+function SegmentedFilter({
+  value,
+  options,
+  tone = "taxi",
+  onChange,
+}: {
+  value: string;
+  options: Array<{ id: string; label: string }>;
+  tone?: "taxi" | "ride_app";
+  onChange: (value: string) => void;
+}) {
   return (
-    <div className="mt-7 border-b border-[var(--rp-border)]">
-      <div className="grid grid-cols-4">
-        {tabs.map((tab) => {
-          const active = tab.id === activeTab;
+    <div className="grid grid-cols-2 gap-2 min-[420px]:grid-cols-3">
+      {options.map((option) => {
+        const active = option.id === value;
 
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => onChange(tab.id)}
-              className={cn(
-                "relative min-h-12 px-2 text-base font-black transition",
-                active ? "text-[var(--rp-primary)]" : "text-[var(--rp-muted-strong)]",
-              )}
-            >
-              {tab.label}
-              {active ? <span className="absolute inset-x-2 bottom-0 h-1 rounded-full bg-[var(--rp-primary)]" /> : null}
-            </button>
-          );
-        })}
-      </div>
+        return (
+          <button
+            key={option.id}
+            type="button"
+            onClick={() => onChange(option.id)}
+            className={cn(
+              "min-h-11 rounded-[14px] border px-3 text-sm font-black transition",
+              active
+                ? tone === "ride_app"
+                  ? "border-sky-300/45 bg-sky-400/18 text-sky-100"
+                  : "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)] hover:border-[var(--rp-border-strong)] hover:text-[var(--rp-text)]",
+            )}
+          >
+            {option.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -173,34 +450,258 @@ function CategoryCard({
       type="button"
       onClick={() => onClick(id)}
       className={cn(
-        "grid min-h-[140px] min-w-[132px] place-items-center rounded-[18px] border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_92%,transparent),var(--rp-card-soft))] p-4 text-center transition",
+        "grid min-h-[96px] w-full place-items-center rounded-[16px] border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_54%,transparent),color-mix(in_srgb,var(--rp-card-soft)_42%,transparent))] p-2 text-center shadow-[0_16px_38px_rgba(0,0,0,0.18)] backdrop-blur-[6px] transition min-[390px]:p-3",
         selected
-          ? "border-[var(--rp-primary)] shadow-[0_0_30px_color-mix(in_srgb,var(--rp-primary)_22%,transparent)]"
-          : "border-[var(--rp-border)] hover:border-[var(--rp-border-strong)]",
+          ? "border-[var(--rp-primary)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-primary)_16%,transparent),color-mix(in_srgb,var(--rp-card)_44%,transparent))] shadow-[0_0_32px_color-mix(in_srgb,var(--rp-primary)_22%,transparent)]"
+          : "border-white/12 hover:border-[var(--rp-border-strong)] hover:bg-[color-mix(in_srgb,var(--rp-card)_58%,transparent)]",
       )}
     >
-      <span className="grid h-11 w-11 place-items-center text-[var(--rp-primary)]">
-        <Icon className="h-10 w-10" />
+      <span className="grid h-8 w-8 place-items-center text-[var(--rp-primary)]">
+        <Icon className="h-6 w-6 min-[390px]:h-7 min-[390px]:w-7" />
       </span>
-      <span className="mt-3 block w-full text-center text-base font-black text-[var(--rp-text)]">{label}</span>
-      <span className={cn("mt-2 block w-full text-center text-3xl font-black", selected ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]")}>
+      <span className="mt-2 block w-full text-center text-[11px] font-black leading-3 text-[var(--rp-text)] min-[390px]:text-xs">{label}</span>
+      <span className={cn("mt-0.5 block w-full text-center text-lg font-black", selected ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]")}>
         {count}
       </span>
     </button>
   );
 }
 
-function RideKindIcon({ ride }: { ride: HomeRide }) {
-  const Icon = ride.rideKind === "airport" ? Plane : ride.rideKind === "recurring" ? RefreshCcw : CarFront;
+function RideModeSwitch({
+  value,
+  onChange,
+}: {
+  value: Extract<RideModeFilter, "taxi" | "ride_app">;
+  onChange: (value: Extract<RideModeFilter, "taxi" | "ride_app">) => void;
+}) {
+  const options: Array<{
+    id: Extract<RideModeFilter, "taxi" | "ride_app">;
+    label: string;
+    icon: typeof CarFront;
+  }> = [
+    { id: "taxi", label: "Taxi", icon: CarFront },
+    { id: "ride_app", label: "Ride app", icon: Smartphone },
+  ];
 
   return (
-    <div className="relative grid h-16 w-16 shrink-0 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
-      <Icon className="h-8 w-8" />
+    <div className="mb-5 grid justify-items-center">
+      <div className="w-full max-w-[600px] rounded-[34px] border border-[color-mix(in_srgb,var(--rp-primary)_62%,rgba(34,211,238,0.55))] bg-[linear-gradient(135deg,rgba(242,193,91,0.16),rgba(34,211,238,0.12)_48%,rgba(248,250,252,0.08))] p-1.5 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_54px_rgba(0,0,0,0.36),0_0_38px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]">
+        <div className="relative grid grid-cols-2 rounded-full border border-white/25 bg-[rgba(248,250,252,0.92)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+        {options.map((option) => {
+          const selected = value === option.id;
+          const Icon = option.icon;
+
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onChange(option.id)}
+              className={cn(
+                "inline-flex min-h-14 items-center justify-center gap-2 rounded-full px-4 text-base font-black transition min-[420px]:text-lg",
+                selected
+                  ? option.id === "ride_app"
+                    ? "bg-cyan-300 text-[#06212a] shadow-[0_16px_32px_rgba(34,211,238,0.24)]"
+                    : "bg-[var(--rp-primary)] text-[#07111a] shadow-[0_16px_32px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
+                  : option.id === "ride_app"
+                    ? "text-sky-900 hover:bg-sky-100"
+                    : "text-amber-900 hover:bg-amber-100",
+              )}
+            >
+              <Icon className="h-5 w-5" />
+              {option.label}
+            </button>
+          );
+        })}
+        <span
+          aria-hidden="true"
+          className={cn(
+            "pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border bg-white/92 px-2 py-0.5 text-xs font-black tracking-[0.12em] shadow-[0_8px_18px_rgba(15,23,42,0.14)]",
+            value === "ride_app" ? "border-cyan-200 text-cyan-700" : "border-amber-200 text-amber-700",
+          )}
+        >
+          {value === "ride_app" ? "<--" : "-->"}
+        </span>
+        </div>
+      </div>
     </div>
   );
 }
 
-function RideBadge({ ride }: { ride: HomeRide }) {
+function getProfileInitial(name: string | null | undefined) {
+  return name?.trim().charAt(0).toUpperCase() || "B";
+}
+
+function isRideAppSelfSettle(ride: HomeRide) {
+  return ride.rideCategory === "ride_app_self_settle" || ride.rideService === "ride_app" || ride.taxiType.toLowerCase().includes("ride app");
+}
+
+function getHomeRideHostTrustUserId(ride: HomeRide) {
+  if (ride.rideAppEstimatedFareUpdatedBy?.trim()) return ride.rideAppEstimatedFareUpdatedBy.trim();
+  const normalizedHost = ride.hostName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return normalizedHost ? `mock-host-${normalizedHost}` : "mock-host";
+}
+
+function isTaxiPod(ride: HomeRide) {
+  return !isRideAppSelfSettle(ride);
+}
+
+function availableSeats(ride: HomeRide) {
+  return Math.max(ride.seatsTotal - ride.seatsUsed, 0);
+}
+
+function minimumRidersRequired(ride: HomeRide) {
+  // TODO: replace fallback with minimumRidersRequired when persisted on ride app pods.
+  return ride.requiredGuestCount ?? (isRideAppSelfSettle(ride) ? 2 : 1);
+}
+
+function minimumReached(ride: HomeRide) {
+  return ride.seatsUsed >= minimumRidersRequired(ride);
+}
+
+function isExpiringSoon(ride: HomeRide) {
+  if (typeof ride.quoteExpiresInMinutes !== "number") return false;
+  return ride.quoteExpiresInMinutes > 0 && ride.quoteExpiresInMinutes <= 180;
+}
+
+function hasRideAppEstimate(ride: HomeRide) {
+  return Boolean(getRideAppHostFareEstimate(ride));
+}
+
+function getRideAppTotalEstimateDisplay(ride: HomeRide) {
+  return getRideAppHostFareEstimateDisplay(ride);
+}
+
+function getRideAppProviderLabel(ride: HomeRide) {
+  if (ride.rideAppProviderName?.trim()) return ride.rideAppProviderName.trim();
+  if (ride.taxiType?.trim() && !ride.taxiType.toLowerCase().includes("ride app")) return ride.taxiType.trim();
+  return null;
+}
+
+function matchesRideModeFilter(ride: HomeRide, filter: RideModeFilter) {
+  if (filter === "taxi") return isTaxiPod(ride);
+  if (filter === "ride_app") return isRideAppSelfSettle(ride);
+  return true;
+}
+
+function matchesSettlementFilter(ride: HomeRide, filter: SettlementFilter) {
+  if (filter === "protected") return isTaxiPod(ride);
+  if (filter === "self_settle") return isRideAppSelfSettle(ride);
+  return true;
+}
+
+function matchesFareEstimateFilter(ride: HomeRide, filter: FareEstimateFilter) {
+  if (filter === "any") return true;
+  if (!isRideAppSelfSettle(ride)) return false;
+  if (filter === "estimate_available") return hasRideAppEstimate(ride);
+  return !hasRideAppEstimate(ride);
+}
+
+function matchesDeadlineFilter(ride: HomeRide, filter: DeadlineFilter) {
+  if (filter === "any") return true;
+  if (filter === "joining_now") return availableSeats(ride) > 0 && ride.quoteStatus !== "full";
+  if (filter === "expiring_soon") return isExpiringSoon(ride);
+  return minimumReached(ride);
+}
+
+function matchesSeatFilter(ride: HomeRide, filter: SeatFilter) {
+  const seatsLeft = availableSeats(ride);
+  if (filter === "one_left") return seatsLeft === 1;
+  if (filter === "two_plus_available") return seatsLeft >= 2;
+  if (filter === "minimum_reached") return minimumReached(ride);
+  if (filter === "minimum_not_reached") return !minimumReached(ride);
+  return true;
+}
+
+function matchesOwnershipFilter(ride: HomeRide, filter: OwnershipFilter) {
+  if (filter === "mine") return ride.currentUserRole === "host";
+  if (filter === "joined") return ride.currentUserJoined === true || ride.currentUserRole === "joined_rider";
+  return true;
+}
+
+function getTaxiQuoteStatus(ride: HomeRide) {
+  if (ride.quoteStatus === "quote_ready") return "QUOTE READY";
+  if (ride.quoteStatus === "ready_for_pickup") return "READY";
+  if (ride.quoteStatus === "full") return "FULL";
+  if (ride.quoteStatus === "joined") return "JOINED";
+  return "QUOTE PENDING";
+}
+
+function getCurrentUserRideRelationship(ride: HomeRide) {
+  if (ride.currentUserRole === "host") {
+    return {
+      tone: "host" as const,
+      label: "Created by you",
+    };
+  }
+
+  if (ride.currentUserJoined || ride.currentUserRole === "joined_rider") {
+    return {
+      tone: "joined" as const,
+      label: "Joined by you",
+    };
+  }
+
+  return null;
+}
+
+function RideProfileAvatar({ ride }: { ride: HomeRide }) {
+  const isRideApp = isRideAppSelfSettle(ride);
+  const Icon = isRideApp
+    ? Smartphone
+    : rideMatchesTab("quote_ready", ride)
+    ? CircleDollarSign
+    : ride.rideKind === "airport"
+      ? Plane
+      : ride.rideKind === "recurring"
+        ? RefreshCcw
+        : CarFront;
+
+  return (
+    <div
+      aria-label={`${ride.hostName || "Profile"} profile`}
+      className={cn(
+        "relative grid h-12 w-12 shrink-0 place-items-center rounded-full border text-2xl font-black shadow-[0_14px_30px_rgba(0,0,0,0.28)] min-[560px]:h-16 min-[560px]:w-16 min-[560px]:text-3xl",
+        isRideApp
+          ? "border-sky-300/50 bg-[radial-gradient(circle_at_35%_28%,rgba(56,189,248,0.2),var(--rp-card-muted)_74%)] text-sky-300"
+          : "border-[color-mix(in_srgb,var(--rp-primary)_46%,var(--rp-border))] bg-[radial-gradient(circle_at_35%_28%,color-mix(in_srgb,var(--rp-primary)_20%,transparent),var(--rp-card-muted)_74%)] text-[var(--rp-primary)]",
+      )}
+    >
+      {getProfileInitial(ride.hostName)}
+      <span
+        className={cn(
+          "absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full border bg-[var(--rp-shell)] shadow-[0_8px_16px_rgba(0,0,0,0.24)] min-[560px]:h-6 min-[560px]:w-6",
+          isRideApp ? "border-sky-300/40 text-sky-300" : "border-[var(--rp-border-strong)] text-[var(--rp-primary)]",
+        )}
+      >
+        <Icon className="h-3 w-3 min-[560px]:h-3.5 min-[560px]:w-3.5" />
+      </span>
+    </div>
+  );
+}
+
+function RideBadge({ ride, activeTab }: { ride: HomeRide; activeTab: HomeTab }) {
+  if (isRideAppSelfSettle(ride) && !ride.airportDirection && ride.rideKind !== "recurring") {
+    return null;
+  }
+
+  if (activeTab === "one_off" && ride.rideKind === "one_off") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--rp-border-strong)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 py-1 text-xs font-black text-[var(--rp-primary)]">
+        <CarFront className="h-3.5 w-3.5" />
+        One-off
+      </span>
+    );
+  }
+
+  if (rideMatchesTab("quote_ready", ride)) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/20 bg-emerald-300/12 px-3 py-1 text-xs font-black text-emerald-200">
+        <CircleDollarSign className="h-3.5 w-3.5" />
+        Quote ready
+      </span>
+    );
+  }
+
   if (ride.airportDirection) {
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/15 bg-cyan-400/12 px-3 py-1 text-xs font-black text-cyan-300">
@@ -219,54 +720,457 @@ function RideBadge({ ride }: { ride: HomeRide }) {
     );
   }
 
+  if (ride.rideKind === "one_off") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--rp-border-strong)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 py-1 text-xs font-black text-[var(--rp-primary)]">
+        <CarFront className="h-3.5 w-3.5" />
+        One-off
+      </span>
+    );
+  }
+
   return null;
 }
 
+function RideMetaTags({ ride }: { ride: HomeRide }) {
+  const isRideApp = isRideAppSelfSettle(ride);
+  const KindIcon = ride.rideKind === "recurring" ? RefreshCcw : ride.rideKind === "airport" ? Plane : CarFront;
+  const kindLabel = ride.rideKind === "recurring" ? "Recurring" : ride.rideKind === "airport" ? "Airport" : "One-off";
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      <span
+        className={cn(
+          "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black",
+          ride.podType === "Women-only"
+            ? "border-emerald-200 bg-emerald-300/14 text-emerald-100"
+            : "border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)]",
+        )}
+      >
+        {ride.podType === "Open pod" ? (
+          <UsersRound className="h-3.5 w-3.5" />
+        ) : (
+          <ShieldCheck className="h-3.5 w-3.5" />
+        )}
+        {ride.podType}
+      </span>
+      <span
+        className={cn(
+          "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black",
+          ride.rideKind === "recurring"
+            ? "border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]"
+            : ride.rideKind === "airport"
+              ? "border-cyan-300/30 bg-cyan-400/12 text-cyan-200"
+              : isRideApp
+                ? "border-sky-300/30 bg-sky-400/12 text-sky-200"
+                : "border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)]",
+        )}
+      >
+        <KindIcon className="h-3.5 w-3.5" />
+        {kindLabel}
+      </span>
+      {!isRideApp ? (
+        <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] px-2.5 py-1 text-[11px] font-black text-[var(--rp-muted-strong)]">
+          <CarFront className="h-3.5 w-3.5 text-[var(--rp-primary)]" />
+          {ride.taxiType}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function HomeRideCard({ ride }: { ride: HomeRide }) {
+  const isRideApp = isRideAppSelfSettle(ride);
+  const currentUserRelationship = getCurrentUserRideRelationship(ride);
+  const rideAppEstimateDisplay = getRideAppTotalEstimateDisplay(ride);
+  const currentUserIsHost = currentUserRelationship?.tone === "host";
+  const rideAppEstimateLabel = currentUserIsHost
+    ? rideAppEstimateDisplay.updated
+      ? "Updated estimate"
+      : "Your estimate"
+    : rideAppEstimateDisplay.label;
+  const rideAppEstimateHelper = currentUserIsHost
+    ? rideAppEstimateDisplay.updated
+      ? getRideAppProviderLabel(ride)
+      : "Tap to update"
+    : rideAppEstimateDisplay.helper;
+  const rideAppTrustBadge = isRideApp
+    ? getRideAppPublicTrustBadge(getRideAppTrustSummary(getHomeRideHostTrustUserId(ride)), "host")
+    : null;
+  const statusBadgeClass = isRideApp
+    ? "border-sky-300/35 bg-sky-400/14 text-sky-200"
+    : ride.quoteStatus === "quote_ready"
+      ? "border-emerald-300/35 bg-emerald-300/14 text-emerald-100"
+      : "border-[var(--rp-border-strong)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] text-[var(--rp-primary)]";
+  const recurringTiming =
+    ride.rideKind === "recurring" && (ride.startLabel || ride.endLabel)
+      ? {
+          starts: ride.startLabel ?? "Next ride",
+          ends: ride.endLabel ?? "Ongoing",
+        }
+      : null;
+
   return (
     <Link
       href={`/pods/${ride.id}`}
-      className="block rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--rp-card)_94%,transparent),var(--rp-card-soft))] p-4 shadow-[var(--rp-shadow-soft)] transition hover:border-[var(--rp-border-strong)]"
+      className={cn(
+        "block rounded-[22px] border bg-[linear-gradient(135deg,color-mix(in_srgb,var(--rp-card)_94%,transparent),var(--rp-card-soft))] p-3 shadow-[var(--rp-shadow-soft)] transition min-[560px]:p-4",
+        currentUserRelationship?.tone === "host"
+          ? "border-[color-mix(in_srgb,var(--rp-primary)_78%,var(--rp-border))] shadow-[0_0_34px_color-mix(in_srgb,var(--rp-primary)_16%,transparent)] hover:border-[var(--rp-primary)]"
+          : currentUserRelationship?.tone === "joined"
+            ? "border-cyan-300/70 shadow-[0_0_34px_rgba(56,189,248,0.14)] hover:border-cyan-200"
+            : isRideApp
+          ? "border-sky-400/45 hover:border-sky-300/70 hover:shadow-[0_0_32px_rgba(56,189,248,0.16)]"
+          : "border-[var(--rp-border-strong)] hover:border-[var(--rp-primary)] hover:shadow-[0_0_32px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]",
+      )}
     >
-      <div className="grid grid-cols-[auto_1fr_auto] gap-4">
-        <RideKindIcon ride={ride} />
+      {currentUserRelationship ? (
+        <div
+          className={cn(
+            "mb-3 inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2",
+            currentUserRelationship.tone === "host"
+              ? "border-[color-mix(in_srgb,var(--rp-primary)_58%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)]"
+              : "border-cyan-300/45 bg-cyan-400/14 text-cyan-100",
+          )}
+        >
+          {currentUserRelationship.tone === "host" ? (
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+          ) : (
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+          )}
+          <span className="truncate text-[11px] font-black uppercase tracking-[0.12em] min-[560px]:text-xs">
+            {currentUserRelationship.label}
+          </span>
+        </div>
+      ) : null}
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 min-[560px]:grid-cols-[auto_minmax(0,1fr)_minmax(132px,178px)] min-[560px]:gap-4">
+        <RideProfileAvatar ride={ride} />
 
         <div className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h2 className="min-w-0 text-xl font-black leading-tight text-[var(--rp-text)]">
+            <h2 className="min-w-0 text-sm font-black leading-tight text-[var(--rp-text)] min-[390px]:text-base min-[560px]:text-lg min-[760px]:text-xl">
               {ride.fromLabel} {"\u2192"} {ride.toLabel}
             </h2>
           </div>
-          <div className="mt-3 grid gap-2 text-sm font-semibold text-[var(--rp-muted-strong)]">
-            <p className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 shrink-0" />
-              {ride.dateLabel} <span aria-hidden="true">{"\u00b7"}</span> {ride.timeLabel}
+          <RideMetaTags ride={ride} />
+          {rideAppTrustBadge ? (
+            <p className="mt-2 inline-flex max-w-full items-center rounded-full border border-sky-300/25 bg-sky-400/10 px-2.5 py-1 text-[11px] font-black text-sky-100">
+              <span className="truncate">{rideAppTrustBadge}</span>
             </p>
-            <p className="flex items-center gap-2">
+          ) : null}
+          <div className="mt-2 h-px w-full bg-white/12 min-[560px]:mt-4" />
+          <div className="mt-2 grid gap-1.5 text-[11px] font-semibold text-[var(--rp-muted-strong)] min-[390px]:text-xs min-[560px]:mt-3 min-[560px]:gap-2 min-[560px]:text-sm">
+            <p className="flex flex-wrap items-center gap-2 text-left">
+              <CalendarDays className="h-4 w-4 shrink-0" />
+              <span className="whitespace-nowrap">{ride.dateLabel}</span>
+              <span aria-hidden="true">{"\u00b7"}</span>
+              <span className="whitespace-nowrap">{ride.timeLabel}</span>
+            </p>
+            {recurringTiming ? (
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-left text-xs font-black text-[var(--rp-muted-strong)]">
+                <span className="text-[var(--rp-primary)]">Starts</span>
+                <span>{recurringTiming.starts}</span>
+                <span className="text-[var(--rp-primary)]" aria-hidden="true">{"\u00b7"}</span>
+                <span className="text-[var(--rp-primary)]">Ends</span>
+                <span>{recurringTiming.ends}</span>
+              </p>
+            ) : null}
+            <p className="flex items-center gap-2 text-left">
               <UsersRound className="h-4 w-4 shrink-0" />
               {ride.seatsUsed} / {ride.seatsTotal} seats
             </p>
           </div>
         </div>
 
-        <div className="flex min-w-[82px] flex-col items-end justify-between gap-3 text-right">
-          <RideBadge ride={ride} />
-          <div>
-            <p className="text-3xl font-black leading-none text-[var(--rp-text)]">HK${ride.pricePerPerson}</p>
-            <p className="mt-1 text-xs font-semibold text-[var(--rp-muted-strong)]">per person</p>
+        <div
+          className={cn(
+            "col-span-full grid min-w-0 content-start justify-items-start gap-1.5 rounded-[16px] border bg-black/10 px-4 py-3 text-left min-[560px]:col-auto min-[560px]:min-h-[104px] min-[560px]:rounded-[18px] min-[560px]:px-4 min-[560px]:py-3",
+            isRideApp ? "border-sky-300/25" : "border-[var(--rp-border-strong)]",
+          )}
+        >
+          {!isRideApp ? (
+            <div className="flex w-full flex-wrap items-center justify-start gap-1.5 min-[560px]:gap-2">
+              <span
+                className={cn(
+                  "inline-flex min-h-6 items-center rounded-full border px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.06em] min-[390px]:px-2 min-[390px]:text-[9px] min-[560px]:min-h-7 min-[560px]:px-3 min-[560px]:text-[11px]",
+                  statusBadgeClass,
+                )}
+              >
+                {getTaxiQuoteStatus(ride)}
+              </span>
+            </div>
+          ) : null}
+          {isRideApp ? (
+            <>
+              <p className="text-left text-[8px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted-strong)] min-[390px]:text-[9px] min-[560px]:text-[10px] min-[560px]:tracking-[0.16em]">{rideAppEstimateLabel}</p>
+              <p
+                className={cn(
+                  "max-w-full text-left font-black leading-tight text-sky-300",
+                  rideAppEstimateDisplay.updated
+                    ? "text-lg min-[390px]:text-xl min-[560px]:text-[26px]"
+                    : "whitespace-nowrap text-[10px] min-[390px]:text-xs min-[560px]:text-sm",
+                )}
+              >
+                {rideAppEstimateDisplay.value}
+              </p>
+              {rideAppEstimateHelper ? (
+                <p className="text-left text-[10px] font-black text-sky-200 min-[390px]:text-xs min-[560px]:text-sm">
+                  {rideAppEstimateHelper}
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <p className="text-left text-[8px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted-strong)] min-[390px]:text-[9px] min-[560px]:text-[10px] min-[560px]:tracking-[0.16em]">Est.</p>
+              <p className="text-left text-2xl font-black leading-none text-[var(--rp-primary)] min-[390px]:text-3xl min-[560px]:text-4xl">
+                HK${ride.pricePerPerson}
+              </p>
+              <p className="text-left text-[10px] font-black text-[var(--rp-muted-strong)] min-[390px]:text-xs min-[560px]:text-sm">includes RidePod fee</p>
+            </>
+          )}
           </div>
-        </div>
       </div>
     </Link>
   );
 }
 
-function EmptyRides({ tab }: { tab: HomeTab }) {
+function RideAppCommunityPanel() {
+  const [claimModalOpen, setClaimModalOpen] = useState(false);
+  const rideAppWaiver = useRideAppWaiverState();
+  const waiverClaimed = rideAppWaiver.claimed && !rideAppWaiver.used;
+  const waiverUsed = rideAppWaiver.claimed && rideAppWaiver.used;
+  const ctaLabel = waiverUsed ? "Waiver used" : waiverClaimed ? "Waiver claimed" : "Claim HK$5 waiver";
+  const helper = waiverUsed ? "Thanks for trying RidePod." : waiverClaimed ? "Use it on your next self-settle join." : null;
+
+  return (
+    <>
+      <section className="mb-4 grid gap-4">
+        <div className="rounded-[26px] border border-cyan-200/35 bg-[linear-gradient(180deg,rgba(236,254,255,0.96),rgba(240,253,250,0.9))] p-5 text-[#12303a] shadow-[0_24px_60px_rgba(45,212,191,0.16)]">
+          <div className="grid gap-4 min-[560px]:grid-cols-[1fr_auto] min-[560px]:items-start">
+            <div className="min-w-0">
+              <p className="text-sm font-black uppercase tracking-[0.18em] text-cyan-700">RIDE APP LAUNCH OFFER</p>
+              <h2 className="mt-2 text-2xl font-black leading-tight text-[#10212a]">
+                First 100 joining members
+              </h2>
+              <p className="mt-1 text-left text-lg font-black leading-6 text-[#10212a]">
+                HK$5 RidePod fee waived.
+              </p>
+            </div>
+            <div className="grid gap-2 min-[560px]:justify-items-end">
+              <button
+                type="button"
+                onClick={() => setClaimModalOpen(true)}
+                disabled={waiverClaimed || waiverUsed}
+                className={cn(
+                  "inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-[14px] px-5 text-sm font-black shadow-[0_18px_34px_rgba(37,99,235,0.28)] transition min-[560px]:w-auto",
+                  waiverClaimed || waiverUsed
+                    ? "bg-white/72 text-cyan-800"
+                    : "bg-[linear-gradient(135deg,#2563eb_0%,#13d8cb_100%)] text-white hover:brightness-110",
+                )}
+              >
+                {waiverClaimed || waiverUsed ? <CheckCircle2 className="h-5 w-5" /> : <Gift className="h-5 w-5" />}
+                {ctaLabel}
+              </button>
+              {helper ? (
+                <p className="text-center text-xs font-black text-cyan-800 min-[560px]:text-right">
+                  {helper}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="mt-5 grid gap-2">
+            <div className="flex items-center justify-between text-xs font-black uppercase tracking-[0.14em] text-cyan-800">
+              <span>0 / 100 claimed</span>
+              <span>100 left</span>
+            </div>
+            <div className="h-3 overflow-hidden rounded-full bg-cyan-900/10">
+              <div className="h-full w-[2%] rounded-full bg-[linear-gradient(90deg,#5eead4,#2563eb)]" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {claimModalOpen ? (
+        <RideAppWaiverClaimModal
+          claimed={waiverClaimed}
+          onCancel={() => setClaimModalOpen(false)}
+          onClaim={claimRideAppWaiver}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function RideAppWaiverClaimModal({
+  claimed,
+  onCancel,
+  onClaim,
+}: {
+  claimed: boolean;
+  onCancel: () => void;
+  onClaim: () => void;
+}) {
+  const offerItems = [
+    `${ridePodJoinFeeWaiverCopy.appliesTo} waived.`,
+    ridePodJoinFeeWaiverCopy.excludes,
+    ridePodJoinFeeWaiverCopy.demoNote,
+  ];
+  const ruleItems = [
+    "Eligible pod joins only.",
+    "One waiver per account in this demo.",
+    "Abuse may be reviewed.",
+  ];
+
+  return (
+    <div className="fixed inset-0 z-[100] grid place-items-center overflow-y-auto bg-black/70 px-4 py-8 backdrop-blur-sm">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ride-app-waiver-title"
+        className="w-full max-w-md rounded-[24px] border border-[var(--rp-border-strong)] bg-[linear-gradient(180deg,#07111a,#0b1620)] p-5 text-[var(--rp-text)] shadow-[0_30px_80px_rgba(0,0,0,0.45)]"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">Ride app launch offer</p>
+            <h2 id="ride-app-waiver-title" className="mt-2 text-2xl font-black leading-tight">
+              {claimed ? "Waiver claimed" : "Claim HK$5 waiver?"}
+            </h2>
+          </div>
+          <button
+            type="button"
+            aria-label="Close waiver modal"
+            onClick={onCancel}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-[var(--rp-muted-strong)]"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+          {claimed
+            ? "We'll apply it to your next eligible self-settle join."
+            : "Use this waiver on your next eligible Ride app self-settle join."}
+        </p>
+
+        <div className="mt-5 grid gap-3">
+          <div className="rounded-[18px] border border-cyan-300/20 bg-cyan-400/10 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-200">Offer summary</p>
+            <ul className="mt-3 grid gap-2 text-sm font-bold leading-5 text-cyan-50">
+              {offerItems.map((item) => (
+                <li key={item} className="flex gap-2">
+                  <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-300" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-[18px] border border-[var(--rp-border)] bg-white/[0.04] p-4">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Rules</p>
+            <ul className="mt-3 grid gap-2 text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              {ruleItems.map((item) => (
+                <li key={item}>- {item}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 min-[420px]:grid-cols-2">
+          {claimed ? (
+            <>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="min-h-12 rounded-full border border-[var(--rp-border)] px-4 text-sm font-black text-[var(--rp-muted-strong)]"
+              >
+                Close
+              </button>
+              <Link
+                href="/create"
+                onClick={onCancel}
+                className="inline-flex min-h-12 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb,#13d8cb)] px-4 text-sm font-black text-white"
+              >
+                Use on Ride app pod
+              </Link>
+            </>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={onCancel}
+                className="min-h-12 rounded-full border border-[var(--rp-border)] px-4 text-sm font-black text-[var(--rp-muted-strong)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onClaim}
+                className="min-h-12 rounded-full bg-[var(--rp-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)]"
+              >
+                Claim waiver
+              </button>
+            </>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function RideTypeInfoStrip() {
+  return (
+    <div className="mt-3 grid gap-2 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-semibold text-[var(--rp-muted-strong)] min-[720px]:grid-cols-2">
+      <div className="flex items-center gap-3">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] text-[var(--rp-primary)]">
+          <ShieldCheck className="h-5 w-5" />
+        </span>
+        <span>Taxi pods use partner quote review.</span>
+      </div>
+      <div className="flex items-center gap-3 min-[720px]:border-l min-[720px]:border-white/12 min-[720px]:pl-4">
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-sky-300/35 bg-sky-400/12 text-sky-300">
+          <Smartphone className="h-5 w-5" />
+        </span>
+        <span>Ride app pods are self-settle with host fare estimates.</span>
+      </div>
+    </div>
+  );
+}
+
+function FilterChip({
+  label,
+  active,
+  tone = "taxi",
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  tone?: "taxi" | "ride_app" | "neutral";
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "min-h-10 shrink-0 rounded-full border px-4 text-xs font-black transition",
+        active && tone === "ride_app" && "border-sky-300/45 bg-sky-400/16 text-sky-100",
+        active && tone === "taxi" && "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)]",
+        active && tone === "neutral" && "border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-text)]",
+        !active && "border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-card-soft)_76%,transparent)] text-[var(--rp-muted-strong)] hover:border-[var(--rp-border-strong)]",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
+function EmptyRides({ tab, rideModeFilter, hasAnyRides }: { tab: HomeTab; rideModeFilter: RideModeFilter; hasAnyRides: boolean }) {
   return (
     <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-5 text-center">
-      <p className="text-lg font-black text-[var(--rp-text)]">{getEmptyTitle(tab)}</p>
+      <p className="text-lg font-black text-[var(--rp-text)]">
+        {hasAnyRides ? getEmptyTitle(tab, rideModeFilter) : "No matching pods"}
+      </p>
       <p className="mt-2 text-sm font-semibold text-[var(--rp-muted-strong)]">
-        Try changing your From / To district filters.
+        {getEmptyCopy(rideModeFilter, hasAnyRides)}
       </p>
       <Link
         href="/create"
@@ -278,90 +1182,319 @@ function EmptyRides({ tab }: { tab: HomeTab }) {
   );
 }
 
+const startsWithRideAppOnly = homeRides.length > 0 && homeRides.every((ride) => ride.rideCategory === "ride_app_self_settle" || ride.rideService === "ride_app");
+const initialRideModeFilter: RideModeFilter = startsWithRideAppOnly ? "ride_app" : "taxi";
+const initialSettlementFilter: SettlementFilter = startsWithRideAppOnly ? "self_settle" : "protected";
+
 export default function HomePage() {
+  const { user, profile } = useAuth();
+  const createdHomeRides = useCreatedHomeRides();
   const [fromDistrict, setFromDistrict] = useState("Hong Kong Island");
   const [toDistrict, setToDistrict] = useState("All districts");
   const [activeTab, setActiveTab] = useState<HomeTab>("all");
+  const [podPreferenceFilter, setPodPreferenceFilter] = useState<PodPreferenceFilter>("all");
+  const [taxiDriverFilter, setTaxiDriverFilter] = useState<TaxiDriverFilter>("all");
+  const [taxiTypeFilter, setTaxiTypeFilter] = useState<TaxiTypeFilter>("all");
+  const [airportDirectionFilter, setAirportDirectionFilter] = useState<AirportDirectionFilter>("all");
+  const [rideModeFilter, setRideModeFilter] = useState<RideModeFilter>(initialRideModeFilter);
+  const [settlementFilter, setSettlementFilter] = useState<SettlementFilter>(initialSettlementFilter);
+  const [fareEstimateFilter, setFareEstimateFilter] = useState<FareEstimateFilter>("any");
+  const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>("any");
+  const [seatFilter, setSeatFilter] = useState<SeatFilter>("any");
+  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const today = useMemo(() => new Date(), []);
+  const allHomeRides = useMemo(
+    () => [
+      ...homeRides.map((ride) => applyRideAppDemoPersona(ride, { profile, user })),
+      ...createdHomeRides.filter((createdRide) => !homeRides.some((ride) => ride.id === createdRide.id)),
+    ],
+    [createdHomeRides, profile, user],
+  );
 
-  const districtFilteredRides = useMemo(
+  const taxiTypeOptions = useMemo(
     () =>
-      homeRides.filter(
-        (ride) =>
-          matchesDistrict(fromDistrict, ride.fromDistrict) &&
-          matchesDistrict(toDistrict, ride.toDistrict),
+      Array.from(new Set(allHomeRides.filter((ride) => isRideStillVisible(ride, today)).map((ride) => ride.taxiType))).sort(
+        (a, b) => a.localeCompare(b),
       ),
-    [fromDistrict, toDistrict],
+    [allHomeRides, today],
   );
 
-  const visibleRides = useMemo(
-    () => districtFilteredRides.filter((ride) => rideMatchesTab(activeTab, ride)),
-    [activeTab, districtFilteredRides],
+  const filteredRides = useMemo(
+    () =>
+      allHomeRides.filter(
+        (ride) =>
+          isRideStillVisible(ride, today) &&
+          matchesRideModeFilter(ride, rideModeFilter) &&
+          matchesSettlementFilter(ride, settlementFilter) &&
+          matchesFareEstimateFilter(ride, fareEstimateFilter) &&
+          matchesDeadlineFilter(ride, deadlineFilter) &&
+          matchesSeatFilter(ride, seatFilter) &&
+          matchesOwnershipFilter(ride, ownershipFilter) &&
+          matchesDistrict(fromDistrict, ride.fromDistrict) &&
+          matchesDistrict(toDistrict, ride.toDistrict) &&
+          (podPreferenceFilter === "all" ||
+            (podPreferenceFilter === "open" && ride.podType === "Open pod") ||
+            (podPreferenceFilter === "women_only" && ride.podType === "Women-only") ||
+            (podPreferenceFilter === "verified_only" && ride.podType === "Verified-only") ||
+            (podPreferenceFilter === "invite_only" && ride.podType === "Invite-only")) &&
+          (taxiDriverFilter === "all" ||
+            isRideAppSelfSettle(ride) ||
+            (taxiDriverFilter === "accepted" && ride.driverAssignmentStatus === "PARTNER_ACCEPTED") ||
+            (taxiDriverFilter === "waiting" && ride.driverAssignmentStatus !== "PARTNER_ACCEPTED")) &&
+          (taxiTypeFilter === "all" || isRideAppSelfSettle(ride) || ride.taxiType === taxiTypeFilter) &&
+          (airportDirectionFilter === "all" || ride.airportDirection === airportDirectionFilter),
+      ),
+    [
+      airportDirectionFilter,
+      allHomeRides,
+      deadlineFilter,
+      fareEstimateFilter,
+      fromDistrict,
+      ownershipFilter,
+      podPreferenceFilter,
+      rideModeFilter,
+      seatFilter,
+      settlementFilter,
+      taxiDriverFilter,
+      taxiTypeFilter,
+      today,
+      toDistrict,
+    ],
   );
+
+  const tabFilteredRides = useMemo(
+    () => filteredRides.filter((ride) => rideMatchesTab(activeTab, ride)),
+    [activeTab, filteredRides],
+  );
+
+  const visibleRides = tabFilteredRides;
 
   const categoryCounts = useMemo(() => {
     const counts: Record<HomeTab, number> = {
-      all: districtFilteredRides.length,
-      airport: districtFilteredRides.filter((ride) => ride.rideKind === "airport").length,
-      one_off: districtFilteredRides.filter((ride) => ride.rideKind === "one_off").length,
-      recurring: districtFilteredRides.filter((ride) => ride.rideKind === "recurring").length,
+      all: filteredRides.length,
+      airport: filteredRides.filter((ride) => ride.rideKind === "airport").length,
+      one_off: filteredRides.filter((ride) => ride.rideKind === "one_off").length,
+      recurring: filteredRides.filter((ride) => ride.rideKind === "recurring").length,
+      quote_ready: filteredRides.filter((ride) => rideMatchesTab("quote_ready", ride)).length,
     };
 
     return counts;
-  }, [districtFilteredRides]);
+  }, [filteredRides]);
+  const visibleCategoryCards = useMemo(
+    () => categoryCards.filter((card) => rideModeFilter === "taxi" || card.id !== "quote_ready"),
+    [rideModeFilter],
+  );
+
+  function handleTabChange(tab: HomeTab) {
+    setActiveTab(tab);
+  }
+
+  function handleRideModeChange(value: Extract<RideModeFilter, "taxi" | "ride_app">) {
+    setRideModeFilter(value);
+    if (value === "taxi") {
+      setSettlementFilter("protected");
+      setFareEstimateFilter("any");
+    } else {
+      setSettlementFilter("self_settle");
+      if (activeTab === "quote_ready") {
+        setActiveTab("all");
+      }
+    }
+  }
+
+  function handleAirportDirectionChange(direction: AirportDirectionFilter) {
+    setAirportDirectionFilter(direction);
+
+    if (direction === "to_airport") {
+      setFromDistrict("All districts");
+      setToDistrict("Airport");
+    } else if (direction === "from_airport") {
+      setFromDistrict("Airport");
+      setToDistrict("All districts");
+    } else {
+      setFromDistrict("All districts");
+      setToDistrict("All districts");
+    }
+  }
+
+  function resetRouteFilters() {
+    setFromDistrict("All districts");
+    setToDistrict("All districts");
+    setActiveTab("all");
+    setPodPreferenceFilter("all");
+    setTaxiDriverFilter("all");
+    setTaxiTypeFilter("all");
+    setAirportDirectionFilter("all");
+    setRideModeFilter(initialRideModeFilter);
+    setSettlementFilter(initialSettlementFilter);
+    setFareEstimateFilter("any");
+    setDeadlineFilter("any");
+    setSeatFilter("any");
+    setOwnershipFilter("all");
+  }
+
+  const airportSummary =
+    airportDirectionFilter === "to_airport"
+      ? "To airport"
+      : airportDirectionFilter === "from_airport"
+        ? "From airport"
+        : "";
+  const podPreferenceSummary =
+    podPreferenceFilter === "open"
+      ? "Open pod"
+      : podPreferenceFilter === "women_only"
+        ? "Women-only"
+        : podPreferenceFilter === "verified_only"
+          ? "Verified-only"
+          : podPreferenceFilter === "invite_only"
+            ? "Invite-only"
+            : "";
+  const taxiDriverSummary =
+    taxiDriverFilter === "accepted"
+      ? "Taxi driver accepted"
+      : taxiDriverFilter === "waiting"
+        ? "Waiting for driver"
+        : "";
+  const taxiTypeSummary = taxiTypeFilter !== "all" ? taxiTypeFilter : "";
+  const rideModeSummary =
+    rideModeFilter === "taxi" ? "Taxi" : rideModeFilter === "ride_app" ? "Ride app" : "";
+  const settlementSummary =
+    settlementFilter === "protected" ? "Protected quote" : settlementFilter === "self_settle" ? "Self-settle" : "";
+  const fareEstimateSummary =
+    fareEstimateFilter === "estimate_available"
+      ? "Estimate available"
+      : fareEstimateFilter === "estimate_pending"
+        ? "Estimate pending"
+        : "";
+  const deadlineSummary =
+    deadlineFilter === "joining_now"
+      ? "Joining now"
+      : deadlineFilter === "expiring_soon"
+        ? "Expiring soon"
+        : deadlineFilter === "minimum_reached"
+          ? "Minimum reached"
+          : "";
+  const seatSummary =
+    seatFilter === "one_left"
+      ? "1 seat left"
+      : seatFilter === "two_plus_available"
+        ? "2+ seats"
+        : seatFilter === "minimum_reached"
+          ? "Minimum reached"
+          : seatFilter === "minimum_not_reached"
+            ? "Minimum not reached"
+            : "";
+  const hasActiveFilters =
+    activeTab !== "all" ||
+    fromDistrict !== "All districts" ||
+    toDistrict !== "All districts" ||
+    ownershipFilter !== "all";
 
   return (
-    <div className="relative min-h-[calc(100vh-1.25rem)] overflow-hidden pb-2">
-      <div className="pointer-events-none absolute inset-x-[-30%] top-[-120px] h-72 bg-[radial-gradient(circle,rgba(242,193,91,0.14),transparent_58%)]" />
+    <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-1.25rem)] overflow-hidden pb-2 sm:-mx-6 lg:-mx-10 lg:-mt-8">
+      <section className="relative overflow-hidden px-4 pb-7 pt-7 sm:px-6 lg:px-10">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,11,18,0.88)_0%,rgba(5,11,18,0.54)_34%,rgba(5,11,18,0.12)_72%),linear-gradient(180deg,rgba(5,11,18,0.08)_0%,rgba(5,11,18,0.08)_42%,rgba(5,11,18,0.62)_80%,var(--rp-bg)_100%),url('/images/ridepod/home-shared-taxi-night.png')] bg-cover bg-[70%_top]"
+        />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,transparent,var(--rp-bg))]" />
 
-      <section className="relative">
-        <CitySelect />
+        <div className="relative z-10">
+          <div className="pt-2 min-[720px]:pt-8">
+            <p className="text-[31px] font-serif leading-tight text-[var(--rp-text)] min-[720px]:text-[42px]">
+              Your ride, together.
+            </p>
+            <p className="mt-2 text-base font-semibold text-[var(--rp-muted-strong)] min-[720px]:text-lg">
+              First Local Shared Ride in Hong Kong
+            </p>
+          </div>
 
-        <DistrictRoutePicker
-          fromDistrict={fromDistrict}
-          toDistrict={toDistrict}
-          onFromChange={setFromDistrict}
-          onToChange={setToDistrict}
-          onSwap={() => {
-            setFromDistrict(toDistrict);
-            setToDistrict(fromDistrict);
-          }}
+          <div className="h-[170px] min-[720px]:h-[190px]" aria-hidden="true" />
+
+          <div
+            className={cn(
+              "mx-auto grid w-full gap-2 pb-1",
+              rideModeFilter === "taxi" ? "max-w-[560px] grid-cols-5" : "max-w-[460px] grid-cols-4",
+            )}
+          >
+            {visibleCategoryCards.map((card) => (
+              <CategoryCard
+                key={card.id}
+                id={card.id}
+                label={card.label}
+                icon={card.icon}
+                count={categoryCounts[card.id] ?? card.fallbackCount}
+                selected={activeTab === card.id}
+                onClick={handleTabChange}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="relative mt-4 px-4 sm:px-6 lg:px-10">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h1 className="text-base font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
+          <div className="flex shrink-0 items-center gap-2">
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={resetRouteFilters}
+                className="inline-flex min-h-10 items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-4 text-xs font-black text-[var(--rp-primary)]"
+              >
+                Clear
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(true)}
+              className={cn(
+                "inline-flex min-h-10 items-center gap-2 rounded-full border px-4 text-xs font-black transition",
+                hasActiveFilters
+                  ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_16%,transparent)] text-[var(--rp-primary)]"
+                  : "border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)]",
+              )}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filters
+            </button>
+          </div>
+        </div>
+
+        <RideModeSwitch
+          value={rideModeFilter === "ride_app" ? "ride_app" : "taxi"}
+          onChange={handleRideModeChange}
         />
 
-        <CategoryTabs activeTab={activeTab} onChange={setActiveTab} />
-      </section>
-
-      <section className="relative mt-7">
-        <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
-          {categoryCards.map((card) => (
-            <CategoryCard
-              key={card.id}
-              id={card.id}
-              label={card.label}
-              icon={card.icon}
-              count={categoryCounts[card.id] ?? card.fallbackCount}
-              selected={activeTab === card.id}
-              onClick={setActiveTab}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section className="relative mt-8">
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <h1 className="text-3xl font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
-          <Link href="/pods" className="flex items-center gap-1 text-sm font-black text-[var(--rp-primary)]">
-            View all <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
+        <RideAppCommunityPanel />
 
         <div className="grid gap-3">
           {visibleRides.length > 0 ? (
             visibleRides.map((ride) => <HomeRideCard key={ride.id} ride={ride} />)
           ) : (
-            <EmptyRides tab={activeTab} />
+            <EmptyRides tab={activeTab} rideModeFilter={rideModeFilter} hasAnyRides={filteredRides.length > 0} />
           )}
         </div>
+        <RideTypeInfoStrip />
       </section>
+
+      <DistrictFilterSheet
+        open={filtersOpen}
+        activeTab={activeTab}
+        fromDistrict={fromDistrict}
+        toDistrict={toDistrict}
+        ownership={ownershipFilter}
+        onFromChange={setFromDistrict}
+        onToChange={setToDistrict}
+        onOwnershipChange={setOwnershipFilter}
+        onSwap={() => {
+          setFromDistrict(toDistrict);
+          setToDistrict(fromDistrict);
+        }}
+        onReset={resetRouteFilters}
+        onClose={() => setFiltersOpen(false)}
+      />
 
       <div className="pointer-events-none fixed bottom-0 left-0 right-0 h-36 bg-[linear-gradient(180deg,transparent,var(--rp-bg))] opacity-80 lg:hidden" />
     </div>

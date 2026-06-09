@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LockKeyhole, Mail } from "lucide-react";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
-
-function isMissingSupabaseConfig(error: unknown) {
-  return error instanceof Error && error.message.includes("Supabase is not configured");
-}
+import { AuthPageShell } from "@/components/auth-page-shell";
+import { useAuth } from "@/providers/AuthProvider";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
+  const router = useRouter();
+  const { login, fallbackNote } = useAuth();
+  const [loginIdentifier, setLoginIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -22,31 +22,21 @@ export default function LoginPage() {
     setStatus(null);
     setError(null);
 
-    try {
-      const client = getSupabaseBrowserClient();
-      const result = await client.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+    const result = await login(loginIdentifier, password);
+    setSubmitting(false);
 
-      if (result.error) {
-        setError("Couldn't log in. Check your details and try again.");
-      } else {
-        setStatus("Logged in.");
-      }
-    } catch (caughtError) {
-      if (isMissingSupabaseConfig(caughtError)) {
-        setStatus("Supabase not configured; using mock profile data.");
-      } else {
-        setError("Couldn't log in. Try again later.");
-      }
-    } finally {
-      setSubmitting(false);
+    if (!result.ok) {
+      setError(result.error ?? "Couldn't log in. Try again later.");
+      return;
     }
+
+    setStatus(result.accountType === "taxi_partner" ? "Logged in as Taxi Partner." : "Logged in as Rider.");
+    const next = new URLSearchParams(window.location.search).get("next");
+    router.push(next && next.startsWith("/") ? next : result.redirectTo ?? "/home");
   }
 
   return (
-    <main className="min-h-screen bg-[var(--rp-gradient-app)] px-4 py-8 text-[var(--rp-text)]">
+    <AuthPageShell>
       <section className="mx-auto grid w-full max-w-md gap-4 rounded-[28px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
         <div className="grid gap-2">
           <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
@@ -54,20 +44,26 @@ export default function LoginPage() {
           </span>
           <h1 className="text-3xl font-black text-[var(--rp-text)]">Log in</h1>
           <p className="text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-            Log in to continue with shared taxi pods and beta RidePod actions.
+            Log in to join shared taxi pods or manage Taxi Partner tools.
+          </p>
+          <p className="text-xs font-bold leading-5 text-[var(--rp-muted)]">
+            RidePod detects your account type after login.
           </p>
         </div>
 
         <form className="grid gap-4" onSubmit={onSubmit}>
           <label className="grid gap-2">
-            <span className="text-sm font-black text-[var(--rp-text)]">Email</span>
+            <span className="text-sm font-black text-[var(--rp-text)]">Account name or email</span>
             <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
+              type="text"
+              value={loginIdentifier}
+              onChange={(event) => setLoginIdentifier(event.target.value)}
               required
               className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-semibold outline-none focus:border-[var(--rp-primary)]"
             />
+            <span className="text-xs font-bold leading-5 text-[var(--rp-muted)]">
+              Use your RidePod account name. Email also works.
+            </span>
           </label>
           <label className="grid gap-2">
             <span className="text-sm font-black text-[var(--rp-text)]">Password</span>
@@ -91,15 +87,25 @@ export default function LoginPage() {
         </form>
 
         {status ? <p className="text-sm font-black text-[var(--rp-success)]">{status}</p> : null}
+        {fallbackNote ? <p className="text-xs font-bold leading-5 text-[var(--rp-muted)]">{fallbackNote}</p> : null}
         {error ? <p className="text-sm font-black text-[var(--rp-danger)]">{error}</p> : null}
 
         <p className="text-sm font-semibold text-[var(--rp-muted)]">
           New to RidePod?{" "}
-          <Link href="/register" className="font-black text-[var(--rp-primary)]">
+          <Link
+            href="/register"
+            onClick={(event) => {
+              const next = new URLSearchParams(window.location.search).get("next");
+              if (!next || !next.startsWith("/")) return;
+              event.preventDefault();
+              router.push(`/register?next=${encodeURIComponent(next)}`);
+            }}
+            className="font-black text-[var(--rp-primary)]"
+          >
             Create account
           </Link>
         </p>
       </section>
-    </main>
+    </AuthPageShell>
   );
 }

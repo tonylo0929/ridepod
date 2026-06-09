@@ -17,7 +17,7 @@ import { RidePodLogo } from "@/components/ridepod-logo";
 import { cn } from "@/components/ui";
 
 type GenderMode = "WOMEN_ONLY" | "MIXED";
-type ThemeVariant = "light" | "dark";
+type ThemeVariant = "dark";
 
 export type JoinPodMapFirstScreenProps = {
   originLabel?: string;
@@ -104,7 +104,7 @@ function StaticRouteMap({
       <div className="absolute left-[40%] top-5 z-20 -translate-x-1/2 rounded-full border border-fuchsia-200/25 bg-gradient-to-b from-fuchsia-400 to-fuchsia-700 px-5 py-3 text-base font-black text-white shadow-[0_12px_32px_rgba(168,85,247,0.35)]">
         <span className="inline-flex items-center gap-2">
           <Venus className="h-5 w-5" />
-          {genderMode === "WOMEN_ONLY" ? "Women-only" : "Mixed pod"}
+          {genderMode === "WOMEN_ONLY" ? "Women-only" : "Open pod"}
         </span>
       </div>
 
@@ -199,7 +199,7 @@ export function JoinPodMapFirstScreen({
   destinationLabel = "LAX",
   routeLabel,
   departureTime = "Today, 4:30 PM",
-  estimate = "Est. 35–45 min",
+  estimate = "Est. 35??5 min",
   riderCount = 3,
   riderCapacity = 4,
   seatsLeft = 4,
@@ -209,13 +209,13 @@ export function JoinPodMapFirstScreen({
   isAuthorized = false,
   blockingReason,
   requiredAction,
-  themeVariant,
+  themeVariant = "dark",
   backHref = "/pods",
   onAuthorize,
 }: JoinPodMapFirstScreenProps) {
   const [authorized, setAuthorized] = useState(isAuthorized);
   const [pending, setPending] = useState(false);
-  const genderLabel = genderMode === "WOMEN_ONLY" ? "Women-only" : "Mixed pod";
+  const genderLabel = genderMode === "WOMEN_ONLY" ? "Women-only" : "Open pod";
   const displayRoute = routeLabel ?? `${originLabel} \u2192 ${destinationLabel}`;
   const eligibilityCta = getEligibilityCta(requiredAction);
 

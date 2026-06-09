@@ -16,9 +16,11 @@ import {
   taxiPartnerTaxiTypeLabels,
   type TaxiPartnerQuoteAcceptance,
 } from "@/lib/taxi-partner-quote";
+import { formatHKD, ridePodPricingCopy } from "@/lib/ridepod-pricing";
+import { useRidePodPricingConfig } from "@/lib/use-ridepod-pricing-config";
 
 function formatHkdCents(cents: number) {
-  return `HK$${(cents / 100).toFixed(2)}`;
+  return formatHKD(cents);
 }
 
 function formatQuoteExpiry(value: string | null) {
@@ -123,6 +125,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
 }) {
   const baseRequest = getTaxiPartnerQuoteRequest(rideInstance.taxiPartnerQuoteRequestId);
   const guestCount = Math.max(1, pod.seatsFilled);
+  const pricingConfig = useRidePodPricingConfig();
   const [acceptance, setAcceptance] = useState<TaxiPartnerQuoteAcceptance>(() =>
     createPendingTaxiPartnerQuoteAcceptance({
       quoteRequestId: baseRequest?.id ?? `${rideInstance.id}-quote`,
@@ -144,8 +147,8 @@ export function TaxiPartnerQuoteAcceptanceCard({
   const paymentMode: "stripe_test" | "mock" = stripeTestModeEnabled ? "stripe_test" : "mock";
 
   const moneyDisplay = useMemo(
-    () => baseRequest ? getTaxiPartnerQuoteMoneyDisplay(baseRequest, guestCount) : null,
-    [baseRequest, guestCount],
+    () => baseRequest ? getTaxiPartnerQuoteMoneyDisplay(baseRequest, guestCount, pricingConfig) : null,
+    [baseRequest, guestCount, pricingConfig],
   );
   const displayStatus = getTaxiPartnerQuoteDisplayStatus(baseRequest);
   const quoteAboveCap = Boolean(
@@ -298,7 +301,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
             Taxi partner quote
           </h2>
           <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
-            Your total includes your fare share and RidePod platform fee.
+            Taxi partner quote is separate from the RidePod fee.
           </p>
         </div>
         <Badge className={allAccepted ? "bg-emerald-400/10 text-emerald-300 ring-emerald-400/25" : "bg-sky-400/10 text-sky-300 ring-sky-400/25"}>
@@ -356,14 +359,14 @@ export function TaxiPartnerQuoteAcceptanceCard({
       <dl className="mt-4 rounded-[20px] border border-sky-400/20 bg-[linear-gradient(135deg,rgba(14,165,233,0.1),rgba(15,23,42,0.18))] p-4">
         <MoneyRow label="Taxi partner" value={baseRequest.quotedByPartnerName ?? "Demo Taxi Partner"} />
         <MoneyRow label="Taxi type" value={`${taxiPartnerTaxiTypeLabels[baseRequest.requestedTaxiType]} taxi`} />
-        <MoneyRow label="Quote amount" value={formatHkdCents(moneyDisplay.quoteAmountCents)} />
+        <MoneyRow label="Taxi partner quote" value={formatHkdCents(moneyDisplay.quoteAmountCents)} />
         <MoneyRow label="Fare share" value={formatHkdCents(moneyDisplay.fareShareCents)} />
-        <MoneyRow label="Platform fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
+        <MoneyRow label="RidePod fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
         <MoneyRow label="Your total" value={totalLabel} strong />
         <MoneyRow label="Quote expiry" value={formatQuoteExpiry(baseRequest.quoteExpiresAt)} />
       </dl>
       <p className="mt-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
-        Guests must accept the selected quote before the ride proceeds.
+        Guests must accept the selected quote before the ride proceeds. {ridePodPricingCopy.taxiQuoteSeparate}
       </p>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -435,9 +438,12 @@ export function TaxiPartnerQuoteAcceptanceCard({
         <dl className="mt-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3">
           <MoneyRow label="Taxi partner quote" value={formatHkdCents(moneyDisplay.quoteAmountCents)} />
           <MoneyRow label="Fare share" value={formatHkdCents(moneyDisplay.fareShareCents)} />
-          <MoneyRow label="Platform fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
+          <MoneyRow label="RidePod fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
           <MoneyRow label="Your total" value={totalLabel} strong />
         </dl>
+        <p className="mt-2 text-xs font-bold leading-5 text-sky-100">
+          {ridePodPricingCopy.taxiQuoteSeparate} RidePod fee is shown separately.
+        </p>
 
         {paymentMode === "stripe_test" ? (
           <>
@@ -548,7 +554,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
         >
           <dl className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
             <MoneyRow label="Fare share" value={formatHkdCents(moneyDisplay.fareShareCents)} />
-            <MoneyRow label="Platform fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
+            <MoneyRow label="RidePod fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
             <MoneyRow label="Total" value={totalLabel} strong />
             <MoneyRow label="Taxi partner" value={baseRequest.quotedByPartnerName ?? "Demo Taxi Partner"} />
             <MoneyRow label="Quote expiry" value={formatQuoteExpiry(baseRequest.quoteExpiresAt)} />

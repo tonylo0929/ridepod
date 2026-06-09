@@ -20,7 +20,6 @@ import {
   UsersRound,
 } from "lucide-react";
 import { RidePodLogo } from "@/components/ridepod-logo";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/components/ui";
 
 type RoutePoint = {
@@ -104,7 +103,6 @@ function PublicInviteTopBar() {
         <RidePodLogo className="h-9" priority />
       </Link>
       <div className="flex justify-self-end gap-2">
-        <ThemeToggle compact />
         <button
           type="button"
           aria-label="Share invite"

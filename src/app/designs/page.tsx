@@ -19,14 +19,14 @@ export default function DesignsIndexPage() {
             Compare visual directions
           </p>
           <h1 className="mt-3 max-w-3xl text-5xl font-black leading-tight tracking-tight">
-            Five high-fidelity RidePod design concepts.
+            Eight high-fidelity RidePod design concepts.
           </h1>
           <p className="mt-4 max-w-2xl text-lg leading-8 text-zinc-600">
             Each route includes home/feed, pod detail, create pod, join confirmation, host dashboard, and profile/trust screens using the same mock ride pod data.
           </p>
         </section>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {designVariantSlugs.map((slug) => {
             const variant = designVariants[slug];
             return (

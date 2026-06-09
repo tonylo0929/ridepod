@@ -10,9 +10,12 @@ export type SupabaseAdminEnv = SupabasePublicEnv & {
 const missingPublicEnvMessage =
   "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.";
 
-export function getSupabasePublicEnv(env: NodeJS.ProcessEnv = process.env): SupabasePublicEnv {
-  const url = env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const publicSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const publicSupabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+export function getSupabasePublicEnv(env?: NodeJS.ProcessEnv): SupabasePublicEnv {
+  const url = env?.NEXT_PUBLIC_SUPABASE_URL ?? publicSupabaseUrl;
+  const anonKey = env?.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? publicSupabaseAnonKey;
 
   if (!url || !anonKey) {
     throw new Error(missingPublicEnvMessage);

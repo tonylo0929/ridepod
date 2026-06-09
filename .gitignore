@@ -33,6 +33,7 @@ next-dev-*.log
 
 # local Codex app runtime output
 .codex/
+outputs/*reset*password*.sql
 
 # env files (can opt-in for committing if needed)
 .env*

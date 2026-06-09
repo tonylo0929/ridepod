@@ -94,7 +94,7 @@ export function PaymentReconciliationDashboard({ podId }: { podId?: string | nul
               </div>
               <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
                 <KeyValue label="Max charge" value={money(member.maxChargeCents, pod.currency)} />
-                <KeyValue label="Platform fee" value={money(member.platformFeeCents, pod.currency)} />
+                <KeyValue label="RidePod fee" value={money(member.platformFeeCents, pod.currency)} />
                 <KeyValue label="Final charge" value={money(member.finalChargeCents, pod.currency)} />
                 <KeyValue label="Intent provider" value={paymentIntent?.provider ?? "None"} />
                 <KeyValue label="Authorized" value={money(paymentIntent?.amountAuthorizedCents, pod.currency)} />
@@ -114,7 +114,7 @@ export function PaymentReconciliationDashboard({ podId }: { podId?: string | nul
           <KeyValue label="Approved max" value={money(pod.higherMaxApprovedCents ?? pod.approvedMaxTotalFareCents, pod.currency)} />
           <KeyValue label="Eligible fare" value={money(settlement?.approvedFareCents, pod.currency)} />
           <KeyValue label="Billable seats" value={settlement?.billableSeatCount ?? "None"} />
-          <KeyValue label="Platform fee total" value={money(settlement?.totalPlatformFeeCents, pod.currency)} />
+          <KeyValue label="RidePod fee total" value={money(settlement?.totalPlatformFeeCents, pod.currency)} />
           <KeyValue label="Host reimbursement" value={money(settlement?.hostReimbursementCents, pod.currency)} />
           <KeyValue label="Host user" value={hostReimbursement?.hostUserId ?? pod.hostUserId} />
           <KeyValue label="Transfer status" value={hostReimbursement ? <StateBadge value={hostReimbursement.payoutState} /> : "None"} />

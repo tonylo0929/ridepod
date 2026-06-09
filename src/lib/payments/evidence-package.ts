@@ -105,7 +105,7 @@ export function sanitizeEvidencePackageValue(value: unknown): unknown {
 
 function eventLabel(eventType: string) {
   if (eventType === "TEST_PAYMENT_INTENT_CREATED") return "Test payment created";
-  if (eventType === "TEST_PAYMENT_CONFIRMED") return "Test payment confirmed";
+  if (eventType === "TEST_PAYMENT_CONFIRMED") return "Test payment accepted";
   if (eventType === "TEST_REQUIRES_CAPTURE") return "Test authorization ready for capture";
   if (eventType === "TEST_CAPTURED") return "Test payment captured";
   if (eventType === "TEST_CANCELED") return "Test authorization canceled";

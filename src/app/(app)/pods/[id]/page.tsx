@@ -17,6 +17,7 @@ import { TaxiPartnerQuoteAcceptanceCard } from "@/components/taxi-partner-quote-
 import { HomePodDetailPage } from "@/components/home-pod-detail-page";
 import { NormalPodDetailPage } from "@/components/normal-pod-detail-page";
 import { AirportPodDetailPage } from "@/components/airport-pod-detail-page";
+import { CreatedPodDetailRouteClient } from "@/components/created-pod-route-client";
 import { RecurringPodDetailPage } from "@/components/recurring-pod-detail-page";
 import {
   MoneySafetyTimeline,
@@ -56,7 +57,7 @@ export default async function PodDetailPage({
   }
 
   const pod = getPod(id);
-  if (!pod) notFound();
+  if (!pod) return <CreatedPodDetailRouteClient id={id} />;
 
   const host = getUser(pod.hostUserId);
   const backupHost = getUser(pod.backupHostUserId);

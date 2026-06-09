@@ -25,7 +25,7 @@ Open [http://localhost:3000](http://localhost:3000).
 - `/settlement` receipt upload and settlement calculator mock.
 - `/profile` trust, verification, payment placeholder, and preferences.
 - `/settings` basic app settings.
-- `/theme` RidePod design-system preview for dark/light tokens, background assets, buttons, cards, badges, and stepper.
+- `/theme` RidePod design-system preview for dark tokens, background assets, buttons, cards, badges, and stepper.
 - `/designs` high-fidelity design variation index.
 - `/designs/fintech`, `/designs/community`, `/designs/travel`, `/designs/premium`, `/designs/campus` visual concepts. Each includes feed, pod detail, create, join confirmation, host dashboard, and profile/trust screens.
 
@@ -52,4 +52,4 @@ Mock users, ride pods, payment states, attendance states, waitlists, and helpers
 
 ## Theme System
 
-RidePod uses semantic CSS variables for dark executive mode and light itinerary mode. The theme toggle persists the selected mode in `localStorage` under `ridepod-theme`. Background assets live in `public/ridepod/`.
+RidePod uses one premium dark semantic token system across the app. Background assets live in `public/ridepod/`.

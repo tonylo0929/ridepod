@@ -106,7 +106,7 @@ export function PublicProfilePreview({
         <div className="mt-5 grid gap-3 rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
           <div className="flex items-center gap-3">
             <ShieldCheck className="h-5 w-5 text-[var(--rp-primary)]" />
-            <p className="text-sm font-black text-[var(--rp-text)]">Public pod preview</p>
+            <p className="text-sm font-black text-[var(--rp-text)]">Open pod preview</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {member.badges.length ? (

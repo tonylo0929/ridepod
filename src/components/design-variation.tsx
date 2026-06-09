@@ -46,6 +46,12 @@ function variantIntroCopy(variant: DesignVariant) {
       "Verified members, reliability metrics, and money-lock status get a black-car transfer treatment.",
     campus:
       "The interface makes shared rides feel low-cost, quick to share, and easy for student groups.",
+    commuter:
+      "Recurring routes, time windows, and action states are condensed for fast daily scanning.",
+    access:
+      "Access needs, pickup support, luggage expectations, and host responsibilities are made explicit before anyone joins.",
+    night:
+      "Pickup readiness, live status, and late-ride safety cues stay visible for high-attention moments.",
   } as const;
 
   return copy[variant.slug];
@@ -53,7 +59,7 @@ function variantIntroCopy(variant: DesignVariant) {
 
 function Shell({ variant, children }: { variant: DesignVariant; children: React.ReactNode }) {
   return (
-    <main className={cn("min-h-screen", variant.shell, variant.text)}>
+    <main className={cn("ridepod-design-shell min-h-screen text-left", variant.shell, variant.text)}>
       <aside
         className={cn(
           "fixed inset-y-0 left-0 hidden w-72 border-r p-5 lg:block",

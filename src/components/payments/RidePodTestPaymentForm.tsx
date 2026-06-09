@@ -60,7 +60,7 @@ export function RidePodTestPaymentForm({
       paymentIntentId: result.paymentIntent.id,
       status: result.paymentIntent.status,
       mockPaymentState,
-      message: "Test payment confirmed. No live money was charged.",
+      message: "Test payment accepted. No live money was charged.",
     });
     setState({ loading: false, error: null });
   }

@@ -29,15 +29,7 @@ export function RidePodHeroBackground({
         fill
         priority={priority}
         sizes="(max-width: 768px) 100vw, 768px"
-        className="ridepod-theme-image-dark object-cover object-center"
-      />
-      <Image
-        src="/ridepod/light-mode-background.png"
-        alt=""
-        fill
-        priority={priority}
-        sizes="(max-width: 768px) 100vw, 768px"
-        className="ridepod-theme-image-light object-cover object-center"
+        className="object-cover object-center"
       />
       <div
         className={cn(

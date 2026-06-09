@@ -129,6 +129,7 @@ end $$;
 
 create table if not exists profiles (
   id uuid primary key,
+  account_name text,
   display_name text,
   email text,
   created_at timestamptz default now()

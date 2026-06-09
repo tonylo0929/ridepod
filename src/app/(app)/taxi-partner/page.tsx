@@ -56,6 +56,26 @@ type PodRequest = {
   baselineCents: number;
   status: RequestStatus;
   organizerNote: string;
+  approvedStop?: string;
+};
+
+type ActiveRide = {
+  id: string;
+  requestId: string;
+  route: string;
+  dateTime: string;
+  pickup: string;
+  dropoff: string;
+  taxiType: TaxiType;
+  guestCount: number;
+  luggageCount: number;
+  accessibility: string;
+  quoteCents: number;
+  status: ActiveRideStatus;
+  payoutStatus: PayoutStatus;
+  approvedStop?: string;
+  routeChangeRequiresNewQuote?: boolean;
+  quoteUpdatedAfterRouteChange?: boolean;
 };
 
 const taxiTypes: TaxiType[] = ["Standard", "Electric", "Luggage-friendly", "Large", "Comfort", "Accessible"];
@@ -65,20 +85,21 @@ const initialRequests: PodRequest[] = [
   {
     id: "taxi_partner_quote_needed",
     rideInstanceId: "taxi-partner-quote-demo-needed",
-    route: "USC Village to LAX Terminal 3",
-    dateTime: "Tue May 19 - 8:00 AM",
-    pickup: "USC Village rideshare pickup",
-    dropoff: "LAX Terminal 3 departures",
-    stops: "No extra stops",
+    route: "IFC Mall to K11 Musea",
+    dateTime: "Today - 7:30 PM",
+    pickup: "IFC Mall, Central",
+    dropoff: "K11 Musea, Tsim Sha Tsui",
+    stops: "Admiralty Station Exit A",
     guestCount: 4,
-    luggageCount: 2,
-    taxiType: "Electric",
-    accessibility: "Extra luggage space requested",
-    safetyBadges: ["Women-only", "Verified-only"],
-    fareCapCents: 26000,
-    baselineCents: 23500,
+    luggageCount: 1,
+    taxiType: "Standard",
+    accessibility: "No special access requested",
+    safetyBadges: ["Open pod"],
+    fareCapCents: 35000,
+    baselineCents: 32000,
     status: "Quote requested",
-    organizerNote: "Guests have two large luggage items and prefer a quiet pickup area.",
+    organizerNote: "Host-approved stop included before quote request.",
+    approvedStop: "Admiralty Station Exit A",
   },
   {
     id: "taxi_partner_quote_received",
@@ -116,7 +137,7 @@ const initialRequests: PodRequest[] = [
   },
 ];
 
-const initialActiveRides = [
+const initialActiveRides: ActiveRide[] = [
   {
     id: "active-job-ready",
     requestId: "taxi_partner_guests_accepting",
@@ -131,6 +152,8 @@ const initialActiveRides = [
     quoteCents: 24000,
     status: "Job ready" as ActiveRideStatus,
     payoutStatus: "Payout pending" as PayoutStatus,
+    approvedStop: "Downtown pickup loop",
+    routeChangeRequiresNewQuote: true,
   },
   {
     id: "active-usc-lax",
@@ -146,21 +169,25 @@ const initialActiveRides = [
     quoteCents: 24000,
     status: "Ready for pickup" as ActiveRideStatus,
     payoutStatus: "Payout pending" as PayoutStatus,
+    approvedStop: "Downtown pickup loop",
+    routeChangeRequiresNewQuote: true,
   },
   {
     id: "active-tst-cwb",
     requestId: "taxi_partner_quote_received",
-    route: "Tsim Sha Tsui to Causeway Bay",
-    dateTime: "Today - 6:30 PM",
-    pickup: "Tsim Sha Tsui MTR Exit L5",
-    dropoff: "Times Square taxi stand",
+    route: "IFC Mall to K11 Musea",
+    dateTime: "Today - 8:05 PM",
+    pickup: "IFC Mall, Central",
+    dropoff: "K11 Musea, Tsim Sha Tsui",
     taxiType: "Standard",
-    guestCount: 3,
-    luggageCount: 0,
+    guestCount: 4,
+    luggageCount: 1,
     accessibility: "None requested",
-    quoteCents: 16800,
+    quoteCents: 35000,
     status: "Waiting for guests to accept" as ActiveRideStatus,
     payoutStatus: "Payout pending" as PayoutStatus,
+    approvedStop: "Admiralty Station Exit A",
+    routeChangeRequiresNewQuote: true,
   },
   {
     id: "active-review",
@@ -245,6 +272,35 @@ function FieldRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+function getRouteText(pickup: string, stop: string | undefined, dropoff: string) {
+  return stop ? `${pickup} → ${stop} → ${dropoff}` : `${pickup} → ${dropoff}`;
+}
+
+function RoutePreview({ pickup, stop, dropoff }: { pickup: string; stop?: string; dropoff: string }) {
+  const rows = [
+    ["Pickup", pickup],
+    ...(stop ? [["Stop 1", stop]] : []),
+    ["Dropoff", dropoff],
+  ];
+
+  return (
+    <ol className="grid gap-2 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+      {rows.map(([label, value], index) => (
+        <li key={label} className="grid grid-cols-[24px_minmax(0,1fr)] gap-3">
+          <span className="grid justify-items-center">
+            <span className="mt-1 h-3 w-3 rounded-full border border-[var(--rp-primary)] bg-[var(--rp-primary)]" />
+            {index < rows.length - 1 ? <span className="h-full min-h-7 w-px bg-[var(--rp-primary)]/60" /> : null}
+          </span>
+          <span className="min-w-0 pb-2">
+            <span className="block text-[11px] font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">{label}</span>
+            <span className="mt-1 block break-words text-sm font-black leading-5 text-[var(--rp-text)]">{value}</span>
+          </span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function MoneyRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-3 border-b border-[var(--rp-border)] py-2 last:border-b-0">
@@ -274,6 +330,9 @@ export default function TaxiPartnerDashboardPage() {
   const [completionRideId, setCompletionRideId] = useState<string | null>(null);
   const [understandsCompletion, setUnderstandsCompletion] = useState(false);
   const [completionMessage, setCompletionMessage] = useState<string | null>(null);
+  const [updateQuoteRideId, setUpdateQuoteRideId] = useState<string | null>(null);
+  const [updatedQuoteAmount, setUpdatedQuoteAmount] = useState("360.00");
+  const [updateQuoteMessage, setUpdateQuoteMessage] = useState<string | null>(null);
 
   const selectedRequest = requests.find((request) => request.id === selectedRequestId) ?? requests[0];
   const quoteCents = parseHkdToCents(quoteAmount);
@@ -291,6 +350,7 @@ export default function TaxiPartnerDashboardPage() {
   const arrivedRide = activeRides.find((ride) => ride.id === arrivedRideId) ?? null;
   const startRideTarget = activeRides.find((ride) => ride.id === startRideId) ?? null;
   const completionRide = activeRides.find((ride) => ride.id === completionRideId) ?? null;
+  const updateQuoteRide = activeRides.find((ride) => ride.id === updateQuoteRideId) ?? null;
   const acceptJobMoney = acceptJobRide
     ? getTaxiPartnerQuoteMoneyDisplay({ quoteAmountCents: acceptJobRide.quoteCents, currency: "HKD" }, acceptJobRide.guestCount)
     : null;
@@ -441,6 +501,27 @@ export default function TaxiPartnerDashboardPage() {
     setStartRideId(null);
   }
 
+  function updateRouteChangedQuote() {
+    const nextQuoteCents = parseHkdToCents(updatedQuoteAmount);
+    if (!updateQuoteRide || nextQuoteCents <= 0) return;
+
+    setActiveRides((current) =>
+      current.map((ride) =>
+        ride.id === updateQuoteRide.id
+          ? {
+              ...ride,
+              quoteCents: nextQuoteCents,
+              routeChangeRequiresNewQuote: false,
+              quoteUpdatedAfterRouteChange: true,
+              status: "Waiting for guests to accept",
+            }
+          : ride,
+      ),
+    );
+    setUpdateQuoteMessage("Updated quote sent");
+    setUpdateQuoteRideId(null);
+  }
+
   return (
     <main className="min-h-screen bg-[var(--rp-background)] px-4 py-6 text-[var(--rp-text)]">
       <div className="mx-auto flex max-w-6xl flex-col gap-5">
@@ -464,7 +545,7 @@ export default function TaxiPartnerDashboardPage() {
           <div className="mt-5 flex items-start gap-3 rounded-[18px] border border-sky-400/25 bg-sky-400/10 p-4 text-sky-100">
             <Info className="mt-0.5 h-5 w-5 shrink-0 text-sky-300" />
             <p className="text-sm font-bold leading-6">
-              Demo mode. RidePod does not provide drivers. Taxi partners are external licensed providers. No real dispatch or payout yet.
+              Demo mode. RidePod does not provide drivers. Taxi partners are external licensed providers. No live dispatch or payout is enabled.
             </p>
           </div>
         </section>
@@ -586,6 +667,24 @@ export default function TaxiPartnerDashboardPage() {
               <FieldRow label="Route estimate" value={formatHkdCents(selectedRequest.baselineCents)} />
               <FieldRow label="Organizer note" value={selectedRequest.organizerNote} />
             </div>
+            {selectedRequest.approvedStop ? (
+              <div className="mt-4 rounded-[18px] border border-[var(--rp-border-strong)] bg-[rgba(242,193,91,0.08)] p-4">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-black text-[var(--rp-primary)]">Route plan</p>
+                  <Badge className="bg-[var(--rp-warning-bg)] text-[var(--rp-warning)] ring-[var(--rp-border-strong)]">
+                    Host-approved stop
+                  </Badge>
+                </div>
+                <RoutePreview
+                  pickup={selectedRequest.pickup}
+                  stop={selectedRequest.approvedStop}
+                  dropoff={selectedRequest.dropoff}
+                />
+                <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                  Host-approved stop included in route plan.
+                </p>
+              </div>
+            ) : null}
             <div className="mt-4 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3">
               <p className="text-sm font-black text-sky-100">Safety/access mode summary</p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -687,9 +786,9 @@ export default function TaxiPartnerDashboardPage() {
                   <MoneyRow label="Quote" value={formatHkdCents(quotePreview.quoteAmountCents)} />
                   <MoneyRow label="Guests" value={String(selectedRequest.guestCount)} />
                   <MoneyRow label="Fare share" value={formatHkdCents(quotePreview.fareShareCents)} />
-                  <MoneyRow label="Platform fee" value={`${formatHkdCents(quotePreview.platformFeeCents)} / guest`} />
+                  <MoneyRow label="RidePod fee" value={`${formatHkdCents(quotePreview.platformFeeCents)} / guest`} />
                   <MoneyRow label="Guest total" value={formatHkdCents(quotePreview.guestChargeCents)} />
-                  <MoneyRow label="Platform fee total" value={formatHkdCents(quotePreview.platformFeeTotalCents)} />
+                  <MoneyRow label="RidePod fee total" value={formatHkdCents(quotePreview.platformFeeTotalCents)} />
                   <MoneyRow label="Taxi partner payout" value={formatHkdCents(quotePreview.driverPayoutCents)} />
                 </dl>
               ) : (
@@ -708,7 +807,7 @@ export default function TaxiPartnerDashboardPage() {
                 Payout stays pending until ride completion and dispute window review in this demo flow.
               </p>
               <p className="mt-2 text-xs font-bold leading-5 text-sky-100">
-                No real payout is sent in this demo.
+                No live payout is enabled in this demo.
               </p>
             </div>
           </Card>
@@ -733,6 +832,15 @@ export default function TaxiPartnerDashboardPage() {
                 );
                 const jobReady = ride.status === "Job ready";
                 const partnerDeclined = ride.status === "Partner declined";
+                const routeChangeClosedMessage =
+                  ride.status === "Job ready"
+                    ? "Route changes are closed after guests accept the quote."
+                    : ["Ready for pickup", "Taxi partner arrived"].includes(ride.status)
+                      ? "Taxi partner accepted. Route changes require manual coordination."
+                      : ride.status === "Ride started"
+                        ? "Ride has started. Route changes are closed."
+                        : null;
+                const canUpdateQuote = Boolean(ride.routeChangeRequiresNewQuote && !routeChangeClosedMessage);
 
                 return (
                   <article
@@ -766,6 +874,67 @@ export default function TaxiPartnerDashboardPage() {
                       <FieldRow label="Luggage" value={`${ride.luggageCount} large luggage`} />
                       <FieldRow label="Accessibility" value={ride.accessibility} />
                     </div>
+
+                    {ride.approvedStop && ride.routeChangeRequiresNewQuote ? (
+                      <div
+                        className={cn(
+                          "mt-3 rounded-[18px] border p-4",
+                          canUpdateQuote
+                            ? "border-amber-300/35 bg-amber-400/10"
+                            : "border-[var(--rp-border)] bg-[var(--rp-card-muted)]",
+                        )}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className={cn("text-base font-black", canUpdateQuote ? "text-amber-100" : "text-[var(--rp-text)]")}>
+                              Route changed
+                            </p>
+                            <p className="mt-1 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+                              Host approved an extra stop after your quote.
+                            </p>
+                          </div>
+                          <Badge className={canUpdateQuote ? "bg-amber-400/10 text-amber-200 ring-amber-300/25" : statusClass(ride.status)}>
+                            {canUpdateQuote ? "New quote needed" : ride.status}
+                          </Badge>
+                        </div>
+                        <p className="mt-3 break-words rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-sm font-black leading-5 text-[var(--rp-text)]">
+                          {getRouteText(ride.pickup, ride.approvedStop, ride.dropoff)}
+                        </p>
+                        <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                          {routeChangeClosedMessage ?? "New taxi partner quote may be needed before guests accept."}
+                        </p>
+                        {canUpdateQuote ? (
+                          <div className="mt-4 grid gap-2 min-[520px]:grid-cols-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setUpdateQuoteRideId(ride.id);
+                                setUpdatedQuoteAmount((ride.quoteCents / 100).toFixed(2));
+                              }}
+                              className="inline-flex min-h-11 items-center justify-center rounded-[14px] bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_28px_rgba(242,193,91,0.18)] transition hover:brightness-105"
+                            >
+                              Update quote
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setCompletionMessage(`Updated route: ${getRouteText(ride.pickup, ride.approvedStop, ride.dropoff)}`)}
+                              className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)]"
+                            >
+                              View route
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {ride.quoteUpdatedAfterRouteChange ? (
+                      <div className="mt-3 rounded-[18px] border border-emerald-400/25 bg-emerald-400/10 p-4">
+                        <p className="text-base font-black text-emerald-200">Updated quote sent</p>
+                        <p className="mt-1 text-sm font-bold leading-6 text-emerald-100">
+                          Guests must accept the updated quote before the ride proceeds.
+                        </p>
+                      </div>
+                    ) : null}
 
                     {["Ready for pickup", "Taxi partner arrived", "Ride started"].includes(ride.status) ? (
                       <div className="mt-3 rounded-[18px] border border-sky-400/25 bg-[linear-gradient(135deg,rgba(14,165,233,0.12),rgba(15,23,42,0.16))] p-4">
@@ -840,7 +1009,7 @@ export default function TaxiPartnerDashboardPage() {
                         />
                       </dl>
                       <p className="mt-2 text-xs font-bold leading-5 text-sky-100">
-                        RidePod platform fee is paid by guests. No real payout is sent in beta.
+                        RidePod fee is paid by guests in this mock/demo flow. No live payout is enabled.
                       </p>
                     </div>
 
@@ -850,7 +1019,7 @@ export default function TaxiPartnerDashboardPage() {
                       </p>
                     ) : (
                       <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-                        Demo only. No real dispatch happens.
+                        Demo only. No live dispatch is enabled.
                       </p>
                     )}
 
@@ -877,13 +1046,25 @@ export default function TaxiPartnerDashboardPage() {
                     ) : null}
 
                     {ride.status === "Ready for pickup" || ride.status === "Taxi partner arrived" || ride.status === "Ride started" ? (
-                      <button
-                        type="button"
-                        onClick={() => setCompletionRideId(ride.id)}
-                        className="mt-4 inline-flex min-h-11 items-center justify-center rounded-[14px] bg-sky-500 px-4 text-sm font-black text-white shadow-[0_14px_28px_rgba(14,165,233,0.22)] transition hover:bg-sky-400"
-                      >
-                        Mark completed
-                      </button>
+                      <div className="mt-4 grid gap-2 min-[520px]:grid-cols-2">
+                        <button
+                          type="button"
+                          onClick={() => setCompletionRideId(ride.id)}
+                          className="inline-flex min-h-11 items-center justify-center rounded-[14px] bg-sky-500 px-4 text-sm font-black text-white shadow-[0_14px_28px_rgba(14,165,233,0.22)] transition hover:bg-sky-400"
+                        >
+                          Mark completed
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCompletionMessage("Taxi partner chat is available after job acceptance. Demo placeholder only.")}
+                          className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-sky-400/30 bg-sky-400/10 px-4 text-sm font-black text-sky-200 transition hover:bg-sky-400/15"
+                        >
+                          Open taxi partner chat
+                        </button>
+                        <p className="min-[520px]:col-span-2 text-xs font-bold leading-5 text-sky-100">
+                          Use chat for pickup coordination. Live GPS is not enabled.
+                        </p>
+                      </div>
                     ) : null}
 
                     {ride.status === "Ride started" ? (
@@ -898,7 +1079,7 @@ export default function TaxiPartnerDashboardPage() {
                           <div className="flex flex-wrap gap-2">
                             <Badge className={statusClass("Ride started")}>Ride started</Badge>
                             <Badge className="bg-sky-400/10 text-sky-200 ring-sky-400/25">Demo mode</Badge>
-                            <Badge className="bg-amber-400/10 text-amber-300 ring-amber-400/25">No real payout yet</Badge>
+                            <Badge className="bg-amber-400/10 text-amber-300 ring-amber-400/25">No live payout</Badge>
                           </div>
                         </div>
                         <dl className="mt-3">
@@ -914,7 +1095,7 @@ export default function TaxiPartnerDashboardPage() {
                           />
                         </dl>
                         <p className="mt-3 text-xs font-bold leading-5 text-emerald-100">
-                          This starts the dispute window. No real payout is sent.
+                          This starts the dispute window. No live payout is enabled.
                         </p>
                       </div>
                     ) : null}
@@ -941,14 +1122,14 @@ export default function TaxiPartnerDashboardPage() {
                             value={rideMoney ? formatHkdCents(rideMoney.driverPayoutCents) : formatHkdCents(ride.quoteCents)}
                           />
                           <MoneyRow
-                            label="Platform fee total"
+                            label="RidePod fee total"
                             value={rideMoney ? formatHkdCents(rideMoney.platformFeeTotalCents) : "HK$0.00"}
                           />
                           <MoneyRow label="Dispute window" value="24h" />
                           <MoneyRow label="Payout mode" value="Demo only" />
                         </dl>
                         <p className="mt-3 rounded-[14px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
-                          No real payout is sent in beta. Guests can report an issue before payout can be marked ready.
+                          No live payout is enabled. Guests can report an issue before payout can be marked ready.
                         </p>
                         <div className="mt-4 grid gap-2 min-[520px]:grid-cols-2">
                           <button
@@ -995,6 +1176,14 @@ export default function TaxiPartnerDashboardPage() {
                         : completionMessage.startsWith("Ride started")
                           ? "The shared taxi ride is in progress."
                           : "Payout is pending until the dispute window ends."}
+                </p>
+              </div>
+            ) : null}
+            {updateQuoteMessage ? (
+              <div className="mt-4 rounded-[16px] border border-emerald-400/20 bg-emerald-400/10 p-3">
+                <p className="text-sm font-black text-emerald-300">{updateQuoteMessage}</p>
+                <p className="mt-1 text-xs font-bold leading-5 text-emerald-200">
+                  Guests must accept the updated quote before the ride proceeds.
                 </p>
               </div>
             ) : null}
@@ -1051,7 +1240,7 @@ export default function TaxiPartnerDashboardPage() {
                 ))}
               </div>
               <p className="mt-4 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3 text-xs font-bold leading-5 text-sky-100">
-                No real payout is sent in beta.
+                No live payout is enabled.
               </p>
             </Card>
 
@@ -1077,6 +1266,68 @@ export default function TaxiPartnerDashboardPage() {
         </section>
       </div>
 
+      {updateQuoteRide ? (
+        <div
+          className="fixed inset-0 z-[80] grid place-items-center bg-[rgba(3,7,18,0.68)] px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="taxi-partner-update-quote-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setUpdateQuoteRideId(null);
+          }}
+        >
+          <section className="max-h-[90vh] w-full max-w-[460px] overflow-y-auto rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
+            <h2 id="taxi-partner-update-quote-title" className="text-2xl font-black leading-tight">
+              Update taxi quote?
+            </h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              Review the updated route plan and enter a new shared quote.
+            </p>
+            <div className="mt-4">
+              <RoutePreview
+                pickup={updateQuoteRide.pickup}
+                stop={updateQuoteRide.approvedStop}
+                dropoff={updateQuoteRide.dropoff}
+              />
+            </div>
+            <label className="mt-4 grid gap-2 text-sm font-black">
+              New quote amount
+              <input
+                value={updatedQuoteAmount}
+                onChange={(event) => setUpdatedQuoteAmount(event.target.value)}
+                placeholder="HK$"
+                className="min-h-12 rounded-[14px] border border-[var(--rp-input-border)] bg-[var(--rp-input-bg)] px-4 text-sm font-bold text-[var(--rp-text)]"
+              />
+            </label>
+            <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+              This is demo state only. No live payment or payout.
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setUpdateQuoteRideId(null)}
+                className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={updateRouteChangedQuote}
+                disabled={parseHkdToCents(updatedQuoteAmount) <= 0}
+                className={cn(
+                  "min-h-12 rounded-2xl border text-sm font-black transition",
+                  parseHkdToCents(updatedQuoteAmount) > 0
+                    ? "border-[var(--rp-border-strong)] bg-[var(--rp-gradient-primary)] text-[var(--rp-primary-text)] hover:brightness-105"
+                    : "border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted)]",
+                )}
+              >
+                Update quote
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
       {acceptJobRide ? (
         <div
           className="fixed inset-0 z-[80] grid place-items-center bg-[rgba(3,7,18,0.68)] px-4 py-6 backdrop-blur-sm"
@@ -1089,7 +1340,7 @@ export default function TaxiPartnerDashboardPage() {
               Accept this taxi job?
             </h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              You are accepting this shared taxi pod in demo mode. No real dispatch or payout happens.
+              You are accepting this shared taxi pod in demo mode. No live dispatch or payout is enabled.
             </p>
             <dl className="mt-5 rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
               <MoneyRow label="Route" value={acceptJobRide.route} />
@@ -1254,7 +1505,7 @@ export default function TaxiPartnerDashboardPage() {
               Mark ride completed?
             </h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              This demo action marks the taxi partner ride as completed and starts the dispute window. No real payout is sent.
+              This demo action marks the taxi partner ride as completed and starts the dispute window. No live payout is enabled.
             </p>
             {completionRide ? (
               <dl className="mt-5 rounded-[18px] border border-sky-400/20 bg-sky-400/10 p-3">
@@ -1271,7 +1522,7 @@ export default function TaxiPartnerDashboardPage() {
                   }
                 />
                 <MoneyRow
-                  label="Platform fee total"
+                  label="RidePod fee total"
                   value={completionRideMoney ? formatHkdCents(completionRideMoney.platformFeeTotalCents) : "HK$0.00"}
                 />
               </dl>

@@ -247,7 +247,7 @@ function HostPodCard({ pod }: { pod: RidePod }) {
     pod.rideOption === "taxi_partner_quote" ? getTaxiPartnerRequestForRide(pod, nextRide) : null;
   const taxiPartnerNextAction = getTaxiPartnerNextActionCopy(taxiPartnerQuoteStatus);
   const safetyChips = [
-    pod.genderMode === "women_only" ? "Women-only" : "Mixed pod",
+    pod.genderMode === "women_only" ? "Women-only" : "Open pod",
     accessModeLabels[pod.accessMode ?? "open"],
   ].filter(Boolean);
   const action = taxiPartnerQuoteStatus?.primaryActionLabel ?? getHostAction(pod);

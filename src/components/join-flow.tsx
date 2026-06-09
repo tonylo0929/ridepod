@@ -13,7 +13,7 @@ export function JoinFlow({ pod }: { pod: RidePod }) {
     ? checkPodEligibility(currentUserId, pod.id)
     : {
         eligible: true,
-        reasons: [pod.genderMode === "women_only" ? "Women-only eligibility passed." : "Mixed pod."],
+        reasons: [pod.genderMode === "women_only" ? "Women-only eligibility passed." : "Open pod."],
         blockingReason: null,
         requiredAction: null,
       };
@@ -52,7 +52,7 @@ export function JoinFlow({ pod }: { pod: RidePod }) {
       destinationLabel={isSelectedDemoRoute ? "LAX" : pod.toLabel}
       routeLabel={isSelectedDemoRoute ? "USC \u2192 LAX" : `${pod.fromLabel} \u2192 ${pod.toLabel}`}
       departureTime={isSelectedDemoRoute ? "Today, 4:30 PM" : `${pod.date}, ${pod.time}`}
-      estimate="Est. 35–45 min"
+      estimate="Est. 35??5 min"
       riderCount={isSelectedDemoRoute ? 3 : pod.seatsFilled}
       riderCapacity={isSelectedDemoRoute ? 4 : pod.seatsTotal}
       seatsLeft={isSelectedDemoRoute ? 4 : Math.max(0, pod.seatsTotal - pod.seatsFilled)}

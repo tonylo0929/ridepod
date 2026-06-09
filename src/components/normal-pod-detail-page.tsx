@@ -3,24 +3,100 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { AnimalAvatar, getDemoAnimalAvatarId } from "@/components/animal-avatar";
 import {
   ArrowLeft,
   ArrowRight,
+  BarChart3,
   BriefcaseBusiness,
+  CalendarDays,
   CarFront,
+  CheckCircle2,
+  CheckSquare,
+  ChevronDown,
   Clock3,
+  Copy,
+  Crown,
+  ImagePlus,
+  ListChecks,
   MapPin,
+  MessageCircle,
+  MoreVertical,
+  ReceiptText,
   Share2,
+  ShieldCheck,
+  Smartphone,
+  Star,
+  UserPlus,
   UserRound,
+  UsersRound,
+  WalletCards,
+  X,
 } from "lucide-react";
 import { cn } from "@/components/ui";
-import type { HomeRide } from "@/lib/home-ride-mock";
+import type { HomeRide, RoutePlanStop } from "@/lib/home-ride-mock";
 import {
-  podDetailQuoteCopy,
-  QuoteReadySummary,
+  formatHkdCents,
+  LockSeatConfirmationModal,
+  LeaveSelfSettlePodModal,
+  PodDetailSetupBadges,
+  PodHeroJoinButton,
+  PickupReadyCards,
+  QuoteProvidedCard,
+  RoutePlanCard,
+  SelfSettleJoinConfirmationModal,
+  SelfSettleJoinSuccessModal,
   StickyPodDetailCta,
+  getCurrentUserCanJoinSelfSettlePod,
+  getCurrentUserIsHost,
+  isRideAppSelfSettlePod,
+  type LuggageContribution,
   usePodDetailJoinState,
 } from "@/components/pod-detail-join-state";
+import { createRideAppTrustEvent } from "@/lib/ride-app-trust";
+import { getRideAppHostFareEstimate, getRideAppHostFareEstimateDisplay } from "@/lib/ride-app-fare-estimate";
+import {
+  getRideAppChatAccessState,
+  getRideAppConfirmByDate,
+  getRideAppConfirmDeadlineState,
+  getRideAppCurrentDetailVersion,
+  getRideAppRequiredConfirmations,
+  isRideAppSeatHoldExpired,
+} from "@/lib/ride-app-chat-unlock";
+import { getRideWithStoredSelfSettleJoin, saveStoredSelfSettleRidePatch } from "@/lib/ride-app-local-join";
+import { markRideAppWaiverUsed, useRideAppWaiverState } from "@/lib/ride-app-waiver";
+import { updateCreatedHomeRide } from "@/lib/created-home-rides";
+import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
+import {
+  consumeRidePodPlusJoinFeeWaiver,
+  hasRidePodPlusJoinFeeWaiver,
+  useRidePodMembershipState,
+} from "@/lib/ridepod-membership";
+import { useAuth } from "@/providers/AuthProvider";
+
+function getSelfSettleRideAfterLeave(ride: HomeRide): HomeRide {
+  const currentUserName = ride.currentUserName?.trim().toLowerCase() || "you";
+  const joinedRiders = ride.joinedRiders.filter((name) => {
+    const normalized = name.trim().toLowerCase();
+    return normalized !== "you" && normalized !== currentUserName;
+  });
+
+  return {
+    ...ride,
+    currentUserJoined: false,
+    currentUserRole: "rider",
+    currentUserJoinIntentStatus: "left",
+    currentUserBookingDetailsConfirmed: false,
+    selfSettleConfirmationStatus: undefined,
+    platformFeeStatus: "pending",
+    quoteStatus: "quote_pending",
+    joinedRiders,
+    joinedRiderCount: Math.max(0, (ride.joinedRiderCount ?? ride.joinedRiders.length) - 1),
+    seatsUsed: Math.max(1, ride.seatsUsed - 1),
+    riderConfirmations: ride.riderConfirmations?.filter((item) => item.isCurrentUser !== true && item.name.trim().toLowerCase() !== "you"),
+  };
+}
 
 function DetailShell({ children, className, id }: { children: ReactNode; className?: string; id?: string }) {
   return (
@@ -36,14 +112,196 @@ function DetailShell({ children, className, id }: { children: ReactNode; classNa
   );
 }
 
-function FlowStep({ index, label, icon }: { index: number; label: string; icon?: ReactNode }) {
+type HowItWorksStepId = 1 | 2 | 3 | 4;
+type HowItWorksRideMode = "taxi" | "ride_app";
+type HowItWorksStep = {
+  id: HowItWorksStepId;
+  label: string;
+  title: string;
+  body: string;
+  icon: typeof UserRound;
+};
+
+const taxiHowItWorksSteps: HowItWorksStep[] = [
+  {
+    id: 1,
+    label: "Join pod",
+    title: "Join pod",
+    body: "Guests join the pod and lock a seat first. No fare is collected at this stage.",
+    icon: UserPlus,
+  },
+  {
+    id: 2,
+    label: "Taxi partner quote",
+    title: "Taxi partner quote",
+    body: "RidePod gets or shows the taxi partner quote for the shared pod.",
+    icon: ReceiptText,
+  },
+  {
+    id: 3,
+    label: "Guests accept",
+    title: "Guests accept",
+    body: "Guests accept the quote before the protected taxi ride proceeds.",
+    icon: CheckCircle2,
+  },
+  {
+    id: 4,
+    label: "Ride proceeds",
+    title: "Ride proceeds",
+    body: "The taxi ride proceeds after the group accepts the quote.",
+    icon: CarFront,
+  },
+];
+
+const rideAppHowItWorksSteps: HowItWorksStep[] = [
+  {
+    id: 1,
+    label: "Join pod",
+    title: "Join pod",
+    body: "Guests join the self-settle pod and lock a seat.",
+    icon: UserPlus,
+  },
+  {
+    id: 2,
+    label: "Confirm details",
+    title: "Confirm details",
+    body: "The group confirms gather point, ride app, estimated fare, fare split, and payment method in chat.",
+    icon: ListChecks,
+  },
+  {
+    id: 3,
+    label: "Book ride app",
+    title: "Book ride app",
+    body: "The host or agreed booker requests the ride app outside RidePod after enough riders confirm.",
+    icon: Smartphone,
+  },
+  {
+    id: 4,
+    label: "Settle directly",
+    title: "Settle directly",
+    body: "Final ride fare is handled directly with the host or booker outside RidePod. The group can agree when to settle.",
+    icon: ReceiptText,
+  },
+];
+
+function getHowItWorksSteps(rideMode: HowItWorksRideMode = "taxi") {
+  return rideMode === "ride_app" ? rideAppHowItWorksSteps : taxiHowItWorksSteps;
+}
+
+function getDefaultHowItWorksStep(
+  ride: HomeRide,
+  joinView: string,
+  rideMode: HowItWorksRideMode = "taxi",
+): HowItWorksStepId {
+  const joinStatus = joinView.toLowerCase();
+  const statusValues = [ride.status, ride.quoteStatus, ride.pickupStatus, ride.driverAssignmentStatus]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase());
+
+  if (rideMode === "ride_app") {
+    if (["completed", "ride_completed"].includes(joinStatus) || statusValues.some((status) => ["completed", "ride_completed"].includes(status))) {
+      return 4;
+    }
+
+    if (ride.bookingDetailsShared === true || ride.rideAppBookingDetailsConfirmed === true) {
+      return 3;
+    }
+
+    if (["joined", "seat_lock"].includes(joinStatus) || ride.currentUserJoined === true) {
+      return 2;
+    }
+
+    return 1;
+  }
+
+  if (
+    ["ready_for_pickup", "ride_in_progress", "ride_started", "completed", "partner_arrived"].includes(joinStatus) ||
+    statusValues.some((status) => ["ready_for_pickup", "ride_in_progress", "ride_started", "completed", "partner_arrived"].includes(status))
+  ) {
+    return 4;
+  }
+
+  if (
+    ["quote_ready", "pending_acceptance", "quote_accepted", "all_accepted"].includes(joinStatus) ||
+    statusValues.some((status) => ["quote_ready", "pending_acceptance", "quote_accepted", "all_accepted"].includes(status))
+  ) {
+    return 3;
+  }
+
+  if (
+    ["forming", "seat_lock", "joined"].includes(joinStatus) ||
+    statusValues.some((status) => ["forming", "seat_lock", "joined"].includes(status))
+  ) {
+    return 1;
+  }
+
+  if (joinStatus === "quote_pending" || statusValues.some((status) => ["waiting_quote", "quote_pending"].includes(status))) {
+    return 2;
+  }
+
+  return 1;
+}
+
+function FlowStep({
+  step,
+  active,
+  completed,
+  onSelect,
+  rideMode = "taxi",
+}: {
+  step: HowItWorksStep;
+  active: boolean;
+  completed: boolean;
+  onSelect: () => void;
+  rideMode?: HowItWorksRideMode;
+}) {
+  const Icon = step.icon;
+  const accentActive =
+    rideMode === "ride_app"
+      ? "border-cyan-300 bg-cyan-300/12 shadow-[0_0_24px_rgba(103,232,249,0.18)]"
+      : "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_13%,transparent)] shadow-[0_0_24px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]";
+  const iconActive =
+    rideMode === "ride_app"
+      ? "border-cyan-300 bg-cyan-300/14 text-cyan-200"
+      : "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)]";
+  const textActive = rideMode === "ride_app" ? "text-cyan-200" : "text-[var(--rp-primary)]";
+  const ringColor = rideMode === "ride_app" ? "focus-visible:ring-cyan-300" : "focus-visible:ring-[var(--rp-primary)]";
+
   return (
-    <div className="grid min-w-0 flex-1 justify-items-center gap-2 text-center">
-      <span className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-sm font-black text-[var(--rp-text)]">
-        {icon ?? index}
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={active}
+      className={cn(
+        "group grid min-w-0 flex-1 justify-items-center gap-2 rounded-[16px] border p-2 text-center transition focus-visible:outline-none focus-visible:ring-2",
+        ringColor,
+        active
+          ? accentActive
+          : "border-transparent hover:border-[var(--rp-border)] hover:bg-[var(--rp-card-soft)]",
+      )}
+    >
+      <span
+        className={cn(
+          "relative grid h-11 w-11 place-items-center rounded-full border text-sm font-black transition",
+          active
+            ? iconActive
+            : "border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted-strong)] group-hover:text-[var(--rp-text)]",
+        )}
+      >
+        <Icon className="h-5 w-5" />
+        {completed ? (
+          <CheckCircle2 className={cn("absolute -right-1 -top-1 h-4 w-4 rounded-full bg-[var(--rp-shell)]", textActive)} />
+        ) : null}
       </span>
-      <span className="text-xs font-black leading-4 text-[var(--rp-primary)]">{label}</span>
-    </div>
+      <span
+        className={cn(
+          "text-[11px] font-black leading-4 transition min-[390px]:text-xs",
+          active ? textActive : "text-[var(--rp-muted-strong)] group-hover:text-[var(--rp-text)]",
+        )}
+      >
+        {step.label}
+      </span>
+    </button>
   );
 }
 
@@ -59,14 +317,251 @@ function DetailItem({
   className?: string;
 }) {
   return (
-    <div className={cn("flex gap-3", className)}>
-      <span className="mt-1 text-[var(--rp-primary)]">{icon}</span>
-      <div>
-        <p className="text-sm font-black text-[var(--rp-primary)]">{label}</p>
-        <p className="mt-0.5 text-base font-black leading-5 text-[var(--rp-text)]">{value}</p>
+    <div
+      className={cn(
+        "group relative overflow-hidden rounded-[18px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card-muted)_82%,transparent),color-mix(in_srgb,var(--rp-card-soft)_94%,transparent))] p-3.5 shadow-[var(--rp-shadow-soft)]",
+        className,
+      )}
+    >
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,color-mix(in_srgb,var(--rp-primary)_45%,transparent),transparent)]" />
+      <div className="flex items-start gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] border border-[color-mix(in_srgb,var(--rp-primary)_42%,var(--rp-border))] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] text-[var(--rp-primary)] shadow-[0_10px_22px_color-mix(in_srgb,var(--rp-primary)_10%,transparent)]">
+          {icon}
+        </span>
+        <div className="min-w-0 pt-0.5">
+          <p className="text-[11px] font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">{label}</p>
+          <p className="mt-1 text-[17px] font-black leading-5 text-[var(--rp-text)]">{value}</p>
+        </div>
       </div>
     </div>
   );
+}
+
+function FlowMiniStep({
+  icon: Icon,
+  label,
+  tone = "cyan",
+}: {
+  icon: typeof UserRound;
+  label: string;
+  tone?: "cyan" | "gold";
+}) {
+  return (
+    <div className="grid min-w-0 justify-items-center gap-2 text-center">
+      <span
+        className={cn(
+          "grid h-12 w-12 place-items-center rounded-full border text-sm font-black",
+          tone === "cyan"
+            ? "border-cyan-300/40 bg-cyan-300/12 text-cyan-100"
+            : "border-[var(--rp-primary)]/40 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]",
+        )}
+      >
+        <Icon className="h-5 w-5" />
+      </span>
+      <span className="text-xs font-black leading-4 text-[var(--rp-text)]">{label}</span>
+    </div>
+  );
+}
+
+type DetailTab = "trip" | "pod";
+
+const detailTabs: Array<{ id: DetailTab; label: string }> = [
+  { id: "trip", label: "Trip" },
+  { id: "pod", label: "Pod" },
+];
+
+function DetailTag({ children, tone = "gold" }: { children: ReactNode; tone?: "gold" | "green" | "blue" }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex min-h-8 items-center rounded-full border px-3 py-1 text-sm font-black",
+        tone === "green"
+          ? "border-emerald-200 bg-emerald-300/15 text-emerald-100"
+          : tone === "blue"
+            ? "border-sky-200 bg-sky-300/15 text-sky-100"
+            : "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_16%,transparent)] text-[var(--rp-primary)]",
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function DetailSwitch({
+  value,
+  onChange,
+  rideMode = "taxi",
+}: {
+  value: DetailTab;
+  onChange: (value: DetailTab) => void;
+  rideMode?: HowItWorksRideMode;
+}) {
+  return (
+    <div className="grid grid-cols-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-1">
+      {detailTabs.map((tab) => {
+        const active = tab.id === value;
+
+        return (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => onChange(tab.id)}
+            className={cn(
+              "min-h-11 rounded-[14px] px-4 text-sm font-black transition",
+              active
+                ? rideMode === "ride_app"
+                  ? "bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] text-[#061019] shadow-[0_10px_22px_rgba(56,189,248,0.2)]"
+                  : "bg-[linear-gradient(180deg,#ffd36a_0%,#f2c15b_100%)] text-[#07111a] shadow-[0_10px_22px_color-mix(in_srgb,var(--rp-primary)_22%,transparent)]"
+                : "text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-soft)] hover:text-[var(--rp-text)]",
+            )}
+          >
+            {tab.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function getTaxiTypeVisual(taxiType: string) {
+  const normalized = taxiType.toLowerCase();
+
+  if (normalized.includes("compact")) {
+    return {
+      title: "Compact 4-seat taxi",
+      description: "Good for lighter luggage.",
+      imageSrc: "/images/ridepod/taxis/compact-4-seat.png",
+      riders: 4,
+      bags: 2,
+    };
+  }
+
+  if (normalized.includes("large") || normalized.includes("luggage")) {
+    return {
+      title: "Large-luggage 4-seat taxi",
+      description: "Best for airport trips.",
+      imageSrc: "/images/ridepod/taxis/large-luggage-4-seat.png",
+      riders: 4,
+      bags: 4,
+    };
+  }
+
+  if (normalized.includes("6-seat") || normalized.includes("6 seater") || normalized.includes("6-seater")) {
+    return {
+      title: "6-seat taxi",
+      description: "Best for bigger groups.",
+      imageSrc: "/images/ridepod/taxis/taxi-6-seat.png",
+      riders: 6,
+      bags: 2,
+    };
+  }
+
+  return {
+    title: "Standard 4-seat taxi",
+    description: "Everyday shared taxi.",
+    imageSrc: "/images/ridepod/taxis/standard-4-seat.png",
+    riders: 4,
+    bags: 3,
+  };
+}
+
+function TaxiTypeVisualCard({ taxiType }: { taxiType: string }) {
+  const visual = getTaxiTypeVisual(taxiType);
+
+  return (
+    <div className="overflow-hidden rounded-[18px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card-muted)_88%,transparent),var(--rp-card-soft))]">
+      <div className="relative h-32 border-b border-[var(--rp-border)] bg-[#07111a]">
+        <Image
+          src={visual.imageSrc}
+          alt={visual.title}
+          fill
+          sizes="(min-width: 640px) 420px, calc(100vw - 72px)"
+          className="object-contain p-3"
+        />
+      </div>
+      <div className="grid gap-3 p-4">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Taxi requested</p>
+          <h3 className="mt-1 text-xl font-black leading-tight text-[var(--rp-text)]">{visual.title}</h3>
+          <p className="mt-1 text-sm font-semibold text-[var(--rp-muted-strong)]">{visual.description}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 border-t border-[var(--rp-border)] pt-3">
+          <div className="flex items-center gap-2">
+            <UsersRound className="h-5 w-5 text-[var(--rp-muted-strong)]" />
+            <div>
+              <p className="text-lg font-black text-[var(--rp-text)]">x{visual.riders}</p>
+              <p className="text-xs font-semibold text-[var(--rp-muted-strong)]">Up to {visual.riders} riders</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <BriefcaseBusiness className="h-5 w-5 text-[var(--rp-muted-strong)]" />
+            <div>
+              <p className="text-lg font-black text-[var(--rp-text)]">x{visual.bags}</p>
+              <p className="text-xs font-semibold text-[var(--rp-muted-strong)]">Up to {visual.bags} bags</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getEstimatedShareRange(pricePerPerson: number) {
+  const low = Math.max(1, Math.floor(pricePerPerson * 0.9));
+  const high = Math.ceil(pricePerPerson * 1.1);
+
+  return `HK$${low}-${high}`;
+}
+
+function formatRideAppEstimateRangeInput(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^HK\$/i.test(trimmed)) return trimmed.replace(/^hk\$/i, "HK$");
+  return `HK$${trimmed}`;
+}
+
+function estimateTotalFromRange(value: string) {
+  const numbers = value.match(/\d+(?:\.\d+)?/g)?.map(Number).filter(Number.isFinite) ?? [];
+  if (!numbers.length) return null;
+  return Math.round(numbers.reduce((total, number) => total + number, 0) / numbers.length);
+}
+
+function getRideAppProviderDisplay(ride: HomeRide) {
+  if (ride.rideAppProviderName?.trim()) return ride.rideAppProviderName.trim();
+  if (ride.taxiType && !ride.taxiType.toLowerCase().includes("ride app")) return ride.taxiType;
+  return "Selected by host";
+}
+
+function getRideAppAcceptedPaymentDisplay(ride: HomeRide) {
+  if (ride.rideAppAcceptedPaymentMethods?.length) return ride.rideAppAcceptedPaymentMethods.join(", ");
+  if (ride.paymentMethod?.trim()) return ride.paymentMethod.trim();
+  return "Not set yet";
+}
+
+function getRideAppFareEstimateProof(ride: HomeRide) {
+  const fileName = ride.fareEstimateScreenshot?.fileName ?? ride.rideAppFareEstimateScreenshotName ?? null;
+  const previewUrl = ride.fareEstimateScreenshot?.previewUrl ?? null;
+  const addedAt = ride.fareEstimateScreenshot?.addedAt ?? ride.rideAppFareEstimateScreenshotAddedAt ?? null;
+  if (!fileName && !previewUrl) return null;
+
+  return {
+    fileName,
+    previewUrl,
+    addedAt,
+  };
+}
+
+function getHeroQuoteStatus(ride: HomeRide, joinView: string) {
+  if (isRideAppSelfSettlePod(ride) && (getCurrentUserIsHost(ride) || joinView === "joined")) {
+    return ride.bookingDetailsShared ? "Booking details shared" : "Ride details pending";
+  }
+  if (isRideAppSelfSettlePod(ride) && joinView === "quote_pending") return "Forming";
+  if (ride.quoteUpdatedAfterRouteChange && ["quote_ready", "quote_deadline_soon", "late_confirmation"].includes(joinView)) return "Updated quote ready";
+  if (joinView === "quote_pending" || joinView === "joined") return "Waiting for quote";
+  if (typeof ride.quoteAmountCents === "number") return formatHkdCents(ride.quoteAmountCents);
+  if (joinView === "quote_ready" || joinView === "quote_accepted" || joinView === "all_accepted") return "Ready";
+
+  return "Waiting for quote";
 }
 
 const avatarStyles = [
@@ -84,33 +579,3367 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-function RiderStack({ ride }: { ride: HomeRide }) {
-  const names = [ride.hostName, ...ride.joinedRiders].slice(0, 3);
+function getHostProfileImageUrl(ride: HomeRide) {
+  const hostMedia = ride as HomeRide & {
+    hostAvatarUrl?: string | null;
+    hostImageUrl?: string | null;
+    hostPhotoUrl?: string | null;
+    hostProfileImageUrl?: string | null;
+  };
+  const candidates = [
+    hostMedia.hostProfileImageUrl,
+    hostMedia.hostAvatarUrl,
+    hostMedia.hostPhotoUrl,
+    hostMedia.hostImageUrl,
+  ];
+  const match = candidates.find((value): value is string => typeof value === "string" && value.trim().length > 0);
+
+  return match?.trim() ?? null;
+}
+
+function isCurrentUserRiderName(name: string) {
+  const normalized = name.trim().toLowerCase();
+  return normalized === "you" || normalized.includes("(you)");
+}
+
+function getPodStatusPersonDisplayName(name: string) {
+  return isCurrentUserRiderName(name) ? "You" : name;
+}
+
+function getPodStatusAvatarLabel(name: string) {
+  return isCurrentUserRiderName(name) ? "You" : getInitials(name);
+}
+
+function RiderStack({ ride, seatsUsed }: { ride: HomeRide; seatsUsed: number }) {
+  const names = [ride.hostName, ...ride.joinedRiders].slice(0, Math.max(0, Math.min(seatsUsed, 3)));
 
   return (
     <div className="flex shrink-0 -space-x-2">
-      {names.map((name, index) => (
-        <span
-          key={`${name}-${index}`}
-          className={cn(
-            "grid h-10 w-10 place-items-center rounded-full border-2 border-[#07111a] text-xs font-black shadow-[0_6px_14px_rgba(0,0,0,0.24)]",
-            avatarStyles[index % avatarStyles.length],
-          )}
-        >
-          {getInitials(name)}
-        </span>
-      ))}
+      {names.map((name, index) => {
+        const animalAvatarId = getDemoAnimalAvatarId(name);
+        return animalAvatarId ? (
+          <AnimalAvatar
+            key={`${name}-${index}`}
+            id={animalAvatarId}
+            label={`${name} avatar`}
+            className="h-10 w-10 border-2 border-[#07111a] text-[8px] shadow-[0_6px_14px_rgba(0,0,0,0.24)]"
+          />
+        ) : (
+          <span
+            key={`${name}-${index}`}
+            className={cn(
+              "grid h-10 w-10 place-items-center rounded-full border-2 border-[#07111a] text-xs font-black shadow-[0_6px_14px_rgba(0,0,0,0.24)]",
+              avatarStyles[index % avatarStyles.length],
+            )}
+          >
+            {getInitials(name)}
+          </span>
+        );
+      })}
     </div>
   );
 }
 
-export function NormalPodDetailPage({ ride }: { ride: HomeRide }) {
-  const { seatsUsed, joinView, acceptedGuestCount, requiredGuestCount, lockSeat, acceptQuote, declineQuote } =
-    usePodDetailJoinState(ride);
+type PodStatusTab = "summary" | "riders" | "route" | "chat";
+type ManagePodActionsTab = "confirmations" | "route_requests" | "pod_settings";
+type ConfirmByUnit = "hours" | "days";
+type PodStatusRiderState = "host" | "confirmed" | "review_needed" | "pending" | "seat_hold_expired" | "left_pod" | "needs_review";
+type PodStatusRider = {
+  name: string;
+  role: "host" | "rider";
+  status: PodStatusRiderState;
+  confirmedBookingDetailsVersion?: number;
+  confirmedDetailVersion?: number;
+  seatHoldExpiredAt?: string | null;
+};
+type RideAppHostCancellationStatus = NonNullable<HomeRide["rideAppHostCancellationStatus"]>;
+type RideAppFeeResolution = NonNullable<HomeRide["rideAppFeeResolution"]>;
+type HostCancellationReason = {
+  label: string;
+  value: string;
+};
+
+const beforeConfirmationCancellationReasons: HostCancellationReason[] = [
+  { label: "Plans changed", value: "Plans changed" },
+  { label: "Wrong details", value: "Wrong details" },
+  { label: "Not enough riders", value: "Not enough riders" },
+  { label: "Other", value: "Other" },
+];
+
+const afterConfirmationCancellationReasons: HostCancellationReason[] = [
+  { label: "Cannot book ride app", value: "Cannot book ride app" },
+  { label: "Fare changed too much", value: "Fare changed too much" },
+  { label: "Host emergency", value: "Host emergency" },
+  { label: "Wrong pickup/time", value: "Wrong pickup/time" },
+  { label: "Other", value: "Other" },
+];
+
+const podStatusTabs: Array<{ id: PodStatusTab; label: string; icon: typeof BarChart3 }> = [
+  { id: "summary", label: "Summary", icon: BarChart3 },
+  { id: "riders", label: "Riders", icon: UsersRound },
+  { id: "route", label: "Route", icon: MapPin },
+  { id: "chat", label: "Chat", icon: MessageCircle },
+];
+
+function normalizePodStatusTab(value?: string | null): PodStatusTab {
+  return podStatusTabs.some((tab) => tab.id === value) ? (value as PodStatusTab) : "summary";
+}
+
+function formatConfirmByLabel(date: Date) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function formatRidePickupLabel(date: Date) {
+  return new Intl.DateTimeFormat("en", {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function getRidePickupDate(ride: HomeRide) {
+  const cleanedDate = ride.dateLabel.replace(/^[A-Za-z]{3,9},\s*/i, "").trim();
+  const dateText = /\d{4}/.test(cleanedDate)
+    ? `${cleanedDate} ${ride.timeLabel}`
+    : `${cleanedDate} ${new Date().getFullYear()} ${ride.timeLabel}`;
+  const parsed = new Date(dateText);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function getConfirmByOffsetHours(amount: number, unit: ConfirmByUnit) {
+  return Math.max(1, amount) * (unit === "days" ? 24 : 1);
+}
+
+function getConfirmByDeadline(ride: HomeRide, amount: number, unit: ConfirmByUnit) {
+  const pickupDate = getRidePickupDate(ride);
+  if (!pickupDate) return null;
+  return new Date(pickupDate.getTime() - getConfirmByOffsetHours(amount, unit) * 60 * 60 * 1000);
+}
+
+function formatConfirmByOffset(amount: number, unit: ConfirmByUnit) {
+  const safeAmount = Math.max(1, amount);
+  const singular = unit === "days" ? "day" : "hour";
+  return `${safeAmount} ${safeAmount === 1 ? singular : `${singular}s`}`;
+}
+
+function clampConfirmByAmount(value: number, unit: ConfirmByUnit) {
+  const max = unit === "days" ? 14 : 72;
+  return Math.min(max, Math.max(1, Math.round(value)));
+}
+
+function mergeRidePatch<T extends Partial<HomeRide>>(base: T, patch?: Partial<HomeRide> | null) {
+  if (!patch) return base;
+  const merged: Partial<HomeRide> = {
+    ...base,
+    ...patch,
+  };
+
+  if (base.rideAppBookingDetails || patch.rideAppBookingDetails) {
+    merged.rideAppBookingDetails = {
+      ...base.rideAppBookingDetails,
+      ...patch.rideAppBookingDetails,
+    };
+  }
+
+  if (base.rideAppChecklist || patch.rideAppChecklist) {
+    merged.rideAppChecklist = {
+      ...base.rideAppChecklist,
+      ...patch.rideAppChecklist,
+    } as HomeRide["rideAppChecklist"];
+  }
+
+  return merged as T & Partial<HomeRide>;
+}
+
+function buildPodStatusRiders(ride: HomeRide): PodStatusRider[] {
+  const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
+
+  if (ride.riderConfirmations?.length) {
+    const rows: PodStatusRider[] = ride.riderConfirmations.map((item) => {
+      const confirmedVersion = item.confirmedBookingDetailsVersion ?? item.confirmedDetailVersion;
+      const confirmedOldDetails =
+        item.role === "rider" &&
+        item.status === "confirmed" &&
+        typeof confirmedVersion === "number" &&
+        confirmedVersion < currentDetailVersion;
+
+      return {
+        name: item.name,
+        role: item.role,
+        confirmedBookingDetailsVersion: item.confirmedBookingDetailsVersion,
+        confirmedDetailVersion: item.confirmedDetailVersion,
+        seatHoldExpiredAt: item.seatHoldExpiredAt,
+        status:
+          item.status === "pending"
+            ? "pending"
+            : item.status === "confirmed"
+              ? confirmedOldDetails
+                ? "needs_review"
+                : "confirmed"
+              : item.status === "needs_review"
+                ? "needs_review"
+                : item.status === "expired" || item.status === "seat_hold_expired"
+                  ? "seat_hold_expired"
+                  : item.status === "left"
+                    ? "left_pod"
+                  : item.status === "joined_interest"
+                    ? "pending"
+                  : "host",
+      };
+    });
+
+    while (rows.length < ride.seatsTotal) {
+      rows.push({
+        name: `Rider ${rows.length}`,
+        role: "rider",
+        status: "pending",
+      });
+    }
+
+    return rows.slice(0, Math.max(1, ride.seatsTotal));
+  }
+
+  const rows: PodStatusRider[] = [{ name: ride.hostName || "Host", role: "host", status: "host" }];
+  ride.joinedRiders.forEach((name, index) => {
+    rows.push({
+      name,
+      role: "rider",
+      status: index === 0 ? "confirmed" : name.toLowerCase().includes("you") ? "review_needed" : "pending",
+    });
+  });
+
+  while (rows.length < ride.seatsTotal) {
+    rows.push({
+      name: `Rider ${rows.length}`,
+      role: "rider",
+      status: "pending",
+    });
+  }
+
+  return rows.slice(0, Math.max(1, ride.seatsTotal));
+}
+
+function getPodStatusUpdateTitle(ride: HomeRide) {
+  switch (ride.bookingDetailsLastMeaningfulUpdate) {
+    case "fare_estimate":
+      return "Fare estimate updated";
+    case "pickup":
+      return "Gather point updated";
+    case "route":
+    case "stop_added":
+      return "Route updated";
+    case "split_method":
+    case "payment_method":
+      return "Payment details updated";
+    default:
+      return "Booking details updated";
+  }
+}
+
+function getPodStatusUpdateSubtitle(ride: HomeRide) {
+  switch (ride.bookingDetailsLastMeaningfulUpdate) {
+    case "fare_estimate":
+      return "Riders need to review the updated fare estimate.";
+    case "pickup":
+      return "Riders need to review the updated gather point.";
+    case "route":
+    case "stop_added":
+      return "Riders need to review the updated route.";
+    case "split_method":
+    case "payment_method":
+      return "Riders need to review the split and payment method.";
+    default:
+      return "Riders need to review the latest details before the host books.";
+  }
+}
+
+function isPodStatusRiderConfirmedForCurrentDetails(rider: PodStatusRider, bookingDetailsVersion: number) {
+  const confirmedVersion = rider.confirmedBookingDetailsVersion ?? rider.confirmedDetailVersion;
+  return rider.role === "rider" && rider.status === "confirmed" && (confirmedVersion ?? bookingDetailsVersion) >= bookingDetailsVersion;
+}
+
+function getPodStatusRiderHelper(rider: PodStatusRider, bookingDetailsVersion: number) {
+  if (rider.role === "host") return "Host";
+  if (rider.status === "confirmed") {
+    return isPodStatusRiderConfirmedForCurrentDetails(rider, bookingDetailsVersion)
+      ? "Current details confirmed"
+      : "Confirmed older details";
+  }
+  if (rider.status === "needs_review" || rider.status === "review_needed") return "Confirmed older details";
+  if (rider.status === "seat_hold_expired") return "Seat released";
+  if (rider.status === "left_pod") return "Left pod";
+  return "Pending confirmation";
+}
+
+function getExpiredSeatHoldCount(ride: HomeRide) {
+  return ride.riderConfirmations?.filter((item) => item.role === "rider" && (item.status === "seat_hold_expired" || item.status === "expired")).length ?? 0;
+}
+
+function getPendingRouteRequestCount(ride: HomeRide) {
+  return (ride.proposedStops ?? []).filter((stop) => stop.status === "pending_host_approval").length;
+}
+
+function getRideAppHostCancellationStatus(ride: HomeRide): RideAppHostCancellationStatus {
+  return ride.rideAppHostCancellationStatus ?? "active";
+}
+
+function isRideAppHostReplacementNeeded(ride: HomeRide) {
+  return getRideAppHostCancellationStatus(ride) === "host_replacement_needed";
+}
+
+function isRideAppReplacementBookerSelected(ride: HomeRide) {
+  return getRideAppHostCancellationStatus(ride) === "replacement_booker_selected";
+}
+
+function isRideAppPodCancelledByHost(ride: HomeRide) {
+  const status = getRideAppHostCancellationStatus(ride);
+  return status === "host_cancelled" || status === "cancelled";
+}
+
+function getRideAppConfirmedReplacementRiders(ride: HomeRide) {
+  const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
+  return buildPodStatusRiders(ride).filter((rider) => isPodStatusRiderConfirmedForCurrentDetails(rider, currentDetailVersion));
+}
+
+function getCurrentUserCanBecomeReplacementBooker(ride: HomeRide) {
+  if (!isRideAppHostReplacementNeeded(ride) || getCurrentUserIsHost(ride)) return false;
+  const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
+  return (
+    ride.currentUserBookingDetailsConfirmed === true ||
+    ride.selfSettleConfirmationStatus === "confirmed" ||
+    buildPodStatusRiders(ride).some(
+      (rider) => rider.role === "rider" && isCurrentUserRiderName(rider.name) && isPodStatusRiderConfirmedForCurrentDetails(rider, currentDetailVersion),
+    )
+  );
+}
+
+function getReplacementBookerDisplayName(ride: HomeRide) {
+  return ride.rideAppReplacementBookerName?.trim() || ride.currentUserName?.trim() || "New booker";
+}
+
+function getOriginalHostDisplayName(ride: HomeRide) {
+  return ride.riderConfirmations?.find((rider) => rider.role === "host")?.name ?? ride.rideAppBookingDetailsConfirmedBy ?? ride.hostName ?? "Host";
+}
+
+function getRideAppFeeResolutionCopy(resolution: RideAppFeeResolution | undefined) {
+  switch (resolution) {
+    case "remains_active":
+      return "RidePod fee remains applied because the pod continues.";
+    case "restore_waiver":
+    case "restore_in_live_version":
+      return "Waiver would be restored in the live version.";
+    case "review_needed":
+      return "Your RidePod fee/waiver stays with this pod while riders decide whether to continue.";
+    case "not_confirmed":
+      return "No RidePod fee was confirmed.";
+    default:
+      return "No live payment was charged in this version.";
+  }
+}
+
+function getRideAppHostCancellationActivity(ride: HomeRide) {
+  const status = getRideAppHostCancellationStatus(ride);
+  const activity = ride.rideAppHostCancellationActivity ?? [];
+  if (activity.length) return activity;
+  if (status === "replacement_booker_selected") {
+    return ["Mark cancelled as host.", "Host replacement mode started.", `${getReplacementBookerDisplayName(ride)} became the new booker.`];
+  }
+  if (status === "host_replacement_needed") return ["Mark cancelled as host.", "Host replacement mode started."];
+  if (status === "cancelled") return ["Mark cancelled as host.", "Host replacement mode started.", "Pod cancelled because no new booker was selected."];
+  if (status === "host_cancelled") return ["Mark cancelled as host."];
+  return [];
+}
+
+function getManagePodActionsPendingCount(ride: HomeRide) {
+  const pendingConfirmationCount =
+    ride.riderConfirmations?.filter(
+      (item) =>
+        item.role === "rider" &&
+        (item.status === "pending" ||
+          item.status === "joined_interest" ||
+          item.status === "needs_review"),
+    ).length ?? 0;
+
+  return pendingConfirmationCount + getPendingRouteRequestCount(ride);
+}
+
+function getPodStatusTitle(ride: HomeRide, chatAccess: ReturnType<typeof getRideAppChatAccessState>) {
+  const deadlineState = getRideAppConfirmDeadlineState(ride);
+  const isHost = getCurrentUserIsHost(ride);
+  const expiredSeatHoldCount = getExpiredSeatHoldCount(ride);
+  if (isRideAppHostReplacementNeeded(ride)) return "Host replacement needed";
+  if (isRideAppReplacementBookerSelected(ride)) return "New booker selected";
+  if (isRideAppPodCancelledByHost(ride)) return "Pod cancelled";
+  if (ride.rideAppPodStatus === "ride_booked") return "Ride booked";
+  if (deadlineState.status === "expired" || isRideAppSeatHoldExpired(ride)) return isHost ? `${expiredSeatHoldCount || 1} seat released` : "Seat released";
+  if (isHost && expiredSeatHoldCount > 0) return `${expiredSeatHoldCount} seat released`;
+  if (deadlineState.status === "soon") return isHost ? "Confirm-by time soon" : "Confirm soon";
+  if (ride.bookingDetailsUpdated || ride.rideAppPodStatus === "needs_review" || chatAccess.reason === "needs_review") {
+    return getPodStatusUpdateTitle(ride);
+  }
+  if (chatAccess.reason === "waiting_for_gather_point") return "Gather point needed";
+  if (chatAccess.reason === "waiting_for_fare_update") return "Fare estimate needed";
+  if (chatAccess.reason === "waiting_for_host_acceptance") return "Split/payment needed";
+  if (chatAccess.canAccess) return "Chat unlocked";
+  if (ride.bookingDetailsShared || ride.rideAppBookingDetailsConfirmed) return "Booking details shared";
+  return "Booking details needed";
+}
+
+function getPodStatusSubtitle(ride: HomeRide, chatAccess: ReturnType<typeof getRideAppChatAccessState>) {
+  const deadlineState = getRideAppConfirmDeadlineState(ride);
+  const isHost = getCurrentUserIsHost(ride);
+  const expiredSeatHoldCount = getExpiredSeatHoldCount(ride);
+  if (isRideAppHostReplacementNeeded(ride)) return "Host cancelled. A confirmed rider can become the new booker, or the pod will be cancelled.";
+  if (isRideAppReplacementBookerSelected(ride)) return `${getReplacementBookerDisplayName(ride)} is now coordinating this ride app pod.`;
+  if (getRideAppHostCancellationStatus(ride) === "host_cancelled") return "Riders will be notified and the pod will no longer accept confirmations.";
+  if (isRideAppPodCancelledByHost(ride)) return "No new booker was selected.";
+  if (ride.rideAppPodStatus === "ride_booked") return "Use chat for final pickup updates.";
+  if (deadlineState.status === "expired" || isRideAppSeatHoldExpired(ride)) {
+    return isHost ? "Unconfirmed seats were released for other riders." : "You did not confirm before the confirm-by time.";
+  }
+  if (isHost && expiredSeatHoldCount > 0) return "Unconfirmed seats were released for other riders.";
+  if (deadlineState.status === "soon") {
+    return isHost ? "Riders must confirm before the confirm-by time." : "Your seat hold may expire soon if you do not confirm.";
+  }
+  if (ride.bookingDetailsUpdated || ride.rideAppPodStatus === "needs_review" || chatAccess.reason === "needs_review") {
+    return getPodStatusUpdateSubtitle(ride);
+  }
+  if (chatAccess.reason === "waiting_for_fare_update" || chatAccess.reason === "waiting_for_host_acceptance" || chatAccess.reason === "waiting_for_gather_point") {
+    return chatAccess.helper;
+  }
+  if (chatAccess.canAccess) return "Use chat to gather at the gather point before the host books.";
+  if (ride.bookingDetailsShared || ride.rideAppBookingDetailsConfirmed) {
+    return isHost ? `Riders must confirm by ${ride.confirmationDeadlineLabel ?? "5:00 PM"}.` : "Confirm ride details before the confirm-by time.";
+  }
+  if (isHost) return "Update the estimate, send booking info to riders, and review confirmations.";
+  return "Chat opens after the required riders confirm.";
+}
+
+function getPodStatusFareLabel(ride: HomeRide) {
+  return getRideAppHostFareEstimate(ride) ?? "Pending";
+}
+
+function getHostUpdatedRideAppFare(ride: HomeRide) {
+  return Boolean(getRideAppHostFareEstimate(ride));
+}
+
+function getPodStatusFareStat(ride: HomeRide) {
+  if (getHostUpdatedRideAppFare(ride)) {
+    return {
+      label: "Total estimate",
+      value: getPodStatusFareLabel(ride),
+    };
+  }
+
+  return {
+    label: `${ride.hostName || "Host"} estimate`,
+    value: "Not yet updated",
+  };
+}
+
+function getPodStatusVehicleLabel(ride: HomeRide) {
+  return getRideAppProviderDisplay(ride) === "Selected by host" ? "Ride app" : getRideAppProviderDisplay(ride);
+}
+
+function getSeatHoldDisplayLabel(status: PodStatusRiderState | "expired") {
+  if (status === "seat_hold_expired" || status === "expired") return "Seat released";
+  return status;
+}
+
+function StatusChip({ status }: { status: PodStatusRiderState }) {
+  const label =
+    status === "host"
+      ? "Host"
+      : status === "confirmed"
+        ? "Confirmed"
+        : status === "review_needed"
+          ? "Review needed"
+          : status === "seat_hold_expired"
+            ? getSeatHoldDisplayLabel(status)
+          : status === "left_pod"
+            ? "Left pod"
+            : status === "needs_review"
+              ? "Needs review"
+              : "Pending";
+  const tone =
+    status === "host"
+      ? "border-[var(--rp-primary)]/50 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]"
+      : status === "confirmed"
+        ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-200"
+        : status === "seat_hold_expired"
+          ? "border-amber-300/35 bg-amber-400/10 text-amber-200"
+        : status === "review_needed" || status === "needs_review"
+          ? "border-amber-300/35 bg-amber-400/10 text-amber-200"
+      : "border-white/12 bg-white/8 text-[var(--rp-muted-strong)]";
+
+  return (
+    <span className={cn("inline-flex rounded-full border px-2.5 py-1 text-[11px] font-black", tone)}>
+      {label}
+    </span>
+  );
+}
+
+function getPodStatusParticipantChipLabel(rider: PodStatusRider, confirmationNotStarted: boolean, ride?: HomeRide) {
+  if (ride && rider.role === "host" && isRideAppHostReplacementNeeded(ride)) return "Cancelled as host";
+  if (ride && rider.role === "host" && isRideAppReplacementBookerSelected(ride)) return "Original host";
+  if (ride && rider.role === "rider" && isRideAppHostReplacementNeeded(ride)) {
+    return rider.status === "confirmed" ? "Eligible" : "Waiting";
+  }
+  if (rider.role === "host") return "Host";
+  if (rider.status === "confirmed") return "Confirmed";
+  if (rider.status === "needs_review" || rider.status === "review_needed") return "Needs review";
+  if (rider.status === "seat_hold_expired") return getSeatHoldDisplayLabel(rider.status);
+  if (rider.status === "left_pod") return "Left";
+  if (confirmationNotStarted && isCurrentUserRiderName(rider.name)) return "Joined";
+  return "Pending";
+}
+
+function getPodStatusParticipantHelper(rider: PodStatusRider, bookingDetailsVersion: number, confirmationNotStarted: boolean, detailsReady: boolean, ride?: HomeRide) {
+  if (ride && rider.role === "host" && isRideAppHostReplacementNeeded(ride)) return "Cancelled as host";
+  if (ride && rider.role === "host" && isRideAppReplacementBookerSelected(ride)) return "Original host";
+  if (ride && rider.role === "rider" && isRideAppHostReplacementNeeded(ride)) {
+    return rider.status === "confirmed" ? "Eligible to become booker" : "Waiting / cannot become booker unless confirmed";
+  }
+  if (rider.role === "host") return confirmationNotStarted ? "Needs to share details" : "Host details shared";
+  if (rider.status === "confirmed") return getPodStatusRiderHelper(rider, bookingDetailsVersion);
+  if (rider.status === "needs_review" || rider.status === "review_needed") return "Review updated details";
+  if (rider.status === "seat_hold_expired") return "Missed confirm-by time";
+  if (rider.status === "left_pod") return "Left pod";
+  if (isCurrentUserRiderName(rider.name)) return confirmationNotStarted ? "Joined - waiting for host" : "Waiting to confirm";
+  return detailsReady ? "Pending confirmation" : "Not joined yet";
+}
+
+function getPodStatusProfileStats(rider: PodStatusRider) {
+  const seed = rider.name.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  const isHost = rider.role === "host";
+  const hostedCount = isHost ? 12 + (seed % 18) : seed % 5;
+  const joinedCount = isHost ? 24 + (seed % 28) : 8 + (seed % 34);
+  const completedCount = isHost ? 31 + (seed % 30) : 10 + (seed % 38);
+  const cancelledCount = seed % 4;
+  const ghostCount = seed % 3;
+  const totalHistory = Math.max(1, hostedCount + joinedCount);
+  const ghostRate = Math.round((ghostCount / totalHistory) * 100);
+  const completionRate = Math.round((completedCount / Math.max(1, completedCount + cancelledCount + ghostCount)) * 100);
+
+  return {
+    rating: (4.5 + (seed % 5) / 10).toFixed(1),
+    hostedCount,
+    joinedCount,
+    completedCount,
+    ghostCount,
+    ghostRate,
+    completionRate,
+  };
+}
+
+function PodStatusRiderProfileModal({
+  rider,
+  onClose,
+}: {
+  rider: PodStatusRider;
+  onClose: () => void;
+}) {
+  const stats = getPodStatusProfileStats(rider);
+  const roleLabel = rider.role === "host" ? "Host" : "Rider";
+  const noShowCopy =
+    stats.ghostCount === 0
+      ? "No recent no-show records in demo history."
+      : `${stats.ghostCount} no-show record${stats.ghostCount === 1 ? "" : "s"} in demo history.`;
+  const trustedLabel = Number(stats.rating) >= 4.5 && stats.completionRate >= 80 ? "Trusted" : "Active";
+
+  return (
+    <div className="fixed inset-0 z-[120] grid place-items-center overflow-y-auto bg-black/70 px-5 py-6 backdrop-blur-sm">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="pod-rider-profile-title"
+        className="w-full max-w-[390px] overflow-hidden rounded-[28px] border border-[var(--rp-border-strong)] bg-[linear-gradient(180deg,rgba(12,25,35,0.98),rgba(7,14,22,0.98))] text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.5)] [&_p]:text-left"
+      >
+        <div className="relative p-5 pb-4">
+          <div className="absolute right-0 top-0 h-28 w-28 rounded-bl-full bg-cyan-300/8" />
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full border border-cyan-200/35 bg-[radial-gradient(circle_at_35%_25%,rgba(103,232,249,0.26),rgba(6,28,38,0.92))] text-2xl font-black text-cyan-100 shadow-[0_0_26px_rgba(103,232,249,0.14)]">
+              {getInitials(rider.name)}
+            </span>
+            <div className="min-w-0">
+              <h3 id="pod-rider-profile-title" className="truncate text-xl font-black text-white">
+                {rider.name}
+              </h3>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-2.5 py-1 text-[10px] font-black uppercase text-cyan-100">
+                  {roleLabel}
+                </span>
+                <span className="rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-primary)]">
+                  {trustedLabel}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close rider profile"
+              className="relative z-10 ml-auto grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/12 bg-white/8 text-[var(--rp-muted-strong)] transition hover:bg-white/12 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="px-5 pb-5">
+          <div className="rounded-[22px] border border-[var(--rp-primary)]/28 bg-[linear-gradient(135deg,rgba(242,193,91,0.16),rgba(103,232,249,0.07))] p-4">
+            <div className="flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-muted-strong)]">Rating</p>
+                <div className="mt-1 flex items-end gap-1">
+                  <span className="text-5xl font-black leading-none text-[var(--rp-primary)]">{stats.rating}</span>
+                  <span className="pb-1 text-sm font-black text-[var(--rp-muted-strong)]">/ 5</span>
+                </div>
+              </div>
+              <div className="grid justify-items-end gap-2">
+                <span className="inline-flex items-center gap-1 rounded-full border border-[var(--rp-primary)]/35 bg-black/22 px-3 py-1 text-sm font-black text-[var(--rp-primary)]">
+                  <Star className="h-4 w-4 fill-current" />
+                  {trustedLabel}
+                </span>
+                <div className="flex items-center gap-1 text-[var(--rp-primary)]">
+                  {Array.from({ length: 5 }).map((_, index) => (
+                    <Star
+                      key={`rating-star-${index}`}
+                      className={cn("h-3.5 w-3.5", index < Math.round(Number(stats.rating)) ? "fill-current" : "opacity-30")}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              Based on demo ride history across hosted and joined pods.
+            </p>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <ProfileStat label="Hosted" value={stats.hostedCount} helper="as host" tone="gold" />
+            <ProfileStat label="As rider" value={stats.joinedCount} helper="joined pods" tone="cyan" />
+            <ProfileStat label="Completed" value={stats.completedCount} helper="finished rides" />
+            <ProfileStat label="No-show rate" value={`${stats.ghostRate}%`} helper={`${stats.ghostCount} record${stats.ghostCount === 1 ? "" : "s"}`} />
+          </div>
+
+          <div className="mt-3 rounded-[18px] border border-cyan-300/22 bg-cyan-300/8 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Reliability</p>
+                <p className="mt-1 text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">{noShowCopy}</p>
+              </div>
+              <ShieldCheck className="h-6 w-6 shrink-0 text-cyan-200" />
+            </div>
+            <div className="mt-3 grid gap-2">
+              <ProfileProgressRow label="Completion" value={`${stats.completionRate}%`} percent={stats.completionRate} tone="cyan" />
+              <ProfileProgressRow label="No-show" value={`${stats.ghostRate}%`} percent={stats.ghostRate} tone="gold" />
+            </div>
+          </div>
+
+          <div className="mt-3 rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Current pod</p>
+                <p className="mt-1 text-sm font-semibold text-[var(--rp-muted-strong)]">Confirmation state</p>
+              </div>
+              <StatusChip status={rider.status} />
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ProfileStat({
+  label,
+  value,
+  helper,
+  tone = "white",
+}: {
+  label: string;
+  value: number | string;
+  helper?: string;
+  tone?: "gold" | "cyan" | "white";
+}) {
+  const valueTone = tone === "gold" ? "text-[var(--rp-primary)]" : tone === "cyan" ? "text-cyan-200" : "text-white";
+
+  return (
+    <div className="rounded-[16px] border border-white/10 bg-white/[0.04] p-3">
+      <p className={cn("text-2xl font-black leading-none", valueTone)}>{value}</p>
+      <p className="mt-1 w-full text-center text-[9px] font-black uppercase leading-3 tracking-[0.04em] text-[var(--rp-muted-strong)]">{label}</p>
+      {helper ? <p className="mt-1 text-[11px] font-semibold leading-4 text-[var(--rp-muted)]">{helper}</p> : null}
+    </div>
+  );
+}
+
+function ProfileProgressRow({
+  label,
+  value,
+  percent,
+  tone,
+}: {
+  label: string;
+  value: string;
+  percent: number;
+  tone: "gold" | "cyan";
+}) {
+  return (
+    <div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">{label}</span>
+        <span className="text-xs font-black text-white">{value}</span>
+      </div>
+      <div className="mt-1 h-2 overflow-hidden rounded-full bg-white/12">
+        <div
+          className={cn("h-full rounded-full", tone === "cyan" ? "bg-cyan-300" : "bg-[var(--rp-primary)]")}
+          style={{ width: `${Math.max(0, Math.min(100, percent))}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+export function PodStatusPanel({
+  ride: baseRide,
+  seatsUsed,
+  onClose,
+  pageMode = false,
+  backHref,
+  embedded = false,
+  initialTab = "summary",
+}: {
+  ride: HomeRide;
+  seatsUsed: number;
+  onClose?: () => void;
+  pageMode?: boolean;
+  backHref?: string;
+  embedded?: boolean;
+  initialTab?: PodStatusTab;
+}) {
+  const { user, profile } = useAuth();
+  const storedRide = applyRideAppDemoPersona(getRideWithStoredSelfSettleJoin(baseRide), { profile, user });
+  const [ridePatchOverride, setRidePatchOverride] = useState<Partial<HomeRide> | null>(null);
+  const ride = mergeRidePatch(storedRide, ridePatchOverride) as HomeRide;
+  const [activeTab, setActiveTab] = useState<PodStatusTab>(normalizePodStatusTab(initialTab));
+  const [selectedRiderProfile, setSelectedRiderProfile] = useState<PodStatusRider | null>(null);
+  const [showConfirmByModal, setShowConfirmByModal] = useState(false);
+  const [showGatherPointModal, setShowGatherPointModal] = useState(false);
+  const [showNudgeModal, setShowNudgeModal] = useState(false);
+  const [showBecomeBookerModal, setShowBecomeBookerModal] = useState(false);
+  const [becomeBookerUnderstood, setBecomeBookerUnderstood] = useState(false);
+  const [nudgeSent, setNudgeSent] = useState(false);
+  const [lastNudgeAt, setLastNudgeAt] = useState<string | null>(null);
+  const [gatherPointDraft, setGatherPointDraft] = useState(() => baseRide.pickupLabel ?? "");
+  const [confirmByAmount, setConfirmByAmount] = useState(6);
+  const [confirmByUnit, setConfirmByUnit] = useState<ConfirmByUnit>("hours");
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const confirmationDeadlineMs = getRideAppConfirmByDate(ride).getTime();
+  const riders = buildPodStatusRiders(ride);
+  const expiredSeatHoldCount = riders.filter((item) => item.role === "rider" && item.status === "seat_hold_expired").length;
+  // TODO: Future: persist released seat count when confirm-by deadline release runs outside mock state.
+  const effectiveSeatsUsed = Math.max(0, Math.max(seatsUsed, ride.seatsUsed) - expiredSeatHoldCount);
+  const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
+  const requiredConfirmationsFromRide = getRideAppRequiredConfirmations(ride);
+  const confirmedCurrentRiderCount = riders.filter((item) => isPodStatusRiderConfirmedForCurrentDetails(item, currentDetailVersion)).length;
+  const pendingNudgeRiders = riders.filter(
+    (item) => item.role === "rider" && (item.status === "pending" || item.status === "needs_review" || item.status === "review_needed"),
+  );
+  const pendingNudgeCount = pendingNudgeRiders.length;
+  const ridersNeedingReviewCount = riders.filter((item) => item.role === "rider" && item.status === "needs_review").length;
+  const meaningfulUpdatePendingReview = ride.bookingDetailsUpdated === true && ridersNeedingReviewCount > 0;
+  const currentUserSeatHoldExpired = !getCurrentUserIsHost(ride) && (ride.currentUserConfirmationExpired === true || ride.currentUserJoinIntentStatus === "seat_hold_expired" || isRideAppSeatHoldExpired(ride));
+  const currentUserConfirmed =
+    ride.currentUserBookingDetailsConfirmed === true ||
+    ride.selfSettleConfirmationStatus === "confirmed" ||
+    riders.some((item) => item.role === "rider" && item.name.toLowerCase().includes("you") && isPodStatusRiderConfirmedForCurrentDetails(item, currentDetailVersion));
+  const chatAccessBase = getRideAppChatAccessState({
+    ...ride,
+    confirmedRiderCount: confirmedCurrentRiderCount,
+    rideAppConfirmedRiderCount: confirmedCurrentRiderCount,
+  });
+  const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
+  const replacementNeeded = hostCancellationStatus === "host_replacement_needed";
+  const replacementBookerSelected = hostCancellationStatus === "replacement_booker_selected";
+  const hostCancelledPod = hostCancellationStatus === "host_cancelled" || hostCancellationStatus === "cancelled";
+  const replacementEligibleRiders = getRideAppConfirmedReplacementRiders(ride);
+  const currentUserCanBecomeBooker = getCurrentUserCanBecomeReplacementBooker(ride);
+  const chatAccess = replacementNeeded
+    ? {
+        ...chatAccessBase,
+        canAccess: false,
+        label: "Read-only",
+        statusLabel: "Chat read-only",
+        secondaryLabel: "Chat read-only",
+        helper: "Chat is read-only until a confirmed rider becomes the new booker.",
+      }
+    : chatAccessBase;
+  const requiredConfirmations = chatAccess.requiredConfirmations || requiredConfirmationsFromRide;
+  const hostIncludedConfirmedCount = Math.min(1 + confirmedCurrentRiderCount, 1 + requiredConfirmations);
+  const hostIncludedRequiredCount = 1 + requiredConfirmations;
+  const deadlineState = getRideAppConfirmDeadlineState(ride, new Date(nowMs));
+  const confirmByLabel = formatConfirmByLabel(new Date(confirmationDeadlineMs));
+  const confirmationNotStarted = !ride.bookingDetailsShared && !ride.rideAppBookingDetailsFinalized;
+  const isHost = getCurrentUserIsHost(ride);
+  const detailsReady = ride.bookingDetailsShared === true || ride.rideAppBookingDetailsFinalized === true || ride.rideAppBookingDetailsConfirmed === true;
+  const fareEstimateSet = getHostUpdatedRideAppFare(ride);
+  const splitMethodSet = Boolean(ride.rideAppSplitMethod || ride.splitMethod);
+  const paymentMethodSet = Boolean(ride.rideAppAcceptedPaymentMethods?.length || ride.paymentMethod);
+  const confirmBySet = Boolean(ride.confirmationDeadlineAt || ride.rideAppConfirmBy || ride.confirmationDeadlineLabel);
+  const pickupVenueSet = Boolean(ride.pickupLabel);
+  const coreDetailsExceptGatherPointComplete = detailsReady && fareEstimateSet && splitMethodSet && paymentMethodSet && confirmBySet;
+  const detailsComplete = coreDetailsExceptGatherPointComplete && pickupVenueSet;
+  const canNudgePendingRiders = isHost && detailsComplete && pendingNudgeCount > 0;
+  const nudgeSentRecently = Boolean(lastNudgeAt);
+  const currentDashboardStep = ride.rideAppPodStatus === "ride_booked" ? 4 : chatAccess.canAccess ? 3 : detailsComplete ? 2 : 1;
+  const statusBody =
+    replacementNeeded
+      ? "Host cancelled. A confirmed rider can become the new booker."
+      : replacementBookerSelected
+        ? `${getReplacementBookerDisplayName(ride)} is now coordinating this ride app pod. Riders may need to review details if anything changes.`
+      : hostCancelledPod
+        ? hostCancellationStatus === "host_cancelled"
+          ? "No RidePod fee was confirmed."
+          : "No new booker was selected."
+    : currentUserSeatHoldExpired
+      ? "You did not confirm before the confirm-by time, so your seat was released for other riders."
+      : ride.bookingDetailsUpdated || meaningfulUpdatePendingReview
+        ? getPodStatusUpdateSubtitle(ride)
+        : detailsReady && !pickupVenueSet
+          ? coreDetailsExceptGatherPointComplete
+            ? "Host must set where riders meet before riders can confirm."
+            : `${ride.hostName || "Host"} needs to share fare, split, payment, gather point, and confirm-by time.`
+        : detailsReady && !fareEstimateSet
+          ? `${ride.hostName || "Host"} still needs to add the ride app fare estimate.`
+        : detailsReady && (!splitMethodSet || !paymentMethodSet)
+          ? `${ride.hostName || "Host"} still needs to confirm split and payment method.`
+        : detailsReady && !confirmBySet
+          ? `${ride.hostName || "Host"} still needs to set the confirm-by time.`
+        : detailsReady
+          ? isHost
+            ? `Riders must confirm by ${confirmByLabel}.`
+            : "Review the shared ride app details and confirm before the confirm-by time."
+          : `${ride.hostName || "Host"} needs to share fare, split, payment, gather point, and confirm-by time.`;
+  const detailChecklistRows = [
+    {
+      icon: WalletCards,
+      label: "Estimated fare",
+      value: detailsReady && fareEstimateSet ? getPodStatusFareLabel(ride) : "Not set",
+      set: detailsReady && fareEstimateSet,
+    },
+    {
+      icon: ListChecks,
+      label: "Split method",
+      value: ride.rideAppSplitMethod ?? ride.splitMethod ?? "Equal split",
+      set: true,
+    },
+    {
+      icon: ReceiptText,
+      label: "Payment method",
+      value: paymentMethodSet ? getRideAppAcceptedPaymentDisplay(ride) : "Not set",
+      set: paymentMethodSet,
+    },
+    {
+      icon: Clock3,
+      label: "Confirm-by time",
+      value: detailsReady && confirmBySet ? confirmByLabel : "Not set",
+      set: detailsReady && confirmBySet,
+      helper: "Riders must confirm before this time to keep their seat.",
+      onClick: isHost ? () => setShowConfirmByModal(true) : undefined,
+      actionLabel: isHost ? "Edit" : undefined,
+    },
+    {
+      icon: MapPin,
+      label: "Gather point",
+      value: detailsReady && pickupVenueSet ? ride.pickupLabel ?? "Set" : "Set",
+      set: detailsReady && pickupVenueSet,
+      onClick: isHost ? openGatherPointModal : undefined,
+      actionLabel: isHost && detailsReady && pickupVenueSet ? "Edit" : undefined,
+      tone: detailsReady && !pickupVenueSet ? "warning" : "default",
+    },
+  ];
+  const actionNoteTitle = currentUserSeatHoldExpired
+    ? "Seat released"
+    : replacementNeeded
+      ? isHost
+        ? "View status only"
+        : currentUserCanBecomeBooker
+          ? "Become new booker"
+          : "Waiting for a new booker"
+    : replacementBookerSelected
+      ? "Pod continues"
+    : hostCancelledPod
+      ? "Pod cancelled"
+    : isHost
+      ? detailsReady
+        ? !pickupVenueSet
+          ? coreDetailsExceptGatherPointComplete
+            ? "Gather point needed"
+            : "Waiting for host details"
+        : detailsComplete
+          ? "Waiting for confirmations"
+          : "Finish booking details"
+        : "Send booking details"
+      : detailsReady
+        ? !detailsComplete
+          ? "Waiting for host details"
+          : currentUserConfirmed
+          ? "No action needed from you"
+          : "Confirm ride details"
+        : "No action needed from you yet";
+  const actionNoteBody = currentUserSeatHoldExpired
+    ? "No RidePod fee was confirmed. Waiver was not used."
+    : replacementNeeded
+      ? isHost
+        ? "Host replacement mode is active. You cannot mark ride app booked."
+        : currentUserCanBecomeBooker
+          ? "You can take over coordination and book the ride app outside RidePod."
+          : "Only confirmed riders can become the new booker."
+    : replacementBookerSelected
+      ? getRideAppFeeResolutionCopy(ride.rideAppFeeResolution ?? "remains_active")
+    : hostCancelledPod
+      ? ride.rideAppFeeResolution === "not_confirmed"
+        ? `${getRideAppFeeResolutionCopy(ride.rideAppFeeResolution)} No live payment was charged in this version.`
+        : `${getRideAppFeeResolutionCopy(ride.rideAppFeeResolution ?? "restore_waiver")} No live payment was charged in this version.`
+    : isHost
+      ? detailsReady
+        ? detailsComplete
+          ? pendingNudgeCount > 0
+            ? `${pendingNudgeCount} ${pendingNudgeCount === 1 ? "rider still needs" : "riders still need"} to confirm before chat unlocks.`
+            : "All required riders have confirmed."
+          : !pickupVenueSet
+            ? coreDetailsExceptGatherPointComplete
+              ? "Host must set where riders meet before riders can confirm."
+              : `${ride.hostName || "Host"} needs to share fare, split, payment, gather point, and confirm-by time.`
+            : "Complete the missing fare, split, payment, gather point, or confirm-by fields."
+        : "Send fare, gather point, split, payment, and confirm-by info so riders can review."
+      : detailsReady
+        ? !detailsComplete
+          ? !pickupVenueSet
+            ? "Host must set the gather point before riders can confirm."
+            : "The host still has missing details to finish."
+          : currentUserConfirmed
+          ? "We will show chat once required riders confirm."
+          : "Confirm the route, fare estimate, split, and payment method."
+        : "We will notify you when you can confirm.";
+  const riderJoinedCount = ride.joinedRiderCount ?? ride.joinedRiders.length;
+  const riderReviewCount = riders.filter((item) => item.role === "rider" && (item.status === "needs_review" || item.status === "review_needed")).length;
+  const missingDetailReasons = [
+    detailsReady && !fareEstimateSet ? "Host has not added the ride app fare estimate yet." : null,
+    detailsReady && !splitMethodSet ? "Host has not confirmed the split method yet." : null,
+    detailsReady && !paymentMethodSet ? "Host has not confirmed the accepted payment method yet." : null,
+    detailsReady && !confirmBySet ? "Host has not set the confirm-by time yet." : null,
+    detailsReady && !pickupVenueSet ? "Host must set the gather point before riders can confirm." : null,
+  ].filter((reason): reason is string => Boolean(reason));
+  const chatLockedReasons = currentUserSeatHoldExpired
+    ? [
+        "Your seat was released because you did not confirm before the confirm-by time.",
+        "No RidePod fee was confirmed. Waiver was not used.",
+      ]
+    : replacementNeeded
+    ? [
+        "Host cancelled. Chat is read-only until a new booker is selected.",
+        "A confirmed rider can become the new booker.",
+      ]
+    : missingDetailReasons.length
+    ? missingDetailReasons
+    : detailsReady
+      ? [
+          "Required riders have not confirmed current details yet.",
+          "Chat opens when all required confirmations are met.",
+        ]
+      : [
+          "Host has not shared booking details yet.",
+          "Riders cannot confirm until all details are set.",
+          "Chat opens when all required riders confirm.",
+        ];
+  const ridePickupDate = getRidePickupDate(ride);
+  const confirmByDeadlinePreview = getConfirmByDeadline(ride, confirmByAmount, confirmByUnit);
+  const confirmByDeadlineIsPast = Boolean(confirmByDeadlinePreview && confirmByDeadlinePreview.getTime() <= nowMs);
+
+  function saveConfirmByTime() {
+    if (!confirmByDeadlinePreview || confirmByDeadlineIsPast) return;
+
+    const updatedAt = new Date().toISOString();
+    const deadlineIso = confirmByDeadlinePreview.toISOString();
+    const deadlineLabel = formatConfirmByLabel(confirmByDeadlinePreview);
+    const patch: Partial<HomeRide> = {
+      confirmationDeadlineAt: deadlineIso,
+      confirmationDeadlineLabel: deadlineLabel,
+      rideAppConfirmBy: deadlineIso,
+      rideAppConfirmByUpdatedAt: updatedAt,
+      riderConfirmations: ride.riderConfirmations?.map((rider) =>
+        rider.role === "rider" ? { ...rider, confirmBy: deadlineIso } : rider,
+      ),
+    };
+
+    setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
+    saveStoredSelfSettleRidePatch(ride.id, patch);
+    updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+    setShowConfirmByModal(false);
+  }
+
+  function openGatherPointModal() {
+    setGatherPointDraft(ride.pickupLabel ?? "");
+    setShowGatherPointModal(true);
+  }
+
+  function saveGatherPoint() {
+    const nextGatherPoint = gatherPointDraft.trim();
+    if (!nextGatherPoint) return;
+
+    const previousGatherPoint = ride.pickupLabel?.trim() ?? "";
+    const gatherPointChanged = previousGatherPoint !== nextGatherPoint;
+    const nextDetailVersion = gatherPointChanged && detailsReady ? getRideAppCurrentDetailVersion(ride) + 1 : getRideAppCurrentDetailVersion(ride);
+    const patch: Partial<HomeRide> = {
+      pickupLabel: nextGatherPoint,
+      rideAppChecklist: {
+        dropoffPoint: ride.rideAppChecklist?.dropoffPoint ?? false,
+        rideApp: ride.rideAppChecklist?.rideApp ?? false,
+        estimatedFare: ride.rideAppChecklist?.estimatedFare ?? false,
+        booker: ride.rideAppChecklist?.booker ?? false,
+        fareSplit: ride.rideAppChecklist?.fareSplit ?? false,
+        paymentMethod: ride.rideAppChecklist?.paymentMethod ?? false,
+        paymentRecipientAfterRide: ride.rideAppChecklist?.paymentRecipientAfterRide ?? false,
+        meetingTime: ride.rideAppChecklist?.meetingTime ?? false,
+        pickupPoint: true,
+        updatedAt: new Date().toISOString(),
+        updatedBy: ride.hostName || "Host",
+      },
+      ...(gatherPointChanged && detailsReady
+        ? {
+            bookingDetailsUpdated: true,
+            bookingDetailsLastMeaningfulUpdate: "pickup",
+            bookingDetailsVersion: nextDetailVersion,
+            rideAppCurrentDetailVersion: nextDetailVersion,
+            rideAppPodStatus: "needs_review",
+            riderConfirmations: ride.riderConfirmations?.map((rider) =>
+              rider.role === "rider" && rider.status === "confirmed"
+                ? { ...rider, status: "needs_review" as const }
+                : rider,
+            ),
+          }
+        : {}),
+    };
+
+    setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
+    saveStoredSelfSettleRidePatch(ride.id, patch);
+    updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+    setShowGatherPointModal(false);
+  }
+
+  function sendNudgeToPendingRiders() {
+    if (!canNudgePendingRiders) return;
+
+    setLastNudgeAt(new Date().toISOString());
+    setNudgeSent(true);
+    setShowNudgeModal(false);
+    // TODO: Add a local/mock pod activity event: `${ride.hostName || "Host"} nudged pending riders to confirm.`
+  }
+
+  function confirmBecomeBooker() {
+    if (!currentUserCanBecomeBooker || !becomeBookerUnderstood) return;
+
+    const bookerName = ride.currentUserName?.trim() || "Yuna";
+    const patch: Partial<HomeRide> = {
+      rideAppHostCancellationStatus: "replacement_booker_selected",
+      rideAppReplacementBookerId: user?.id ?? "current-user",
+      rideAppReplacementBookerName: bookerName,
+      rideAppFeeResolution: "remains_active",
+      currentUserRole: "host",
+      hostName: bookerName,
+      rideAppHostCancellationActivity: [
+        ...getRideAppHostCancellationActivity(ride),
+        `${bookerName} became the new booker.`,
+      ],
+      rideAppPodStatus: "chat_unlocked",
+    };
+
+    setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
+    saveStoredSelfSettleRidePatch(ride.id, patch);
+    updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+    setBecomeBookerUnderstood(false);
+    setShowBecomeBookerModal(false);
+  }
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const statusContent = (
+      <section className={cn(
+        embedded
+          ? "ridepod-status-dashboard grid w-full gap-3 text-left text-[var(--rp-text)]"
+          : "ridepod-status-dashboard mx-auto flex w-full max-w-[430px] flex-col overflow-hidden border-x border-[var(--rp-border)] bg-[#030910] text-[var(--rp-text)] shadow-[0_28px_90px_rgba(0,0,0,0.56)]",
+        !embedded && (pageMode ? "min-h-dvh" : "h-full"),
+      )} id={embedded ? "ride-app-dashboard" : undefined}>
+        {embedded ? null : <header className="grid grid-cols-[44px_1fr_44px] items-center border-b border-white/8 px-3 py-3">
+          {pageMode ? (
+            <Link
+              href={backHref ?? `/pods/${ride.id}`}
+              aria-label="Back to pod details"
+              className="grid h-11 w-11 place-items-center rounded-full border border-white/14 bg-white/8 text-white shadow-[0_10px_24px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:bg-white/12"
+            >
+              <ArrowLeft className="h-6 w-6" />
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close pod status"
+              className="grid h-11 w-11 place-items-center rounded-full border border-white/14 bg-white/8 text-white shadow-[0_10px_24px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:bg-white/12"
+            >
+              <ArrowLeft className="h-6 w-6" />
+            </button>
+          )}
+          <div className="text-center">
+            <h2 id="pod-status-title" className="text-lg font-black text-[var(--rp-primary)]">
+              View Pod Status
+            </h2>
+          </div>
+          <button
+            type="button"
+            aria-label="More pod status options"
+            className="grid h-11 w-11 place-items-center rounded-full text-[var(--rp-primary)] transition hover:bg-white/8"
+          >
+            <MoreVertical className="h-5 w-5" />
+          </button>
+        </header>}
+
+        <div className={cn(embedded ? "grid gap-3 text-left" : "min-h-0 flex-1 overflow-y-auto px-4 pb-5 pt-4 text-left")}>
+          {embedded ? null : <section className="hidden rounded-[22px] border border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.9),rgba(2,8,15,0.98))] p-4 shadow-[var(--rp-shadow-soft)]">
+            <div className="flex items-start gap-3">
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)]/40 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]">
+                <UsersRound className="h-7 w-7" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="inline-flex items-center gap-1 rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-2 py-0.5 text-[9px] font-black uppercase text-[var(--rp-primary)]">
+                    <Crown className="h-3 w-3" />
+                    Hosted by {ride.hostName || "host"}
+                  </p>
+                  <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-2.5 py-0.5 text-[9px] font-black uppercase text-cyan-200">
+                    Confirming
+                  </span>
+                </div>
+                <p className="mt-2 truncate text-sm font-semibold text-[var(--rp-muted-strong)]">
+                  {ride.fromLabel} {"->"} {ride.toLabel}
+                </p>
+                <p className="mt-1 text-sm font-black text-cyan-200">
+                  {ride.dateLabel} {" · "} {ride.timeLabel}
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex items-center justify-between text-[11px] font-semibold text-[var(--rp-muted-strong)]">
+              <span>Pod ID: {ride.id.slice(0, 8).toUpperCase()}</span>
+              <Copy className="h-3.5 w-3.5" />
+            </div>
+            <div className="mt-4 grid grid-cols-[1.05fr_1.14fr_0.9fr] gap-3 border-t border-white/10 pt-4">
+              <MiniStat label="Seats filled" value={`${effectiveSeatsUsed} / ${ride.seatsTotal}`} tone="cyan" showProgress progress={(effectiveSeatsUsed / ride.seatsTotal) * 100} />
+              <MiniStat label={getPodStatusFareStat(ride).label} value={getPodStatusFareStat(ride).value} tone="gold" href="#fare-split" compact />
+              <MiniStat label="Ride type" value={getPodStatusVehicleLabel(ride)} tone="white" />
+            </div>
+          </section>}
+
+          {embedded ? null : <section className="overflow-hidden rounded-[20px] border border-[var(--rp-primary)]/65 bg-[linear-gradient(90deg,rgba(242,193,91,0.14),rgba(2,8,15,0.72))] p-4">
+            <div className="flex flex-col items-center justify-center gap-3 text-center">
+              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)]/45 bg-black/26 text-[var(--rp-primary)]">
+                <CheckSquare className="h-7 w-7" />
+              </span>
+              <div className="min-w-0 text-center">
+                <h3 className="text-lg font-black text-white">{getPodStatusTitle(ride, chatAccess)}</h3>
+                <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                  {getPodStatusSubtitle(ride, chatAccess)}
+                </p>
+                {deadlineState.status === "active" || deadlineState.status === "soon" ? (
+                  <span
+                    className={cn(
+                      "mt-2 inline-flex max-w-full rounded-full border px-3 py-1 text-[11px] font-black",
+                      deadlineState.status === "soon"
+                        ? "border-amber-300/35 bg-amber-400/10 text-amber-200"
+                        : "border-cyan-300/35 bg-cyan-300/10 text-cyan-200",
+                    )}
+                  >
+                    {deadlineState.status === "soon" ? `Confirm soon · ${deadlineState.timeLeftLabel}` : `Confirm by ${confirmByLabel}`}
+                  </span>
+                ) : deadlineState.status === "expired" ? (
+                  <span className="mt-2 inline-flex max-w-full rounded-full border border-rose-300/30 bg-rose-400/10 px-3 py-1 text-[11px] font-black text-rose-100">
+                    Seat released
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </section>}
+
+          <nav className="sticky top-0 z-10 mt-3 grid grid-cols-4 rounded-[18px] border border-white/10 bg-[rgba(8,14,22,0.92)] p-1 backdrop-blur-xl">
+            {podStatusTabs.map((tab) => {
+              const Icon = tab.icon;
+              const active = activeTab === tab.id;
+              const tabClassName = cn(
+                "flex min-h-11 items-center justify-center gap-1 rounded-[14px] text-[11px] font-black transition min-[390px]:gap-1.5 min-[390px]:text-xs",
+                active ? "bg-[var(--rp-primary)] text-[#07111a]" : "text-[var(--rp-muted-strong)] hover:bg-white/8",
+              );
+
+              if (tab.id === "chat") {
+                return (
+                  <Link key={tab.id} href={`/pods/${ride.id}/chat`} className={tabClassName}>
+                    <Icon className="h-4 w-4" />
+                    {tab.label}
+                  </Link>
+                );
+              }
+
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={tabClassName}
+                >
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
+
+          {activeTab === "summary" ? (
+            <div className="mt-3 grid gap-3">
+              <section className="rounded-[20px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(242,193,91,0.11),transparent_36%),rgba(255,255,255,0.04)] p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Current status</p>
+                <div className="mt-3 flex items-start gap-3 rounded-[18px] border border-white/10 bg-black/20 p-3">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]">
+                    <ListChecks className="h-6 w-6" />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-black leading-tight text-white">{getPodStatusTitle(ride, chatAccess)}</h3>
+                    <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{statusBody}</p>
+                  </div>
+                </div>
+              </section>
+
+              {hostCancellationStatus !== "active" ? (
+                <section className="rounded-[20px] border border-[var(--rp-primary)]/45 bg-[linear-gradient(135deg,rgba(242,193,91,0.14),rgba(8,47,73,0.14),rgba(255,255,255,0.04))] p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Host cancellation</p>
+                  <div className="mt-3 grid gap-2">
+                    <div className="grid grid-cols-[1fr_auto] gap-3 rounded-[14px] border border-white/10 bg-black/18 p-3">
+                      <span className="text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">Original host</span>
+                      <span className="text-right text-sm font-black text-white">{getOriginalHostDisplayName(ride)}</span>
+                    </div>
+                    <div className="grid grid-cols-[1fr_auto] gap-3 rounded-[14px] border border-white/10 bg-black/18 p-3">
+                      <span className="text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">Cancellation reason</span>
+                      <span className="text-right text-sm font-black text-white">{ride.rideAppHostCancellationReason ?? "Plans changed"}</span>
+                    </div>
+                    <div className="grid grid-cols-[1fr_auto] gap-3 rounded-[14px] border border-white/10 bg-black/18 p-3">
+                      <span className="text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">Replacement deadline</span>
+                      <span className="text-right text-sm font-black text-white">{ride.rideAppReplacementDeadlineLabel ?? "Before confirm-by time"}</span>
+                    </div>
+                    <div className="grid grid-cols-[1fr_auto] gap-3 rounded-[14px] border border-white/10 bg-black/18 p-3">
+                      <span className="text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">Eligible confirmed riders</span>
+                      <span className="text-right text-sm font-black text-white">{replacementEligibleRiders.length}</span>
+                    </div>
+                  </div>
+                  <p className="mt-3 rounded-[14px] border border-cyan-300/22 bg-cyan-300/8 px-3 py-2 text-xs font-semibold leading-5 text-cyan-100">
+                    {getRideAppFeeResolutionCopy(ride.rideAppFeeResolution)}
+                  </p>
+                  {getRideAppHostCancellationActivity(ride).length ? (
+                    <div className="mt-3 grid gap-2">
+                      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Activity</p>
+                      {getRideAppHostCancellationActivity(ride).map((item, index) => (
+                        <p key={`${item}-${index}`} className="rounded-[12px] border border-white/10 bg-black/18 px-3 py-2 text-xs font-semibold text-[var(--rp-muted-strong)]">
+                          {item}
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
+
+              <section className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Overall progress</p>
+                <div className="mt-3">
+                  <PodStatusProgressRail currentStep={currentDashboardStep} />
+                </div>
+              </section>
+
+              <section id="fare-split" className="scroll-mt-24 rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Key details</p>
+                  {isHost ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmByModal(true)}
+                      className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 text-[10px] font-black uppercase text-cyan-100"
+                    >
+                      <Clock3 className="h-3.5 w-3.5" />
+                      Set confirm-by
+                    </button>
+                  ) : (
+                    <span className="rounded-full border border-white/10 bg-white/8 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-muted-strong)]">
+                      {detailsReady ? "Set details" : "Not set yet"}
+                    </span>
+                  )}
+                </div>
+                <div className="mt-3 rounded-[16px] border border-white/10 bg-black/20 p-3">
+                  {detailChecklistRows.map((row) => (
+                    <PodStatusChecklistRow
+                      key={row.label}
+                      icon={row.icon}
+                      label={row.label}
+                      value={row.value}
+                      set={row.set}
+                      helper={row.helper}
+                      actionLabel={row.actionLabel}
+                      tone={"tone" in row ? (row.tone as "default" | "warning" | undefined) : undefined}
+                      onClick={row.onClick}
+                    />
+                  ))}
+                  <p className="mt-3 text-xs font-bold leading-5 text-cyan-100">Ride fare is paid outside RidePod.</p>
+                </div>
+              </section>
+
+              <section className="rounded-[20px] border border-cyan-300/25 bg-cyan-300/8 p-4">
+                <div className="flex items-start gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cyan-300/35 bg-cyan-300/10 text-cyan-100">
+                    <ShieldCheck className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-black text-cyan-100">{actionNoteTitle}</p>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-cyan-100/85">{actionNoteBody}</p>
+                  </div>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  {replacementNeeded ? (
+                    isHost ? (
+                      <button type="button" disabled className="min-h-11 rounded-[14px] border border-white/12 bg-white/8 px-4 text-sm font-black text-[var(--rp-muted-strong)]">
+                        View status only
+                      </button>
+                    ) : currentUserCanBecomeBooker ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowBecomeBookerModal(true)}
+                        className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-cyan-100/55 bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_12px_26px_rgba(56,189,248,0.2)]"
+                      >
+                        Become new booker
+                      </button>
+                    ) : (
+                      <button type="button" disabled className="min-h-11 rounded-[14px] border border-white/12 bg-white/8 px-4 text-sm font-black text-[var(--rp-muted-strong)]">
+                        Wait for another rider
+                      </button>
+                    )
+                  ) : chatAccess.canAccess ? (
+                    <Link href={`/pods/${ride.id}/chat`} className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-cyan-100/55 bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_12px_26px_rgba(56,189,248,0.2)]">
+                      Chat
+                    </Link>
+                  ) : currentUserSeatHoldExpired ? (
+                    <Link href="/home" className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-cyan-100/55 bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_12px_26px_rgba(56,189,248,0.2)]">
+                      Find another pod
+                    </Link>
+                  ) : isHost ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (detailsReady && !confirmBySet) setShowConfirmByModal(true);
+                        else if (detailsComplete) setShowNudgeModal(true);
+                      }}
+                      disabled={detailsComplete && (!canNudgePendingRiders || nudgeSentRecently)}
+                      className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-cyan-100/55 bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_12px_26px_rgba(56,189,248,0.2)]"
+                    >
+                      {detailsReady && !confirmBySet
+                        ? "Set confirm-by"
+                        : detailsComplete
+                          ? nudgeSentRecently
+                            ? "Nudge sent recently"
+                            : canNudgePendingRiders
+                              ? "Nudge pending riders"
+                              : "All required riders have confirmed"
+                          : "Send to riders"}
+                    </button>
+                  ) : detailsReady && !currentUserConfirmed ? (
+                    <button type="button" className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-cyan-100/55 bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_12px_26px_rgba(56,189,248,0.2)]">
+                      Confirm ride details
+                    </button>
+                  ) : (
+                    <button type="button" disabled className="min-h-11 rounded-[14px] border border-white/12 bg-white/8 px-4 text-sm font-black text-[var(--rp-muted-strong)]">
+                      Waiting
+                    </button>
+                  )}
+                  {replacementNeeded && !isHost ? (
+                    <Link href={`/pods/${ride.id}`} className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-cyan-300/35 bg-cyan-300/10 px-4 text-sm font-black text-cyan-100">
+                      Leave pod
+                    </Link>
+                  ) : (
+                    <button type="button" onClick={() => setActiveTab("riders")} className="min-h-11 rounded-[14px] border border-cyan-300/35 bg-cyan-300/10 px-4 text-sm font-black text-cyan-100">
+                      View confirmations
+                    </button>
+                  )}
+                </div>
+              </section>
+
+              {nudgeSent ? (
+                <p className="rounded-[16px] border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm font-black text-emerald-100">
+                  Nudge sent
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {activeTab === "riders" ? (
+            <div className="mt-3 grid gap-3">
+              <section className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Rider confirmations</p>
+                <div className="mt-3 grid grid-cols-4 gap-2">
+                  <PodStatusMetric value={`${hostIncludedConfirmedCount}/${hostIncludedRequiredCount}`} label="Confirmed" tone="green" />
+                  <PodStatusMetric value={riderJoinedCount} label="Joined" tone="cyan" />
+                  <PodStatusMetric value={riderReviewCount} label="Needs review" tone="gold" />
+                  <PodStatusMetric value={expiredSeatHoldCount} label="Expired" tone="rose" />
+                </div>
+                <p className="mt-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                  Required confirmations: {hostIncludedRequiredCount} including host.
+                </p>
+              </section>
+
+              <section className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
+                <div className="grid gap-1">
+                  {riders.map((rider, index) => {
+                    const chipLabel = getPodStatusParticipantChipLabel(rider, confirmationNotStarted, ride);
+                    const helper = getPodStatusParticipantHelper(rider, currentDetailVersion, confirmationNotStarted, detailsReady, ride);
+
+                    return (
+                      <button
+                        key={`${rider.name}-${index}`}
+                        type="button"
+                        onClick={() => setSelectedRiderProfile(rider)}
+                        className="flex w-full items-center gap-3 border-b border-white/8 py-3 text-left transition hover:bg-white/[0.03] last:border-b-0"
+                      >
+                        <span
+                          className={cn(
+                            "grid h-11 w-11 shrink-0 place-items-center rounded-full border text-sm font-black",
+                            rider.role === "host"
+                              ? "border-[var(--rp-primary)]/45 bg-[var(--rp-primary)] text-[#07111a]"
+                              : isCurrentUserRiderName(rider.name)
+                                ? "border-cyan-300/35 bg-cyan-300/10 text-cyan-100"
+                                : "border-white/12 bg-white/8 text-[var(--rp-muted-strong)]",
+                          )}
+                        >
+                          {getPodStatusAvatarLabel(rider.name)}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-black text-white">
+                            {getPodStatusPersonDisplayName(rider.name)}
+                            {rider.role === "host" ? " (Host)" : ""}
+                          </p>
+                          <p className="mt-0.5 text-xs font-semibold leading-4 text-[var(--rp-muted-strong)]">{helper}</p>
+                        </div>
+                        <span className="shrink-0 rounded-full border border-white/12 bg-white/8 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-muted-strong)]">
+                          {chipLabel}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+          ) : null}
+
+          {activeTab === "route" ? (
+            <div className="mt-3 grid gap-3">
+              <CompactRideAppRoutePanel ride={ride} />
+            </div>
+          ) : null}
+
+          {activeTab === "chat" ? (
+            <div className="mt-3 grid gap-3">
+              <section className="rounded-[20px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(242,193,91,0.12),transparent_42%),rgba(255,255,255,0.04)] p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Chat status</p>
+                <div className="mt-3 flex items-start gap-3 rounded-[18px] border border-white/10 bg-black/20 p-3">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-cyan-300/35 bg-cyan-300/10 text-cyan-100">
+                    {chatAccess.canAccess ? <MessageCircle className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-black leading-tight text-white">
+                      {currentUserSeatHoldExpired ? "Chat unavailable" : replacementNeeded ? "Chat is read-only" : chatAccess.canAccess ? "Chat unlocked" : "Chat is locked"}
+                    </h3>
+                    <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                      {currentUserSeatHoldExpired
+                        ? "Your seat was released because you did not confirm before the confirm-by time."
+                        : replacementNeeded
+                        ? "Chat reopens when a confirmed rider becomes the new booker."
+                        : chatAccess.canAccess
+                        ? "All required riders confirmed. Use chat to gather before the host books."
+                        : "Chat opens after the host shares details and required riders confirm."}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {!chatAccess.canAccess ? (
+                <section className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Why chat is locked</p>
+                  <div className="mt-3 grid gap-2">
+                    {chatLockedReasons.map((reason) => (
+                      <div key={reason} className="flex items-start gap-3 rounded-[14px] border border-white/10 bg-black/20 p-3">
+                        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rp-muted-strong)]" />
+                        <p className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{reason}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
+              <section className="rounded-[20px] border border-cyan-300/25 bg-cyan-300/8 p-4">
+                <p className="text-sm font-black text-cyan-100">{currentUserSeatHoldExpired ? "Find another pod" : chatAccess.canAccess ? "Ready to gather" : "When will chat open?"}</p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-cyan-100/85">
+                  {currentUserSeatHoldExpired
+                    ? "You did not confirm before the confirm-by time, so your seat was released for other riders."
+                    : replacementNeeded
+                    ? "Host cancelled. A confirmed rider can become the new booker, then chat can reopen if required riders still confirm."
+                    : chatAccess.canAccess
+                    ? "Use chat for pickup coordination before the host books the ride app."
+                    : `After ${ride.hostName || "host"} shares details and all required riders confirm ride details.`}
+                </p>
+                {chatAccess.canAccess ? (
+                  <Link href={`/pods/${ride.id}/chat`} className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-[14px] bg-[var(--rp-gradient-primary)] text-sm font-black text-[#07111a]">
+                    Chat
+                  </Link>
+                ) : currentUserSeatHoldExpired ? (
+                  <Link href="/home" className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-[14px] bg-[var(--rp-gradient-primary)] text-sm font-black text-[#07111a]">
+                    Find another pod
+                  </Link>
+                ) : (
+                  <button type="button" onClick={() => setActiveTab("riders")} className="mt-3 min-h-11 w-full rounded-[14px] border border-cyan-300/35 bg-cyan-300/10 text-sm font-black text-cyan-100">
+                    View confirmations
+                  </button>
+                )}
+              </section>
+            </div>
+          ) : null}
+        </div>
+
+        {showConfirmByModal ? (
+          <div className="fixed inset-0 z-[105] grid place-items-center bg-black/68 px-4 py-6 backdrop-blur-sm">
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="confirm-by-title"
+              className="flex max-h-[calc(100dvh-2rem)] w-full max-w-[380px] flex-col overflow-hidden rounded-[26px] border border-cyan-200/25 bg-[var(--rp-shell)] text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.48)]"
+            >
+              <div className="min-h-0 flex-1 overflow-y-auto p-5 pb-3">
+                <div className="flex items-start gap-3">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border border-cyan-200/35 bg-cyan-300/12 text-cyan-100">
+                    <Clock3 className="h-6 w-6" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 id="confirm-by-title" className="text-xl font-black leading-tight text-white">Set confirm-by time</h2>
+                    <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                      Riders must confirm ride details before this time. If they do not confirm, their seat hold may expire and reopen for other riders.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Before pickup</p>
+                  <div className="mt-3 grid grid-cols-[1fr_auto] gap-3">
+                    <label className="grid gap-2">
+                      <span className="sr-only">Confirm-by amount</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={confirmByUnit === "days" ? 14 : 72}
+                        value={confirmByAmount}
+                        onChange={(event) => {
+                          const nextValue = Number(event.target.value);
+                          setConfirmByAmount(clampConfirmByAmount(Number.isFinite(nextValue) ? nextValue : 1, confirmByUnit));
+                        }}
+                        className="h-12 rounded-[14px] border border-white/12 bg-black/24 px-4 text-lg font-black text-white outline-none focus:border-cyan-300"
+                      />
+                    </label>
+                    <div className="grid grid-cols-2 rounded-[14px] border border-white/10 bg-black/20 p-1">
+                      {(["hours", "days"] as ConfirmByUnit[]).map((unit) => (
+                        <button
+                          key={unit}
+                          type="button"
+                          aria-pressed={confirmByUnit === unit}
+                          onClick={() => {
+                            setConfirmByUnit(unit);
+                            setConfirmByAmount((current) => clampConfirmByAmount(current, unit));
+                          }}
+                          className={cn(
+                            "min-h-10 rounded-[11px] px-3 text-xs font-black capitalize transition",
+                            confirmByUnit === unit
+                              ? "bg-cyan-300 text-[#061019]"
+                              : "text-[var(--rp-muted-strong)] hover:bg-white/8 hover:text-white",
+                          )}
+                        >
+                          {unit}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    {[
+                      { amount: 2, unit: "hours" as const },
+                      { amount: 6, unit: "hours" as const },
+                      { amount: 12, unit: "hours" as const },
+                      { amount: 1, unit: "days" as const },
+                    ].map((preset) => (
+                      <button
+                        key={`${preset.amount}-${preset.unit}`}
+                        type="button"
+                        onClick={() => {
+                          setConfirmByAmount(preset.amount);
+                          setConfirmByUnit(preset.unit);
+                        }}
+                        className="min-h-10 rounded-[13px] border border-cyan-300/25 bg-cyan-300/8 px-3 text-xs font-black text-cyan-100 transition hover:bg-cyan-300/14"
+                      >
+                        {formatConfirmByOffset(preset.amount, preset.unit)}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                    Default is 24 hours before ride. If the ride is within 24 hours, use 1 hour before pickup.
+                  </p>
+                </div>
+
+                <div className="mt-4 rounded-[18px] border border-[var(--rp-primary)]/25 bg-[var(--rp-primary)]/10 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Preview</p>
+                  <p className="mt-2 text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                    Pickup: {ridePickupDate ? formatRidePickupLabel(ridePickupDate) : `${ride.dateLabel} - ${ride.timeLabel}`}
+                  </p>
+                  <p className="mt-1 text-lg font-black text-white">
+                    Confirm by {confirmByDeadlinePreview ? formatConfirmByLabel(confirmByDeadlinePreview) : "Not available"}
+                  </p>
+                  <p className="mt-1 text-xs font-bold leading-5 text-cyan-100">
+                    {formatConfirmByOffset(confirmByAmount, confirmByUnit)} before pickup.
+                  </p>
+                  {confirmByDeadlineIsPast ? (
+                    <p className="mt-2 rounded-[12px] border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-100">
+                      This confirm-by time is already past. Choose a shorter time or a future ride.
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 border-t border-white/10 bg-[var(--rp-shell)] p-5 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmByModal(false)}
+                  className="min-h-12 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveConfirmByTime}
+                  disabled={!confirmByDeadlinePreview || confirmByDeadlineIsPast}
+                  className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105 disabled:opacity-45"
+                >
+                  Save time
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {showGatherPointModal ? (
+          <div className="fixed inset-0 z-[105] grid place-items-center bg-black/68 px-4 py-6 backdrop-blur-sm">
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="gather-point-title"
+              className="flex max-h-[calc(100dvh-2rem)] w-full max-w-[380px] flex-col overflow-hidden rounded-[26px] border border-cyan-200/25 bg-[var(--rp-shell)] text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.48)]"
+            >
+              <div className="min-h-0 flex-1 overflow-y-auto p-5 pb-3">
+                <div className="flex items-start gap-3">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border border-cyan-200/35 bg-cyan-300/12 text-cyan-100">
+                    <MapPin className="h-6 w-6" />
+                  </span>
+                  <div className="min-w-0">
+                    <h2 id="gather-point-title" className="text-xl font-black leading-tight text-white">
+                      Edit gather point
+                    </h2>
+                    <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                      Where riders meet before the host books.
+                    </p>
+                  </div>
+                </div>
+
+                <label className="mt-5 grid gap-2">
+                  <span className="text-sm font-black text-white">Gather point</span>
+                  <input
+                    value={gatherPointDraft}
+                    onChange={(event) => setGatherPointDraft(event.target.value)}
+                    placeholder="e.g. Central Pier 7 taxi stand"
+                    className="min-h-12 rounded-[14px] border border-white/12 bg-black/24 px-4 text-sm font-black text-white outline-none transition placeholder:text-[var(--rp-muted)] focus:border-cyan-300"
+                  />
+                  <span className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                    Riders should gather here before the host books.
+                  </span>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 border-t border-white/10 bg-[var(--rp-shell)] p-5 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowGatherPointModal(false)}
+                  className="min-h-12 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveGatherPoint}
+                  disabled={!gatherPointDraft.trim()}
+                  className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105 disabled:opacity-45"
+                >
+                  Save
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {showNudgeModal ? (
+          <div className="fixed inset-0 z-[105] grid place-items-center bg-black/68 px-4 py-6 backdrop-blur-sm">
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="nudge-riders-title"
+              className="w-full max-w-[380px] rounded-[26px] border border-cyan-200/25 bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.48)]"
+            >
+              <div className="flex items-start gap-3">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border border-cyan-200/35 bg-cyan-300/12 text-cyan-100">
+                  <MessageCircle className="h-6 w-6" />
+                </span>
+                <div className="min-w-0">
+                  <h2 id="nudge-riders-title" className="text-xl font-black leading-tight text-white">Nudge pending riders?</h2>
+                  <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                    Send a reminder to riders who have not confirmed yet.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-[18px] border border-white/10 bg-white/[0.04] p-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Pending riders</p>
+                <div className="mt-3 grid gap-2">
+                  {pendingNudgeRiders.map((rider) => (
+                    <div key={`${rider.name}-${rider.status}`} className="flex items-center justify-between gap-3 rounded-[14px] bg-black/20 px-3 py-2">
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-xs font-black text-cyan-100">
+                          {getInitials(rider.name).slice(0, 1)}
+                        </span>
+                        <span className="truncate text-sm font-black text-white">{rider.name}</span>
+                      </span>
+                      <span className="shrink-0 rounded-full border border-white/12 bg-white/8 px-2.5 py-1 text-[10px] font-black text-[var(--rp-muted-strong)]">
+                        {rider.status === "needs_review" || rider.status === "review_needed" ? "Needs review" : "Pending"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-[18px] border border-[var(--rp-primary)]/25 bg-[var(--rp-primary)]/10 p-4">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Message preview</p>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                  Please confirm ride details before {confirmByLabel} so the pod can move forward.
+                </p>
+              </div>
+
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowNudgeModal(false)}
+                  className="min-h-12 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={sendNudgeToPendingRiders}
+                  disabled={!canNudgePendingRiders}
+                  className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105 disabled:opacity-45"
+                >
+                  Send nudge
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {showBecomeBookerModal ? (
+          <div className="fixed inset-0 z-[105] grid place-items-center bg-black/68 px-4 py-6 backdrop-blur-sm">
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="become-booker-title"
+              className="w-full max-w-[380px] rounded-[26px] border border-cyan-200/25 bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.48)]"
+            >
+              <div className="flex items-start gap-3">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]">
+                  <Crown className="h-6 w-6" />
+                </span>
+                <div className="min-w-0">
+                  <h2 id="become-booker-title" className="text-xl font-black leading-tight text-white">Become new booker?</h2>
+                  <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                    You will take over coordination and book the ride app outside RidePod.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-2 rounded-[18px] border border-white/10 bg-white/[0.04] p-3">
+                {[
+                  "I can book the ride app outside RidePod.",
+                  "I understand the ride fare is paid outside RidePod.",
+                  "I will update riders if fare or pickup details change.",
+                ].map((item) => (
+                  <div key={item} className="flex items-start gap-3 rounded-[14px] bg-black/20 px-3 py-2">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-cyan-200" />
+                    <p className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{item}</p>
+                  </div>
+                ))}
+              </div>
+
+              <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-[16px] border border-[var(--rp-primary)]/28 bg-[var(--rp-primary)]/10 p-3">
+                <input
+                  type="checkbox"
+                  checked={becomeBookerUnderstood}
+                  onChange={(event) => setBecomeBookerUnderstood(event.target.checked)}
+                  className="mt-1 h-4 w-4 accent-[var(--rp-primary)]"
+                />
+                <span className="text-sm font-black leading-5 text-white">
+                  I understand and want to become the booker.
+                </span>
+              </label>
+
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBecomeBookerModal(false);
+                    setBecomeBookerUnderstood(false);
+                  }}
+                  className="min-h-12 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmBecomeBooker}
+                  disabled={!becomeBookerUnderstood || !currentUserCanBecomeBooker}
+                  className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105 disabled:opacity-45"
+                >
+                  Become booker
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {selectedRiderProfile ? (
+          <PodStatusRiderProfileModal
+            rider={selectedRiderProfile}
+            onClose={() => setSelectedRiderProfile(null)}
+          />
+        ) : null}
+      </section>
+  );
+
+  if (embedded) return statusContent;
+
+  if (pageMode) {
+    return (
+      <div className="min-h-dvh bg-[#030910]" aria-labelledby="pod-status-title">
+        {statusContent}
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[95] bg-black/72 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="pod-status-title">
+      {statusContent}
+    </div>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  tone,
+  align = "left",
+  href,
+  compact = false,
+  showProgress = false,
+  progress = 0,
+}: {
+  label: string;
+  value: string;
+  tone: "gold" | "cyan" | "white";
+  align?: "left" | "center";
+  href?: string;
+  compact?: boolean;
+  showProgress?: boolean;
+  progress?: number;
+}) {
+  const content = (
+    <>
+      <p className="text-[10px] font-semibold text-[var(--rp-muted)]">{label}</p>
+      <p
+        className={cn(
+          "mt-1 font-black leading-tight",
+          compact ? "text-[10px] tracking-[-0.02em]" : "break-words text-lg",
+          href && "underline decoration-white/25 underline-offset-4",
+          tone === "gold" ? "text-[var(--rp-primary)]" : tone === "cyan" ? "text-cyan-200" : "text-white",
+        )}
+        style={compact ? { whiteSpace: "nowrap" } : undefined}
+      >
+        {value}
+      </p>
+      {showProgress ? (
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/14">
+          <div
+            className="h-full rounded-full bg-cyan-300"
+            style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+          />
+        </div>
+      ) : null}
+    </>
+  );
+
+  return (
+    <div className={cn("min-w-0 border-r border-white/10 pr-3 last:border-r-0", align === "center" && "text-center")}>
+      {href ? (
+        <a href={href} className="block rounded-[10px] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300">
+          {content}
+        </a>
+      ) : (
+        content
+      )}
+    </div>
+  );
+}
+
+function PodStatusProgressRail({ currentStep }: { currentStep: number }) {
+  const steps = [
+    "Host shares details",
+    "Riders confirm",
+    "Chat unlocks",
+    "Host books ride app",
+  ];
+
+  return (
+    <div className="rounded-[18px] border border-white/10 bg-black/20 p-3">
+      <div className="grid grid-cols-4 items-start gap-1">
+        {steps.map((step, index) => {
+          const stepNumber = index + 1;
+          const active = currentStep === stepNumber;
+          const complete = currentStep > stepNumber;
+
+          return (
+            <div key={step} className="relative grid justify-items-center gap-2 text-center">
+              {index > 0 ? <span className="absolute right-1/2 top-[15px] h-px w-full bg-white/12" /> : null}
+              <span
+                className={cn(
+                  "relative z-10 grid h-8 w-8 place-items-center rounded-full border text-xs font-black",
+                  active
+                    ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[#07111a]"
+                    : complete
+                      ? "border-cyan-300/35 bg-cyan-300/12 text-cyan-100"
+                      : "border-white/18 bg-[#07111a] text-[var(--rp-muted-strong)]",
+                )}
+              >
+                {stepNumber}
+              </span>
+              <span className="text-[10px] font-semibold leading-4 text-[var(--rp-muted-strong)]">{step}</span>
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-3 rounded-[12px] border border-cyan-300/15 bg-cyan-300/8 px-3 py-2 text-center text-xs font-black text-cyan-100">
+        You are on step {currentStep} of 4
+      </p>
+    </div>
+  );
+}
+
+function PodStatusChecklistRow({
+  icon: Icon,
+  label,
+  value,
+  set,
+  helper,
+  actionLabel,
+  tone = "default",
+  onClick,
+}: {
+  icon: typeof UserRound;
+  label: string;
+  value: string;
+  set: boolean;
+  helper?: string;
+  actionLabel?: string;
+  tone?: "default" | "warning";
+  onClick?: () => void;
+}) {
+  const warning = tone === "warning";
+  const content = (
+    <>
+      <Icon className={cn("h-4 w-4 shrink-0", warning ? "text-amber-200" : "text-[var(--rp-muted-strong)]")} />
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold text-white">{label}</span>
+        {helper ? (
+          <span className={cn("mt-0.5 block text-[11px] font-semibold leading-4", warning ? "text-amber-100/85" : "text-[var(--rp-muted-strong)]")}>
+            {helper}
+          </span>
+        ) : null}
+      </span>
+      <span className="flex shrink-0 items-center gap-2">
+        <span
+          className={cn(
+            "rounded-full px-2.5 py-1 text-[10px] font-black",
+            set
+              ? "border border-cyan-300/30 bg-cyan-300/10 text-cyan-100"
+              : warning
+                ? "border border-amber-300/35 bg-amber-400/10 text-amber-100"
+                : "border border-white/10 bg-white/8 text-[var(--rp-muted-strong)]",
+          )}
+        >
+          {value}
+        </span>
+        {actionLabel ? (
+          <span className="rounded-full border border-[var(--rp-primary)]/30 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black text-[var(--rp-primary)]">
+            {actionLabel}
+          </span>
+        ) : null}
+      </span>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex w-full items-center gap-3 border-b border-white/8 py-2.5 text-left transition hover:bg-white/[0.03] first:pt-0 last:border-b-0 last:pb-0"
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3 border-b border-white/8 py-2.5 first:pt-0 last:border-b-0 last:pb-0">
+      {content}
+    </div>
+  );
+}
+
+function PodStatusMetric({ value, label, tone = "cyan" }: { value: string | number; label: string; tone?: "cyan" | "gold" | "rose" | "green" }) {
+  const toneClass =
+    tone === "gold"
+      ? "text-[var(--rp-primary)]"
+      : tone === "rose"
+        ? "text-rose-200"
+        : tone === "green"
+          ? "text-emerald-200"
+          : "text-cyan-200";
+
+  return (
+    <div className="flex min-h-[82px] flex-col items-center justify-center rounded-[14px] border border-white/10 bg-white/[0.04] p-3 text-center">
+      <p className={cn("w-full text-center text-xl font-black leading-none", toneClass)}>{value}</p>
+      <p className="mt-1 block w-full text-center text-[8px] font-black uppercase leading-[10px] tracking-[0.02em] text-[var(--rp-muted-strong)]">{label}</p>
+    </div>
+  );
+}
+
+function CompactRideAppRoutePanel({ ride }: { ride: HomeRide }) {
+  const pendingStop = ride.proposedStops?.find((stop) => stop.status === "pending_host_approval") ?? null;
+  const approvedStops = ride.approvedStops ?? [];
+  const declinedStop = ride.declinedStops?.find((stop) => stop.status === "declined") ?? null;
+  const allowStopRequests = ride.stopRequestPolicy === "host_approved_before_quote" && ride.rideKind !== "recurring";
+  const routeBadge = pendingStop ? "Pending stop" : allowStopRequests ? "Host-approved" : "Direct route";
+  const routePolicyCopy = pendingStop
+    ? `${pendingStop.requestedBy ?? "Rider"} requested ${pendingStop.label}.`
+    : allowStopRequests
+      ? ride.bookingDetailsShared
+        ? "Route changes are closed after booking details are shared."
+        : "Stops need host approval before details are shared."
+      : "No stop requests allowed";
+  const stopRequestTitle = pendingStop
+    ? "Stop request pending"
+    : declinedStop
+      ? "Stop request declined"
+      : approvedStops.length
+        ? "Approved stop included"
+        : "No stop requests";
+  const stopRequestBody = pendingStop
+    ? `${pendingStop.label} is waiting for host approval.`
+    : declinedStop
+      ? `${declinedStop.label} was declined. Route remains direct.`
+      : approvedStops.length
+        ? `${approvedStops[0].label} is included in the current route.`
+        : allowStopRequests
+          ? "No rider has requested an extra stop yet."
+          : "This pod uses direct route only.";
+  const gatherVenue = ride.pickupLabel ?? "Host will set gather point";
+  const gatherArea = ride.pickupLabel ? ride.fromLabel : "Where riders meet before booking";
+  const routeRows = [
+    {
+      id: "gather",
+      dotClass: "bg-cyan-300",
+      label: "Gather",
+      title: gatherVenue,
+      helper: gatherArea,
+    },
+    {
+      id: "pickup",
+      dotClass: "bg-emerald-300",
+      label: "From",
+      title: ride.fromLabel,
+      helper: null,
+    },
+    ...approvedStops.map((stop, index) => ({
+      id: stop.id,
+      dotClass: "bg-[var(--rp-primary)]",
+      label: `Stop ${index + 1}`,
+      title: stop.label,
+      helper: stop.requestedBy ? `Requested by ${stop.requestedBy}` : null,
+    })),
+    {
+      id: "dropoff",
+      dotClass: "bg-rose-300",
+      label: "To",
+      title: ride.dropoffLabel ?? ride.toLabel,
+      helper: ride.dropoffLabel ? ride.toLabel : null,
+    },
+  ];
+
+  return (
+    <div id="route-requests" className="scroll-mt-24 grid gap-2">
+      <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
+        <div className="mb-4 rounded-[18px] border border-cyan-300/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.14),rgba(15,23,42,0.7))] p-4 shadow-[0_16px_34px_rgba(34,211,238,0.08)]">
+          <div className="flex items-start gap-3">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border border-cyan-200/35 bg-cyan-300/12 text-cyan-100">
+              <MapPin className="h-6 w-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Gather venue</p>
+              <h3 className="mt-1 break-words text-xl font-black leading-6 text-white">{gatherVenue}</h3>
+              <p className="mt-1 text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">{gatherArea}</p>
+              <p className="mt-3 rounded-[14px] border border-cyan-300/18 bg-black/18 px-3 py-2 text-xs font-bold leading-5 text-cyan-100">
+                Riders meet here before the host books the ride app.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 min-[390px]:grid-cols-[minmax(0,1fr)_132px]">
+          <ol className="grid gap-0">
+            {routeRows.map((row, index) => {
+              const last = index === routeRows.length - 1;
+
+              return (
+                <li key={row.id} className="grid grid-cols-[18px_minmax(0,1fr)] gap-3">
+                  <span className="grid justify-items-center">
+                    <span className={cn("mt-1.5 h-3 w-3 rounded-full", row.dotClass)} />
+                    {!last ? <span className="h-full min-h-10 border-l border-dashed border-white/24" /> : null}
+                  </span>
+                  <span className={cn("min-w-0", !last && "pb-3")}>
+                    <span className="block text-[10px] font-semibold leading-4 text-[var(--rp-muted-strong)]">{row.label}</span>
+                    <span className="block break-words text-sm font-black leading-5 text-white">{row.title}</span>
+                    {row.helper ? (
+                      <span className="mt-0.5 block break-words text-xs font-semibold leading-4 text-[var(--rp-muted-strong)]">
+                        {row.helper}
+                      </span>
+                    ) : null}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+
+          <div className="border-t border-white/10 pt-3 min-[390px]:border-l min-[390px]:border-t-0 min-[390px]:pl-4 min-[390px]:pt-0">
+            <span className="inline-flex rounded-[10px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-primary)]">
+              {routeBadge}
+            </span>
+            <p className="mt-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{routePolicyCopy}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Stop requests</p>
+        <div className="mt-3 flex items-start gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] border border-white/10 bg-black/20 text-[var(--rp-muted-strong)]">
+            <MapPin className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <h3 className="text-sm font-black text-white">{stopRequestTitle}</h3>
+            <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{stopRequestBody}</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function RideAppFareProofCard({
+  ride,
+  canEdit,
+  onEdit,
+  onView,
+}: {
+  ride: HomeRide;
+  canEdit: boolean;
+  onEdit: () => void;
+  onView: () => void;
+}) {
+  const proof = getRideAppFareEstimateProof(ride);
+  if (!proof) return null;
+
+  return (
+    <section className="rounded-[18px] border border-cyan-200/25 bg-[linear-gradient(180deg,rgba(8,47,73,0.28),rgba(15,23,42,0.76))] p-4 shadow-[0_0_22px_rgba(56,189,248,0.08)]">
+      <div className="flex items-start gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] border border-cyan-200/35 bg-cyan-300/12 text-cyan-100">
+          <ImagePlus className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Estimate proof</p>
+              <h3 className="mt-1 text-base font-black leading-5 text-white">Ride app screenshot</h3>
+            </div>
+            <button
+              type="button"
+              onClick={onView}
+              className="shrink-0 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 py-1.5 text-[10px] font-black uppercase text-cyan-100 transition hover:bg-cyan-300/16"
+            >
+              View
+            </button>
+          </div>
+          <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+            Uploaded by the host so riders can check the estimate source.
+          </p>
+          {proof.fileName ? (
+            <p className="mt-3 truncate rounded-[14px] border border-cyan-200/20 bg-cyan-300/8 px-3 py-2 text-xs font-black text-cyan-100">
+              {proof.fileName}
+            </p>
+          ) : null}
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="mt-3 inline-flex min-h-10 items-center justify-center rounded-[14px] border border-cyan-200/35 bg-cyan-300/10 px-4 text-xs font-black text-cyan-100 transition hover:bg-cyan-300/15"
+            >
+              Edit proof
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SelfSettlePodSummaryHero({
+  ride,
+  seatsUsed,
+  progress,
+  estimateLabel,
+  estimateValue,
+  estimateUpdated,
+  canUpdateEstimate,
+  onEstimateClick,
+  onManageActionsClick,
+  hasFareProof,
+  onViewFareProof,
+}: {
+  ride: HomeRide;
+  seatsUsed: number;
+  progress: number;
+  estimateLabel: string;
+  estimateValue: string;
+  estimateUpdated: boolean;
+  canUpdateEstimate: boolean;
+  onEstimateClick: () => void;
+  onManageActionsClick: () => void;
+  hasFareProof: boolean;
+  onViewFareProof: () => void;
+}) {
+  const chatAccess = getRideAppChatAccessState(ride);
+  const statusTitle = getPodStatusTitle(ride, chatAccess);
+  const statusSubtitle = getPodStatusSubtitle(ride, chatAccess);
+  const hostProfileImageUrl = getHostProfileImageUrl(ride);
+  const hostAvatarLabel = canUpdateEstimate ? "You" : getInitials(ride.hostName || "Host").slice(0, 1);
+  const hostBadgeLabel = canUpdateEstimate ? "You are hosting" : `Hosted by ${ride.hostName || "host"}`;
+  const hostEstimateUpdated = canUpdateEstimate && estimateUpdated;
+  const displayEstimateLabel = hostEstimateUpdated ? "Updated estimate" : canUpdateEstimate ? "Your estimate" : estimateLabel;
+  const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
+  const hostCancellationActive = hostCancellationStatus !== "active";
+  const hostControlTitle = hostCancellationActive ? statusTitle : hostEstimateUpdated ? "Estimate updated" : statusTitle;
+  const hostControlSubtitle = hostCancellationActive
+    ? statusSubtitle
+    : hostEstimateUpdated
+      ? `Updated to ${estimateValue}. Use Edit if the ride app estimate changes.`
+      : statusSubtitle;
+  const estimateActionLabel = hostEstimateUpdated ? "Edit estimate" : "Update estimate";
+  const manageActionsPendingCount = getManagePodActionsPendingCount(ride);
+  const noticeBadgeClass =
+    "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-rose-300/35 bg-rose-400/12 px-1.5 text-[11px] font-black leading-none text-rose-200";
+  const estimateContent = (
+    <>
+      <p className="text-[11px] font-semibold text-[var(--rp-muted-strong)]">{displayEstimateLabel}</p>
+      <p className={cn("mt-1 whitespace-nowrap font-black leading-tight text-[var(--rp-primary)]", estimateUpdated ? "text-base" : "text-xs")}>
+        {estimateValue}
+      </p>
+    </>
+  );
+
+  return (
+    <section className="grid gap-4">
+      <div className="relative overflow-hidden rounded-[24px] border border-cyan-100/20 bg-[radial-gradient(circle_at_top_left,rgba(103,232,249,0.1),transparent_34%),linear-gradient(145deg,rgba(13,24,39,0.96),rgba(3,10,18,0.98))] p-4 shadow-[0_20px_56px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.06)]">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent_38%)]" />
+        <div className="relative grid grid-cols-[64px_minmax(0,1fr)] gap-4">
+          <span
+            className="grid h-16 w-16 place-items-center overflow-hidden rounded-full border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/8 bg-cover bg-center text-2xl font-black text-[var(--rp-primary)] shadow-[0_14px_32px_rgba(0,0,0,0.28)]"
+            style={hostProfileImageUrl ? { backgroundImage: `url(${hostProfileImageUrl})` } : undefined}
+            aria-label={`${ride.hostName || "Host"} profile`}
+          >
+            {hostProfileImageUrl ? null : hostAvatarLabel}
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-primary)]">
+                <Crown className="h-3.5 w-3.5 shrink-0" />
+                {hostBadgeLabel}
+              </span>
+              <span className="shrink-0 rounded-full border border-cyan-300/45 bg-cyan-300/10 px-2.5 py-1 text-[10px] font-black uppercase text-cyan-200">
+                Self-settle
+              </span>
+            </div>
+            <h2 className="mt-3 text-lg font-semibold leading-tight text-[var(--rp-muted-strong)]">
+              {ride.fromLabel} {"->"} {ride.toLabel}
+            </h2>
+            <p className="mt-1 text-lg font-black text-cyan-200">
+              {ride.dateLabel} · {ride.timeLabel}
+            </p>
+          </div>
+        </div>
+
+        <div className="relative mt-4 flex items-center gap-2 text-sm font-semibold text-[var(--rp-muted-strong)]">
+          <span>Pod ID: {ride.id.slice(0, 8).toUpperCase()}</span>
+          <Copy className="h-4 w-4" />
+        </div>
+
+        <div className="relative mt-4 grid grid-cols-[0.9fr_1.2fr_0.82fr] gap-3 border-t border-white/12 pt-4">
+          <div className="min-w-0 border-r border-white/12 pr-3">
+            <p className="whitespace-nowrap text-[12px] font-semibold text-[var(--rp-muted-strong)]">Seats filled</p>
+            <p className="mt-1 text-2xl font-black text-cyan-200">{seatsUsed} / {ride.seatsTotal}</p>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/14">
+              <div className="h-full rounded-full bg-cyan-300" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+          <div className="min-w-0 border-r border-white/12 pr-3">
+            {canUpdateEstimate ? (
+              <button type="button" onClick={onEstimateClick} className="block w-full text-left transition hover:brightness-110">
+                {estimateContent}
+              </button>
+            ) : hasFareProof ? (
+              <div className="grid gap-2">
+                {estimateContent}
+                <button
+                  type="button"
+                  onClick={onViewFareProof}
+                  className="inline-flex min-h-8 w-fit items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 text-[11px] font-black text-cyan-100 transition hover:bg-cyan-300/16"
+                >
+                  View
+                </button>
+              </div>
+            ) : (
+              <a href="#fare-split" className="block text-left transition hover:brightness-110">
+                {estimateContent}
+              </a>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-[var(--rp-muted-strong)]">Ride type</p>
+            <p className="mt-1 truncate text-xl font-black text-white">{getPodStatusVehicleLabel(ride)}</p>
+          </div>
+        </div>
+      </div>
+
+      {canUpdateEstimate ? (
+        <section className="rounded-[22px] border border-[var(--rp-primary)]/70 bg-[linear-gradient(135deg,rgba(242,193,91,0.18),rgba(8,47,73,0.22),rgba(3,10,18,0.94))] p-4 shadow-[0_16px_42px_rgba(0,0,0,0.28)]">
+          <div className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-4">
+            <span className="grid h-14 w-14 place-items-center rounded-full border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]">
+              <Crown className="h-7 w-7" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Host controls</span>
+              <span className="mt-1 block text-base font-black text-white">{hostControlTitle}</span>
+              <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">{hostControlSubtitle}</span>
+            </span>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-2 min-[390px]:grid-cols-2">
+            <button
+              type="button"
+              onClick={onEstimateClick}
+              disabled={hostCancellationActive}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-3 text-sm font-black text-[#061019] shadow-[0_12px_26px_rgba(56,189,248,0.18)] disabled:opacity-45"
+            >
+              <WalletCards className="h-4 w-4" />
+              {estimateActionLabel}
+            </button>
+            <button
+              type="button"
+              onClick={onManageActionsClick}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/40 bg-[var(--rp-primary)]/10 px-3 text-sm font-black text-[var(--rp-primary)]"
+            >
+              <CheckSquare className="h-4 w-4" />
+              <span className="min-w-0 truncate">Manage pod actions</span>
+              {manageActionsPendingCount > 0 ? (
+                <span className={noticeBadgeClass}>{manageActionsPendingCount}</span>
+              ) : null}
+            </button>
+            <Link
+              href={`/pods/${ride.id}/chat`}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-cyan-300/35 bg-cyan-300/10 px-3 text-sm font-black text-cyan-100"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Chat
+            </Link>
+            <Link
+              href={`/pods/${ride.id}/status`}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-white/12 bg-white/8 px-3 text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-white/12 hover:text-white"
+            >
+              <BarChart3 className="h-4 w-4" />
+              View status
+            </Link>
+          </div>
+        </section>
+      ) : (
+        <a
+          href={`/pods/${ride.id}/status`}
+          className="grid grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 rounded-[22px] border border-[var(--rp-primary)]/70 bg-[linear-gradient(90deg,rgba(242,193,91,0.16),rgba(3,10,18,0.92))] p-4 shadow-[0_16px_42px_rgba(0,0,0,0.28)]"
+        >
+          <span className="grid h-14 w-14 place-items-center rounded-full border border-cyan-300/35 bg-cyan-300/10 text-cyan-100">
+            <UsersRound className="h-7 w-7" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-base font-black text-white">{statusTitle}</span>
+            <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">{statusSubtitle}</span>
+          </span>
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)]/40 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]">
+            <ArrowRight className="h-6 w-6 stroke-[3]" />
+          </span>
+        </a>
+      )}
+    </section>
+  );
+}
+
+function ManagePodActionsModal({
+  ride,
+  initialTab = "confirmations",
+  onClose,
+  onApproveStop,
+  onDeclineStop,
+  onHostCancelRequest,
+}: {
+  ride: HomeRide;
+  initialTab?: ManagePodActionsTab;
+  onClose: () => void;
+  onApproveStop: (stop: RoutePlanStop) => void;
+  onDeclineStop: (stop: RoutePlanStop) => void;
+  onHostCancelRequest: (confirmedRiderCount: number) => void;
+}) {
+  const allowStopRequests = ride.stopRequestPolicy === "host_approved_before_quote" && ride.rideKind !== "recurring";
+  const [activeTab, setActiveTab] = useState<ManagePodActionsTab>(
+    !allowStopRequests && initialTab === "route_requests" ? "confirmations" : initialTab,
+  );
+  const [actionNote, setActionNote] = useState<string | null>(null);
+  const riders = buildPodStatusRiders(ride);
+  const riderRows = riders.filter((item) => item.role === "rider");
+  const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
+  const confirmedRiderCount = riderRows.filter((item) => isPodStatusRiderConfirmedForCurrentDetails(item, currentDetailVersion)).length;
+  const riderTotal = riderRows.length;
+  const pendingNudgeRiders = riders.filter(
+    (item) => item.role === "rider" && (item.status === "pending" || item.status === "needs_review" || item.status === "review_needed"),
+  );
+  const ridersNeedingReviewCount = riders.filter(
+    (item) => item.role === "rider" && (item.status === "needs_review" || item.status === "review_needed"),
+  ).length;
+  const expiredSeatHoldCount = riders.filter((item) => item.role === "rider" && item.status === "seat_hold_expired").length;
+  const pendingStop = ride.proposedStops?.find((stop) => stop.status === "pending_host_approval") ?? null;
+  const approvedStop = ride.approvedStops?.find((stop) => stop.status === "approved") ?? null;
+  const declinedStop = ride.declinedStops?.find((stop) => stop.status === "declined") ?? null;
+  const routeLocked =
+    ride.bookingDetailsShared === true ||
+    ride.rideAppBookingDetailsConfirmed === true ||
+    ride.rideAppBookingDetailsFinalized === true;
+  const pendingCount = getManagePodActionsPendingCount(ride);
+  const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
+  const canCancelAsHost = hostCancellationStatus === "active";
+  const cancelActionLabel = confirmedRiderCount > 0 ? "Cancel ride plan" : "Cancel pod";
+  const tabs: Array<{ id: ManagePodActionsTab; label: string }> = [
+    { id: "confirmations", label: "Confirmations" },
+    ...(allowStopRequests ? [{ id: "route_requests" as const, label: "Route requests" }] : []),
+    { id: "pod_settings", label: "Pod settings" },
+  ];
+
+  function runNudgePlaceholder() {
+    if (!pendingNudgeRiders.length) {
+      setActionNote("All clear.");
+      return;
+    }
+
+    setActionNote("Reminder has been sent.");
+  }
+
+  function approvePendingStop() {
+    if (!pendingStop || routeLocked) return;
+    onApproveStop(pendingStop);
+    setActionNote("Updated booking details. Riders need to review again.");
+  }
+
+  function declinePendingStop() {
+    if (!pendingStop || routeLocked) return;
+    onDeclineStop(pendingStop);
+    setActionNote("Stop declined.");
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[110] grid items-end bg-black/72 px-3 pb-3 pt-10 backdrop-blur-sm min-[520px]:place-items-center min-[520px]:p-5"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="manage-pod-actions-title"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section className="relative flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[430px] flex-col overflow-hidden rounded-t-[28px] border border-cyan-200/22 bg-[linear-gradient(180deg,rgba(11,22,32,0.98),rgba(3,9,16,0.98))] text-[var(--rp-text)] shadow-[0_28px_90px_rgba(0,0,0,0.58)] min-[520px]:rounded-[28px]">
+        <header className="border-b border-white/10 p-5 pb-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 id="manage-pod-actions-title" className="text-2xl font-black leading-tight text-white">
+                Manage pod actions
+              </h2>
+              <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                {allowStopRequests
+                  ? "Review rider confirmations and route requests."
+                  : "Review rider confirmations."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close manage pod actions"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/12 bg-white/8 text-[var(--rp-muted-strong)] transition hover:bg-white/12 hover:text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {tabs.length > 1 ? (
+            <div className={cn("mt-4 grid rounded-[16px] border border-white/10 bg-black/22 p-1", tabs.length === 3 ? "grid-cols-3" : "grid-cols-2")}>
+              {tabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setActionNote(null);
+                  }}
+                  aria-pressed={activeTab === tab.id}
+                  className={cn(
+                    "min-h-10 rounded-[12px] px-3 text-xs font-black transition",
+                    activeTab === tab.id
+                      ? "bg-[var(--rp-gradient-primary)] text-[#07111a] shadow-[0_10px_20px_rgba(242,193,91,0.18)]"
+                      : "text-[var(--rp-muted-strong)] hover:bg-white/8 hover:text-white",
+                  )}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto p-5">
+          {activeTab === "confirmations" ? (
+            <div className="grid gap-4">
+              <section className="rounded-[18px] border border-cyan-300/22 bg-cyan-300/8 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-lg font-black text-white">Confirmations</h3>
+                  <span className="rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
+                    {confirmedRiderCount} / {riderTotal} riders confirmed
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {ridersNeedingReviewCount > 0 ? (
+                    <span className="rounded-full border border-amber-300/35 bg-amber-400/10 px-3 py-1 text-xs font-black text-amber-100">
+                      {ridersNeedingReviewCount} {ridersNeedingReviewCount === 1 ? "rider needs" : "riders need"} review
+                    </span>
+                  ) : null}
+                  {expiredSeatHoldCount > 0 ? (
+                    <span className="rounded-full border border-amber-300/35 bg-amber-400/10 px-3 py-1 text-xs font-black text-amber-100">
+                      {expiredSeatHoldCount} seat hold {expiredSeatHoldCount === 1 ? "expired" : "expired"}
+                    </span>
+                  ) : null}
+                  {pendingCount === 0 && pendingNudgeRiders.length === 0 ? (
+                    <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-100">
+                      All clear
+                    </span>
+                  ) : null}
+                </div>
+              </section>
+
+              <section className="grid gap-2">
+                {riders.map((rider) => (
+                  <div key={`${rider.name}-${rider.role}-${rider.status}`} className="flex min-w-0 items-center justify-between gap-3 rounded-[16px] border border-white/10 bg-white/[0.04] p-3">
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-sm font-black text-cyan-100">
+                        {getInitials(rider.name).slice(0, 1)}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-black text-white">{rider.name}</span>
+                        <span className="block text-xs font-semibold text-[var(--rp-muted-strong)]">
+                          {getPodStatusRiderHelper(rider, currentDetailVersion)}
+                        </span>
+                      </span>
+                    </span>
+                    <ManagePodActionStatusChip rider={rider} />
+                  </div>
+                ))}
+              </section>
+
+              <section className="grid gap-2">
+                <button
+                  type="button"
+                  onClick={runNudgePlaceholder}
+                  disabled={!pendingNudgeRiders.length}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-cyan-300/35 bg-cyan-300/10 px-4 text-sm font-black text-cyan-100 transition hover:bg-cyan-300/15 disabled:opacity-45"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  Remind riders to confirm
+                </button>
+                <Link
+                  href={`/pods/${ride.id}/status#fare-split`}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-4 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/15"
+                >
+                  <Clock3 className="h-4 w-4" />
+                  Open confirm-by settings
+                </Link>
+                <Link
+                  href={`/pods/${ride.id}/status?tab=riders`}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  View status
+                </Link>
+              </section>
+            </div>
+          ) : activeTab === "route_requests" ? (
+            <div className="grid gap-4">
+              <RouteRequestsActionContent
+                allowStopRequests={allowStopRequests}
+                pendingStop={pendingStop}
+                approvedStop={approvedStop}
+                declinedStop={declinedStop}
+                routeLocked={routeLocked}
+                onApprove={approvePendingStop}
+                onDecline={declinePendingStop}
+              />
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-5">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">More actions</p>
+                <h3 className="mt-2 text-xl font-black text-white">Pod settings</h3>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                  Manage host-side actions for this self-settle ride app pod.
+                </p>
+              </section>
+
+              {canCancelAsHost ? (
+                <section className="grid gap-3 rounded-[18px] border border-[var(--rp-primary)]/28 bg-[var(--rp-primary)]/10 p-5">
+                  <div>
+                    <p className="text-sm font-black text-white">{confirmedRiderCount > 0 ? "Some riders have confirmed" : "No riders confirmed yet"}</p>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                      {confirmedRiderCount > 0
+                        ? "Cancelling starts host replacement mode so confirmed riders can choose whether to continue."
+                        : "Cancelling closes the pod and stops new confirmations."}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onHostCancelRequest(confirmedRiderCount)}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-[var(--rp-primary)]/40 bg-[var(--rp-primary)]/14 px-4 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/20"
+                  >
+                    <X className="h-4 w-4" />
+                    {cancelActionLabel}
+                  </button>
+                </section>
+              ) : (
+                <section className="grid gap-3 rounded-[18px] border border-cyan-300/25 bg-cyan-300/8 p-5">
+                  <div>
+                    <p className="text-sm font-black text-cyan-100">{getPodStatusTitle(ride, getRideAppChatAccessState(ride))}</p>
+                    <p className="mt-1 text-xs font-semibold leading-5 text-cyan-100/85">{getPodStatusSubtitle(ride, getRideAppChatAccessState(ride))}</p>
+                  </div>
+                  <Link
+                    href={`/pods/${ride.id}/status`}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
+                  >
+                    <BarChart3 className="h-4 w-4" />
+                    View status
+                  </Link>
+                </section>
+              )}
+            </div>
+          )}
+
+        </div>
+        {actionNote ? (
+          <div className="pointer-events-none absolute inset-x-4 bottom-4 z-30 flex justify-center">
+            <div className="pointer-events-auto flex w-full max-w-[360px] items-center justify-between gap-3 rounded-[16px] border border-cyan-300/35 bg-[#082533] px-4 py-3 text-cyan-100 shadow-[0_16px_42px_rgba(0,0,0,0.42)]">
+              <p className="min-w-0 text-sm font-black leading-5">{actionNote}</p>
+              <button
+                type="button"
+                onClick={() => setActionNote(null)}
+                aria-label="Dismiss notification"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-cyan-300/24 bg-black/18 text-cyan-100 transition hover:bg-cyan-300/10"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </section>
+    </div>
+  );
+}
+
+function ManagePodActionStatusChip({ rider }: { rider: PodStatusRider }) {
+  const label =
+    rider.role === "host"
+      ? "Host"
+      : rider.status === "confirmed"
+        ? "Confirmed"
+        : rider.status === "needs_review" || rider.status === "review_needed"
+          ? "Needs review"
+          : rider.status === "seat_hold_expired"
+            ? getSeatHoldDisplayLabel(rider.status)
+            : rider.status === "left_pod"
+              ? "Left"
+              : "Pending";
+  const tone =
+    rider.role === "host"
+      ? "border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]"
+      : rider.status === "confirmed"
+        ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-100"
+        : rider.status === "needs_review" || rider.status === "review_needed" || rider.status === "seat_hold_expired"
+          ? "border-amber-300/35 bg-amber-400/10 text-amber-100"
+          : "border-cyan-300/22 bg-cyan-300/8 text-cyan-100";
+
+  return (
+    <span className={cn("shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black", tone)}>
+      {label}
+    </span>
+  );
+}
+
+function RouteRequestsActionContent({
+  allowStopRequests,
+  pendingStop,
+  approvedStop,
+  declinedStop,
+  routeLocked,
+  onApprove,
+  onDecline,
+}: {
+  allowStopRequests: boolean;
+  pendingStop: RoutePlanStop | null;
+  approvedStop: RoutePlanStop | null;
+  declinedStop: RoutePlanStop | null;
+  routeLocked: boolean;
+  onApprove: () => void;
+  onDecline: () => void;
+}) {
+  if (!allowStopRequests) {
+    return (
+      <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-5">
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Route requests</p>
+        <h3 className="mt-2 text-xl font-black text-white">Direct route only</h3>
+        <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+          This pod does not allow extra stop requests.
+        </p>
+      </section>
+    );
+  }
+
+  if (routeLocked && pendingStop) {
+    return (
+      <RouteRequestsStateCard
+        title="Route locked"
+        body="Route changes are closed after booking details are confirmed."
+        stop={pendingStop}
+      />
+    );
+  }
+
+  if (pendingStop) {
+    return (
+      <section className="grid gap-4 rounded-[18px] border border-cyan-300/22 bg-cyan-300/8 p-5">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Route requests</p>
+          <h3 className="mt-2 text-xl font-black text-white">Stop request pending</h3>
+        </div>
+        <dl className="grid gap-3">
+          <RouteRequestRow label="Requested by" value={pendingStop.requestedBy ?? "Rider"} />
+          <RouteRequestRow label="Stop location" value={pendingStop.label} />
+          <RouteRequestRow label="Reason" value={pendingStop.reason ?? "Easier pickup for me"} />
+          <RouteRequestRow label="Status" value="Pending host approval" />
+        </dl>
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onDecline}
+            className="min-h-12 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
+          >
+            Decline
+          </button>
+          <button
+            type="button"
+            onClick={onApprove}
+            className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105"
+          >
+            Approve stop
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  if (approvedStop) {
+    return (
+      <RouteRequestsStateCard
+        title="Stop approved"
+        body="Updated booking details. Riders need to review again."
+        stop={approvedStop}
+        tone="approved"
+      />
+    );
+  }
+
+  if (declinedStop) {
+    return (
+      <RouteRequestsStateCard
+        title="Stop declined"
+        body="Route remains direct."
+        stop={declinedStop}
+      />
+    );
+  }
+
+  return (
+    <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-5">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Route requests</p>
+      <h3 className="mt-2 text-xl font-black text-white">No route requests</h3>
+      <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+        No riders have requested an extra stop.
+      </p>
+    </section>
+  );
+}
+
+function RouteRequestsStateCard({
+  title,
+  body,
+  stop,
+  tone = "default",
+}: {
+  title: string;
+  body: string;
+  stop?: RoutePlanStop | null;
+  tone?: "default" | "approved";
+}) {
+  return (
+    <section
+      className={cn(
+        "rounded-[18px] border p-5",
+        tone === "approved"
+          ? "border-emerald-300/24 bg-emerald-400/10"
+          : "border-white/10 bg-white/[0.04]",
+      )}
+    >
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Route requests</p>
+      <h3 className="mt-2 text-xl font-black text-white">{title}</h3>
+      <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{body}</p>
+      {stop ? (
+        <dl className="mt-4 grid gap-3">
+          <RouteRequestRow label="Requested by" value={stop.requestedBy ?? "Rider"} />
+          <RouteRequestRow label="Stop location" value={stop.label} />
+          <RouteRequestRow label="Reason" value={stop.reason ?? "Easier pickup for me"} />
+          <RouteRequestRow label="Status" value={title} />
+        </dl>
+      ) : null}
+    </section>
+  );
+}
+
+function RouteRequestRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[14px] border border-white/10 bg-black/20 p-3">
+      <dt className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">{label}</dt>
+      <dd className="mt-1 break-words text-sm font-black leading-5 text-white">{value}</dd>
+    </div>
+  );
+}
+
+function JoinedPodModal({ onConfirm }: { onConfirm: () => void }) {
+  return (
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/64 px-4 py-6 backdrop-blur-sm">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="joined-pod-title"
+        className="w-full max-w-[360px] rounded-[26px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-center shadow-[0_28px_80px_rgba(0,0,0,0.44)]"
+      >
+        <span className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-emerald-200/35 bg-emerald-300/12 text-emerald-200">
+          <CheckCircle2 className="h-7 w-7" />
+        </span>
+        <h2 id="joined-pod-title" className="mt-4 text-2xl font-black text-[var(--rp-text)]">
+          You joined this pod
+        </h2>
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="mt-5 min-h-12 w-full rounded-[16px] bg-[linear-gradient(180deg,#ffd36a_0%,#f2c15b_100%)] px-5 text-base font-black text-[#07111a] shadow-[0_14px_30px_rgba(242,193,91,0.28)] transition hover:brightness-105"
+        >
+          Confirm
+        </button>
+      </section>
+    </div>
+  );
+}
+
+export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
+  const { user, profile } = useAuth();
+  const [selfSettleLeft, setSelfSettleLeft] = useState(false);
+  const storedRide = getRideWithStoredSelfSettleJoin(
+    selfSettleLeft && isRideAppSelfSettlePod(baseRide) ? getSelfSettleRideAfterLeave(baseRide) : baseRide,
+  );
+  const personaRide = selfSettleLeft ? storedRide : applyRideAppDemoPersona(storedRide, { profile, user });
+  const storedRideAppFareProof = getRideAppFareEstimateProof(storedRide);
+  const [activeDetailTab, setActiveDetailTab] = useState<DetailTab>("trip");
+  const [showHowItWorks, setShowHowItWorks] = useState(false);
+  const [showJoinedModal, setShowJoinedModal] = useState(false);
+  const [showLockSeatModal, setShowLockSeatModal] = useState(false);
+  const [showSelfSettleJoinModal, setShowSelfSettleJoinModal] = useState(false);
+  const [showSelfSettleJoinSuccessModal, setShowSelfSettleJoinSuccessModal] = useState(false);
+  const [showLeaveSelfSettleModal, setShowLeaveSelfSettleModal] = useState(false);
+  const [showRideAppEstimateModal, setShowRideAppEstimateModal] = useState(false);
+  const [showRideAppFareProofModal, setShowRideAppFareProofModal] = useState(false);
+  const [showManagePodActionsModal, setShowManagePodActionsModal] = useState(false);
+  const [hostCancellationModalConfirmedCount, setHostCancellationModalConfirmedCount] = useState<number | null>(null);
+  const [hostCancellationReason, setHostCancellationReason] = useState<string>(beforeConfirmationCancellationReasons[0]?.value ?? "Plans changed");
+  const [rideActionPatch, setRideActionPatch] = useState<Partial<HomeRide> | null>(null);
+  const [rideAppTotalEstimateOverride, setRideAppTotalEstimateOverride] = useState<string | null>(null);
+  const [rideAppEstimateDraft, setRideAppEstimateDraft] = useState("");
+  const [rideAppEstimateError, setRideAppEstimateError] = useState<string | null>(null);
+  const [rideAppEstimateScreenshotName, setRideAppEstimateScreenshotName] = useState<string | null>(
+    () => storedRideAppFareProof?.fileName ?? null,
+  );
+  const [rideAppEstimateScreenshotPreviewUrl, setRideAppEstimateScreenshotPreviewUrl] = useState<string | null>(
+    () => storedRideAppFareProof?.previewUrl ?? null,
+  );
+  const [rideAppEstimateScreenshotAddedAt, setRideAppEstimateScreenshotAddedAt] = useState<string | null>(
+    () => storedRideAppFareProof?.addedAt ?? null,
+  );
+  const [rideAppEstimateScreenshotDraftName, setRideAppEstimateScreenshotDraftName] = useState<string | null>(null);
+  const [rideAppEstimateScreenshotDraftPreviewUrl, setRideAppEstimateScreenshotDraftPreviewUrl] = useState<string | null>(null);
+  const [lockSeatUnderstood, setLockSeatUnderstood] = useState(false);
+  const [selfSettleUnderstood, setSelfSettleUnderstood] = useState(false);
+  const rideAppWaiver = useRideAppWaiverState();
+  const membership = useRidePodMembershipState();
+  const [selfSettleWaiverAppliedSource, setSelfSettleWaiverAppliedSource] = useState<"none" | "launch" | "plus">("none");
+  const [plusWaiversAfterJoin, setPlusWaiversAfterJoin] = useState<number | null>(null);
+  const [lockSeatLuggage, setLockSeatLuggage] = useState<LuggageContribution>({
+    bagsCount: 0,
+    hasLargeLuggage: false,
+  });
+  const rideAppTotalEstimateValue = rideAppTotalEstimateOverride
+    ? estimateTotalFromRange(rideAppTotalEstimateOverride)
+    : null;
+  const rideAppEstimatePerPersonValue =
+    rideAppTotalEstimateValue === null
+      ? null
+      : Math.ceil(rideAppTotalEstimateValue / Math.max(1, storedRide.seatsUsed));
+  const currentRideAppFareProof =
+    rideAppEstimateScreenshotName || rideAppEstimateScreenshotPreviewUrl
+      ? {
+          fileName: rideAppEstimateScreenshotName ?? undefined,
+          previewUrl: rideAppEstimateScreenshotPreviewUrl ?? undefined,
+          addedAt: rideAppEstimateScreenshotAddedAt ?? undefined,
+          note: "Uploaded by host with the ride app fare estimate.",
+        }
+      : null;
+  const actionPatchedRide = mergeRidePatch(personaRide, rideActionPatch) as HomeRide;
+  const ride = rideAppTotalEstimateOverride
+    ? {
+        ...actionPatchedRide,
+        bookingDetailsShared: true,
+        rideAppBookingDetailsConfirmed: true,
+        rideAppBookingDetailsFinalized: true,
+        estimatedRideAppFare: rideAppTotalEstimateOverride,
+        rideAppBookingDetails: {
+          ...actionPatchedRide.rideAppBookingDetails,
+          estimatedFare: rideAppTotalEstimateOverride,
+        },
+        rideAppEstimatedFarePerPerson: rideAppEstimatePerPersonValue,
+        rideAppEstimatedFareTotal: rideAppTotalEstimateValue,
+        rideAppEstimatedFareCurrency: "HKD" as const,
+        rideAppFareEstimateStatus: "accepted" as const,
+        rideAppFareEstimateScreenshotName: rideAppEstimateScreenshotName,
+        rideAppFareEstimateScreenshotAddedAt: rideAppEstimateScreenshotAddedAt,
+        fareEstimateScreenshot: currentRideAppFareProof,
+      }
+    : actionPatchedRide;
+  const {
+    seatsUsed,
+    joinView,
+    acceptedGuestCount,
+    requiredGuestCount,
+    attendanceMessage,
+    attendanceError,
+    isCancellingAttendance,
+    canLockSeatAfterCancel,
+    groupLuggageLabel,
+    userLuggageLabel,
+    luggageCapacityWarning,
+    lockSeat,
+    joinSelfSettlePod,
+    leaveSelfSettlePod,
+    acceptQuote,
+    declineQuote,
+    cancelSeat,
+    cancelQuoteAcceptance,
+    requestCancellation,
+    markAtPickup,
+    cancelAttendance,
+  } = usePodDetailJoinState(ride);
   const progress = Math.min((seatsUsed / ride.seatsTotal) * 100, 100);
-  const currentStatus = podDetailQuoteCopy[joinView];
-  const pickup = ride.pickupLabel ?? ride.fromLabel;
-  const dropoff = ride.dropoffLabel ?? ride.toLabel;
+  const estimatedShareRange = getEstimatedShareRange(ride.pricePerPerson);
+  const rideAppEstimateDisplay = getRideAppHostFareEstimateDisplay(ride);
+  const rideAppHeroEstimateUpdated = rideAppTotalEstimateOverride !== null || rideAppEstimateDisplay.updated;
+  const rideAppHeroEstimateLabel = rideAppHeroEstimateUpdated ? "Total estimate" : rideAppEstimateDisplay.label;
+  const rideAppHeroEstimateValue = rideAppTotalEstimateOverride ?? rideAppEstimateDisplay.value;
+  const rideAppProviderDisplay = getRideAppProviderDisplay(ride);
+  const rideAppAcceptedPaymentDisplay = getRideAppAcceptedPaymentDisplay(ride);
+  const rideAppFareProof = getRideAppFareEstimateProof(ride);
+  const routeChangedAfterQuoteReady = false;
+  const updatedQuoteReady = Boolean(ride.quoteUpdatedAfterRouteChange && ["quote_ready", "quote_deadline_soon", "late_confirmation"].includes(joinView));
+  const showQuoteProvidedCard =
+    ["quote_ready", "quote_deadline_soon", "late_confirmation", "quote_expired", "too_late_to_confirm", "quote_accepted", "all_accepted", "quote_declined"].includes(joinView);
+  const quoteStatus = getHeroQuoteStatus(ride, joinView);
+  const selfSettlePod = isRideAppSelfSettlePod(ride);
+  const howItWorksRideMode: HowItWorksRideMode = selfSettlePod ? "ride_app" : "taxi";
+  const howItWorksSteps = getHowItWorksSteps(howItWorksRideMode);
+  const defaultHowItWorksStep = getDefaultHowItWorksStep(ride, joinView, howItWorksRideMode);
+  const [selectedHowItWorksStep, setSelectedHowItWorksStep] = useState<HowItWorksStepId | null>(null);
+  const activeHowItWorksStep = selectedHowItWorksStep ?? defaultHowItWorksStep;
+  const activeHowItWorksItem =
+    howItWorksSteps.find((step) => step.id === activeHowItWorksStep) ?? howItWorksSteps[0];
+  const showSelfSettleJoin = getCurrentUserCanJoinSelfSettlePod(ride, joinView);
+  const showSelfSettleHost = selfSettlePod && getCurrentUserIsHost(ride);
+  const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
+  const hostCancellationAllowsHostControls = hostCancellationStatus === "active";
+  const canUpdateRideAppEstimate = selfSettlePod && showSelfSettleHost && hostCancellationAllowsHostControls;
+  const showHostCancellationModal = hostCancellationModalConfirmedCount !== null;
+  const hostCancellationHasConfirmedRiders = (hostCancellationModalConfirmedCount ?? 0) > 0;
+  const hostCancellationReasons = hostCancellationHasConfirmedRiders
+    ? afterConfirmationCancellationReasons
+    : beforeConfirmationCancellationReasons;
+  const launchWaiverAvailable = rideAppWaiver.claimed && !rideAppWaiver.used;
+  const plusWaiverAvailable = hasRidePodPlusJoinFeeWaiver(membership);
+  const selfSettleWaiverSource =
+    showSelfSettleJoin && launchWaiverAvailable
+      ? "launch"
+      : showSelfSettleJoin && plusWaiverAvailable
+        ? "plus"
+        : "none";
+  const lockSeatWaiverSource = launchWaiverAvailable ? "launch" : plusWaiverAvailable ? "plus" : "none";
+
+  function joinPod(luggage?: LuggageContribution) {
+    lockSeat(luggage);
+    setShowJoinedModal(true);
+  }
+
+  function confirmSelfSettleJoin() {
+    if (!selfSettleUnderstood) return;
+    // TODO: replace with HK$5 payment checkout once payment provider is connected.
+    if (selfSettleWaiverSource === "launch") {
+      markRideAppWaiverUsed();
+      setSelfSettleWaiverAppliedSource("launch");
+      setPlusWaiversAfterJoin(null);
+    } else if (selfSettleWaiverSource === "plus") {
+      const nextMembership = consumeRidePodPlusJoinFeeWaiver();
+      setSelfSettleWaiverAppliedSource("plus");
+      setPlusWaiversAfterJoin(nextMembership.monthlyJoinFeeWaiversRemaining);
+    } else {
+      setSelfSettleWaiverAppliedSource("none");
+      setPlusWaiversAfterJoin(null);
+    }
+    setSelfSettleLeft(false);
+    joinSelfSettlePod();
+    setShowSelfSettleJoinModal(false);
+    setSelfSettleUnderstood(false);
+    setShowSelfSettleJoinSuccessModal(true);
+  }
+
+  function confirmLeaveSelfSettle() {
+    if (user && isRideAppSelfSettlePod(ride)) {
+      createRideAppTrustEvent({
+        userId: user.id,
+        podId: ride.id,
+        eventType: ride.bookingDetailsShared === true ? "ride_app_rider_left_late" : "ride_app_rider_left_early",
+        reason:
+          ride.bookingDetailsShared === true
+            ? "Rider left after booking details were shared."
+            : "Rider left before booking details were shared.",
+        createdBy: user.id,
+      });
+    }
+
+    leaveSelfSettlePod();
+    setSelfSettleLeft(true);
+    setShowLeaveSelfSettleModal(false);
+  }
+
+  function openRideAppEstimateModal() {
+    if (!canUpdateRideAppEstimate) return;
+    const currentProof = getRideAppFareEstimateProof(ride);
+    setRideAppEstimateDraft(rideAppTotalEstimateOverride ?? getRideAppHostFareEstimate(ride) ?? "");
+    setRideAppEstimateScreenshotDraftName(currentProof?.fileName ?? null);
+    setRideAppEstimateScreenshotDraftPreviewUrl(currentProof?.previewUrl ?? null);
+    setRideAppEstimateError(null);
+    setShowRideAppEstimateModal(true);
+  }
+
+  function confirmRideAppEstimateUpdate() {
+    const formattedEstimate = formatRideAppEstimateRangeInput(rideAppEstimateDraft);
+    if (!formattedEstimate) {
+      setRideAppEstimateError("Add the fixed range shown by the ride app.");
+      return;
+    }
+
+    setRideAppTotalEstimateOverride(formattedEstimate);
+    setRideAppEstimateScreenshotName(rideAppEstimateScreenshotDraftName);
+    const updatedAt = new Date().toISOString();
+    const proofUpdatedAt =
+      rideAppEstimateScreenshotDraftName || rideAppEstimateScreenshotDraftPreviewUrl
+        ? updatedAt
+        : null;
+    setRideAppEstimateScreenshotPreviewUrl(rideAppEstimateScreenshotDraftPreviewUrl);
+    setRideAppEstimateScreenshotAddedAt(proofUpdatedAt);
+    const totalEstimate = estimateTotalFromRange(formattedEstimate);
+    const estimatePerPerson =
+      totalEstimate === null ? null : Math.ceil(totalEstimate / Math.max(1, ride.seatsUsed));
+    const updatedBy = ride.currentUserRole === "host" ? "You" : ride.currentUserName ?? "You";
+    const updatedChecklist = {
+      ...ride.rideAppChecklist,
+      pickupPoint: ride.rideAppChecklist?.pickupPoint ?? Boolean(ride.pickupLabel),
+      dropoffPoint: ride.rideAppChecklist?.dropoffPoint ?? Boolean(ride.dropoffLabel),
+      rideApp: ride.rideAppChecklist?.rideApp ?? Boolean(ride.rideAppProviderName || ride.taxiType),
+      estimatedFare: true,
+      booker: ride.rideAppChecklist?.booker ?? true,
+      fareSplit: ride.rideAppChecklist?.fareSplit ?? Boolean(ride.rideAppSplitMethod || ride.splitMethod),
+      paymentMethod: ride.rideAppChecklist?.paymentMethod ?? Boolean(ride.rideAppAcceptedPaymentMethods?.length || ride.paymentMethod),
+      paymentRecipientAfterRide: ride.rideAppChecklist?.paymentRecipientAfterRide ?? true,
+      meetingTime: ride.rideAppChecklist?.meetingTime ?? Boolean(ride.pickupTime || ride.timeLabel),
+      updatedAt,
+      updatedBy,
+    };
+    const updatedRidePatch: Partial<HomeRide> = {
+      bookingDetailsShared: true,
+      rideAppBookingDetailsConfirmed: true,
+      rideAppBookingDetailsConfirmedAt: ride.rideAppBookingDetailsConfirmedAt ?? updatedAt,
+      rideAppBookingDetailsConfirmedBy: ride.rideAppBookingDetailsConfirmedBy ?? updatedBy,
+      rideAppBookingDetailsFinalized: true,
+      rideAppBookingDetailsFinalizedAt: ride.rideAppBookingDetailsFinalizedAt ?? updatedAt,
+      rideAppBookingDetailsFinalizedBy: ride.rideAppBookingDetailsFinalizedBy ?? updatedBy,
+      estimatedRideAppFare: formattedEstimate,
+      rideAppBookingDetails: {
+        ...ride.rideAppBookingDetails,
+        estimatedFare: formattedEstimate,
+      },
+      rideAppEstimatedFarePerPerson: estimatePerPerson,
+      rideAppEstimatedFareTotal: totalEstimate,
+      rideAppEstimatedFareCurrency: "HKD" as const,
+      rideAppEstimatedFareUpdatedBy: updatedBy,
+      rideAppEstimatedFareUpdatedAt: updatedAt,
+      rideAppEstimatedFareNote: rideAppEstimateScreenshotDraftName
+        ? `Screenshot uploaded: ${rideAppEstimateScreenshotDraftName}`
+        : "Updated by host.",
+      rideAppFareEstimateStatus: "accepted" as const,
+      rideAppFareEstimateScreenshotName: rideAppEstimateScreenshotDraftName,
+      rideAppFareEstimateScreenshotAddedAt: proofUpdatedAt,
+      fareEstimateScreenshot: rideAppEstimateScreenshotDraftName || rideAppEstimateScreenshotDraftPreviewUrl
+        ? {
+            fileName: rideAppEstimateScreenshotDraftName ?? undefined,
+            previewUrl: rideAppEstimateScreenshotDraftPreviewUrl ?? undefined,
+            addedAt: proofUpdatedAt ?? undefined,
+            note: "Uploaded by host with the ride app fare estimate.",
+          }
+        : null,
+      rideAppChecklist: updatedChecklist,
+    };
+    saveStoredSelfSettleRidePatch(ride.id, updatedRidePatch);
+    updateCreatedHomeRide(ride.id, (storedRide) => ({
+      ...storedRide,
+      ...updatedRidePatch,
+      rideAppBookingDetails: {
+        ...storedRide.rideAppBookingDetails,
+        ...updatedRidePatch.rideAppBookingDetails,
+      },
+      rideAppChecklist: {
+        ...storedRide.rideAppChecklist,
+        ...updatedRidePatch.rideAppChecklist,
+      } as HomeRide["rideAppChecklist"],
+    }));
+    setRideAppEstimateError(null);
+    setShowRideAppEstimateModal(false);
+  }
+
+  function applyRideActionPatch(patch: Partial<HomeRide>) {
+    setRideActionPatch((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
+    saveStoredSelfSettleRidePatch(ride.id, patch);
+    updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+  }
+
+  function openHostCancellationModal(confirmedRiderCount: number) {
+    const reasons = confirmedRiderCount > 0 ? afterConfirmationCancellationReasons : beforeConfirmationCancellationReasons;
+    setHostCancellationReason(reasons[0]?.value ?? "Plans changed");
+    setHostCancellationModalConfirmedCount(confirmedRiderCount);
+  }
+
+  function closeHostCancellationModal() {
+    setHostCancellationModalConfirmedCount(null);
+    setHostCancellationReason(beforeConfirmationCancellationReasons[0]?.value ?? "Plans changed");
+  }
+
+  function confirmHostCancellation() {
+    if (!showHostCancellationModal) return;
+
+    const replacementDeadlineLabel = ride.confirmationDeadlineLabel
+      ? `Before ${ride.confirmationDeadlineLabel}`
+      : "Before confirm-by time";
+    const patch: Partial<HomeRide> = hostCancellationHasConfirmedRiders
+      ? {
+          rideAppHostCancellationStatus: "host_replacement_needed",
+          rideAppHostCancellationReason: hostCancellationReason,
+          rideAppReplacementBookerId: null,
+          rideAppReplacementBookerName: null,
+          rideAppReplacementDeadlineLabel: replacementDeadlineLabel,
+          rideAppFeeResolution: "review_needed",
+          rideAppHostCancellationActivity: ["Mark cancelled as host.", "Host replacement mode started."],
+        }
+      : {
+          rideAppHostCancellationStatus: "host_cancelled",
+          rideAppHostCancellationReason: hostCancellationReason,
+          rideAppReplacementBookerId: null,
+          rideAppReplacementBookerName: null,
+          rideAppReplacementDeadlineLabel: replacementDeadlineLabel,
+          rideAppFeeResolution: "not_confirmed",
+          rideAppHostCancellationActivity: ["Mark cancelled as host."],
+          rideAppPodStatus: "cancelled",
+          status: "cancelled",
+        };
+
+    applyRideActionPatch(patch);
+    closeHostCancellationModal();
+    setShowManagePodActionsModal(false);
+  }
+
+  function approveRouteStop(stop: RoutePlanStop) {
+    const nextDetailVersion = getRideAppCurrentDetailVersion(ride) + 1;
+    const approvedStop: RoutePlanStop = { ...stop, status: "approved" };
+    const patch: Partial<HomeRide> = {
+      proposedStops: (ride.proposedStops ?? []).filter((item) => item.id !== stop.id),
+      approvedStops: [...(ride.approvedStops ?? []), approvedStop],
+      bookingDetailsUpdated: true,
+      bookingDetailsLastMeaningfulUpdate: "stop_added",
+      lastBookingDetailsUpdateReason: "Host approved stop request.",
+      bookingDetailsVersion: nextDetailVersion,
+      rideAppCurrentDetailVersion: nextDetailVersion,
+      rideAppPodStatus: "needs_review",
+      confirmedRiderCount: 0,
+      rideAppConfirmedRiderCount: 0,
+      rideAppConfirmedRiderIds: [],
+      riderConfirmations: ride.riderConfirmations?.map((rider) =>
+        rider.role === "rider" && rider.status === "confirmed"
+          ? { ...rider, status: "needs_review" as const }
+          : rider,
+      ),
+    };
+
+    applyRideActionPatch(patch);
+  }
+
+  function declineRouteStop(stop: RoutePlanStop) {
+    const declinedStop: RoutePlanStop = { ...stop, status: "declined" };
+    const patch: Partial<HomeRide> = {
+      proposedStops: (ride.proposedStops ?? []).filter((item) => item.id !== stop.id),
+      declinedStops: [...(ride.declinedStops ?? []), declinedStop],
+    };
+
+    applyRideActionPatch(patch);
+  }
+
+  function closeLockSeatModal() {
+    setShowLockSeatModal(false);
+    setLockSeatUnderstood(false);
+    setLockSeatLuggage({ bagsCount: 0, hasLargeLuggage: false });
+  }
+
+  function confirmLockSeat() {
+    if (!lockSeatUnderstood) return;
+    if (lockSeatWaiverSource === "launch") {
+      markRideAppWaiverUsed();
+    } else if (lockSeatWaiverSource === "plus") {
+      consumeRidePodPlusJoinFeeWaiver();
+    }
+    joinPod(lockSeatLuggage);
+    closeLockSeatModal();
+  }
+
+  function sharePod() {
+    const podUrl = typeof window !== "undefined" ? window.location.href : `/pods/${ride.id}`;
+    const title = `${ride.fromLabel} to ${ride.toLabel}`;
+    const browserNavigator =
+      typeof navigator !== "undefined"
+        ? (navigator as Navigator & {
+            share?: (data: ShareData) => Promise<void>;
+            clipboard?: Clipboard;
+          })
+        : null;
+    if (browserNavigator?.share) {
+      void browserNavigator.share({ title, text: `Join this RidePod hosted by ${ride.hostName || "the host"}.`, url: podUrl }).catch(() => {});
+      return;
+    }
+    if (browserNavigator?.clipboard) {
+      void browserNavigator.clipboard.writeText(podUrl).catch(() => {});
+    }
+  }
 
   return (
     <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-5rem)] overflow-hidden pb-48 sm:-mx-6 lg:-mx-10 lg:-mt-8">
@@ -119,133 +3948,767 @@ export function NormalPodDetailPage({ ride }: { ride: HomeRide }) {
           <Link
             href="/home"
             aria-label="Back to Home"
-            className="grid h-10 w-10 place-items-center rounded-full text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]"
+            className={cn(
+              "grid h-10 w-10 place-items-center rounded-full border bg-[rgba(4,10,18,0.72)] text-[var(--rp-text)] shadow-[0_8px_22px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm transition hover:bg-[rgba(20,27,34,0.92)]",
+              selfSettlePod ? "border-cyan-200/35" : "border-[var(--rp-primary)]/45",
+            )}
           >
             <ArrowLeft className="h-6 w-6" />
           </Link>
-          <h1 className="text-lg font-semibold text-[var(--rp-text)]">Pod details</h1>
-          <button
-            type="button"
-            aria-label="Share pod"
-            className="grid h-10 w-10 place-items-center rounded-full text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]"
-          >
-            <Share2 className="h-5 w-5" />
-          </button>
+          <h1 className={cn("text-lg font-semibold", selfSettlePod ? "text-cyan-200" : "text-[var(--rp-primary)]")}>
+            Pod Details
+          </h1>
+          {selfSettlePod ? (
+            <button
+              type="button"
+              onClick={sharePod}
+              aria-label="Share pod"
+              className="grid h-10 w-10 place-items-center rounded-full border border-cyan-200/35 bg-[rgba(4,10,18,0.72)] text-cyan-100 shadow-[0_8px_22px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm transition hover:bg-[rgba(20,27,34,0.92)]"
+            >
+              <Share2 className="h-5 w-5" />
+            </button>
+          ) : (
+            <span className="h-10 w-10" aria-hidden="true" />
+          )}
         </header>
 
         <main className="relative z-10 grid gap-3 px-4">
-          <section className="relative -mx-4 -mt-12 overflow-hidden rounded-b-[28px] border-b border-[var(--rp-border)] bg-[var(--rp-shell)] shadow-[var(--rp-shadow-soft)]">
-            <div className="relative min-h-[462px] pt-12">
+          {selfSettlePod ? (
+            <SelfSettlePodSummaryHero
+              ride={ride}
+              seatsUsed={seatsUsed}
+              progress={progress}
+              estimateLabel={rideAppHeroEstimateLabel}
+              estimateValue={rideAppHeroEstimateValue}
+              estimateUpdated={rideAppHeroEstimateUpdated}
+              canUpdateEstimate={canUpdateRideAppEstimate}
+              onEstimateClick={openRideAppEstimateModal}
+              onManageActionsClick={() => setShowManagePodActionsModal(true)}
+              hasFareProof={Boolean(rideAppFareProof)}
+              onViewFareProof={() => setShowRideAppFareProofModal(true)}
+            />
+          ) : (
+          <section className="relative -mx-4 -mt-2 overflow-hidden rounded-b-[28px] border-b border-[var(--rp-border)] bg-[var(--rp-shell)] shadow-[var(--rp-shadow-soft)]">
+            <div className={cn("relative pt-12", selfSettlePod ? "min-h-[430px]" : "min-h-[478px]")}>
               <Image
-                src="/images/ridepod/pod-detail-hong-kong-skyline.png"
-                alt="Hong Kong skyline at night"
+                src={selfSettlePod ? "/images/ridepod/ride-app-skyline-cyan.png" : "/images/ridepod/home-dark-mode-background.png"}
+                alt={selfSettlePod ? "Cyan Hong Kong skyline at night" : "Hong Kong skyline illustration at night"}
                 fill
                 priority
                 sizes="(min-width: 1024px) 520px, 100vw"
-                className="object-cover object-center"
+                className={cn("object-cover", selfSettlePod ? "object-[62%_48%]" : "object-center")}
               />
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,11,18,0.04)_0%,rgba(5,11,18,0.08)_34%,rgba(5,11,18,0.74)_76%,rgba(5,11,18,0.96)_100%)]" />
+              <div
+                className={cn(
+                  "absolute inset-0",
+                  selfSettlePod
+                    ? "bg-[linear-gradient(180deg,rgba(2,6,23,0.64)_0%,rgba(2,8,23,0.38)_34%,rgba(2,8,23,0.70)_66%,rgba(2,6,18,0.96)_100%)]"
+                    : "bg-[linear-gradient(180deg,rgba(5,11,18,0.04)_0%,rgba(5,11,18,0.08)_34%,rgba(5,11,18,0.74)_76%,rgba(5,11,18,0.96)_100%)]",
+                )}
+              />
 
-              <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-5">
-                <h2 className="max-w-full whitespace-nowrap text-[30px] font-black leading-none tracking-tight text-white min-[390px]:text-[34px]">
+              <div className={cn("z-10 px-5 pb-5", selfSettlePod ? "relative" : "absolute inset-x-0 bottom-0")}>
+                <h2 className="max-w-full text-[28px] font-black leading-[1.03] tracking-tight text-white min-[390px]:text-[32px]">
                   {ride.fromLabel} {"\u2192"} {ride.toLabel}
                 </h2>
 
                 <p className="mt-5 text-xl font-semibold text-[var(--rp-muted-strong)]">
-                  {ride.dateLabel} <span className="px-2 text-[var(--rp-primary)]" aria-hidden="true">{"\u00b7"}</span> {ride.timeLabel}
+                  {ride.dateLabel}{" "}
+                  <span className={cn("px-2", selfSettlePod ? "text-cyan-200" : "text-[var(--rp-primary)]")} aria-hidden="true">
+                    {"\u00b7"}
+                  </span>{" "}
+                  {ride.timeLabel}
                 </p>
+                <PodDetailSetupBadges ride={ride} />
+                <div className="mt-3 flex max-w-full items-center gap-2">
+                  <div className="inline-flex min-w-0 items-center gap-2 rounded-full border border-white/14 bg-black/26 px-3 py-2 text-xs font-black text-white shadow-[0_8px_18px_rgba(0,0,0,0.18)] backdrop-blur-md">
+                    <UserRound className={cn("h-4 w-4 shrink-0", selfSettlePod ? "text-cyan-200" : "text-[var(--rp-primary)]")} />
+                    <span className="shrink-0 uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">Created by</span>
+                    <span className="truncate text-[var(--rp-text)]">{ride.hostName || "RidePod host"}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={sharePod}
+                    aria-label="Share pod"
+                    className={cn(
+                      "grid h-10 w-10 shrink-0 place-items-center rounded-full border bg-black/26 shadow-[0_8px_18px_rgba(0,0,0,0.18)] backdrop-blur-md transition hover:bg-white/10",
+                      selfSettlePod
+                        ? "border-cyan-200/35 text-cyan-100"
+                        : "border-[var(--rp-primary)]/35 text-[var(--rp-primary)]",
+                    )}
+                  >
+                    <Share2 className="h-5 w-5" />
+                  </button>
+                </div>
 
                 <div className="mt-4 border-t border-white/14 pt-4">
-                  <div className="grid grid-cols-[1fr_auto] gap-4">
-                    <div className="min-w-0 pr-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <RiderStack ride={ride} />
-                        <p className="min-w-0 text-lg font-black text-[var(--rp-text)]">
-                          {seatsUsed} / {ride.seatsTotal} seats filled
+                  {selfSettlePod ? (
+                    <div className="grid gap-3">
+                      <div className="grid grid-cols-[minmax(0,1fr)_minmax(112px,0.68fr)] gap-3">
+                        <div className="min-w-0 rounded-[18px] border border-cyan-200/24 bg-black/28 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-md">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <RiderStack ride={ride} seatsUsed={seatsUsed} />
+                            <p className="min-w-0 text-left font-black leading-tight text-[var(--rp-text)]">
+                              <span className="block whitespace-nowrap text-lg">{seatsUsed} / {ride.seatsTotal}</span>
+                              <span className="block text-xs text-[var(--rp-muted-strong)]">seats filled</span>
+                            </p>
+                          </div>
+                          <div className="relative mt-3 h-2 overflow-hidden rounded-full bg-white/14">
+                            <div
+                              className="h-full rounded-full bg-cyan-300"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div className="grid min-w-0 content-center border-x border-white/14 px-3 py-2 text-left backdrop-blur-md">
+                          {canUpdateRideAppEstimate ? (
+                            <button
+                              type="button"
+                              onClick={openRideAppEstimateModal}
+                              className="w-full text-left transition hover:brightness-110"
+                            >
+                              <span className="block text-[10px] font-semibold leading-4 text-[var(--rp-muted-strong)]">{rideAppHeroEstimateLabel}</span>
+                              <span
+                                className={cn(
+                                  "mt-1 block font-black leading-tight text-[var(--rp-primary)]",
+                                  rideAppHeroEstimateUpdated ? "text-lg" : "whitespace-nowrap text-[11px]",
+                                )}
+                              >
+                                {rideAppHeroEstimateValue}
+                              </span>
+                            </button>
+                          ) : (
+                            <Link href="#fare-split" className="block text-left transition hover:brightness-110">
+                              <p className="text-[10px] font-semibold leading-4 text-[var(--rp-muted-strong)]">
+                                {rideAppHeroEstimateLabel}
+                              </p>
+                              <p
+                                className={cn(
+                                  "mt-1 font-black leading-tight text-[var(--rp-primary)]",
+                                  rideAppHeroEstimateUpdated ? "text-lg" : "whitespace-nowrap text-[11px]",
+                                )}
+                              >
+                                {rideAppHeroEstimateValue}
+                              </p>
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                      {!showQuoteProvidedCard ? (
+                        <div className="grid gap-3">
+                          {showSelfSettleJoin ? (
+                            <button
+                              type="button"
+                              onClick={() => setShowSelfSettleJoinModal(true)}
+                              className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_12px_26px_rgba(56,189,248,0.22)]"
+                            >
+                              Join pod
+                            </button>
+                          ) : showSelfSettleHost ? (
+                            <Link
+                              href={`/pods/${ride.id}/status`}
+                              className="inline-flex min-h-12 items-center justify-center rounded-[16px] border border-cyan-200/35 bg-cyan-300/10 px-4 text-sm font-black text-cyan-100"
+                            >
+                              View pod status
+                            </Link>
+                          ) : (
+                            <div className="grid grid-cols-2 gap-3">
+                              <span className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-[var(--rp-primary)]/35 bg-white/8 px-4 text-sm font-black text-[var(--rp-primary)]">
+                                <CheckCircle2 className="h-4 w-4" />
+                                Joined
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowLeaveSelfSettleModal(true)}
+                                className="min-h-12 rounded-[16px] border border-[var(--rp-primary)]/35 bg-white/8 px-4 text-sm font-black text-[var(--rp-primary)]"
+                              >
+                                Leave pod
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-[1fr_auto] items-end gap-4">
+                      <div className="min-w-0 pr-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <RiderStack ride={ride} seatsUsed={seatsUsed} />
+                          <p className="min-w-0 text-lg font-black text-[var(--rp-text)]">
+                            {seatsUsed} / {ride.seatsTotal} seats filled
+                          </p>
+                        </div>
+                        <div className="relative mt-4 h-2.5 overflow-hidden rounded-full bg-white/14">
+                          <div
+                            className="h-full rounded-full bg-[var(--rp-primary)]"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="min-w-[144px] border-l border-white/14 pl-4 text-right">
+                        <p className="text-base font-semibold text-[var(--rp-muted-strong)]">
+                          Est. share
+                        </p>
+                        <p className="mt-1 text-3xl font-black leading-none text-white">
+                          {estimatedShareRange}
+                        </p>
+                        <p className="mt-1 text-sm font-semibold text-[var(--rp-muted-strong)]">
+                          per person
                         </p>
                       </div>
-                      <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white/14">
-                        <div
-                          className="h-full rounded-full bg-[var(--rp-primary)]"
-                          style={{ width: `${progress}%` }}
-                        />
+                    </div>
+                  )}
+                  {!showQuoteProvidedCard && !selfSettlePod ? (
+                      <div id="quote-status" className="mt-4 grid grid-cols-[1fr_140px] items-center gap-3">
+                        <div className="rounded-[14px] border border-white/14 bg-black/24 px-3 py-2 text-left backdrop-blur-md">
+                          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
+                            Quote status
+                          </p>
+                          <p className="mt-1 text-sm font-black text-[var(--rp-primary)]">
+                            {quoteStatus}
+                          </p>
+                          {updatedQuoteReady ? (
+                            <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                              Taxi partner updated the quote for the approved route.
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="[&>button]:mt-0">
+                          <PodHeroJoinButton
+                            ride={ride}
+                            joinView={joinView}
+                            onLeaveSelfSettle={() => setShowLeaveSelfSettleModal(true)}
+                            onLeaveTaxiPod={() => setShowLockSeatModal(true)}
+                            onJoin={() => {
+                              if (showSelfSettleJoin) {
+                                setShowSelfSettleJoinModal(true);
+                                return;
+                              }
+
+                              setShowLockSeatModal(true);
+                            }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div className="min-w-[132px] border-l border-white/14 pl-4 text-right">
-                      <p className="text-base font-semibold text-[var(--rp-muted-strong)]">Est. share</p>
-                      <p className="mt-1 text-3xl font-black leading-none text-white">HK${ride.pricePerPerson}</p>
-                      <p className="mt-1 text-sm font-semibold text-[var(--rp-muted-strong)]">per person</p>
-                    </div>
-                  </div>
+                  ) : null}
                 </div>
               </div>
             </div>
           </section>
+          )}
 
-          <DetailShell className="mt-1 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">How it works</p>
-            <div className="mt-4 flex items-start gap-2">
-              <FlowStep index={1} label="Join pod" icon={<UserRound className="h-5 w-5" />} />
-              <ArrowRight className="mt-3 h-5 w-5 shrink-0 text-[var(--rp-muted)]" />
-              <FlowStep index={2} label="Taxi partner quote" />
-              <ArrowRight className="mt-3 h-5 w-5 shrink-0 text-[var(--rp-muted)]" />
-              <FlowStep index={3} label="Guests accept" />
-              <ArrowRight className="mt-3 h-5 w-5 shrink-0 text-[var(--rp-muted)]" />
-              <FlowStep index={4} label="Ride proceeds" />
-            </div>
-            <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              Final share is confirmed after the taxi partner quote. No live payment is charged at this step.
-            </p>
-          </DetailShell>
+          {showQuoteProvidedCard ? (
+            <QuoteProvidedCard
+              ride={ride}
+              joinView={joinView}
+              acceptedGuestCount={acceptedGuestCount}
+              requiredGuestCount={requiredGuestCount}
+              onAcceptQuote={acceptQuote}
+              onDeclineQuote={declineQuote}
+            />
+          ) : null}
 
-          <DetailShell>
-            <h2 className="text-xl font-black text-[var(--rp-text)]">Trip details</h2>
-            <div className="mt-4 grid gap-4">
-              <DetailItem icon={<MapPin className="h-5 w-5" />} label="Pickup" value={pickup} />
-              <DetailItem icon={<MapPin className="h-5 w-5" />} label="Dropoff" value={dropoff} />
-              <div className="grid grid-cols-2 gap-4 border-t border-[var(--rp-border)] pt-4">
-                <DetailItem icon={<CarFront className="h-6 w-6" />} label="Taxi type" value={ride.taxiType} />
-                <DetailItem icon={<BriefcaseBusiness className="h-6 w-6" />} label="Luggage" value={ride.luggage} />
-              </div>
-            </div>
-          </DetailShell>
-
-          <DetailShell
-            id="quote-status"
-            className="scroll-mt-28 border-[var(--rp-border-strong)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--rp-primary)_9%,transparent),var(--rp-card-soft))]"
-          >
-            <div className="flex items-start gap-4">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/18 text-[var(--rp-text)]">
-                <Clock3 className="h-6 w-6" />
+          <DetailShell className="order-last mt-1 p-4">
+            <button
+              type="button"
+              onClick={() => setShowHowItWorks((current) => !current)}
+              aria-expanded={showHowItWorks}
+              className="flex min-h-10 w-full items-center justify-between gap-3 text-left"
+            >
+              <span className={cn("text-xs font-black uppercase tracking-[0.14em]", selfSettlePod ? "text-cyan-200" : "text-[var(--rp-primary)]")}>
+                How it works
               </span>
-              <div>
-                <p className="text-base font-black text-[var(--rp-text)]">Quote status</p>
-                <h2 className="mt-1 text-xl font-black text-[var(--rp-text)]">{currentStatus.title}</h2>
-                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                  {currentStatus.text}
-                </p>
-                <QuoteReadySummary
-                  ride={ride}
-                  joinView={joinView}
-                  acceptedGuestCount={acceptedGuestCount}
-                  requiredGuestCount={requiredGuestCount}
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted-strong)]">
+                <ChevronDown
+                  className={cn(
+                    "h-5 w-5 transition-transform",
+                    showHowItWorks ? "rotate-180" : "rotate-0",
+                  )}
                 />
-              </div>
-            </div>
+              </span>
+            </button>
+
+            {showHowItWorks ? (
+              selfSettlePod ? (
+                <div className="mt-4 grid gap-3">
+                  <div className="rounded-[18px] border border-cyan-200/22 bg-cyan-300/8 p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-200">Host flow</p>
+                    <div className="mt-3 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-2">
+                      <FlowMiniStep icon={ListChecks} label="Confirm details" />
+                      <ArrowRight className="mt-4 h-5 w-5 text-cyan-200" />
+                      <FlowMiniStep icon={Smartphone} label="Book ride app" />
+                      <ArrowRight className="mt-4 h-5 w-5 text-cyan-200" />
+                      <FlowMiniStep icon={MessageCircle} label="Share updates" />
+                    </div>
+                  </div>
+                  <div className="rounded-[18px] border border-[var(--rp-primary)]/22 bg-[var(--rp-primary)]/8 p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Rider flow</p>
+                    <div className="mt-3 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-2">
+                      <FlowMiniStep icon={UserPlus} label="Join pod" tone="gold" />
+                      <ArrowRight className="mt-4 h-5 w-5 text-[var(--rp-primary)]" />
+                      <FlowMiniStep icon={CheckCircle2} label="Confirm ride" tone="gold" />
+                      <ArrowRight className="mt-4 h-5 w-5 text-[var(--rp-primary)]" />
+                      <FlowMiniStep icon={ReceiptText} label="Settle direct" tone="gold" />
+                    </div>
+                  </div>
+                  <div className="rounded-[18px] border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_58%,var(--rp-card-soft))] p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.12em] text-cyan-200">Self-settle rule</p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                      Host books the ride app outside RidePod. Riders confirm the ride details, then settle the final fare directly with the host or booker.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="mt-4 grid grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr] items-start gap-1 min-[390px]:gap-2">
+                    {howItWorksSteps.map((step, index) => (
+                      <Fragment key={step.id}>
+                        <FlowStep
+                          step={step}
+                          active={activeHowItWorksStep === step.id}
+                          completed={step.id < defaultHowItWorksStep}
+                          onSelect={() => setSelectedHowItWorksStep(step.id)}
+                          rideMode={howItWorksRideMode}
+                        />
+                        {index < howItWorksSteps.length - 1 ? (
+                          <ArrowRight
+                            className={cn(
+                              "mt-5 h-4 w-4 shrink-0 min-[390px]:h-5 min-[390px]:w-5",
+                              step.id < defaultHowItWorksStep ? "text-[var(--rp-primary)]" : "text-[var(--rp-muted)]",
+                            )}
+                          />
+                        ) : null}
+                      </Fragment>
+                    ))}
+                  </div>
+                  <div className="mt-4 rounded-[18px] border border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_58%,var(--rp-card-soft))] p-4">
+                    <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
+                      {activeHowItWorksItem.title}
+                    </p>
+                    <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                      {activeHowItWorksItem.body}
+                    </p>
+                  </div>
+                </>
+              )
+            ) : null}
           </DetailShell>
+
+          <DetailShell className={activeDetailTab === "trip" ? "border-0 bg-transparent p-0 shadow-none" : undefined}>
+            <div>
+                <DetailSwitch value={activeDetailTab} onChange={setActiveDetailTab} rideMode={howItWorksRideMode} />
+            </div>
+
+            {activeDetailTab === "trip" ? (
+              <div className="mt-4">
+                <div className="hidden">
+                  <DetailItem icon={<CalendarDays className="h-5 w-5" />} label="Date & time" value={`${ride.dateLabel} · ${ride.timeLabel}`} />
+                </div>
+                {selfSettlePod ? (
+                  <div className="grid gap-3">
+                    <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] border border-white/10 bg-black/20 text-[var(--rp-primary)]">
+                          <CalendarDays className="h-5 w-5" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Date & time</p>
+                          <p className="mt-1 text-sm font-black leading-5 text-white">{ride.dateLabel} - {ride.timeLabel}</p>
+                        </div>
+                      </div>
+                    </section>
+                    <CompactRideAppRoutePanel ride={ride} />
+                    <RideAppFareProofCard
+                      ride={ride}
+                      canEdit={canUpdateRideAppEstimate}
+                      onEdit={openRideAppEstimateModal}
+                      onView={() => setShowRideAppFareProofModal(true)}
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <RoutePlanCard ride={ride} joinView={joinView} />
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="mt-4 grid gap-4">
+                <div className="flex flex-wrap gap-2">
+                  <DetailTag tone={ride.podType === "Women-only" ? "green" : "gold"}>{ride.podType}</DetailTag>
+                  <DetailTag tone="blue">Verified route</DetailTag>
+                  {selfSettlePod ? null : <DetailTag tone="gold">Payment protected</DetailTag>}
+                </div>
+                <div className="grid gap-3 border-t border-[var(--rp-border)] pt-4">
+                  {selfSettlePod ? (
+                    <>
+                      <div className="rounded-[18px] border border-cyan-200/22 bg-[linear-gradient(180deg,rgba(8,47,73,0.36),rgba(15,23,42,0.72))] p-4 shadow-[0_0_22px_rgba(56,189,248,0.08)]">
+                        <div className="flex items-start gap-3">
+                          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border border-cyan-200/35 bg-cyan-300/12 text-cyan-100">
+                            <Smartphone className="h-6 w-6" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-black uppercase tracking-[0.14em] text-cyan-200">Self-settle ride app</p>
+                            <h3 className="mt-1 text-xl font-black leading-tight text-[var(--rp-text)]">{rideAppProviderDisplay}</h3>
+                            <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                              Accepted payment: {rideAppAcceptedPaymentDisplay}.
+                            </p>
+                            <p className="mt-1 text-sm font-black leading-6 text-cyan-100">
+                              Settle directly with host/booker.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <TaxiTypeVisualCard taxiType={ride.taxiType} />
+                  )}
+                  <DetailItem
+                    icon={ride.podType === "Open pod" ? <UsersRound className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
+                    label="Who can join"
+                    value={ride.podType}
+                  />
+                  <DetailItem icon={<BriefcaseBusiness className="h-6 w-6" />} label="Group luggage" value={groupLuggageLabel} />
+                  {userLuggageLabel ? (
+                    <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] px-3 py-2 text-xs font-black text-[var(--rp-primary)]">
+                      {userLuggageLabel}
+                    </p>
+                  ) : null}
+                  {luggageCapacityWarning ? (
+                    <p className="rounded-[14px] border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-xs font-bold leading-5 text-amber-100">
+                      This taxi may not fit the group luggage. Taxi type and luggage capacity depend on taxi partner availability.
+                    </p>
+                  ) : null}
+                  <DetailItem
+                    icon={<ShieldCheck className="h-6 w-6" />}
+                    label="Access"
+                    value={ride.accessibility}
+                  />
+                </div>
+              </div>
+            )}
+          </DetailShell>
+
+          {!selfSettlePod ? (
+            <PickupReadyCards
+              ride={ride}
+              joinView={joinView}
+              acceptedGuestCount={acceptedGuestCount}
+              requiredGuestCount={requiredGuestCount}
+            />
+          ) : null}
         </main>
       </div>
 
-      <StickyPodDetailCta
-        ride={ride}
-        seatsUsed={seatsUsed}
-        joinView={joinView}
-        acceptedGuestCount={acceptedGuestCount}
-        requiredGuestCount={requiredGuestCount}
-        onLockSeat={lockSeat}
-        onAcceptQuote={acceptQuote}
-        onDeclineQuote={declineQuote}
-      />
+      {!selfSettlePod ? (
+        <StickyPodDetailCta
+          ride={ride}
+          seatsUsed={seatsUsed}
+          joinView={joinView}
+          acceptedGuestCount={acceptedGuestCount}
+          requiredGuestCount={requiredGuestCount}
+          onLockSeat={joinPod}
+          onJoinSelfSettle={joinSelfSettlePod}
+          onLeaveSelfSettle={leaveSelfSettlePod}
+          onAcceptQuote={acceptQuote}
+          onDeclineQuote={declineQuote}
+          onCancelSeat={cancelSeat}
+          onCancelQuoteAcceptance={cancelQuoteAcceptance}
+          onRequestCancellation={requestCancellation}
+          onMarkAtPickup={markAtPickup}
+          onCancelAttendance={cancelAttendance}
+          attendanceMessage={attendanceMessage}
+          attendanceError={attendanceError}
+          canLockSeatAfterCancel={canLockSeatAfterCancel}
+          isCancellingAttendance={isCancellingAttendance}
+          routeChangedAfterQuoteReady={routeChangedAfterQuoteReady}
+          hideQuoteActions={showQuoteProvidedCard}
+        />
+      ) : null}
+      {showLockSeatModal ? (
+        <LockSeatConfirmationModal
+          ride={ride}
+          seatsUsed={seatsUsed}
+          checked={lockSeatUnderstood}
+          luggage={lockSeatLuggage}
+          waiverSource={lockSeatWaiverSource}
+          plusWaiversRemaining={membership.monthlyJoinFeeWaiversRemaining}
+          plusWaiversTotal={membership.monthlyJoinFeeWaiversTotal}
+          onCheckedChange={setLockSeatUnderstood}
+          onLuggageChange={setLockSeatLuggage}
+          onCancel={closeLockSeatModal}
+          onConfirm={confirmLockSeat}
+        />
+      ) : null}
+      {showSelfSettleJoinModal ? (
+        <SelfSettleJoinConfirmationModal
+          ride={ride}
+          seatsUsed={seatsUsed}
+          checked={selfSettleUnderstood}
+          waiverSource={selfSettleWaiverSource}
+          plusWaiversRemaining={membership.monthlyJoinFeeWaiversRemaining}
+          plusWaiversTotal={membership.monthlyJoinFeeWaiversTotal}
+          onCheckedChange={setSelfSettleUnderstood}
+          onCancel={() => {
+            setShowSelfSettleJoinModal(false);
+            setSelfSettleUnderstood(false);
+          }}
+          onConfirm={confirmSelfSettleJoin}
+        />
+      ) : null}
+      {showSelfSettleJoinSuccessModal ? (
+        <SelfSettleJoinSuccessModal
+          ride={ride}
+          waiverSource={selfSettleWaiverAppliedSource}
+          plusWaiversRemaining={plusWaiversAfterJoin ?? membership.monthlyJoinFeeWaiversRemaining}
+          plusWaiversTotal={membership.monthlyJoinFeeWaiversTotal}
+          onClose={() => setShowSelfSettleJoinSuccessModal(false)}
+        />
+      ) : null}
+      {showLeaveSelfSettleModal ? (
+        <LeaveSelfSettlePodModal
+          bookingDetailsShared={ride.bookingDetailsShared === true}
+          onCancel={() => setShowLeaveSelfSettleModal(false)}
+          onConfirm={confirmLeaveSelfSettle}
+        />
+      ) : null}
+      {showManagePodActionsModal && showSelfSettleHost ? (
+        <ManagePodActionsModal
+          ride={ride}
+          onClose={() => setShowManagePodActionsModal(false)}
+          onApproveStop={approveRouteStop}
+          onDeclineStop={declineRouteStop}
+          onHostCancelRequest={openHostCancellationModal}
+        />
+      ) : null}
+      {showHostCancellationModal ? (
+        <div
+          className="fixed inset-0 z-[120] grid place-items-center bg-black/70 px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="host-cancellation-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) closeHostCancellationModal();
+          }}
+        >
+          <section className="max-h-[calc(100dvh-2rem)] w-full max-w-[390px] overflow-y-auto rounded-[26px] border border-[var(--rp-primary)]/35 bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.48)]">
+            <div className="flex items-start gap-3">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]">
+                <X className="h-6 w-6" />
+              </span>
+              <div className="min-w-0">
+                <h2 id="host-cancellation-title" className="text-xl font-black leading-tight text-white">
+                  {hostCancellationHasConfirmedRiders ? "Cancel ride plan?" : "Cancel this pod?"}
+                </h2>
+                <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                  {hostCancellationHasConfirmedRiders
+                    ? "Some riders have already confirmed. Cancelling now will start host replacement mode so riders can choose whether to continue."
+                    : "Riders will be notified and the pod will no longer accept confirmations."}
+                </p>
+              </div>
+            </div>
+
+            <fieldset className="mt-4 grid gap-2">
+              <legend className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Reason</legend>
+              {hostCancellationReasons.map((reason) => (
+                <label
+                  key={reason.value}
+                  className={cn(
+                    "flex cursor-pointer items-center gap-3 rounded-[14px] border px-3 py-3 transition",
+                    hostCancellationReason === reason.value
+                      ? "border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/14"
+                      : "border-white/10 bg-white/[0.04] hover:bg-white/[0.07]",
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="host-cancellation-reason"
+                    value={reason.value}
+                    checked={hostCancellationReason === reason.value}
+                    onChange={() => setHostCancellationReason(reason.value)}
+                    className="h-4 w-4 accent-[var(--rp-primary)]"
+                  />
+                  <span className="text-sm font-black text-white">{reason.label}</span>
+                </label>
+              ))}
+            </fieldset>
+
+            <p className="mt-4 rounded-[16px] border border-cyan-300/25 bg-cyan-300/8 px-3 py-3 text-xs font-semibold leading-5 text-cyan-100">
+              {hostCancellationHasConfirmedRiders
+                ? "Host replacement mode keeps confirmed riders together while they choose a new booker."
+                : "No RidePod fee was confirmed."}
+            </p>
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={closeHostCancellationModal}
+                className="min-h-12 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
+              >
+                Keep pod
+              </button>
+              <button
+                type="button"
+                onClick={confirmHostCancellation}
+                className="min-h-12 rounded-[16px] border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/14 px-4 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/20"
+              >
+                {hostCancellationHasConfirmedRiders ? "Start replacement mode" : "Cancel pod"}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+      {showRideAppEstimateModal ? (
+        <div
+          className="fixed inset-0 z-[90] grid place-items-center bg-black/64 px-4 py-6 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ride-app-estimate-title"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowRideAppEstimateModal(false);
+          }}
+        >
+          <section className="max-h-[calc(100vh-2rem)] w-full max-w-[380px] overflow-y-auto rounded-[26px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.44)]">
+            <h2 id="ride-app-estimate-title" className="text-2xl font-black leading-tight">
+              Update total estimate
+            </h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              Enter the fixed range shown by the ride app. Final ride fare is paid after the ride.
+            </p>
+            <label className="mt-5 block">
+              <span className="text-sm font-black text-[var(--rp-text)]">Fixed range</span>
+              <input
+                value={rideAppEstimateDraft}
+                onChange={(event) => {
+                  setRideAppEstimateDraft(event.target.value);
+                  setRideAppEstimateError(null);
+                }}
+                placeholder="HK$140-180"
+                className="mt-2 h-13 w-full rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-4 text-base font-black text-[var(--rp-text)] outline-none transition placeholder:text-[var(--rp-muted)] focus:border-cyan-300"
+              />
+            </label>
+            <div className="mt-4 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-4">
+              <div className="flex items-start gap-3">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] border border-cyan-200/25 bg-cyan-300/10 text-cyan-100">
+                  <ImagePlus className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-black text-[var(--rp-text)]">Screenshot proof</p>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                    Optional. Add the ride app fare screen if you want riders to see the source.
+                  </p>
+                  {rideAppEstimateScreenshotDraftName ? (
+                    <div className="mt-3 flex min-h-10 items-center justify-between gap-3 rounded-[14px] border border-cyan-200/20 bg-cyan-300/8 px-3 py-2">
+                      <span className="min-w-0 truncate text-xs font-black text-cyan-100">
+                        {rideAppEstimateScreenshotDraftName}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRideAppEstimateScreenshotDraftName(null);
+                          setRideAppEstimateScreenshotDraftPreviewUrl(null);
+                        }}
+                        aria-label="Remove screenshot"
+                        className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-white/10 bg-black/20 text-[var(--rp-muted-strong)] transition hover:text-white"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : null}
+                  {rideAppEstimateScreenshotDraftPreviewUrl ? (
+                    <div
+                      className="mt-3 aspect-[16/10] w-full rounded-[14px] border border-white/12 bg-cover bg-center"
+                      style={{ backgroundImage: `url(${rideAppEstimateScreenshotDraftPreviewUrl})` }}
+                      role="img"
+                      aria-label="Selected ride app screenshot preview"
+                    />
+                  ) : null}
+                  <label className="mt-3 inline-flex min-h-10 cursor-pointer items-center justify-center rounded-[14px] border border-[var(--rp-border-strong)] bg-[rgba(255,255,255,0.04)] px-4 text-xs font-black text-[var(--rp-text)] transition hover:border-cyan-200/50 hover:text-cyan-100">
+                    {rideAppEstimateScreenshotDraftName ? "Edit Photo" : "Upload screenshot"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="sr-only"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0] ?? null;
+                        event.target.value = "";
+                        if (!file) return;
+
+                        setRideAppEstimateScreenshotDraftName(file.name);
+                        setRideAppEstimateError(null);
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          if (typeof reader.result === "string") {
+                            setRideAppEstimateScreenshotDraftPreviewUrl(reader.result);
+                          }
+                        };
+                        reader.onerror = () => {
+                          setRideAppEstimateScreenshotDraftPreviewUrl(null);
+                          setRideAppEstimateError("Could not load the screenshot preview. Try another image.");
+                        };
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+            </div>
+            {rideAppEstimateError ? (
+              <p className="mt-3 rounded-[14px] border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-100">
+                {rideAppEstimateError}
+              </p>
+            ) : null}
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setShowRideAppEstimateModal(false)}
+                className="min-h-12 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-sm font-black text-[var(--rp-text)] transition hover:bg-[var(--rp-card-soft)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmRideAppEstimateUpdate}
+                className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105"
+              >
+                Confirm
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+      {showRideAppFareProofModal && rideAppFareProof ? (
+        <div
+          className="fixed inset-0 z-[100] grid place-items-center bg-black/88 px-3 py-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Ride app screenshot proof"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowRideAppFareProofModal(false);
+          }}
+        >
+          <section className="relative h-[min(92dvh,860px)] w-[min(96vw,560px)] overflow-hidden rounded-[24px] border border-cyan-200/18 bg-black shadow-[0_28px_80px_rgba(0,0,0,0.58)]">
+            <button
+              type="button"
+              onClick={() => setShowRideAppFareProofModal(false)}
+              aria-label="Close screenshot proof"
+              className="absolute right-3 top-3 z-10 grid h-11 w-11 place-items-center rounded-full border border-white/16 bg-black/55 text-white shadow-[0_8px_18px_rgba(0,0,0,0.35)] transition hover:border-cyan-200/35 hover:bg-black/70"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            {rideAppFareProof.previewUrl ? (
+              <div
+                className="h-full w-full bg-black bg-contain bg-center bg-no-repeat"
+                style={{ backgroundImage: `url(${rideAppFareProof.previewUrl})` }}
+                role="img"
+                aria-label="Ride app fare screenshot proof"
+              />
+            ) : (
+              <div className="h-full w-full bg-black" />
+            )}
+          </section>
+        </div>
+      ) : null}
+      {showJoinedModal ? <JoinedPodModal onConfirm={() => setShowJoinedModal(false)} /> : null}
     </div>
   );
 }

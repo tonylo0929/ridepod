@@ -616,7 +616,7 @@ function TaxiPartnerQuoteDetailSections({ reviewCase }: { reviewCase: AdminRevie
           <KeyValue label="Quote expiry" value="Quote expiry unavailable" />
           <KeyValue label="Taxi partner" value={reviewCase.taxiPartnerName ?? "Taxi partner pending"} />
           <KeyValue label="Fare share" value={typeof reviewCase.taxiPartnerFareSharePerGuestCents === "number" ? `${formatAdminHkd(reviewCase.taxiPartnerFareSharePerGuestCents)} / guest` : "Not available"} />
-          <KeyValue label="Platform fee" value={typeof reviewCase.taxiPartnerPlatformFeePerGuestCents === "number" ? `${formatAdminHkd(reviewCase.taxiPartnerPlatformFeePerGuestCents)} / guest` : "Not available"} />
+          <KeyValue label="RidePod fee" value={typeof reviewCase.taxiPartnerPlatformFeePerGuestCents === "number" ? `${formatAdminHkd(reviewCase.taxiPartnerPlatformFeePerGuestCents)} / guest` : "Not available"} />
           <KeyValue label="Guest charge" value={optionalAdminHkd(reviewCase.taxiPartnerGuestChargeCents)} />
           <KeyValue label="Taxi partner payout" value={optionalAdminHkd(reviewCase.taxiPartnerDriverPayoutCents)} />
         </dl>
@@ -855,7 +855,7 @@ function stripeStatusToPaymentState(status: string): AdminPaymentSimulationStatu
 
 function paymentEventLabel(eventType: string) {
   if (eventType === "TEST_PAYMENT_INTENT_CREATED") return "Test payment created";
-  if (eventType === "TEST_PAYMENT_CONFIRMED") return "Test payment confirmed";
+  if (eventType === "TEST_PAYMENT_CONFIRMED") return "Test payment accepted";
   if (eventType === "TEST_REQUIRES_CAPTURE") return "Test authorization ready for capture";
   if (eventType === "TEST_CAPTURED") return "Test payment captured";
   if (eventType === "TEST_CANCELED") return "Test authorization canceled";

@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:hk-taxi-fare": "node scripts/test-hk-taxi-fare.mjs",
     "test:money-safety": "node scripts/test-money-safety.mjs",
     "screenshots": "node scripts/capture-screenshots.mjs"
   },
