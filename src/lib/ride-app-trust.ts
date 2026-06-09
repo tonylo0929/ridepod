@@ -491,7 +491,7 @@ function getRideAppPublicTrustBadgeLabel(level: RideAppTrustLevel, hostStats: Ri
   }
   if (level === "Reliable") return `Reliable host - ${hostStats.hostCompletedCount} rides`;
   if (level === "Recent issues" || level === "Limited access") return "Recent self-settle issues";
-  return "Host";
+  return "New";
 }
 
 function defaultTrustEventReason(eventType: RideAppTrustEventType) {

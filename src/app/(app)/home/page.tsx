@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Smartphone,
+  Star,
   UsersRound,
   X,
 } from "lucide-react";
@@ -31,6 +32,7 @@ import {
 import { getRideAppHostFareEstimate, getRideAppHostFareEstimateDisplay } from "@/lib/ride-app-fare-estimate";
 import { ridePodJoinFeeWaiverCopy } from "@/lib/ridepod-membership";
 import { claimRideAppWaiver, useRideAppWaiverState } from "@/lib/ride-app-waiver";
+import { getRideAppTrustSummary, type RideAppTrustSummary } from "@/lib/ride-app-trust";
 import { useCreatedHomeRides } from "@/lib/created-home-rides";
 import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
 import { useAuth } from "@/providers/AuthProvider";
@@ -534,6 +536,12 @@ function isRideAppSelfSettle(ride: HomeRide) {
   return ride.rideCategory === "ride_app_self_settle" || ride.rideService === "ride_app" || ride.taxiType.toLowerCase().includes("ride app");
 }
 
+function getHomeRideHostTrustUserId(ride: HomeRide) {
+  if (ride.rideAppEstimatedFareUpdatedBy?.trim()) return ride.rideAppEstimatedFareUpdatedBy.trim();
+  const normalizedHost = ride.hostName.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return normalizedHost ? `mock-host-${normalizedHost}` : "mock-host";
+}
+
 function isTaxiPod(ride: HomeRide) {
   return !isRideAppSelfSettle(ride);
 }
@@ -635,6 +643,28 @@ function getCurrentUserRideRelationship(ride: HomeRide) {
   }
 
   return null;
+}
+
+function getHomeRideTrustBadge(summary: RideAppTrustSummary) {
+  const rating = summary.hostStats.hostRatingAverage;
+  if (rating !== null && summary.hostStats.hostRatingCount > 0) {
+    return {
+      tone: "rating" as const,
+      label: rating.toFixed(1),
+    };
+  }
+
+  if (summary.trustLevel === "New") {
+    return {
+      tone: "new" as const,
+      label: "New",
+    };
+  }
+
+  return {
+    tone: summary.warningLevel === "none" ? "level" as const : "warning" as const,
+    label: summary.trustLevel,
+  };
 }
 
 function RideProfileAvatar({ ride }: { ride: HomeRide }) {
@@ -787,6 +817,7 @@ function HomeRideCard({ ride }: { ride: HomeRide }) {
       ? getRideAppProviderLabel(ride)
       : "Tap to update"
     : rideAppEstimateDisplay.helper;
+  const rideAppTrustBadge = isRideApp ? getHomeRideTrustBadge(getRideAppTrustSummary(getHomeRideHostTrustUserId(ride))) : null;
   const statusBadgeClass = isRideApp
     ? "border-sky-300/35 bg-sky-400/14 text-sky-200"
     : ride.quoteStatus === "quote_ready"
@@ -843,6 +874,23 @@ function HomeRideCard({ ride }: { ride: HomeRide }) {
             </h2>
           </div>
           <RideMetaTags ride={ride} />
+          {rideAppTrustBadge ? (
+            <p
+              className={cn(
+                "mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black",
+                rideAppTrustBadge.tone === "rating"
+                  ? "border-amber-300/30 bg-amber-300/12 text-amber-100"
+                  : rideAppTrustBadge.tone === "warning"
+                    ? "border-rose-300/30 bg-rose-400/12 text-rose-100"
+                    : "border-sky-300/25 bg-sky-400/10 text-sky-100",
+              )}
+            >
+              {rideAppTrustBadge.tone === "rating" ? (
+                <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
+              ) : null}
+              <span className="truncate">{rideAppTrustBadge.label}</span>
+            </p>
+          ) : null}
           <div className="mt-2 h-px w-full bg-white/12 min-[560px]:mt-4" />
           <div className="mt-2 grid gap-1.5 text-[11px] font-semibold text-[var(--rp-muted-strong)] min-[390px]:text-xs min-[560px]:mt-3 min-[560px]:gap-2 min-[560px]:text-sm">
             <p className="flex flex-wrap items-center gap-2 text-left">
