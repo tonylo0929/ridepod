@@ -454,7 +454,7 @@ export function getRideAppHostTrustJoinCopy(summary: RideAppTrustSummary) {
     return "Ride app self-settle access is temporarily limited due to recent platform issues.";
   }
 
-  return "New host - confirm details clearly in chat.";
+  return "Confirm ride details clearly in chat.";
 }
 
 export function getRideAppAccessNotice(summary: RideAppTrustSummary) {
@@ -491,7 +491,7 @@ function getRideAppPublicTrustBadgeLabel(level: RideAppTrustLevel, hostStats: Ri
   }
   if (level === "Reliable") return `Reliable host - ${hostStats.hostCompletedCount} rides`;
   if (level === "Recent issues" || level === "Limited access") return "Recent self-settle issues";
-  return "New host";
+  return "Host";
 }
 
 function defaultTrustEventReason(eventType: RideAppTrustEventType) {
