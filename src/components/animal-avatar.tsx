@@ -29,25 +29,22 @@ export type AnimalAvatarOption = {
   id: AnimalAvatarId;
   name: string;
   asset: string;
-  fallback: string;
   bg: string;
-  accent: string;
-  text: string;
 };
 
 export const ANIMAL_AVATARS: AnimalAvatarOption[] = [
-  { id: "frog", name: "Frog", asset: "/avatars/animals/frog.svg", fallback: "FR", bg: "#DDF7D6", accent: "#72B72D", text: "Frog" },
-  { id: "cat", name: "Cat", asset: "/avatars/animals/cat.svg", fallback: "CA", bg: "#E9D7FF", accent: "#7E858C", text: "Cat" },
-  { id: "fox", name: "Fox", asset: "/avatars/animals/fox.svg", fallback: "FX", bg: "#FFE0B8", accent: "#F06B18", text: "Fox" },
-  { id: "rabbit", name: "Rabbit", asset: "/avatars/animals/rabbit.svg", fallback: "RB", bg: "#FFD3D4", accent: "#FFF7F0", text: "Bun" },
-  { id: "bear", name: "Bear", asset: "/avatars/animals/bear.svg", fallback: "BR", bg: "#FFE7A6", accent: "#9D6027", text: "Bear" },
-  { id: "bird", name: "Blue bird", asset: "/avatars/animals/bird.svg", fallback: "BD", bg: "#D6F2FF", accent: "#55AEE6", text: "Bird" },
-  { id: "whale", name: "Whale", asset: "/avatars/animals/whale.svg", fallback: "WH", bg: "#CFF9FF", accent: "#1F80C5", text: "Whale" },
-  { id: "dinosaur", name: "Dinosaur", asset: "/avatars/animals/dinosaur.svg", fallback: "DI", bg: "#DDF8DC", accent: "#4DAE45", text: "Dino" },
-  { id: "octopus", name: "Octopus", asset: "/avatars/animals/octopus.svg", fallback: "OC", bg: "#E5D0FF", accent: "#9A60D3", text: "Octo" },
-  { id: "dog", name: "Dog", asset: "/avatars/animals/dog.svg", fallback: "DG", bg: "#FFD6BC", accent: "#A86B34", text: "Dog" },
-  { id: "duck", name: "Duck", asset: "/avatars/animals/duck.svg", fallback: "DK", bg: "#FFF1A7", accent: "#F7C72F", text: "Duck" },
-  { id: "raccoon", name: "Raccoon", asset: "/avatars/animals/raccoon.svg", fallback: "RC", bg: "#E6E6F1", accent: "#74767D", text: "Raccoon" },
+  { id: "frog", name: "Frog", asset: "/avatars/animals/frog.png", bg: "#DDF7D6" },
+  { id: "cat", name: "Cat", asset: "/avatars/animals/cat.png", bg: "#E9D7FF" },
+  { id: "fox", name: "Fox", asset: "/avatars/animals/fox.png", bg: "#FFE0B8" },
+  { id: "rabbit", name: "Rabbit", asset: "/avatars/animals/rabbit.png", bg: "#FFD3D4" },
+  { id: "bear", name: "Bear", asset: "/avatars/animals/bear.png", bg: "#FFE7A6" },
+  { id: "bird", name: "Blue bird", asset: "/avatars/animals/bird.png", bg: "#D6F2FF" },
+  { id: "whale", name: "Whale", asset: "/avatars/animals/whale.png", bg: "#CFF9FF" },
+  { id: "dinosaur", name: "Dinosaur", asset: "/avatars/animals/dinosaur.png", bg: "#DDF8DC" },
+  { id: "octopus", name: "Octopus", asset: "/avatars/animals/octopus.png", bg: "#E5D0FF" },
+  { id: "dog", name: "Dog", asset: "/avatars/animals/dog.png", bg: "#FFD6BC" },
+  { id: "duck", name: "Duck", asset: "/avatars/animals/duck.png", bg: "#FFF1A7" },
+  { id: "raccoon", name: "Raccoon", asset: "/avatars/animals/raccoon.png", bg: "#E6E6F1" },
 ];
 
 const animalAvatarById = new Map(ANIMAL_AVATARS.map((avatar) => [avatar.id, avatar]));
@@ -178,27 +175,13 @@ export function AnimalAvatar({
   return (
     <span
       className={cn(
-        "relative grid overflow-hidden rounded-full border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.42)]",
+        "relative grid overflow-hidden rounded-full border border-white/20 bg-cover bg-center shadow-[inset_0_1px_0_rgba(255,255,255,0.42)]",
         className,
       )}
-      style={{ background: `radial-gradient(circle at 32% 24%, #ffffffcc 0 13%, ${avatar.bg} 14% 100%)` }}
+      style={{ backgroundColor: avatar.bg, backgroundImage: `url(${avatar.asset})` }}
       aria-label={label ?? `${avatar.name} avatar`}
       role="img"
     >
-      <span
-        className="absolute bottom-[-12%] left-1/2 grid h-[76%] w-[76%] -translate-x-1/2 place-items-center rounded-full text-center text-[10px] font-black leading-none text-white shadow-[0_10px_24px_rgba(0,0,0,0.18)]"
-        style={{
-          background: `linear-gradient(180deg, color-mix(in_srgb, ${avatar.accent} 82%, #ffffff) 0%, ${avatar.accent} 100%)`,
-          color: avatar.id === "rabbit" ? "#2e2a2a" : "#ffffff",
-        }}
-      >
-        <span className="drop-shadow-[0_1px_0_rgba(0,0,0,0.22)]">{avatar.text}</span>
-      </span>
-      <span className="absolute left-[25%] top-[34%] h-[9%] w-[9%] rounded-full bg-[#15191f]" />
-      <span className="absolute right-[25%] top-[34%] h-[9%] w-[9%] rounded-full bg-[#15191f]" />
-      <span className="absolute left-[19%] top-[52%] h-[9%] w-[13%] rounded-full bg-[#ff9db0]" />
-      <span className="absolute right-[19%] top-[52%] h-[9%] w-[13%] rounded-full bg-[#ff9db0]" />
-      <span className="absolute left-1/2 top-[48%] h-[8%] w-[18%] -translate-x-1/2 rounded-b-full border-b-2 border-[#17191f]" />
       <span className="sr-only">{avatar.name}</span>
     </span>
   );
