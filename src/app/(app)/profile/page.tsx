@@ -54,11 +54,10 @@ type ProfileFormState = {
   phone: string;
   genderIdentity: RidePodGenderIdentity;
   communityId: string;
-  safetyNote: string;
 };
 
 type ProfileTab = "profile" | "trust" | "public";
-type EditableProfileField = "displayName" | "phone" | "communityId" | "safetyNote";
+type EditableProfileField = "displayName" | "phone" | "communityId";
 
 const profileTabs: Array<{
   id: ProfileTab;
@@ -76,7 +75,6 @@ function formStateFromProfile(profile: RidePodProfileRow): ProfileFormState {
     phone: profile.phone ?? "",
     genderIdentity: normalizeGenderIdentity(profile.gender_identity),
     communityId: profile.community_id ?? "",
-    safetyNote: profile.safety_note ?? "",
   };
 }
 
@@ -171,7 +169,6 @@ export default function ProfilePage() {
       displayName: form.displayName,
       phone: form.phone,
       communityId: form.communityId,
-      safetyNote: form.safetyNote,
       avatarUrl: profile?.avatar_url ?? null,
     });
 
@@ -420,19 +417,7 @@ export default function ProfilePage() {
                 disabled={editingProfileField !== "communityId"}
                 action={renderProfileFieldActions("communityId")}
               />
-              <TextAreaField
-                label="Safety note"
-                helper="Optional note for RidePod safety review. Not shown publicly."
-                value={form.safetyNote}
-                onChange={(safetyNote) => setForm((current) => ({ ...current, safetyNote }))}
-                disabled={editingProfileField !== "safetyNote"}
-                action={renderProfileFieldActions("safetyNote")}
-              />
             </div>
-
-            <p className="mt-4 rounded-2xl bg-[var(--rp-card-soft)] px-4 py-3 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-              Private details are used for eligibility and safety checks. They are not shown publicly.
-            </p>
 
             <div className="mt-4">
               {saveError ? <p className="text-sm font-black text-[var(--rp-danger)]">{saveError}</p> : null}
@@ -953,39 +938,6 @@ function TextField({
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
         className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-semibold text-[var(--rp-text)] outline-none transition focus:border-[var(--rp-primary)] disabled:cursor-not-allowed disabled:opacity-75"
-      />
-      <span className="text-xs font-semibold leading-5 text-[var(--rp-muted)]">{helper}</span>
-    </label>
-  );
-}
-
-function TextAreaField({
-  label,
-  helper,
-  value,
-  onChange,
-  disabled,
-  action,
-}: {
-  label: string;
-  helper: string;
-  value: string;
-  onChange: (value: string) => void;
-  disabled?: boolean;
-  action?: React.ReactNode;
-}) {
-  return (
-    <label className="grid gap-2">
-      <span className="flex min-h-9 items-center justify-between gap-3">
-        <span className="text-sm font-black text-[var(--rp-text)]">{label}</span>
-        {action}
-      </span>
-      <textarea
-        value={value}
-        disabled={disabled}
-        onChange={(event) => onChange(event.target.value)}
-        rows={3}
-        className="resize-none rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 py-3 text-sm font-semibold text-[var(--rp-text)] outline-none transition focus:border-[var(--rp-primary)] disabled:cursor-not-allowed disabled:opacity-75"
       />
       <span className="text-xs font-semibold leading-5 text-[var(--rp-muted)]">{helper}</span>
     </label>
