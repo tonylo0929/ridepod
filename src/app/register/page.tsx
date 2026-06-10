@@ -500,6 +500,12 @@ export default function RegisterPage() {
   const [submitting, setSubmitting] = useState(false);
   const isIndividualDriver = partnerType === "Individual licensed taxi driver";
   const isFleetOrOperator = partnerType === "Taxi fleet / operator" || partnerType === "Dispatcher / coordinator";
+  const helperText =
+    step === "account_type"
+      ? "Choose how you’ll use RidePod."
+      : accountType === "taxi_partner"
+        ? "Tell us what taxi services you can support. Partner verification is manual during beta."
+        : null;
 
   async function onSubmitRider(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -655,13 +661,7 @@ export default function RegisterPage() {
                 ? "Taxi Partner application"
                 : "Create your RidePod account"}
           </h1>
-          <p className="text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-            {step === "account_type"
-              ? "Choose how you’ll use RidePod."
-              : accountType === "taxi_partner"
-                ? "Tell us what taxi services you can support. Partner verification is manual during beta."
-                : "Rider profiles help match pod rules and taxi needs."}
-          </p>
+          {helperText ? <p className="text-sm font-semibold leading-6 text-[var(--rp-muted)]">{helperText}</p> : null}
         </div>
 
         {step === "form" && accountType === "taxi_partner" ? <TaxiPartnerRegisterHero /> : null}
