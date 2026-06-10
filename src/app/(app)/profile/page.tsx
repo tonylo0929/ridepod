@@ -676,13 +676,6 @@ function RideAppTrustStatusCard({ summary }: { summary: RideAppTrustSummary }) {
             <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">Score {summary.rideAppTrustScore}</span>
           </span>
         </div>
-        <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-          {limited
-            ? "Ride app self-settle access is temporarily restricted due to recent platform issues."
-            : recentIssues
-              ? "Recent self-settle issues may add warnings when you create or join ride app pods."
-              : "Self-settle trust grows as rides finish cleanly and reports stay clear."}
-        </p>
       </div>
 
       <TrustRoleSection
@@ -706,10 +699,6 @@ function RideAppTrustStatusCard({ summary }: { summary: RideAppTrustSummary }) {
           ["Issues", `${riderIssueCount} total`],
         ]}
       />
-
-      <p className="mt-3 rounded-2xl bg-[var(--rp-card-soft)] px-4 py-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-        Submitted reports do not lower trust unless an admin confirms a platform issue.
-      </p>
     </ProfileCard>
   );
 }
