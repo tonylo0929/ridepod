@@ -621,22 +621,32 @@ function TrustStatusCard({ profile }: { profile: RidePodProfileRow | null }) {
   const noShows = profile?.no_show_count ?? 0;
   const lateCancels = profile?.late_cancel_count ?? 0;
   const limited = profile?.risk_status === "RESTRICTED" || profile?.risk_status === "SUSPENDED";
+  const status = trustLevel(profile);
+  const issueCount = noShows + lateCancels;
 
   return (
     <ProfileCard>
       <SectionTitle title="Trust status" icon={CheckCircle2} />
-      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <TrustMetric label="Trust level" value={trustLevel(profile)} />
-        <TrustMetric label="No-show count" value={String(noShows)} />
-        <TrustMetric label="Late cancel count" value={String(lateCancels)} />
+      <div className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+        <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-muted)]">Account trust</p>
+        <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
+          <span className="text-3xl font-black leading-none text-[var(--rp-text)]">{status}</span>
+          <TrustPill tone={limited ? "danger" : issueCount ? "watch" : "good"}>
+            {limited ? "Limited access" : issueCount ? "Needs attention" : "Clear history"}
+          </TrustPill>
+        </div>
+        <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+          {limited
+            ? "Your account has limited access. Contact support for help."
+            : issueCount
+              ? "These counts come from completed RidePod activity."
+              : "No no-shows or late cancellations recorded yet."}
+        </p>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <MiniTrustMetric label="No-shows" value={String(noShows)} />
+          <MiniTrustMetric label="Late cancels" value={String(lateCancels)} />
+        </div>
       </div>
-      <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-        {limited
-          ? "Your account has limited access. Contact support for help."
-          : noShows || lateCancels
-            ? "Trust history is based on completed RidePod activity."
-            : "Trust history will appear after you join rides."}
-      </p>
     </ProfileCard>
   );
 }
@@ -644,46 +654,59 @@ function TrustStatusCard({ profile }: { profile: RidePodProfileRow | null }) {
 function RideAppTrustStatusCard({ summary }: { summary: RideAppTrustSummary }) {
   const limited = summary.trustLevel === "Limited access";
   const recentIssues = summary.trustLevel === "Recent issues";
+  const hostIssueCount = summary.hostStats.hostLateCancelCount + summary.hostStats.hostConfirmedReportsCount;
+  const riderIssueCount =
+    summary.riderStats.riderNoShowCount + summary.riderStats.riderLateLeaveCount + summary.riderStats.riderConfirmedReportsCount;
+  const hostHasHistory = summary.hostStats.hostedRideAppPodsCount > 0 || summary.hostStats.hostRatingCount > 0 || hostIssueCount > 0;
+  const riderHasHistory = summary.riderStats.joinedRideAppPodsCount > 0 || summary.riderStats.riderRatingCount > 0 || riderIssueCount > 0;
 
   return (
     <ProfileCard>
       <SectionTitle title="Ride app trust" icon={ShieldCheck} />
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <TrustMetric label="Trust level" value={summary.trustLevel} />
-        <TrustMetric label="Trust score" value={String(summary.rideAppTrustScore)} />
-      </div>
-
-      <div className="mt-5 rounded-2xl border border-blue-300/20 bg-blue-400/10 p-4">
-        <h3 className="text-base font-black text-[var(--rp-text)]">Host trust</h3>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <TrustMetric label="Hosted rides" value={`${summary.hostStats.hostedRideAppPodsCount} hosted rides`} />
-          <TrustMetric label="Host rating" value={formatRideAppRating(summary.hostStats.hostRatingAverage, summary.hostStats.hostRatingCount)} />
-          <TrustMetric label="Completion rate" value={formatRideAppTrustMetric(summary.hostStats.hostCompletionRate)} />
-          <TrustMetric label="Show-up rate" value={formatRideAppTrustMetric(summary.hostStats.hostShowUpRate)} />
-          <TrustMetric label="Late cancellations" value={String(summary.hostStats.hostLateCancelCount)} />
-          <TrustMetric label="Confirmed reports" value={String(summary.hostStats.hostConfirmedReportsCount)} />
+      <div className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <span>
+            <span className="block text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-muted)]">Self-settle status</span>
+            <span className="mt-2 block text-3xl font-black leading-none text-[var(--rp-text)]">{summary.trustLevel}</span>
+          </span>
+          <span className="grid justify-items-end gap-2">
+            <TrustPill tone={limited ? "danger" : recentIssues ? "watch" : "good"}>
+              {limited ? "Restricted" : recentIssues ? "Warnings" : "Good standing"}
+            </TrustPill>
+            <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">Score {summary.rideAppTrustScore}</span>
+          </span>
         </div>
+        <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+          {limited
+            ? "Ride app self-settle access is temporarily restricted due to recent platform issues."
+            : recentIssues
+              ? "Recent self-settle issues may add warnings when you create or join ride app pods."
+              : "Self-settle trust grows as rides finish cleanly and reports stay clear."}
+        </p>
       </div>
 
-      <div className="mt-4 rounded-2xl border border-purple-300/20 bg-purple-400/10 p-4">
-        <h3 className="text-base font-black text-[var(--rp-text)]">Rider trust</h3>
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          <TrustMetric label="Joined rides" value={`${summary.riderStats.joinedRideAppPodsCount} joined rides`} />
-          <TrustMetric label="Rider rating" value={formatRideAppRating(summary.riderStats.riderRatingAverage, summary.riderStats.riderRatingCount)} />
-          <TrustMetric label="Show-up rate" value={formatRideAppTrustMetric(summary.riderStats.riderShowUpRate)} />
-          <TrustMetric label="No-shows" value={String(summary.riderStats.riderNoShowCount)} />
-          <TrustMetric label="Late leaves" value={String(summary.riderStats.riderLateLeaveCount)} />
-          <TrustMetric label="Confirmed reports" value={String(summary.riderStats.riderConfirmedReportsCount)} />
-        </div>
-      </div>
+      <TrustRoleSection
+        title="Host trust"
+        helper={hostHasHistory ? "Shown when you organize ride app pods." : "Host history starts after your first completed hosted ride app pod."}
+        rows={[
+          ["Hosted rides", String(summary.hostStats.hostedRideAppPodsCount)],
+          ["Rating", compactRating(summary.hostStats.hostRatingAverage, summary.hostStats.hostRatingCount)],
+          ["Reliability", compactPair(formatRideAppTrustMetric(summary.hostStats.hostCompletionRate), formatRideAppTrustMetric(summary.hostStats.hostShowUpRate))],
+          ["Issues", `${hostIssueCount} total`],
+        ]}
+      />
 
-      <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-        {limited
-          ? "Ride app self-settle access is temporarily restricted due to recent platform issues."
-          : recentIssues
-            ? "Recent self-settle issues may add warnings when you create or join Ride app pods."
-            : "Ride app trust is based on self-settle completions, checklist behaviour, no-shows, late cancellations, and confirmed reports."}
-      </p>
+      <TrustRoleSection
+        title="Rider trust"
+        helper={riderHasHistory ? "Shown when you join ride app pods." : "Rider history starts after your first completed joined ride app pod."}
+        rows={[
+          ["Joined rides", String(summary.riderStats.joinedRideAppPodsCount)],
+          ["Rating", compactRating(summary.riderStats.riderRatingAverage, summary.riderStats.riderRatingCount)],
+          ["Show-up", formatRideAppTrustMetric(summary.riderStats.riderShowUpRate)],
+          ["Issues", `${riderIssueCount} total`],
+        ]}
+      />
+
       <p className="mt-3 rounded-2xl bg-[var(--rp-card-soft)] px-4 py-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
         Submitted reports do not lower trust unless an admin confirms a platform issue.
       </p>
@@ -1025,12 +1048,62 @@ function StatusRow({
   );
 }
 
-function TrustMetric({ label, value }: { label: string; value: string }) {
+function compactRating(value: number | null, count: number) {
+  if (value === null || count === 0) return "No ratings yet";
+  return formatRideAppRating(value, count);
+}
+
+function compactPair(first: string, second: string) {
+  if (first === "Not enough rides yet" && second === "Not enough rides yet") return "Not enough history";
+  if (first === "Not enough rides yet") return `${second} show-up`;
+  if (second === "Not enough rides yet") return `${first} complete`;
+  return `${first} complete · ${second} show-up`;
+}
+
+function TrustPill({ children, tone }: { children: React.ReactNode; tone: "good" | "watch" | "danger" }) {
   return (
-    <div className="rounded-2xl bg-[var(--rp-card-soft)] p-4">
-      <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">{label}</p>
-      <p className="mt-2 text-xl font-black text-[var(--rp-text)]">{value}</p>
+    <span
+      className={cn(
+        "inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-black",
+        tone === "good"
+          ? "border-emerald-300/25 bg-emerald-300/12 text-emerald-100"
+          : tone === "watch"
+            ? "border-amber-300/30 bg-amber-300/14 text-amber-100"
+            : "border-rose-300/30 bg-rose-400/12 text-rose-100",
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function MiniTrustMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-[color-mix(in_srgb,var(--rp-shell)_46%,transparent)] px-3 py-3">
+      <p className="text-[11px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">{label}</p>
+      <p className="mt-1 text-2xl font-black leading-none text-[var(--rp-text)]">{value}</p>
     </div>
+  );
+}
+
+function TrustRoleSection({ title, helper, rows }: { title: string; helper: string; rows: Array<[string, string]> }) {
+  return (
+    <section className="mt-5">
+      <div className="flex items-start justify-between gap-3">
+        <span>
+          <h3 className="text-base font-black text-[var(--rp-text)]">{title}</h3>
+          <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted)]">{helper}</p>
+        </span>
+      </div>
+      <dl className="mt-3 overflow-hidden rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)]">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex items-center justify-between gap-4 border-b border-[var(--rp-border)] px-4 py-3 last:border-b-0">
+            <dt className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">{label}</dt>
+            <dd className="min-w-0 max-w-[62%] text-right text-sm font-black leading-5 text-[var(--rp-text)]">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
   );
 }
 
