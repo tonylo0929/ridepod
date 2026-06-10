@@ -444,7 +444,6 @@ export default function ProfilePage() {
               <SectionTitle title="Account" icon={Mail} />
               <dl className="mt-4 grid gap-3 text-sm">
                 <KeyValue label="Email" value={email} />
-                <KeyValue label="Profile source" value={fallbackNote ? "Mock/local" : "Supabase"} />
               </dl>
             </ProfileCard>
             <VerificationCard
