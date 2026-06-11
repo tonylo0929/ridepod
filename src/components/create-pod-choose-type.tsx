@@ -1000,18 +1000,18 @@ function ThemeAwareHeroStrip() {
   return (
     <div
       aria-hidden="true"
-      className="relative min-h-[430px] w-full shrink-0 overflow-hidden border-r border-[var(--rp-border)]"
+      className="relative h-28 w-full shrink-0 overflow-hidden rounded-[24px] border border-[var(--rp-border)]"
     >
       <Image
         src="/ridepod/create-pod-dark-background.png"
         alt=""
         fill
-        sizes="(max-width: 768px) 52vw, 360px"
+        sizes="(max-width: 430px) calc(100vw - 48px), 382px"
         quality={100}
         priority
-        className="object-cover object-[52%_center]"
+        className="object-cover object-[50%_58%]"
       />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_0%,color-mix(in_srgb,var(--rp-bg)_24%,transparent)_100%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(90deg,color-mix(in_srgb,var(--rp-bg)_72%,transparent)_0%,transparent_56%,color-mix(in_srgb,var(--rp-bg)_22%,transparent)_100%)]" />
     </div>
   );
 }
@@ -1032,11 +1032,15 @@ function RouteJourneyPreview({
   dropoffAddress: string;
   stops: RouteStop[];
 }) {
+  const hasRoutePoints =
+    pickupAddress.trim().length > 0 ||
+    dropoffAddress.trim().length > 0 ||
+    stops.some((stop) => stop.address.trim().length > 0);
   const points = [
     {
       id: "pickup",
       label: "Pickup point",
-      value: routePointSummary(pickupAddress, "Pickup location"),
+      value: routePointSummary(pickupAddress, "None"),
       type: "pickup",
     },
     ...stops.map((stop, index) => ({
@@ -1048,7 +1052,7 @@ function RouteJourneyPreview({
     {
       id: "dropoff",
       label: stops.length > 0 ? "Final dropoff point" : "Dropoff point",
-      value: routePointSummary(dropoffAddress, "Destination"),
+      value: routePointSummary(dropoffAddress, "None"),
       type: "dropoff",
     },
   ];
@@ -1057,7 +1061,9 @@ function RouteJourneyPreview({
       <div className="flex items-center justify-between gap-3 px-1 pb-3">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Route preview</p>
-          <p className="mt-1 text-sm font-bold text-slate-300">Pickup to final dropoff</p>
+          <p className="mt-1 text-sm font-bold text-slate-300">
+            {hasRoutePoints ? "Pickup to final dropoff" : "No route points set yet"}
+          </p>
         </div>
         <span className="rounded-full border border-[var(--rp-border)] bg-[#0b1724] px-3 py-1 text-xs font-black text-[var(--rp-text)]">
           {points.length} points
@@ -1448,7 +1454,7 @@ function RouteStopsStep({
                   label="Pickup point"
                   type="pickup"
                   value={pickupAddress}
-                  placeholder="Enter pickup address"
+                  placeholder="None yet"
                   onChange={onPickupChange}
                 />
                 {stops.map((stop, index) => (
@@ -1466,14 +1472,14 @@ function RouteStopsStep({
                   label="Dropoff point"
                   type="dropoff"
                   value={dropoffAddress}
-                  placeholder="Enter dropoff address"
+                  placeholder="None yet"
                   onChange={onDropoffChange}
                 />
                 {isRideAppSelfSettle ? (
                   <SelfSettleTextField
-                    label="Pickup venue"
+                    label="Gather point"
                     value={pickupVenue}
-                    placeholder="e.g. IFC Mall entrance, Central Market, MTR Exit A"
+                    placeholder="None yet"
                     helper="Tell riders where to meet before the external ride app booking."
                     onChange={onPickupVenueChange}
                   />
@@ -1493,7 +1499,7 @@ function RouteStopsStep({
                 Route summary
               </p>
               <p className="mt-2 text-sm font-black leading-5 text-[var(--rp-text)]">
-                {routePointSummary(pickupAddress, "Pickup")} {"\u2192"} {routePointSummary(dropoffAddress, "Dropoff")}
+                {routePointSummary(pickupAddress, "None")} {"\u2192"} {routePointSummary(dropoffAddress, "None")}
               </p>
             </div>
             <StopRequestPolicySelector
@@ -4293,9 +4299,9 @@ function buildCreatedRideAppHomeRide({
 
 function getRoutePlanSummary(pickupAddress: string, dropoffAddress: string, stops: RouteStop[]) {
   const parts = [
-    routePointSummary(pickupAddress, "Pickup"),
+    routePointSummary(pickupAddress, "None"),
     ...stops.map((_, index) => `Stop ${index + 1}`),
-    routePointSummary(dropoffAddress, "Dropoff"),
+    routePointSummary(dropoffAddress, "None"),
   ];
 
   return parts.join(" \u2192 ");
@@ -4433,8 +4439,8 @@ function TaxiReviewSummaryCard({
   const taxiNeeds = [
     ["Taxi type", taxiType],
     ["Luggage", getLuggageNeedsSummary(peopleVehicle)],
-    ["Pickup point", pickupAddress || "Not specified"],
-    ["Dropoff point", dropoffAddress || "Not specified"],
+    ["Pickup point", pickupAddress || "None"],
+    ["Dropoff point", dropoffAddress || "None"],
   ];
   const taxiPartnerPreferenceLabel = getTaxiPartnerPreferenceLabel(taxiPartnerPreference);
 
@@ -4443,11 +4449,11 @@ function TaxiReviewSummaryCard({
       <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[linear-gradient(135deg,rgba(246,196,83,0.08),rgba(15,23,42,0.16)),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
         <h2 className="text-lg font-black text-[var(--rp-primary)]">Trip</h2>
         <dl className="mt-3 grid gap-2">
-          <RouteSummaryLine label="Pickup" value={pickupAddress || "Pickup point"} />
+          <RouteSummaryLine label="Pickup" value={pickupAddress || "None"} />
           {stops.map((stop, index) => (
             <RouteSummaryLine key={stop.id} label={`Stop ${index + 1}`} value={stop.address || "Optional stop"} />
           ))}
-          <RouteSummaryLine label="Dropoff" value={dropoffAddress || "Dropoff point"} />
+          <RouteSummaryLine label="Dropoff" value={dropoffAddress || "None"} />
         </dl>
         <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-black text-[var(--rp-primary)]">
           Route: {getRoutePlanSummary(pickupAddress, dropoffAddress, stops)}
@@ -4527,8 +4533,8 @@ function SelfSettleReviewSummaryCard({
 }) {
   const rows: Array<[string, string]> = [
     ["Ride type", "Ride app · Self-settle"],
-    ["Route", `${routePointSummary(pickupAddress, "Pickup")} \u2192 ${routePointSummary(dropoffAddress, "Dropoff")}`],
-    ["Pickup venue", peopleVehicle.pickupVenue || "Not specified"],
+    ["Route", `${routePointSummary(pickupAddress, "None")} \u2192 ${routePointSummary(dropoffAddress, "None")}`],
+    ["Gather point", peopleVehicle.pickupVenue || "None"],
     ["Ride app", getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther)],
     ["Date/time", `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}`],
     ["Seats", `${peopleVehicle.seatsAvailable} seats total`],
@@ -5187,7 +5193,7 @@ function DetailSummaryCard({
     {
       icon: MapPin,
       label: "Pickup point",
-      value: pickup || "USC Village rideshare zone",
+      value: pickup || "None",
     },
     ...stops.map((stop, index) => ({
       icon: MapPin,
@@ -5197,7 +5203,7 @@ function DetailSummaryCard({
     {
       icon: MapPin,
       label: "Dropoff point",
-      value: dropoff || "LAX Terminal 3 departures",
+      value: dropoff || "None",
     },
     {
       icon: ShieldCheck,
@@ -5441,11 +5447,11 @@ function RecurringPodReview({
 
       <RecurringReviewCard title="Route plan" icon={<MapPin className="h-5 w-5" />}>
         <div className="grid gap-2">
-          <RouteSummaryLine label="Pickup" value={pickupAddress || "Pickup point"} />
+          <RouteSummaryLine label="Pickup" value={pickupAddress || "None"} />
           {stops.map((stop, index) => (
             <RouteSummaryLine key={stop.id} label={`Stop ${index + 1}`} value={stop.address || "Optional stop"} />
           ))}
-          <RouteSummaryLine label="Dropoff" value={dropoffAddress || "Dropoff point"} />
+          <RouteSummaryLine label="Dropoff" value={dropoffAddress || "None"} />
           <p className="rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-black text-[var(--rp-primary)]">
             Stop requests: {getStopRequestPolicyLabel(stopRequestPolicy)}
           </p>
@@ -5936,8 +5942,8 @@ function PodCreatedSummaryCard({
     },
     {
       icon: MapPin,
-      label: "Pickup venue",
-      value: peopleVehicle.pickupVenue || "Not specified",
+      label: "Gather point",
+      value: peopleVehicle.pickupVenue || "None",
     },
     {
       icon: Smartphone,
@@ -6177,8 +6183,8 @@ export function CreatePodChooseType() {
   const todayDate = parseIsoDateToLocalDate(todayIsoDate);
   const [step, setStep] = useState<CreateStep>(0);
   const [podType, setPodType] = useState<PodType>("scheduled");
-  const [pickupAddress, setPickupAddress] = useState("USC Village, Rideshare zone");
-  const [dropoffAddress, setDropoffAddress] = useState("LAX Terminal 3, Departures");
+  const [pickupAddress, setPickupAddress] = useState("");
+  const [dropoffAddress, setDropoffAddress] = useState("");
   const [stops, setStops] = useState<RouteStop[]>([]);
   const [nextStopId, setNextStopId] = useState(1);
   const [dateTime, setDateTime] = useState<DateTimeState>({
@@ -6195,8 +6201,8 @@ export function CreatePodChooseType() {
         dayOfWeek: "TU",
         legType: "OUTBOUND",
         departureTime: "08:00",
-        originLabel: "USC Village",
-        destinationLabel: "LAX Terminal 3",
+        originLabel: "None",
+        destinationLabel: "None",
       },
     ],
     recurringStartDate: todayIsoDate,
@@ -6215,7 +6221,7 @@ export function CreatePodChooseType() {
     rideOption: "taxi_partner_quote",
     vehicleType: "Standard taxi",
     priceSource: "Licensed taxi partner quote for the shared pod",
-    pickupVenue: "IFC Mall entrance",
+    pickupVenue: "",
     rideAppProvider: "uber",
     rideAppProviderOther: "",
     estimatedRideAppFare: "",
@@ -6392,20 +6398,20 @@ export function CreatePodChooseType() {
         <>
           <CreatePodTopBar currentStep={1} stepLabels={activeStepLabels} />
 
-          <main className="grid flex-1 grid-cols-[minmax(104px,32%)_1fr] px-6 pb-5 pt-7">
+          <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-5 pt-6">
             <ThemeAwareHeroStrip />
 
-            <section className="flex min-w-0 flex-col justify-center pl-6">
+            <section className="mt-5 flex min-w-0 flex-1 flex-col justify-center">
               <div>
-                <h1 className="max-w-[210px] text-[30px] font-black leading-[1.08] tracking-[-0.03em] text-[var(--rp-text)]">
+                <h1 className="max-w-[260px] text-[30px] font-black leading-[1.08] tracking-[-0.03em] text-[var(--rp-text)]">
                   Choose your pod type
                 </h1>
-                <p className="mt-3 max-w-[210px] text-base font-medium leading-6 text-[var(--rp-muted)]">
+                <p className="mt-3 max-w-[260px] text-base font-medium leading-6 text-[var(--rp-muted)]">
                   You&apos;ll be the host and book the ride.
                 </p>
               </div>
 
-              <div className="mt-8 grid gap-4" role="radiogroup" aria-label="Pod type">
+              <div className="mt-6 grid gap-4" role="radiogroup" aria-label="Pod type">
                 {podTypes.map((item) => (
                   <PodTypeCard
                     key={item.id}
