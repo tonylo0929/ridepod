@@ -451,7 +451,7 @@ function CategoryCard({
       type="button"
       onClick={() => onClick(id)}
       className={cn(
-        "grid min-h-[96px] w-full place-items-center rounded-[16px] border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_54%,transparent),color-mix(in_srgb,var(--rp-card-soft)_42%,transparent))] p-2 text-center shadow-[0_16px_38px_rgba(0,0,0,0.18)] backdrop-blur-[6px] transition min-[390px]:p-3",
+        "grid min-h-[96px] w-full place-items-center overflow-hidden rounded-[16px] border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_54%,transparent),color-mix(in_srgb,var(--rp-card-soft)_42%,transparent))] px-1.5 py-2 text-center shadow-[0_16px_38px_rgba(0,0,0,0.18)] backdrop-blur-[6px] transition min-[390px]:px-2",
         selected
           ? "border-[var(--rp-primary)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-primary)_16%,transparent),color-mix(in_srgb,var(--rp-card)_44%,transparent))] shadow-[0_0_32px_color-mix(in_srgb,var(--rp-primary)_22%,transparent)]"
           : "border-white/12 hover:border-[var(--rp-border-strong)] hover:bg-[color-mix(in_srgb,var(--rp-card)_58%,transparent)]",
@@ -460,7 +460,7 @@ function CategoryCard({
       <span className="grid h-8 w-8 place-items-center text-[var(--rp-primary)]">
         <Icon className="h-6 w-6 min-[390px]:h-7 min-[390px]:w-7" />
       </span>
-      <span className="mt-2 block w-full text-center text-[11px] font-black leading-3 text-[var(--rp-text)] min-[390px]:text-xs">{label}</span>
+      <span className="mt-2 flex min-h-6 w-full items-center justify-center text-center text-[10px] font-black leading-[1.05] text-[var(--rp-text)] [overflow-wrap:anywhere] min-[390px]:text-[11px]">{label}</span>
       <span className={cn("mt-0.5 block w-full text-center text-lg font-black", selected ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]")}>
         {count}
       </span>
@@ -1452,6 +1452,9 @@ export default function HomePage() {
           image: "/images/ridepod/home-ride-app-blue.png",
           mobilePosition: "58% top",
           mobileSize: "auto 270px",
+          mobileBackdropPosition: "58% top",
+          mobileBackdropSize: "auto 270px",
+          mobileBackdropOpacity: 0,
           desktopPosition: "center top",
           desktopSize: "100% auto",
           overlay:
@@ -1459,8 +1462,11 @@ export default function HomePage() {
         }
       : {
           image: "/images/ridepod/home-taxi-harbor-night.png",
-          mobilePosition: "58% top",
-          mobileSize: "auto 100%",
+          mobilePosition: "center top",
+          mobileSize: "100% auto",
+          mobileBackdropPosition: "58% top",
+          mobileBackdropSize: "auto 100%",
+          mobileBackdropOpacity: 1,
           desktopPosition: "center top",
           desktopSize: "100% auto",
           overlay:
@@ -1473,6 +1479,16 @@ export default function HomePage() {
         <div
           aria-hidden="true"
           className="absolute inset-0 bg-[#04101a]"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-no-repeat transition-[background-image] duration-500 min-[720px]:hidden"
+          style={{
+            backgroundImage: `url('${heroBackground.image}')`,
+            backgroundPosition: heroBackground.mobileBackdropPosition,
+            backgroundSize: heroBackground.mobileBackdropSize,
+            opacity: heroBackground.mobileBackdropOpacity,
+          }}
         />
         <div
           aria-hidden="true"
@@ -1515,7 +1531,7 @@ export default function HomePage() {
 
           <div
             className={cn(
-              "mx-auto grid w-full gap-2 pb-1",
+              "mx-auto grid w-full gap-1.5 pb-1 min-[390px]:gap-2",
               rideModeFilter === "taxi" ? "max-w-[560px] grid-cols-5" : "max-w-[460px] grid-cols-4",
             )}
           >
