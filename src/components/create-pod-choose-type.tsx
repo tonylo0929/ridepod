@@ -1329,7 +1329,6 @@ function RouteStopsStep({
   pickupVenue,
   stops,
   stopRequestPolicy,
-  isAirportTrip,
   isRideAppSelfSettle,
   stepLabels = baseCreateSteps,
   onBack,
@@ -1348,7 +1347,6 @@ function RouteStopsStep({
   pickupVenue: string;
   stops: RouteStop[];
   stopRequestPolicy: StopRequestPolicy;
-  isAirportTrip: boolean;
   isRideAppSelfSettle: boolean;
   stepLabels?: string[];
   onBack: () => void;
@@ -1504,7 +1502,6 @@ function RouteStopsStep({
             </div>
             <StopRequestPolicySelector
               value={stopRequestPolicy}
-              isAirportTrip={isAirportTrip}
               isRideAppSelfSettle={isRideAppSelfSettle}
               onChange={onStopRequestPolicyChange}
             />
@@ -4309,12 +4306,10 @@ function getRoutePlanSummary(pickupAddress: string, dropoffAddress: string, stop
 
 function StopRequestPolicySelector({
   value,
-  isAirportTrip,
   isRideAppSelfSettle = false,
   onChange,
 }: {
   value: StopRequestPolicy;
-  isAirportTrip: boolean;
   isRideAppSelfSettle?: boolean;
   onChange: (value: StopRequestPolicy) => void;
 }) {
@@ -4342,15 +4337,7 @@ function StopRequestPolicySelector({
           <h2 className="text-base font-black text-[var(--rp-text)]">
             {isRideAppSelfSettle ? "Route requests from other riders" : "Stop requests from other riders"}
           </h2>
-          <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-            {isRideAppSelfSettle
-              ? "Choose whether joined riders can ask for a different route before booking."
-              : "Choose whether joined riders can request one extra stop."}
-          </p>
         </div>
-        <span className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-muted)] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-[var(--rp-primary)]">
-          Beta
-        </span>
       </div>
 
       <div className="mt-3 grid gap-2" role="radiogroup" aria-label={isRideAppSelfSettle ? "Route requests" : "Stop requests"}>
@@ -4400,11 +4387,6 @@ function StopRequestPolicySelector({
           );
         })}
       </div>
-      {isAirportTrip ? (
-        <p className="mt-3 rounded-[14px] border border-blue-300/15 bg-blue-400/10 px-3 py-2 text-xs font-bold leading-5 text-blue-100">
-          Airport rides usually work best without extra stops.
-        </p>
-      ) : null}
     </section>
   );
 }
@@ -6372,7 +6354,6 @@ export function CreatePodChooseType() {
           pickupVenue={peopleVehicle.pickupVenue}
           stops={stops}
           stopRequestPolicy={displayedStopRequestPolicy}
-          isAirportTrip={isAirportTrip}
           isRideAppSelfSettle={isRideAppSelfSettle}
           stepLabels={activeStepLabels}
           onBack={() => setStep(1)}
