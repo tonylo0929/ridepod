@@ -22,7 +22,6 @@ import {
   ListChecks,
   MapPin,
   MessageCircle,
-  MoreVertical,
   ReceiptText,
   Share2,
   ShieldCheck,
@@ -1705,13 +1704,7 @@ export function PodStatusPanel({
               View Pod Status
             </h2>
           </div>
-          <button
-            type="button"
-            aria-label="More pod status options"
-            className="grid h-11 w-11 place-items-center rounded-full text-[var(--rp-primary)] transition hover:bg-white/8"
-          >
-            <MoreVertical className="h-5 w-5" />
-          </button>
+          <span className="h-11 w-11" aria-hidden="true" />
         </header>}
 
         <div className={cn(embedded ? "grid gap-3 text-left" : "min-h-0 flex-1 overflow-y-auto px-4 pb-5 pt-4 text-left")}>
