@@ -1450,11 +1450,19 @@ export default function HomePage() {
     rideModeFilter === "ride_app"
       ? {
           image: "/images/ridepod/home-ride-app-blue.png",
+          mobilePosition: "58% top",
+          mobileSize: "auto 270px",
+          desktopPosition: "center top",
+          desktopSize: "100% auto",
           overlay:
             "linear-gradient(90deg,rgba(5,11,18,0.9) 0%,rgba(5,11,18,0.54) 34%,rgba(5,11,18,0.1) 72%),linear-gradient(180deg,rgba(5,11,18,0.02) 0%,rgba(5,11,18,0.1) 42%,rgba(5,11,18,0.62) 80%,var(--rp-bg) 100%)",
         }
       : {
           image: "/images/ridepod/home-taxi-gold.png",
+          mobilePosition: "55% top",
+          mobileSize: "auto 235px",
+          desktopPosition: "center top",
+          desktopSize: "100% auto",
           overlay:
             "linear-gradient(90deg,rgba(5,11,18,0.88) 0%,rgba(5,11,18,0.5) 34%,rgba(5,11,18,0.08) 72%),linear-gradient(180deg,rgba(5,11,18,0.12) 0%,rgba(5,11,18,0.12) 42%,rgba(5,11,18,0.66) 80%,var(--rp-bg) 100%)",
         };
@@ -1468,11 +1476,20 @@ export default function HomePage() {
         />
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-no-repeat transition-[background-image] duration-500"
+          className="absolute inset-0 bg-no-repeat transition-[background-image] duration-500 min-[720px]:hidden"
           style={{
             backgroundImage: `url('${heroBackground.image}')`,
-            backgroundPosition: "center top",
-            backgroundSize: "100% auto",
+            backgroundPosition: heroBackground.mobilePosition,
+            backgroundSize: heroBackground.mobileSize,
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 hidden bg-no-repeat transition-[background-image] duration-500 min-[720px]:block"
+          style={{
+            backgroundImage: `url('${heroBackground.image}')`,
+            backgroundPosition: heroBackground.desktopPosition,
+            backgroundSize: heroBackground.desktopSize,
           }}
         />
         <div
