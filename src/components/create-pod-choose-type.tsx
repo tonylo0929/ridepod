@@ -248,13 +248,9 @@ type CalendarDay = {
   disabled: boolean;
 };
 
-const timeHours = Array.from({ length: 12 }, (_, index) =>
-  String(index + 1).padStart(2, "0"),
-);
 const timeMinutes = Array.from({ length: 12 }, (_, index) =>
   String(index * 5).padStart(2, "0"),
 );
-const timePeriods = ["AM", "PM"] as const;
 
 const weekdayLabels = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 const stopRequestPolicyOptions: Array<{
@@ -2243,58 +2239,77 @@ function TimeField({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   const selectedTime = parseDisplayTime(value);
-  const updateTime = (part: Partial<typeof selectedTime>) => {
-    const nextTime = { ...selectedTime, ...part };
-    onChange(`${nextTime.hour}:${nextTime.minute} ${nextTime.period}`);
+  const localTimeValue = displayTimeToLocalTime(value);
+
+  const handleTimeInputChange = (nextValue: string) => {
+    if (!nextValue) return;
+    onChange(localTimeToDisplayTime(nextValue));
+  };
+
+  const openTimePicker = () => {
+    const input = inputRef.current;
+    if (!input) return;
+
+    if (typeof input.showPicker !== "function") {
+      input.focus();
+      return;
+    }
+
+    try {
+      input.showPicker();
+    } catch {
+      input.focus();
+    }
   };
 
   return (
     <fieldset>
       <legend className="text-base font-bold text-[var(--rp-muted-strong)]">Time</legend>
-      <div className="mt-3 grid h-16 grid-cols-[1fr_1fr_1fr_54px] items-center overflow-hidden rounded-[12px] border border-[var(--rp-primary)] bg-[var(--rp-input-bg)] shadow-[var(--rp-shadow-soft)]">
-        <select
-          aria-label="Hour"
-          value={selectedTime.hour}
-          onChange={(event) => updateTime({ hour: event.target.value })}
-          className="h-full min-w-0 appearance-none border-0 bg-transparent px-4 text-center text-lg font-black text-[var(--rp-text)] outline-none"
+      <div className="relative mt-3 rounded-[12px] focus-within:outline focus-within:outline-3 focus-within:outline-offset-4 focus-within:outline-[var(--rp-focus)]">
+        <input
+          ref={inputRef}
+          type="time"
+          step={300}
+          aria-label={`Time, currently ${selectedTime.hour}:${selectedTime.minute} ${selectedTime.period}`}
+          value={localTimeValue}
+          onClick={openTimePicker}
+          onChange={(event) => handleTimeInputChange(event.target.value)}
+          className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+        />
+        <div
+          aria-hidden="true"
+          className="grid h-16 grid-cols-[1fr_1fr_1fr_54px] items-center overflow-hidden rounded-[12px] border border-[var(--rp-primary)] bg-[var(--rp-input-bg)] shadow-[var(--rp-shadow-soft)]"
         >
-          {timeHours.map((hour) => (
-            <option key={hour} value={hour}>
-              {hour}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Minute"
-          value={selectedTime.minute}
-          onChange={(event) => updateTime({ minute: event.target.value })}
-          className="h-full min-w-0 appearance-none border-0 border-l border-[var(--rp-input-border)] bg-transparent px-3 text-center text-lg font-black text-[var(--rp-text)] outline-none"
-        >
-          {timeMinutes.map((minute) => (
-            <option key={minute} value={minute}>
-              {minute}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="AM or PM"
-          value={selectedTime.period}
-          onChange={(event) => updateTime({ period: event.target.value as "AM" | "PM" })}
-          className="h-full min-w-0 appearance-none border-0 border-l border-[var(--rp-input-border)] bg-transparent px-3 text-center text-lg font-black text-[var(--rp-text)] outline-none"
-        >
-          {timePeriods.map((period) => (
-            <option key={period} value={period}>
-              {period}
-            </option>
-          ))}
-        </select>
-        <span className="grid h-full place-items-center border-l border-[var(--rp-input-border)] text-[var(--rp-primary)]">
-          <Clock3 className="h-6 w-6" />
-        </span>
+          <span className="grid h-full place-items-center px-4 text-center text-lg font-black text-[var(--rp-text)]">
+            {selectedTime.hour}
+          </span>
+          <span className="grid h-full place-items-center border-l border-[var(--rp-input-border)] px-3 text-center text-lg font-black text-[var(--rp-text)]">
+            {selectedTime.minute}
+          </span>
+          <span className="grid h-full place-items-center border-l border-[var(--rp-input-border)] px-3 text-center text-lg font-black text-[var(--rp-text)]">
+            {selectedTime.period}
+          </span>
+          <span className="grid h-full place-items-center border-l border-[var(--rp-input-border)] text-[var(--rp-primary)]">
+            <Clock3 className="h-6 w-6" />
+          </span>
+        </div>
       </div>
     </fieldset>
   );
+}
+
+function localTimeToDisplayTime(value: string) {
+  const match = value.match(/^(\d{2}):(\d{2})$/);
+  if (!match) return "08:30 AM";
+
+  const hour24 = Number(match[1]);
+  const minute = timeMinutes.includes(match[2]) ? match[2] : "30";
+  const hour12 = hour24 % 12 || 12;
+  const period = hour24 >= 12 ? "PM" : "AM";
+
+  return `${String(hour12).padStart(2, "0")}:${minute} ${period}`;
 }
 
 function parseDisplayTime(value: string) {
