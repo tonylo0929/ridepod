@@ -14,6 +14,7 @@ import {
   Search,
 } from "lucide-react";
 import { HomeMenuDrawer } from "@/components/home-menu-drawer";
+import { RidePodAvatar, useRidePodAvatarPreference } from "@/components/animal-avatar";
 import { RidePodLogo } from "@/components/ridepod-logo";
 import { cn } from "@/components/ui";
 import { useRidePodUnreadCount } from "@/lib/notifications/use-ridepod-unread-count";
@@ -97,7 +98,14 @@ function AuthDesktopSidebar() {
   const isLoggedIn = Boolean(user);
   const displayName = isLoggedIn ? profile?.display_name ?? "RidePod account" : "Guest rider";
   const profileSubtitle = isLoggedIn ? "View profile" : "Log in or create account";
-  const initial = displayName.trim()[0]?.toUpperCase() ?? "R";
+  const initials = displayName
+    .split(" ")
+    .map((part) => part.trim()[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "R";
+  const [avatarPreference] = useRidePodAvatarPreference(profile?.id);
   const profileHref = isLoggedIn ? "/profile" : `/login?next=${encodeURIComponent("/profile")}`;
 
   return (
@@ -107,9 +115,13 @@ function AuthDesktopSidebar() {
           href={profileHref}
           className="ridepod-drawer-profile flex items-center gap-3 rounded-2xl border p-3 transition"
         >
-          <span className="ridepod-drawer-avatar grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-base font-black">
-            {initial}
-          </span>
+          <RidePodAvatar
+            avatarUrl={profile?.avatar_url}
+            avatarPreference={avatarPreference}
+            initials={initials}
+            displayName={displayName}
+            className="ridepod-drawer-avatar h-12 w-12 shrink-0 rounded-2xl text-base"
+          />
           <span className="min-w-0">
             <span className="block truncate text-base font-black">{displayName}</span>
             <span className="ridepod-drawer-profile-subtitle block text-sm font-semibold">{profileSubtitle}</span>
