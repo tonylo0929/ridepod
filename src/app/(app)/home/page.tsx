@@ -1218,12 +1218,14 @@ function EmptyRides({ tab, rideModeFilter, hasAnyRides }: { tab: HomeTab; rideMo
 const startsWithRideAppOnly = homeRides.length > 0 && homeRides.every((ride) => ride.rideCategory === "ride_app_self_settle" || ride.rideService === "ride_app");
 const initialRideModeFilter: RideModeFilter = startsWithRideAppOnly ? "ride_app" : "taxi";
 const initialSettlementFilter: SettlementFilter = startsWithRideAppOnly ? "self_settle" : "protected";
+const initialFromDistrict = "Hong Kong Island";
+const initialToDistrict = "All districts";
 
 export default function HomePage() {
   const { user, profile } = useAuth();
   const createdHomeRides = useCreatedHomeRides();
-  const [fromDistrict, setFromDistrict] = useState("Hong Kong Island");
-  const [toDistrict, setToDistrict] = useState("All districts");
+  const [fromDistrict, setFromDistrict] = useState(initialFromDistrict);
+  const [toDistrict, setToDistrict] = useState(initialToDistrict);
   const [activeTab, setActiveTab] = useState<HomeTab>("all");
   const [podPreferenceFilter, setPodPreferenceFilter] = useState<PodPreferenceFilter>("all");
   const [taxiDriverFilter, setTaxiDriverFilter] = useState<TaxiDriverFilter>("all");
@@ -1352,8 +1354,8 @@ export default function HomePage() {
   }
 
   function resetRouteFilters() {
-    setFromDistrict("All districts");
-    setToDistrict("All districts");
+    setFromDistrict(initialFromDistrict);
+    setToDistrict(initialToDistrict);
     setActiveTab("all");
     setPodPreferenceFilter("all");
     setTaxiDriverFilter("all");
@@ -1420,8 +1422,17 @@ export default function HomePage() {
             : "";
   const hasActiveFilters =
     activeTab !== "all" ||
-    fromDistrict !== "All districts" ||
-    toDistrict !== "All districts" ||
+    fromDistrict !== initialFromDistrict ||
+    toDistrict !== initialToDistrict ||
+    podPreferenceFilter !== "all" ||
+    taxiDriverFilter !== "all" ||
+    taxiTypeFilter !== "all" ||
+    airportDirectionFilter !== "all" ||
+    rideModeFilter !== initialRideModeFilter ||
+    settlementFilter !== initialSettlementFilter ||
+    fareEstimateFilter !== "any" ||
+    deadlineFilter !== "any" ||
+    seatFilter !== "any" ||
     ownershipFilter !== "all";
 
   return (
