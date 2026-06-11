@@ -1779,37 +1779,39 @@ export function PodStatusPanel({
             </div>
           </section>}
 
-          <nav className="sticky top-0 z-10 mt-3 grid grid-cols-4 rounded-[18px] border border-white/10 bg-[rgba(8,14,22,0.92)] p-1 backdrop-blur-xl">
-            {podStatusTabs.map((tab) => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              const tabClassName = cn(
-                "flex min-h-11 items-center justify-center gap-1 rounded-[14px] text-[11px] font-black transition min-[390px]:gap-1.5 min-[390px]:text-xs",
-                active ? "bg-[var(--rp-primary)] text-[#07111a]" : "text-[var(--rp-muted-strong)] hover:bg-white/8",
-              );
+          {currentUserSeatHoldExpired ? null : (
+            <nav className="sticky top-0 z-10 mt-3 grid grid-cols-4 rounded-[18px] border border-white/10 bg-[rgba(8,14,22,0.92)] p-1 backdrop-blur-xl">
+              {podStatusTabs.map((tab) => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+                const tabClassName = cn(
+                  "flex min-h-11 items-center justify-center gap-1 rounded-[14px] text-[11px] font-black transition min-[390px]:gap-1.5 min-[390px]:text-xs",
+                  active ? "bg-[var(--rp-primary)] text-[#07111a]" : "text-[var(--rp-muted-strong)] hover:bg-white/8",
+                );
 
-              if (tab.id === "chat") {
+                if (tab.id === "chat") {
+                  return (
+                    <Link key={tab.id} href={`/pods/${ride.id}/chat`} className={tabClassName}>
+                      <Icon className="h-4 w-4" />
+                      {tab.label}
+                    </Link>
+                  );
+                }
+
                 return (
-                  <Link key={tab.id} href={`/pods/${ride.id}/chat`} className={tabClassName}>
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={tabClassName}
+                  >
                     <Icon className="h-4 w-4" />
                     {tab.label}
-                  </Link>
+                  </button>
                 );
-              }
-
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={tabClassName}
-                >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </nav>
+              })}
+            </nav>
+          )}
 
           {activeTab === "summary" ? (
             <div className="mt-3 grid gap-3">
@@ -1826,6 +1828,8 @@ export function PodStatusPanel({
                 </div>
               </section>
 
+              {currentUserSeatHoldExpired ? null : (
+                <>
               {hostCancellationStatus !== "active" ? (
                 <section className="rounded-[20px] border border-[var(--rp-primary)]/45 bg-[linear-gradient(135deg,rgba(242,193,91,0.14),rgba(8,47,73,0.14),rgba(255,255,255,0.04))] p-4">
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Host cancellation</p>
@@ -1989,10 +1993,12 @@ export function PodStatusPanel({
                   Nudge sent
                 </p>
               ) : null}
+                </>
+              )}
             </div>
           ) : null}
 
-          {activeTab === "riders" ? (
+          {!currentUserSeatHoldExpired && activeTab === "riders" ? (
             <div className="mt-3 grid gap-3">
               <section className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Rider confirmations</p>
@@ -2050,13 +2056,13 @@ export function PodStatusPanel({
             </div>
           ) : null}
 
-          {activeTab === "route" ? (
+          {!currentUserSeatHoldExpired && activeTab === "route" ? (
             <div className="mt-3 grid gap-3">
               <CompactRideAppRoutePanel ride={ride} />
             </div>
           ) : null}
 
-          {activeTab === "chat" ? (
+          {!currentUserSeatHoldExpired && activeTab === "chat" ? (
             <div className="mt-3 grid gap-3">
               <section className="rounded-[20px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(242,193,91,0.12),transparent_42%),rgba(255,255,255,0.04)] p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Chat status</p>
