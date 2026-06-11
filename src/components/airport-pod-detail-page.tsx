@@ -352,7 +352,7 @@ export function AirportPodDetailPage({ ride }: { ride: HomeRide }) {
           >
             <ArrowLeft className="h-6 w-6" />
           </Link>
-          <h1 className="text-lg font-semibold text-[var(--rp-primary)]">Pod Details</h1>
+          <span className="h-10 w-10" aria-hidden="true" />
           <button
             type="button"
             aria-label="Share pod"

@@ -3955,9 +3955,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
           >
             <ArrowLeft className="h-6 w-6" />
           </Link>
-          <h1 className={cn("text-lg font-semibold", selfSettlePod ? "text-cyan-200" : "text-[var(--rp-primary)]")}>
-            Pod Details
-          </h1>
+          <span className="h-10 w-10" aria-hidden="true" />
           {selfSettlePod ? (
             <button
               type="button"

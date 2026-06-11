@@ -771,7 +771,7 @@ export function RecurringPodDetailPage({ ride }: { ride: HomeRide }) {
           <Link href="/home" aria-label="Back to Home" className="grid h-10 w-10 place-items-center rounded-full text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]">
             <ArrowLeft className="h-6 w-6" />
           </Link>
-          <h1 className="text-lg font-semibold text-[var(--rp-primary)]">Pod Details</h1>
+          <span className="h-10 w-10" aria-hidden="true" />
           <button type="button" aria-label="Share pod" className="grid h-10 w-10 place-items-center rounded-full text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]">
             <Share2 className="h-5 w-5" />
           </button>
