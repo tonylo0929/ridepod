@@ -1985,10 +1985,10 @@ function RouteStopsStep({
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#020912] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-7 text-[#f8fafc]">
         <section className="text-center">
           <ScheduleTypeEyebrow podType={podType} />
-          <h1 className="text-[31px] font-black leading-tight tracking-[-0.03em] text-[#f8fafc]">
+          <h1 className="text-center text-[31px] font-black leading-tight text-[#f8fafc]">
             Route &amp; stops
           </h1>
-          <p className="mx-auto mt-2 max-w-[260px] text-base font-medium leading-6 text-[#cbd5e1]">
+          <p className="mx-auto mt-2 max-w-[260px] text-center text-base font-medium leading-6 text-[#cbd5e1]">
             {isRoutePanel
               ? isRideAppSelfSettle
                 ? "Add pickup, dropoff, and where riders should meet."
@@ -3123,12 +3123,18 @@ function RideCategoryCard({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "w-full rounded-[22px] border bg-[linear-gradient(135deg,rgba(15,23,42,0.82),rgba(3,7,18,0.66))] p-3 text-left shadow-[var(--rp-shadow-soft)] transition min-[390px]:p-4",
-        taxiCategory
-          ? "border-[rgba(246,196,83,0.42)] hover:border-[rgba(246,196,83,0.72)]"
-          : "border-blue-400/45 hover:border-blue-300/75",
-        selected && taxiCategory && "ring-2 ring-[rgba(246,196,83,0.52)]",
-        selected && rideAppCategory && "ring-2 ring-blue-400/45",
+        "relative w-full rounded-[24px] border text-left shadow-[var(--rp-shadow-soft)] transition-[background,border-color,box-shadow,outline-color,transform] duration-200",
+        selected ? "border-2 p-4 outline outline-[4px] outline-offset-[3px] min-[390px]:p-5" : "p-3 min-[390px]:p-4",
+        selected && taxiCategory
+          ? "border-[var(--rp-primary)] bg-[linear-gradient(135deg,rgba(246,196,83,0.2),rgba(15,23,42,0.88)_42%,rgba(3,7,18,0.72))] outline-[rgba(246,196,83,0.48)] shadow-[0_0_0_1px_rgba(246,196,83,0.42),0_22px_52px_rgba(246,196,83,0.2),0_18px_42px_rgba(0,0,0,0.36)]"
+          : taxiCategory
+            ? "border-[rgba(246,196,83,0.42)] bg-[linear-gradient(135deg,rgba(15,23,42,0.82),rgba(3,7,18,0.66))] hover:border-[rgba(246,196,83,0.72)]"
+            : "",
+        selected && rideAppCategory
+          ? "border-blue-300 bg-[linear-gradient(135deg,rgba(37,99,235,0.28),rgba(15,23,42,0.88)_42%,rgba(3,7,18,0.72))] outline-blue-400/55 shadow-[0_0_0_1px_rgba(96,165,250,0.52),0_22px_52px_rgba(37,99,235,0.26),0_18px_42px_rgba(0,0,0,0.36)]"
+          : rideAppCategory
+            ? "border-blue-400/45 bg-[linear-gradient(135deg,rgba(15,23,42,0.82),rgba(3,7,18,0.66))] hover:border-blue-300/75"
+            : "",
       )}
     >
       <span className="grid min-w-0 grid-cols-[46px_minmax(0,1fr)] items-center gap-3 min-[390px]:grid-cols-[52px_minmax(0,1fr)]">
