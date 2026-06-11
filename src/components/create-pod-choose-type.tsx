@@ -1457,9 +1457,9 @@ function RouteJourneyPreview({
           <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#10263a,#06111d_64%)] px-5 text-center">
             <div>
               <MapPin className="mx-auto h-7 w-7 text-[var(--rp-primary)]" />
-              <p className="mt-3 text-sm font-black text-[#f8fafc]">Live map preview ready</p>
+              <p className="mt-3 text-sm font-black text-[#f8fafc]">Live map preview unavailable</p>
               <p className="mt-1 text-xs font-bold leading-5 text-slate-400">
-                Add NEXT_PUBLIC_MAPBOX_TOKEN to enable map search, pins, and routing.
+                Map search will be enabled soon. Manual entry still works.
               </p>
             </div>
           </div>
@@ -1632,7 +1632,7 @@ function MapboxPlaceField({
           onChange={onChange}
         />
         <p className="px-1 text-xs font-bold leading-5 text-slate-500">
-          Map search needs NEXT_PUBLIC_MAPBOX_TOKEN. Manual entry still works.
+          Map search will be enabled soon. Manual entry still works.
         </p>
       </div>
     );
