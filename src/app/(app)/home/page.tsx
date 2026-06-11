@@ -835,7 +835,7 @@ function HomeRideCard({ ride }: { ride: HomeRide }) {
     <Link
       href={`/pods/${ride.id}`}
       className={cn(
-        "block rounded-[22px] border bg-[linear-gradient(135deg,color-mix(in_srgb,var(--rp-card)_94%,transparent),var(--rp-card-soft))] p-3 shadow-[var(--rp-shadow-soft)] transition min-[560px]:p-4",
+        "block rounded-[26px] border bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-card)_96%,transparent),var(--rp-card-soft))] p-4 shadow-[var(--rp-shadow-soft)] transition min-[560px]:p-5",
         currentUserRelationship?.tone === "host"
           ? "border-[color-mix(in_srgb,var(--rp-primary)_78%,var(--rp-border))] shadow-[0_0_34px_color-mix(in_srgb,var(--rp-primary)_16%,transparent)] hover:border-[var(--rp-primary)]"
           : currentUserRelationship?.tone === "joined"
@@ -846,79 +846,91 @@ function HomeRideCard({ ride }: { ride: HomeRide }) {
       )}
     >
       {currentUserRelationship ? (
-        <div
-          className={cn(
-            "mb-3 inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2",
-            currentUserRelationship.tone === "host"
-              ? "border-[color-mix(in_srgb,var(--rp-primary)_58%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)]"
-              : "border-cyan-300/45 bg-cyan-400/14 text-cyan-100",
-          )}
-        >
-          {currentUserRelationship.tone === "host" ? (
-            <ShieldCheck className="h-4 w-4 shrink-0" />
-          ) : (
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
-          )}
-          <span className="truncate text-[11px] font-black uppercase tracking-[0.12em] min-[560px]:text-xs">
-            {currentUserRelationship.label}
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div
+            className={cn(
+              "inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2",
+              currentUserRelationship.tone === "host"
+                ? "border-[color-mix(in_srgb,var(--rp-primary)_58%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)]"
+                : "border-cyan-300/45 bg-cyan-400/14 text-cyan-100",
+            )}
+          >
+            {currentUserRelationship.tone === "host" ? (
+              <ShieldCheck className="h-4 w-4 shrink-0" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+            )}
+            <span className="truncate text-[11px] font-black uppercase tracking-[0.12em] min-[560px]:text-xs">
+              {currentUserRelationship.label}
+            </span>
+          </div>
         </div>
       ) : null}
-      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-3 min-[560px]:grid-cols-[auto_minmax(0,1fr)_minmax(132px,178px)] min-[560px]:gap-4">
-        <RideProfileAvatar ride={ride} />
 
-        <div className="min-w-0">
-          <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h2 className="min-w-0 text-sm font-black leading-tight text-[var(--rp-text)] min-[390px]:text-base min-[560px]:text-lg min-[760px]:text-xl">
-              {ride.fromLabel} {"\u2192"} {ride.toLabel}
-            </h2>
-          </div>
-          <RideMetaTags ride={ride} />
-          {rideAppTrustBadge ? (
-            <p
-              className={cn(
-                "mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black",
-                rideAppTrustBadge.tone === "rating"
-                  ? "border-amber-300/30 bg-amber-300/12 text-amber-100"
-                  : rideAppTrustBadge.tone === "warning"
-                    ? "border-rose-300/30 bg-rose-400/12 text-rose-100"
-                    : "border-sky-300/25 bg-sky-400/10 text-sky-100",
-              )}
-            >
-              {rideAppTrustBadge.tone === "rating" ? (
-                <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
+      <div className={cn("grid gap-3 min-[560px]:grid-cols-[minmax(0,1fr)_minmax(152px,184px)] min-[560px]:items-stretch", currentUserRelationship && "mt-4")}>
+        <div className="grid min-w-0 gap-3">
+          <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
+            <RideProfileAvatar ride={ride} />
+
+            <div className="min-w-0">
+              <h2 className="text-balance text-base font-black leading-tight text-[var(--rp-text)] min-[390px]:text-lg min-[760px]:text-xl">
+                {ride.fromLabel} {"\u2192"} {ride.toLabel}
+              </h2>
+              <RideMetaTags ride={ride} />
+              {rideAppTrustBadge ? (
+                <p
+                  className={cn(
+                    "mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black",
+                    rideAppTrustBadge.tone === "rating"
+                      ? "border-amber-300/30 bg-amber-300/12 text-amber-100"
+                      : rideAppTrustBadge.tone === "warning"
+                        ? "border-rose-300/30 bg-rose-400/12 text-rose-100"
+                        : "border-sky-300/25 bg-sky-400/10 text-sky-100",
+                  )}
+                >
+                  {rideAppTrustBadge.tone === "rating" ? (
+                    <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
+                  ) : null}
+                  <span className="truncate">{rideAppTrustBadge.label}</span>
+                </p>
               ) : null}
-              <span className="truncate">{rideAppTrustBadge.label}</span>
-            </p>
-          ) : null}
-          <div className="mt-2 h-px w-full bg-white/12 min-[560px]:mt-4" />
-          <div className="mt-2 grid gap-1.5 text-[11px] font-semibold text-[var(--rp-muted-strong)] min-[390px]:text-xs min-[560px]:mt-3 min-[560px]:gap-2 min-[560px]:text-sm">
-            <p className="flex flex-wrap items-center gap-2 text-left">
-              <CalendarDays className="h-4 w-4 shrink-0" />
-              <span className="whitespace-nowrap">{ride.dateLabel}</span>
-              <span aria-hidden="true">{"\u00b7"}</span>
-              <span className="whitespace-nowrap">{ride.timeLabel}</span>
-            </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <span className="rounded-[16px] border border-white/10 bg-white/[0.04] px-3 py-2">
+              <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">
+                <CalendarDays className="h-3.5 w-3.5 shrink-0 text-[var(--rp-primary)]" />
+                Time
+              </span>
+              <span className="mt-1 block text-xs font-black leading-5 text-[var(--rp-text)]">
+                {ride.dateLabel} {"\u00b7"} {ride.timeLabel}
+              </span>
+            </span>
+            <span className="rounded-[16px] border border-white/10 bg-white/[0.04] px-3 py-2">
+              <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">
+                <UsersRound className="h-3.5 w-3.5 shrink-0 text-[var(--rp-primary)]" />
+                Seats
+              </span>
+              <span className="mt-1 block text-xs font-black leading-5 text-[var(--rp-text)]">
+                {ride.seatsUsed} / {ride.seatsTotal} seats
+              </span>
+            </span>
             {recurringTiming ? (
-              <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-left text-xs font-black text-[var(--rp-muted-strong)]">
-                <span className="text-[var(--rp-primary)]">Starts</span>
-                <span>{recurringTiming.starts}</span>
-                <span className="text-[var(--rp-primary)]" aria-hidden="true">{"\u00b7"}</span>
-                <span className="text-[var(--rp-primary)]">Ends</span>
-                <span>{recurringTiming.ends}</span>
-              </p>
+              <span className="col-span-2 rounded-[16px] border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black leading-5 text-[var(--rp-muted-strong)]">
+                <span className="text-[var(--rp-primary)]">Starts</span> {recurringTiming.starts}
+                <span className="px-2 text-[var(--rp-primary)]" aria-hidden="true">{"\u00b7"}</span>
+                <span className="text-[var(--rp-primary)]">Ends</span> {recurringTiming.ends}
+              </span>
             ) : null}
-            <p className="flex items-center gap-2 text-left">
-              <UsersRound className="h-4 w-4 shrink-0" />
-              {ride.seatsUsed} / {ride.seatsTotal} seats
-            </p>
           </div>
         </div>
-
         <div
           className={cn(
-            "col-span-full grid min-w-0 content-start justify-items-center gap-1.5 rounded-[16px] border bg-black/10 px-4 py-3 text-center min-[560px]:col-auto min-[560px]:min-h-[104px] min-[560px]:rounded-[18px] min-[560px]:px-4 min-[560px]:py-3",
-            isRideApp ? "border-sky-300/25" : "border-[var(--rp-border-strong)]",
+            "grid min-w-0 content-center justify-items-center gap-1.5 rounded-[18px] border px-4 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] min-[560px]:min-h-full",
+            isRideApp
+              ? "border-sky-300/30 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),rgba(2,8,15,0.22))]"
+              : "border-[color-mix(in_srgb,var(--rp-primary)_35%,var(--rp-border))] bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--rp-primary)_12%,transparent),rgba(2,8,15,0.2))]",
           )}
         >
           {!isRideApp ? (
