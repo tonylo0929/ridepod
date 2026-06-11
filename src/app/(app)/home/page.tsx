@@ -917,12 +917,12 @@ function HomeRideCard({ ride }: { ride: HomeRide }) {
 
         <div
           className={cn(
-            "col-span-full grid min-w-0 content-start justify-items-start gap-1.5 rounded-[16px] border bg-black/10 px-4 py-3 text-left min-[560px]:col-auto min-[560px]:min-h-[104px] min-[560px]:rounded-[18px] min-[560px]:px-4 min-[560px]:py-3",
+            "col-span-full grid min-w-0 content-start justify-items-center gap-1.5 rounded-[16px] border bg-black/10 px-4 py-3 text-center min-[560px]:col-auto min-[560px]:min-h-[104px] min-[560px]:rounded-[18px] min-[560px]:px-4 min-[560px]:py-3",
             isRideApp ? "border-sky-300/25" : "border-[var(--rp-border-strong)]",
           )}
         >
           {!isRideApp ? (
-            <div className="flex w-full flex-wrap items-center justify-start gap-1.5 min-[560px]:gap-2">
+            <div className="flex w-full flex-wrap items-center justify-center gap-1.5 min-[560px]:gap-2">
               <span
                 className={cn(
                   "inline-flex min-h-6 items-center rounded-full border px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.06em] min-[390px]:px-2 min-[390px]:text-[9px] min-[560px]:min-h-7 min-[560px]:px-3 min-[560px]:text-[11px]",
@@ -935,10 +935,10 @@ function HomeRideCard({ ride }: { ride: HomeRide }) {
           ) : null}
           {isRideApp ? (
             <>
-              <p className="text-left text-[8px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted-strong)] min-[390px]:text-[9px] min-[560px]:text-[10px] min-[560px]:tracking-[0.16em]">{rideAppEstimateLabel}</p>
+              <p className="text-center text-[8px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted-strong)] min-[390px]:text-[9px] min-[560px]:text-[10px] min-[560px]:tracking-[0.16em]">{rideAppEstimateLabel}</p>
               <p
                 className={cn(
-                  "max-w-full text-left font-black leading-tight text-sky-300",
+                  "max-w-full text-center font-black leading-tight text-sky-300",
                   rideAppEstimateDisplay.updated
                     ? "text-lg min-[390px]:text-xl min-[560px]:text-[26px]"
                     : "whitespace-nowrap text-[10px] min-[390px]:text-xs min-[560px]:text-sm",
@@ -947,18 +947,18 @@ function HomeRideCard({ ride }: { ride: HomeRide }) {
                 {rideAppEstimateDisplay.value}
               </p>
               {rideAppEstimateHelper ? (
-                <p className="text-left text-[10px] font-black text-sky-200 min-[390px]:text-xs min-[560px]:text-sm">
+                <p className="text-center text-[10px] font-black text-sky-200 min-[390px]:text-xs min-[560px]:text-sm">
                   {rideAppEstimateHelper}
                 </p>
               ) : null}
             </>
           ) : (
             <>
-              <p className="text-left text-[8px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted-strong)] min-[390px]:text-[9px] min-[560px]:text-[10px] min-[560px]:tracking-[0.16em]">Est.</p>
-              <p className="text-left text-2xl font-black leading-none text-[var(--rp-primary)] min-[390px]:text-3xl min-[560px]:text-4xl">
+              <p className="text-center text-[8px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted-strong)] min-[390px]:text-[9px] min-[560px]:text-[10px] min-[560px]:tracking-[0.16em]">Est.</p>
+              <p className="text-center text-2xl font-black leading-none text-[var(--rp-primary)] min-[390px]:text-3xl min-[560px]:text-4xl">
                 HK${ride.pricePerPerson}
               </p>
-              <p className="text-left text-[10px] font-black text-[var(--rp-muted-strong)] min-[390px]:text-xs min-[560px]:text-sm">includes RidePod fee</p>
+              <p className="text-center text-[10px] font-black text-[var(--rp-muted-strong)] min-[390px]:text-xs min-[560px]:text-sm">includes RidePod fee</p>
             </>
           )}
           </div>
