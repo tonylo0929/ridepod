@@ -1459,7 +1459,7 @@ export default function HomePage() {
         }
       : {
           image: "/images/ridepod/home-taxi-gold.png",
-          mobilePosition: "55% top",
+          mobilePosition: "60% top",
           mobileSize: "auto 235px",
           desktopPosition: "center top",
           desktopSize: "100% auto",
