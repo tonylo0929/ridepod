@@ -353,9 +353,9 @@ function ActivityCard({ update }: { update: RidePodLiveUpdateRow }) {
 
 function EmptyState({ icon: Icon, title }: { icon: typeof Bell; title: string }) {
   return (
-    <div className="rounded-[22px] border border-dashed border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-6 text-center">
+    <div className="flex min-h-[108px] flex-col items-center justify-center rounded-[22px] border border-dashed border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-6 text-center">
       <Icon className="mx-auto h-7 w-7 text-[var(--rp-primary)]" />
-      <p className="mt-3 text-sm font-black text-[var(--rp-text)]">{title}</p>
+      <p className="mt-3 w-full text-center text-sm font-black text-[var(--rp-text)]">{title}</p>
     </div>
   );
 }
