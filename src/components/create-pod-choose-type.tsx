@@ -7014,11 +7014,11 @@ export function CreatePodChooseType() {
 
           <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-5 pt-6">
             <section className="flex min-w-0 flex-1 flex-col justify-center">
-              <div>
-                <h1 className="max-w-[260px] text-[30px] font-black leading-[1.08] tracking-[-0.03em] text-[var(--rp-text)]">
+              <div className="text-center">
+                <h1 className="mx-auto max-w-[260px] text-center text-[30px] font-black leading-[1.08] text-[var(--rp-text)]">
                   Choose your pod type
                 </h1>
-                <p className="mt-3 max-w-[260px] text-base font-medium leading-6 text-[var(--rp-muted)]">
+                <p className="mx-auto mt-3 max-w-[260px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]">
                   You&apos;ll be the host and book the ride.
                 </p>
               </div>
