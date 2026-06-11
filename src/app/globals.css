@@ -299,7 +299,10 @@ select {
 }
 
 .ridepod-drawer-avatar {
-  background: linear-gradient(135deg, #f2c15b 0%, #ffd36a 100%);
+  background-color: #f2c15b;
+  background-image: linear-gradient(135deg, #f2c15b 0%, #ffd36a 100%);
+  background-position: center;
+  background-size: cover;
   color: #071326;
 }
 
