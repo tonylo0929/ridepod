@@ -95,6 +95,75 @@ function lifecycleTone(tone: RideAppLifecycleTone): "gold" | "green" | "purple" 
   return tone;
 }
 
+function RideMetaItem({ icon: Icon, children }: { icon: typeof Clock3; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex min-h-10 items-center gap-2 rounded-[14px] bg-[color-mix(in_srgb,var(--rp-shell)_38%,transparent)] px-3 text-xs font-black text-[var(--rp-muted-strong)]">
+      <Icon className="h-4 w-4 shrink-0 text-[var(--rp-primary)]" />
+      <span className="min-w-0">{children}</span>
+    </span>
+  );
+}
+
+function RideEstimatePanel({
+  isRideApp,
+  rideAppEstimate,
+  quoteTotal,
+  price,
+}: {
+  isRideApp: boolean;
+  rideAppEstimate: string | null;
+  quoteTotal?: number;
+  price?: number;
+}) {
+  if (isRideApp) {
+    return (
+      <span className="grid rounded-[18px] border border-blue-300/20 bg-blue-400/10 px-4 py-3">
+        <span className="text-[10px] font-black uppercase tracking-[0.12em] text-blue-200/80">
+          Total estimate fee
+        </span>
+        {rideAppEstimate ? (
+          <>
+            <span className="mt-1 text-3xl font-black leading-none text-blue-100">{rideAppEstimate}</span>
+            <span className="mt-1 text-xs font-black text-blue-200/85">Ride app estimate</span>
+          </>
+        ) : (
+          <>
+            <span className="mt-1 text-lg font-black leading-tight text-blue-100">Estimate pending</span>
+            <span className="mt-1 text-xs font-bold leading-5 text-blue-200/80">Ride app estimate pending</span>
+          </>
+        )}
+      </span>
+    );
+  }
+
+  if (!price) return null;
+
+  return (
+    <span className="grid rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] px-4 py-3">
+      <span className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">
+        {quoteTotal ? "Quote" : "Estimate"}
+      </span>
+      <span className="mt-1 text-3xl font-black leading-none text-[var(--rp-text)]">HK${price}</span>
+    </span>
+  );
+}
+
+function RideLifecyclePanel({ lifecycle }: { lifecycle: NonNullable<ReturnType<typeof getRideAppPodLifecycleStatus>> }) {
+  return (
+    <span className="grid gap-3 rounded-[18px] border border-blue-300/15 bg-blue-400/10 p-3 text-blue-100 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+      <span className="grid gap-1">
+        <span className="text-sm font-black leading-5">{lifecycle.subcopy}</span>
+        <span className="text-[11px] font-black uppercase tracking-[0.1em] text-blue-200/85">
+          Next: {lifecycle.nextAction}
+        </span>
+      </span>
+      <span className="inline-flex min-h-10 items-center justify-center rounded-full border border-blue-300/25 bg-blue-300/10 px-4 text-xs font-black text-blue-100">
+        {lifecycle.ctaLabel}
+      </span>
+    </span>
+  );
+}
+
 function RideCard({ ride, currentUserId }: { ride: CalendarRide; currentUserId?: string | null }) {
   const price = ride.quoteTotal ?? ride.estimatedShare;
   const role = getMyRideCalendarRole(ride, currentUserId);
@@ -114,94 +183,66 @@ function RideCard({ ride, currentUserId }: { ride: CalendarRide; currentUserId?:
     <Link
       href={href}
       className={cn(
-        "group grid grid-cols-[44px_1fr_auto] gap-3 rounded-[22px] border bg-[linear-gradient(135deg,var(--rp-card),var(--rp-card-soft))] p-4 shadow-[var(--rp-shadow-soft)] transition hover:border-[color-mix(in_srgb,var(--rp-primary)_55%,var(--rp-border))]",
+        "group grid gap-4 rounded-[22px] border bg-[linear-gradient(135deg,var(--rp-card),var(--rp-card-soft))] p-4 shadow-[var(--rp-shadow-soft)] transition hover:border-[color-mix(in_srgb,var(--rp-primary)_55%,var(--rp-border))]",
         isRideApp ? "border-blue-300/25" : "border-[var(--rp-border)]",
       )}
     >
-      <span
-        className={cn(
-          "grid h-11 w-11 place-items-center rounded-[16px] border bg-[var(--rp-card-muted)]",
-          isRideApp ? "border-blue-300/25 text-blue-100" : "border-[var(--rp-border)] text-[var(--rp-primary)]",
-        )}
-      >
-        <RideKindIcon ride={ride} />
-      </span>
-
-      <span className="min-w-0">
-        <span className="block truncate text-base font-black text-[var(--rp-text)]">{ride.route}</span>
-        <span className="mt-2 flex flex-wrap gap-1.5">
-          <RideBadge tone={badgeToneForRide(ride)}>{rideTypeLabel(ride)}</RideBadge>
-          {isRideApp ? <RideBadge tone="purple">Self-settle</RideBadge> : null}
-          {ride.airportDirection ? (
-            <RideBadge tone="cyan">{ride.airportDirection === "from_airport" ? "From airport" : "To airport"}</RideBadge>
-          ) : null}
-          {ride.direction ? <RideBadge tone="green">{ride.direction}</RideBadge> : null}
-          {rideAppLifecycle ? (
-            <RideBadge tone={lifecycleTone(rideAppLifecycle.tone)}>{rideAppLifecycle.label}</RideBadge>
-          ) : (
-            <RideBadge tone={statusBadgeTone(ride)}>{rideStatusLabel(ride.status)}</RideBadge>
+      <span className="flex items-start gap-3">
+        <span
+          className={cn(
+            "grid h-12 w-12 shrink-0 place-items-center rounded-[17px] border bg-[var(--rp-card-muted)]",
+            isRideApp ? "border-blue-300/25 text-blue-100" : "border-[var(--rp-border)] text-[var(--rp-primary)]",
           )}
-          {currentUserIsHost ? <RideBadge tone="gold">Host controls</RideBadge> : null}
+        >
+          <RideKindIcon ride={ride} />
         </span>
 
-        <span className="mt-3 grid gap-1 text-xs font-bold text-[var(--rp-muted-strong)]">
-          <span className="inline-flex items-center gap-2">
-            <Clock3 className="h-4 w-4 text-[var(--rp-primary)]" />
-            {timeLabel(ride.time)}
+        <span className="min-w-0 flex-1">
+          <span className="block break-words text-lg font-black leading-tight text-[var(--rp-text)]">
+            {ride.route}
           </span>
-          <span className="inline-flex items-center gap-2">
-            <UsersRound className="h-4 w-4 text-[var(--rp-primary)]" />
-            {ride.seatsFilled} / {ride.seatsTotal} seats
-          </span>
-          {ride.luggage ? (
-            <span className="inline-flex items-center gap-2">
-              <Luggage className="h-4 w-4 text-[var(--rp-primary)]" />
-              {ride.luggage}
-            </span>
-          ) : null}
-          {ride.schedule ? <span className="text-[var(--rp-primary)]">{ride.schedule}</span> : null}
-          {rideAppLifecycle ? (
-            <span className="mt-2 grid gap-1 rounded-[14px] border border-blue-300/15 bg-blue-400/10 px-3 py-2 text-blue-100">
-              <span>{rideAppLifecycle.subcopy}</span>
-              <span className="border-t border-blue-300/15 pt-1 text-[11px] font-black uppercase tracking-[0.08em] text-blue-200/85">
-                Next: {rideAppLifecycle.nextAction}
-              </span>
-            </span>
-          ) : null}
-        </span>
-      </span>
-
-      <span className="grid min-w-[86px] items-center justify-items-end gap-2 self-center">
-        {isRideApp ? (
-          <span className="text-right">
-            {rideAppEstimate ? (
-              <>
-                <span className="block text-[10px] font-black uppercase tracking-[0.12em] text-blue-200/80">Total estimate fee</span>
-                <span className="block text-lg font-black text-blue-100">{rideAppEstimate}</span>
-                <span className="block text-[11px] font-black text-blue-200/85">Ride app estimate</span>
-              </>
+          <span className="mt-2 flex flex-wrap gap-1.5">
+            <RideBadge tone={badgeToneForRide(ride)}>{rideTypeLabel(ride)}</RideBadge>
+            {isRideApp ? <RideBadge tone="purple">Self-settle</RideBadge> : null}
+            {ride.airportDirection ? (
+              <RideBadge tone="cyan">{ride.airportDirection === "from_airport" ? "From airport" : "To airport"}</RideBadge>
+            ) : null}
+            {ride.direction ? <RideBadge tone="green">{ride.direction}</RideBadge> : null}
+            {rideAppLifecycle ? (
+              <RideBadge tone={lifecycleTone(rideAppLifecycle.tone)}>{rideAppLifecycle.label}</RideBadge>
             ) : (
-              <>
-                <span className="block max-w-[104px] text-sm font-black leading-tight text-blue-100">Estimate pending</span>
-                <span className="mt-1 block text-[10px] font-bold leading-4 text-[var(--rp-muted)]">Ride app estimate pending</span>
-              </>
+              <RideBadge tone={statusBadgeTone(ride)}>{rideStatusLabel(ride.status)}</RideBadge>
             )}
+            {currentUserIsHost ? <RideBadge tone="gold">Host controls</RideBadge> : null}
           </span>
-        ) : price ? (
-          <span className="text-right">
-            <span className="block text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">
-              {ride.quoteTotal ? "Quote" : "Est."}
-            </span>
-            <span className="text-lg font-black text-[var(--rp-text)]">HK${price}</span>
-          </span>
-        ) : null}
-        {rideAppLifecycle ? (
-          <span className="max-w-[112px] rounded-full border border-blue-300/25 bg-blue-400/10 px-3 py-1 text-right text-[11px] font-black text-blue-100">
-            {rideAppLifecycle.ctaLabel}
-          </span>
-        ) : null}
-        <ChevronRight className="h-5 w-5 text-[var(--rp-primary)] transition group-hover:translate-x-1" />
+        </span>
+
+        <ChevronRight className="mt-3 h-5 w-5 shrink-0 text-[var(--rp-primary)] transition group-hover:translate-x-1" />
       </span>
+
+      <span className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_190px] sm:items-stretch">
+        <span className="grid grid-cols-2 gap-2">
+          <RideMetaItem icon={Clock3}>{timeLabel(ride.time)}</RideMetaItem>
+          <RideMetaItem icon={UsersRound}>
+            {ride.seatsFilled} / {ride.seatsTotal} seats
+          </RideMetaItem>
+          {ride.luggage ? <RideMetaItem icon={Luggage}>{ride.luggage}</RideMetaItem> : null}
+          {ride.schedule ? (
+            <RideMetaItem icon={CalendarDays}>
+              <span className="text-[var(--rp-primary)]">{ride.schedule}</span>
+            </RideMetaItem>
+          ) : null}
+        </span>
+
+        <RideEstimatePanel
+          isRideApp={isRideApp}
+          rideAppEstimate={rideAppEstimate}
+          quoteTotal={ride.quoteTotal}
+          price={price}
+        />
+      </span>
+
+      {rideAppLifecycle ? <RideLifecyclePanel lifecycle={rideAppLifecycle} /> : null}
     </Link>
   );
 }

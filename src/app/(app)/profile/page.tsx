@@ -12,7 +12,6 @@ import {
   Pencil,
   Save,
   ShieldCheck,
-  Sparkles,
   UserRound,
   UsersRound,
   X,
@@ -56,7 +55,7 @@ type ProfileFormState = {
   communityId: string;
 };
 
-type ProfileTab = "profile" | "trust" | "public";
+type ProfileTab = "profile" | "trust";
 type EditableProfileField = "displayName" | "phone" | "communityId";
 
 const profileTabs: Array<{
@@ -66,7 +65,6 @@ const profileTabs: Array<{
 }> = [
   { id: "profile", label: "Profile", icon: UserRound },
   { id: "trust", label: "Trust", icon: ShieldCheck },
-  { id: "public", label: "Public", icon: Sparkles },
 ];
 
 function formStateFromProfile(profile: RidePodProfileRow): ProfileFormState {
@@ -448,25 +446,6 @@ export default function ProfilePage() {
         </div>
       ) : null}
 
-      {activeTab === "public" ? (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
-          <PublicPreviewCard
-            initials={initials}
-            displayName={displayName}
-            avatarPreference={avatarPreference}
-            hasCommunity={hasCommunity}
-            profile={profile}
-          />
-          <ProfileCard>
-            <SectionTitle title="Public details" icon={Sparkles} />
-            <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-              Pod members see your display name, profile badges, and public trust signals. Private phone, gender,
-              and safety notes stay hidden.
-            </p>
-          </ProfileCard>
-        </div>
-      ) : null}
-
       {requestReviewOpen ? (
         <RequestManualReviewModal
           disabled={requestingReview}
@@ -538,7 +517,7 @@ function ProfileTabNav({
   return (
     <nav
       aria-label="Profile sections"
-      className="grid grid-cols-3 gap-2 rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-2 shadow-[var(--rp-shadow-soft)]"
+      className="grid grid-cols-2 gap-2 rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-2 shadow-[var(--rp-shadow-soft)]"
     >
       {profileTabs.map((tab) => {
         const Icon = tab.icon;
@@ -699,47 +678,6 @@ function RideAppTrustStatusCard({ summary }: { summary: RideAppTrustSummary }) {
           ["Issues", `${riderIssueCount} total`],
         ]}
       />
-    </ProfileCard>
-  );
-}
-
-function PublicPreviewCard({
-  initials,
-  displayName,
-  avatarPreference,
-  hasCommunity,
-  profile,
-}: {
-  initials: string;
-  displayName: string;
-  avatarPreference: RidePodAvatarPreference;
-  hasCommunity: boolean;
-  profile: RidePodProfileRow | null;
-}) {
-  const showVerifiedBadge =
-    normalizeIdVerificationStatus(profile?.id_verification_status) === "VERIFIED" ||
-    profile?.verification_status === "ID_VERIFIED";
-
-  return (
-    <ProfileCard>
-      <SectionTitle title="Open pod preview" icon={UserRound} />
-      <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[var(--rp-card-soft)] p-3">
-        <RidePodAvatar
-          avatarUrl={profile?.avatar_url}
-          avatarPreference={avatarPreference}
-          initials={initials}
-          displayName={displayName}
-          className="h-14 w-14 rounded-2xl text-lg"
-        />
-        <span className="min-w-0">
-          <span className="block truncate text-base font-black text-[var(--rp-text)]">{displayName}</span>
-          <span className="mt-2 flex flex-wrap gap-2">
-            <Badge>Profile</Badge>
-            {hasCommunity ? <Badge>Community</Badge> : null}
-            {showVerifiedBadge ? <Badge>Verified</Badge> : null}
-          </span>
-        </span>
-      </div>
     </ProfileCard>
   );
 }
@@ -1102,13 +1040,5 @@ function KeyValue({ label, value }: { label: string; value: string }) {
       <dt className="font-semibold text-[var(--rp-muted)]">{label}</dt>
       <dd className="truncate text-right font-black text-[var(--rp-text)]">{value}</dd>
     </div>
-  );
-}
-
-function Badge({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="rounded-full bg-[var(--rp-badge-success-bg)] px-3 py-1 text-xs font-black text-[var(--rp-badge-success-text)]">
-      {children}
-    </span>
   );
 }
