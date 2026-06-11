@@ -1042,26 +1042,6 @@ function PodTypeCard({
   );
 }
 
-function ThemeAwareHeroStrip() {
-  return (
-    <div
-      aria-hidden="true"
-      className="relative h-28 w-full shrink-0 overflow-hidden rounded-[24px] border border-[var(--rp-border)]"
-    >
-      <Image
-        src="/ridepod/create-pod-dark-background.png"
-        alt=""
-        fill
-        sizes="(max-width: 430px) calc(100vw - 48px), 382px"
-        quality={100}
-        priority
-        className="object-cover object-[50%_58%]"
-      />
-      <div className="absolute inset-0 bg-[linear-gradient(90deg,color-mix(in_srgb,var(--rp-bg)_72%,transparent)_0%,transparent_56%,color-mix(in_srgb,var(--rp-bg)_22%,transparent)_100%)]" />
-    </div>
-  );
-}
-
 function routePointSummary(value: string, fallback: string) {
   const clean = value.trim();
   if (!clean) return fallback;
@@ -7009,9 +6989,7 @@ export function CreatePodChooseType() {
           <CreatePodTopBar currentStep={1} stepLabels={activeStepLabels} />
 
           <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-5 pt-6">
-            <ThemeAwareHeroStrip />
-
-            <section className="mt-5 flex min-w-0 flex-1 flex-col justify-center">
+            <section className="flex min-w-0 flex-1 flex-col justify-center">
               <div>
                 <h1 className="max-w-[260px] text-[30px] font-black leading-[1.08] tracking-[-0.03em] text-[var(--rp-text)]">
                   Choose your pod type
