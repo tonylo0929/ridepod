@@ -156,44 +156,44 @@ export function getMyRideCalendarStatus({
     if (pod.issueReported || pod.status === "issue_reported" || pod.status === "dispute_review") {
       return {
         statusKey: "issue_reported",
-        label: "Issue reported",
-        colorKey: "purple",
-        helperText: "RidePod is reviewing a self-settle issue",
-        ctaLabel: "View report",
+        label: "Action needed",
+        colorKey: "gold",
+        helperText: "Review updated ride details",
+        ctaLabel: "View details",
         isActionNeeded: true,
       };
     }
 
     if (pod.status === "cancelled") {
-      return { statusKey: "cancelled", label: "Cancelled", colorKey: "red", helperText: "This pod was cancelled", ctaLabel: "Open pod", isActionNeeded: false };
+      return { statusKey: "cancelled", label: "Cancelled", colorKey: "red", helperText: "This pod was cancelled", ctaLabel: "View details", isActionNeeded: false };
     }
 
     if (pod.status === "expired" || pod.status === "quote_expired" || pod.status === "too_late_to_confirm") {
-      return { statusKey: "expired", label: "Expired", colorKey: "gray", helperText: "This pod expired", ctaLabel: "Open pod", isActionNeeded: false };
+      return { statusKey: "expired", label: "Expired", colorKey: "gray", helperText: "This pod expired", ctaLabel: "View details", isActionNeeded: false };
     }
 
     if (pod.status === "completed") {
-      return { statusKey: "completed", label: "Completed", colorKey: "green", helperText: "Ride completed", ctaLabel: "Open pod", isActionNeeded: false };
+      return { statusKey: "completed", label: "Completed", colorKey: "green", helperText: "Ride completed", ctaLabel: "View details", isActionNeeded: false };
     }
 
     if (pod.status === "ride_started" || pod.status === "settlement_pending") {
       return {
         statusKey: "settlement_pending",
-        label: "Settlement pending",
-        colorKey: "orange",
-        helperText: "Settle final fare after ride and mark completed",
-        ctaLabel: "Mark completed",
+        label: "Action needed",
+        colorKey: "gold",
+        helperText: "Review updated ride details",
+        ctaLabel: "View details",
         isActionNeeded: true,
       };
     }
 
     if (pod.bookingDetailsConfirmed || pod.status === "quote_accepted" || pod.status === "ready_for_pickup") {
       return {
-        statusKey: "ready_to_book",
-        label: "Ready to book",
+        statusKey: "ready_to_gather",
+        label: "Ready to gather",
         colorKey: "green",
-        helperText: "Group details confirmed. Host can book externally",
-        ctaLabel: "Open chat",
+        helperText: "Group details are ready",
+        ctaLabel: "View details",
         isActionNeeded: role === "host",
       };
     }
@@ -201,13 +201,13 @@ export function getMyRideCalendarStatus({
     if (pod.status === "confirm_details") {
       return {
         statusKey: "confirm_details",
-        label: role === "host" ? "Confirm details" : "Waiting for host",
+        label: role === "host" ? "Action needed" : "Waiting for host details",
         colorKey: "gold",
         helperText:
           role === "host"
-            ? "Confirm ride app, fare estimate, split, and payment method"
-            : "Waiting for host to confirm details",
-        ctaLabel: role === "host" ? "Confirm details" : "Open chat",
+            ? "Confirm ride app details"
+            : "Waiting for host details",
+        ctaLabel: "View details",
         isActionNeeded: role === "host",
       };
     }
@@ -215,42 +215,48 @@ export function getMyRideCalendarStatus({
     if (pod.seatsFilled >= 2) {
       return {
         statusKey: "minimum_reached",
-        label: "Minimum reached",
+        label: "Ready to gather",
         colorKey: "cyan",
         helperText: "Enough riders joined",
-        ctaLabel: "Open pod",
+        ctaLabel: "View details",
         isActionNeeded: role === "host",
       };
     }
 
     return {
-      statusKey: "open",
-      label: "Open",
-      colorKey: "blue",
+      statusKey: "upcoming",
+      label: "Upcoming",
+      colorKey: "cyan",
       helperText: "Waiting for riders",
-      ctaLabel: "Open pod",
+      ctaLabel: "View details",
       isActionNeeded: false,
     };
   }
 
   const taxiStatus: Record<string, MyRideCalendarStatus> = {
-    quote_pending: { statusKey: "quote_pending", label: "Quote pending", colorKey: "gold", helperText: "Waiting for taxi partner quote", ctaLabel: "Open pod", isActionNeeded: false },
-    quote_ready: { statusKey: "quote_ready", label: "Quote ready", colorKey: "cyan", helperText: "Review the taxi partner quote", ctaLabel: "Review quote", isActionNeeded: true },
-    quote_deadline_soon: { statusKey: "quote_ready", label: "Quote ready", colorKey: "cyan", helperText: "Review the taxi partner quote soon", ctaLabel: "Review quote", isActionNeeded: true },
-    late_confirmation: { statusKey: "quote_ready", label: "Quote ready", colorKey: "cyan", helperText: "Review the taxi partner quote soon", ctaLabel: "Review quote", isActionNeeded: true },
-    completed: { statusKey: "completed", label: "Completed", colorKey: "green", helperText: "Ride completed", ctaLabel: "Open pod", isActionNeeded: false },
-    cancelled: { statusKey: "cancelled", label: "Cancelled", colorKey: "red", helperText: "This pod was cancelled", ctaLabel: "Open pod", isActionNeeded: false },
-    quote_expired: { statusKey: "expired", label: "Expired", colorKey: "gray", helperText: "Taxi partner quote expired", ctaLabel: "Open pod", isActionNeeded: false },
-    expired: { statusKey: "expired", label: "Expired", colorKey: "gray", helperText: "This pod expired", ctaLabel: "Open pod", isActionNeeded: false },
-    dispute_review: { statusKey: "under_review", label: "Under review", colorKey: "purple", helperText: "RidePod is reviewing this pod", ctaLabel: "View review", isActionNeeded: true },
+    quote_pending: { statusKey: "quote_pending", label: "Waiting for quote", colorKey: "cyan", helperText: "Waiting for taxi partner quote", ctaLabel: "View details", isActionNeeded: false },
+    quote_ready: { statusKey: "quote_ready", label: "Action needed", colorKey: "gold", helperText: "Review the taxi partner quote", ctaLabel: "View details", isActionNeeded: true },
+    quote_deadline_soon: { statusKey: "quote_ready", label: "Action needed", colorKey: "gold", helperText: "Review the taxi partner quote soon", ctaLabel: "View details", isActionNeeded: true },
+    late_confirmation: { statusKey: "quote_ready", label: "Action needed", colorKey: "gold", helperText: "Review the taxi partner quote soon", ctaLabel: "View details", isActionNeeded: true },
+    all_guests_accepted: { statusKey: "waiting_for_partner", label: "Waiting for taxi partner", colorKey: "cyan", helperText: "Waiting for taxi partner", ctaLabel: "View details", isActionNeeded: false },
+    quote_accepted: { statusKey: "waiting_for_riders", label: "Waiting for riders", colorKey: "cyan", helperText: "Waiting for riders", ctaLabel: "View details", isActionNeeded: false },
+    waiting_for_guests: { statusKey: "waiting_for_riders", label: "Waiting for riders", colorKey: "cyan", helperText: "Waiting for riders", ctaLabel: "View details", isActionNeeded: false },
+    ready_for_pickup: { statusKey: "ready_for_pickup", label: "Ready for pickup", colorKey: "green", helperText: "Ready for pickup", ctaLabel: "View details", isActionNeeded: false },
+    at_pickup: { statusKey: "ready_for_pickup", label: "Ready for pickup", colorKey: "green", helperText: "Ready for pickup", ctaLabel: "View details", isActionNeeded: false },
+    ride_started: { statusKey: "ready_for_pickup", label: "Ready for pickup", colorKey: "green", helperText: "Ride started", ctaLabel: "View details", isActionNeeded: false },
+    completed: { statusKey: "completed", label: "Completed", colorKey: "green", helperText: "Ride completed", ctaLabel: "View details", isActionNeeded: false },
+    cancelled: { statusKey: "cancelled", label: "Cancelled", colorKey: "red", helperText: "This pod was cancelled", ctaLabel: "View details", isActionNeeded: false },
+    quote_expired: { statusKey: "expired", label: "Expired", colorKey: "gray", helperText: "Taxi partner quote expired", ctaLabel: "View details", isActionNeeded: false },
+    expired: { statusKey: "expired", label: "Expired", colorKey: "gray", helperText: "This pod expired", ctaLabel: "View details", isActionNeeded: false },
+    dispute_review: { statusKey: "needs_review", label: "Action needed", colorKey: "gold", helperText: "Review updated details", ctaLabel: "View details", isActionNeeded: true },
   };
 
   return taxiStatus[pod.status] ?? {
     statusKey: "upcoming",
     label: "Upcoming",
-    colorKey: "blue",
+    colorKey: "cyan",
     helperText: "Upcoming taxi pod",
-    ctaLabel: "Open pod",
+    ctaLabel: "View details",
     isActionNeeded: false,
   };
 }
@@ -280,29 +286,29 @@ export function rideTypeLabel(ride: CalendarRide) {
 
 export function rideStatusLabel(status: RideStatus) {
   const labels: Record<RideStatus, string> = {
-    forming: "Forming",
-    minimum_reached: "Minimum reached",
-    confirm_details: "Confirm details",
+    forming: "Upcoming",
+    minimum_reached: "Ready to gather",
+    confirm_details: "Action needed",
     upcoming: "Upcoming",
-    settlement_pending: "Settlement pending",
+    settlement_pending: "Action needed",
     cancelled: "Cancelled",
     expired: "Expired",
-    issue_reported: "Issue reported",
-    seat_locked: "Seat locked",
+    issue_reported: "Action needed",
+    seat_locked: "Upcoming",
     quote_pending: "Waiting for quote",
-    quote_ready: "Quote ready",
-    quote_deadline_soon: "Deadline soon",
+    quote_ready: "Action needed",
+    quote_deadline_soon: "Action needed",
     quote_expired: "Quote expired",
-    late_confirmation: "Late confirmation",
-    too_late_to_confirm: "Too late to confirm",
-    all_guests_accepted: "All guests accepted",
-    quote_accepted: "Quote accepted",
-    waiting_for_guests: "Waiting for guests",
+    late_confirmation: "Action needed",
+    too_late_to_confirm: "Expired",
+    all_guests_accepted: "Waiting for taxi partner",
+    quote_accepted: "Waiting for riders",
+    waiting_for_guests: "Waiting for riders",
     ready_for_pickup: "Ready for pickup",
     at_pickup: "At pickup",
     ride_started: "Ride started",
     completed: "Completed",
-    dispute_review: "Dispute review",
+    dispute_review: "Action needed",
   };
 
   return labels[status];
