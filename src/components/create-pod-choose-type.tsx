@@ -4361,7 +4361,7 @@ function PeopleVehicleStep({
                   ? "whitespace-nowrap text-[28px] min-[390px]:text-[30px]"
                   : isRideCategoryPage
                     ? "mt-7 whitespace-nowrap text-[27px] min-[390px]:text-[31px]"
-                    : "text-[30px]",
+                    : "whitespace-nowrap text-[25px] min-[390px]:text-[27px]",
               )}
             >
               {isTaxiFlow && taxiDetailsPage === "needs"
