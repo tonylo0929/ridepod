@@ -4353,30 +4353,35 @@ function PeopleVehicleStep({
         <section className={cn("people-vehicle-content flex min-h-0 flex-col px-6 pb-10 pt-8", usesSplitTaxiLayout && "taxi-selector-content", isRideCategoryPage && "ride-category-content", (isRideAppProviderPage || isSelfSettleDetailsPage) && "self-settle-details-content")}>
           <div className={cn("text-center", isRideCategoryPage && "text-left")}>
             <ScheduleTypeEyebrow podType={podType} />
-            <h1
-              className={cn(
-                "font-black leading-tight text-[var(--rp-text)]",
-                isTaxiTypePage
-                  ? "whitespace-nowrap text-[28px] min-[390px]:text-[30px]"
-                  : isRideCategoryPage
-                    ? "mt-7 whitespace-nowrap text-[27px] min-[390px]:text-[31px]"
-                    : "whitespace-nowrap text-[25px] min-[390px]:text-[27px]",
-              )}
-            >
-              {isTaxiFlow && taxiDetailsPage === "needs"
-                ? "Luggage"
-                : isWhoCanJoinPage
-                  ? "Who can join?"
-                : isRideAppProviderPage
-                  ? "Which ride app?"
-                : isSelfSettleDetailsPage
-                  ? "Ride app self-settle"
-                : isTaxiFlow && taxiDetailsPage === "partner"
-                  ? "Taxi partner preference"
-                : isTaxiFlow && taxiDetailsPage === "type"
-                  ? "Choose Taxi Type"
-                  : "How do you want to ride?"}
-            </h1>
+            {((isTaxiFlow && taxiDetailsPage === "needs") ||
+              isWhoCanJoinPage ||
+              isRideAppProviderPage ||
+              isSelfSettleDetailsPage ||
+              (isTaxiFlow && taxiDetailsPage === "partner") ||
+              (isTaxiFlow && taxiDetailsPage === "type")) ? (
+              <h1
+                className={cn(
+                  "font-black leading-tight text-[var(--rp-text)]",
+                  isTaxiTypePage
+                    ? "whitespace-nowrap text-[28px] min-[390px]:text-[30px]"
+                    : isRideCategoryPage
+                      ? "mt-7 whitespace-nowrap text-[27px] min-[390px]:text-[31px]"
+                      : "whitespace-nowrap text-[25px] min-[390px]:text-[27px]",
+                )}
+              >
+                {isTaxiFlow && taxiDetailsPage === "needs"
+                  ? "Luggage"
+                  : isWhoCanJoinPage
+                    ? "Who can join?"
+                  : isRideAppProviderPage
+                    ? "Which ride app?"
+                  : isSelfSettleDetailsPage
+                    ? "Ride app self-settle"
+                  : isTaxiFlow && taxiDetailsPage === "partner"
+                    ? "Taxi partner preference"
+                  : "Choose Taxi Type"}
+              </h1>
+            ) : null}
             {!isRideCategoryPage ? (
               <p className="mx-auto mt-2 max-w-[280px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]">
                 {isTaxiFlow && taxiDetailsPage === "needs"
