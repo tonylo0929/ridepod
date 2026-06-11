@@ -55,7 +55,7 @@ type ProfileFormState = {
   communityId: string;
 };
 
-type ProfileTab = "profile" | "trust";
+type ProfileTab = "profile" | "trust" | "account";
 type EditableProfileField = "displayName" | "phone" | "communityId";
 
 const profileTabs: Array<{
@@ -65,6 +65,7 @@ const profileTabs: Array<{
 }> = [
   { id: "profile", label: "Profile", icon: UserRound },
   { id: "trust", label: "Trust", icon: ShieldCheck },
+  { id: "account", label: "Account", icon: Mail },
 ];
 
 function formStateFromProfile(profile: RidePodProfileRow): ProfileFormState {
@@ -361,7 +362,7 @@ export default function ProfilePage() {
       <ProfileTabNav activeTab={activeTab} onChange={setActiveTab} />
 
       {activeTab === "profile" ? (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+        <div className="grid gap-4">
           <ProfileCard>
             <div className="flex items-center justify-between gap-3">
               <SectionTitle title="Basic profile" icon={UserRound} />
@@ -421,21 +422,23 @@ export default function ProfilePage() {
               {saveError ? <p className="text-sm font-black text-[var(--rp-danger)]">{saveError}</p> : null}
             </div>
           </ProfileCard>
+        </div>
+      ) : null}
 
-          <div className="grid gap-4">
-            <ProfileCard>
-              <SectionTitle title="Account" icon={Mail} />
-              <dl className="mt-4 grid gap-3 text-sm">
-                <KeyValue label="Email" value={email} />
-              </dl>
-            </ProfileCard>
-            <VerificationCard
-              profile={profile}
-              hasCommunity={hasCommunity}
-              requestingReview={requestingReview}
-              onRequestReview={() => setRequestReviewOpen(true)}
-            />
-          </div>
+      {activeTab === "account" ? (
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+          <ProfileCard>
+            <SectionTitle title="Account" icon={Mail} />
+            <dl className="mt-4 grid gap-3 text-sm">
+              <KeyValue label="Email" value={email} />
+            </dl>
+          </ProfileCard>
+          <VerificationCard
+            profile={profile}
+            hasCommunity={hasCommunity}
+            requestingReview={requestingReview}
+            onRequestReview={() => setRequestReviewOpen(true)}
+          />
         </div>
       ) : null}
 
@@ -517,7 +520,7 @@ function ProfileTabNav({
   return (
     <nav
       aria-label="Profile sections"
-      className="grid grid-cols-2 gap-2 rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-2 shadow-[var(--rp-shadow-soft)]"
+      className="grid grid-cols-3 gap-2 rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-2 shadow-[var(--rp-shadow-soft)]"
     >
       {profileTabs.map((tab) => {
         const Icon = tab.icon;
