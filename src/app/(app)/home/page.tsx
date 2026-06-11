@@ -1459,8 +1459,8 @@ export default function HomePage() {
         }
       : {
           image: "/images/ridepod/home-taxi-harbor-night.png",
-          mobilePosition: "60% top",
-          mobileSize: "auto 235px",
+          mobilePosition: "58% top",
+          mobileSize: "auto 100%",
           desktopPosition: "center top",
           desktopSize: "100% auto",
           overlay:
