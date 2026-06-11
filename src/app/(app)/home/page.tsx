@@ -1450,13 +1450,11 @@ export default function HomePage() {
     rideModeFilter === "ride_app"
       ? {
           image: "/images/ridepod/home-ride-app-blue.png",
-          position: "64% top",
           overlay:
             "linear-gradient(90deg,rgba(5,11,18,0.9) 0%,rgba(5,11,18,0.54) 34%,rgba(5,11,18,0.1) 72%),linear-gradient(180deg,rgba(5,11,18,0.02) 0%,rgba(5,11,18,0.1) 42%,rgba(5,11,18,0.62) 80%,var(--rp-bg) 100%)",
         }
       : {
           image: "/images/ridepod/home-taxi-gold.png",
-          position: "60% top",
           overlay:
             "linear-gradient(90deg,rgba(5,11,18,0.88) 0%,rgba(5,11,18,0.5) 34%,rgba(5,11,18,0.08) 72%),linear-gradient(180deg,rgba(5,11,18,0.12) 0%,rgba(5,11,18,0.12) 42%,rgba(5,11,18,0.66) 80%,var(--rp-bg) 100%)",
         };
@@ -1466,10 +1464,22 @@ export default function HomePage() {
       <section className="relative overflow-hidden px-4 pb-7 pt-7 sm:px-6 lg:px-10">
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-cover transition-[background-image,background-position] duration-500"
+          className="absolute inset-0 bg-[#04101a]"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-no-repeat transition-[background-image] duration-500"
           style={{
-            backgroundImage: `${heroBackground.overlay},url('${heroBackground.image}')`,
-            backgroundPosition: heroBackground.position,
+            backgroundImage: `url('${heroBackground.image}')`,
+            backgroundPosition: "center top",
+            backgroundSize: "100% auto",
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0"
+          style={{
+            backgroundImage: heroBackground.overlay,
           }}
         />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,transparent,var(--rp-bg))]" />
