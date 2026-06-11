@@ -71,7 +71,7 @@ const profileTabs: Array<{
 function formStateFromProfile(profile: RidePodProfileRow): ProfileFormState {
   return {
     displayName: profile.display_name ?? "",
-    phone: profile.phone ?? "",
+    phone: formatHongKongPhoneDisplay(profile.phone ?? ""),
     genderIdentity: normalizeGenderIdentity(profile.gender_identity),
     communityId: profile.community_id ?? "",
   };
@@ -94,6 +94,21 @@ function initialsFor(name: string) {
     .join("");
 
   return initials.toUpperCase() || "RP";
+}
+
+function formatHongKongPhoneDisplay(phone: string) {
+  const trimmed = phone.trim();
+  const compact = trimmed.replace(/\s+/g, "");
+
+  if (/^\+852\d{8}$/.test(compact)) {
+    return `+852 ${compact.slice(4)}`;
+  }
+
+  if (/^\d{8}$/.test(compact)) {
+    return `+852 ${compact}`;
+  }
+
+  return trimmed;
 }
 
 function trustLevel(profile: RidePodProfileRow | null) {
@@ -166,7 +181,7 @@ export default function ProfilePage() {
 
     const result = await updateCurrentProfile({
       displayName: form.displayName,
-      phone: form.phone,
+      phone: formatHongKongPhoneDisplay(form.phone),
       communityId: form.communityId,
       avatarUrl: profile?.avatar_url ?? null,
     });

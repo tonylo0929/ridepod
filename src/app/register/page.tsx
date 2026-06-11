@@ -133,7 +133,7 @@ function normalizeHongKongPhone(phone: string) {
 }
 
 function formatHongKongPhone(phone: string) {
-  return `+852${normalizeHongKongPhone(phone)}`;
+  return `+852 ${normalizeHongKongPhone(phone)}`;
 }
 
 function getPhoneValidationError(phone: string) {
