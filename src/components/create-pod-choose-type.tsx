@@ -875,53 +875,72 @@ function CreatePodStepper({
   currentStep: number;
   stepLabels?: string[];
 }) {
-  const progressWidth = `${(currentStep / (stepLabels.length - 1)) * 84}%`;
+  const activeStepLabel = stepLabels[currentStep] ?? stepLabels[0] ?? "Create pod";
 
   return (
-    <nav aria-label="Create pod progress" className="mx-auto mt-8 w-full max-w-[340px] px-2">
-      <ol
-        className={cn(
-          "relative grid items-center",
-          stepLabels.length === 7 ? "grid-cols-7" : "grid-cols-6",
-        )}
-      >
-        <div
-          aria-hidden="true"
-          className="absolute left-[8%] right-[8%] top-1/2 h-px -translate-y-1/2 bg-[var(--rp-border)]"
-        />
-        <div
-          aria-hidden="true"
-          className="absolute left-[8%] top-1/2 h-px -translate-y-1/2 bg-[var(--rp-primary)] transition-all"
-          style={{ width: progressWidth }}
-        />
-        {stepLabels.map((step, index) => {
-          const active = index === currentStep;
-          const completed = index < currentStep;
+    <nav aria-label="Create pod progress" className="mx-auto mt-6 w-full max-w-[342px]">
+      <div className="rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_88%,transparent),rgba(5,12,20,0.72))] p-3 shadow-[0_18px_42px_rgba(0,0,0,0.18)]">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
+            Step {currentStep + 1} of {stepLabels.length}
+          </p>
+          <p className="min-w-0 truncate text-sm font-black text-[var(--rp-text)]">
+            {activeStepLabel}
+          </p>
+        </div>
 
-          return (
-            <li key={step} className="relative grid place-items-center">
-              <div
-                aria-current={active ? "step" : undefined}
-                className={cn(
-                  "relative z-10 grid h-8 w-8 place-items-center rounded-full border text-sm font-black",
-                  active
-                    ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)] shadow-[0_0_18px_color-mix(in_srgb,var(--rp-primary)_42%,transparent)]"
-                    : completed
-                      ? "border-[var(--rp-primary)] bg-[var(--rp-card)] text-[var(--rp-primary)]"
-                    : "border-[var(--rp-border)] bg-[var(--rp-card)] text-[var(--rp-muted)]",
-                )}
-                title={step}
-              >
-                {completed ? (
-                  <Check className="h-4 w-4" aria-hidden="true" />
-                ) : (
-                  index + 1
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ol>
+        <ol className="mt-3 grid grid-flow-col gap-1.5" style={{ gridTemplateColumns: `repeat(${stepLabels.length}, minmax(0, 1fr))` }}>
+          {stepLabels.map((step, index) => {
+            const active = index === currentStep;
+            const completed = index < currentStep;
+
+            return (
+              <li key={step} className="min-w-0">
+                <div
+                  aria-current={active ? "step" : undefined}
+                  title={step}
+                  className={cn(
+                    "h-2 rounded-full transition",
+                    completed
+                      ? "bg-[var(--rp-primary)]"
+                      : active
+                        ? "bg-[var(--rp-primary)] shadow-[0_0_18px_color-mix(in_srgb,var(--rp-primary)_46%,transparent)]"
+                        : "bg-[var(--rp-card-muted)]",
+                  )}
+                />
+              </li>
+            );
+          })}
+        </ol>
+
+        <ol
+          className="mt-3 grid items-center gap-1.5"
+          style={{ gridTemplateColumns: `repeat(${stepLabels.length}, minmax(0, 1fr))` }}
+        >
+          {stepLabels.map((step, index) => {
+            const active = index === currentStep;
+            const completed = index < currentStep;
+
+            return (
+              <li key={`${step}-marker`} className="grid min-w-0 place-items-center">
+                <span
+                  aria-label={`${step}: ${completed ? "complete" : active ? "current" : "upcoming"}`}
+                  className={cn(
+                    "grid h-8 w-full min-w-0 max-w-10 place-items-center rounded-full border text-xs font-black transition",
+                    active
+                      ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)] shadow-[0_0_18px_color-mix(in_srgb,var(--rp-primary)_42%,transparent)]"
+                      : completed
+                        ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_10%,var(--rp-card))] text-[var(--rp-primary)]"
+                        : "border-[var(--rp-border)] bg-[var(--rp-card)] text-[var(--rp-muted)]",
+                  )}
+                >
+                  {completed ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : index + 1}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
     </nav>
   );
 }
