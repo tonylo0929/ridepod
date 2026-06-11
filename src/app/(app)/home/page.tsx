@@ -1446,13 +1446,31 @@ export default function HomePage() {
     deadlineFilter !== "any" ||
     seatFilter !== "any" ||
     ownershipFilter !== "all";
+  const heroBackground =
+    rideModeFilter === "ride_app"
+      ? {
+          image: "/images/ridepod/home-ride-app-blue.png",
+          position: "64% top",
+          overlay:
+            "linear-gradient(90deg,rgba(5,11,18,0.9) 0%,rgba(5,11,18,0.54) 34%,rgba(5,11,18,0.1) 72%),linear-gradient(180deg,rgba(5,11,18,0.02) 0%,rgba(5,11,18,0.1) 42%,rgba(5,11,18,0.62) 80%,var(--rp-bg) 100%)",
+        }
+      : {
+          image: "/images/ridepod/home-taxi-gold.png",
+          position: "60% top",
+          overlay:
+            "linear-gradient(90deg,rgba(5,11,18,0.88) 0%,rgba(5,11,18,0.5) 34%,rgba(5,11,18,0.08) 72%),linear-gradient(180deg,rgba(5,11,18,0.12) 0%,rgba(5,11,18,0.12) 42%,rgba(5,11,18,0.66) 80%,var(--rp-bg) 100%)",
+        };
 
   return (
     <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-1.25rem)] overflow-hidden pb-2 sm:-mx-6 lg:-mx-10 lg:-mt-8">
       <section className="relative overflow-hidden px-4 pb-7 pt-7 sm:px-6 lg:px-10">
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,11,18,0.88)_0%,rgba(5,11,18,0.54)_34%,rgba(5,11,18,0.12)_72%),linear-gradient(180deg,rgba(5,11,18,0.08)_0%,rgba(5,11,18,0.08)_42%,rgba(5,11,18,0.62)_80%,var(--rp-bg)_100%),url('/images/ridepod/home-shared-taxi-night.png')] bg-cover bg-[70%_top]"
+          className="absolute inset-0 bg-cover transition-[background-image,background-position] duration-500"
+          style={{
+            backgroundImage: `${heroBackground.overlay},url('${heroBackground.image}')`,
+            backgroundPosition: heroBackground.position,
+          }}
         />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,transparent,var(--rp-bg))]" />
 
