@@ -1458,7 +1458,7 @@ export default function HomePage() {
             "linear-gradient(90deg,rgba(5,11,18,0.9) 0%,rgba(5,11,18,0.54) 34%,rgba(5,11,18,0.1) 72%),linear-gradient(180deg,rgba(5,11,18,0.02) 0%,rgba(5,11,18,0.1) 42%,rgba(5,11,18,0.62) 80%,var(--rp-bg) 100%)",
         }
       : {
-          image: "/images/ridepod/home-taxi-gold.png",
+          image: "/images/ridepod/home-taxi-harbor-night.png",
           mobilePosition: "60% top",
           mobileSize: "auto 235px",
           desktopPosition: "center top",
