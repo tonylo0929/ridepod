@@ -1527,8 +1527,8 @@ export default function HomePage() {
         }
       : {
           image: "/images/ridepod/home-taxi-harbor-night.png",
-          mobilePosition: "64% -148px",
-          mobileSize: "auto 500px",
+          mobilePosition: "72% -218px",
+          mobileSize: "auto 540px",
           mobileBackdropPosition: "58% top",
           mobileBackdropSize: "auto 100%",
           mobileBackdropOpacity: 1,
@@ -1546,6 +1546,7 @@ export default function HomePage() {
           className="absolute inset-0 bg-[#04101a]"
         />
         <div
+          key={`${heroBackground.image}-mobile-backdrop`}
           aria-hidden="true"
           className="absolute inset-0 bg-no-repeat transition-[background-image] duration-500 min-[720px]:hidden"
           style={{
@@ -1556,6 +1557,7 @@ export default function HomePage() {
           }}
         />
         <div
+          key={`${heroBackground.image}-mobile-focus`}
           aria-hidden="true"
           className="absolute inset-0 bg-no-repeat transition-[background-image] duration-500 min-[720px]:hidden"
           style={{
@@ -1565,6 +1567,7 @@ export default function HomePage() {
           }}
         />
         <div
+          key={`${heroBackground.image}-desktop`}
           aria-hidden="true"
           className="absolute inset-0 hidden bg-no-repeat transition-[background-image] duration-500 min-[720px]:block"
           style={{
