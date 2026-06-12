@@ -6379,9 +6379,6 @@ function ReviewPodStep({
             <h1 className="text-[26px] font-black leading-tight text-[var(--rp-text)]">
               Final check
             </h1>
-            <p className="mx-auto mt-2 max-w-[280px] text-center text-sm font-medium text-[var(--rp-muted)]">
-              Confirm your shared taxi pod before creating it.
-            </p>
           </section>
         )}
 
