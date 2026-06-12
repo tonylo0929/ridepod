@@ -4422,7 +4422,7 @@ function PeopleVehicleStep({
             ) : null}
           </div>
 
-          <div className={cn("mt-7", isRideCategoryPage && "mt-14")}>
+          <div className={isRideCategoryPage ? "mt-6" : "mt-7"}>
             {isTaxiFlow && taxiDetailsPage === "needs" ? (
               <TaxiNeedsSelector
                 peopleVehicle={peopleVehicle}
