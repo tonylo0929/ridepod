@@ -6788,14 +6788,6 @@ function SuccessStep({
               You can track this pod in My Ride. Its calendar color updates as the status changes.
             </p>
           ) : null}
-          <button
-            type="button"
-            onClick={() => undefined}
-            className="mx-auto flex min-h-11 items-center justify-center gap-2 rounded-full px-4 text-base font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)]"
-          >
-            <CalendarPlus className="h-5 w-5" />
-            Add to phone calendar
-          </button>
         </div>
       </main>
     </>

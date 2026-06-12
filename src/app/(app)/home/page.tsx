@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { type ReactNode, useMemo, useState } from "react";
+import { RidePodAvatar, useRidePodAvatarPreference, type RidePodAvatarPreference } from "@/components/animal-avatar";
 import { cn } from "@/components/ui";
 import {
   districtOptions,
@@ -47,6 +48,13 @@ type FareEstimateFilter = "any" | "estimate_available" | "estimate_pending";
 type DeadlineFilter = "any" | "joining_now" | "expiring_soon" | "minimum_reached";
 type SeatFilter = "any" | "one_left" | "two_plus_available" | "minimum_not_reached" | "minimum_reached";
 type OwnershipFilter = "all" | "mine" | "joined";
+
+type CurrentUserAvatar = {
+  avatarPreference: RidePodAvatarPreference;
+  avatarUrl?: string | null;
+  displayName: string;
+  initials: string;
+};
 
 const categoryCards: Array<{ id: HomeTab; label: string; icon: typeof LayoutGrid; fallbackCount: number }> = [
   { id: "all", label: "All", icon: LayoutGrid, fallbackCount: 128 },
@@ -532,6 +540,18 @@ function getProfileInitial(name: string | null | undefined) {
   return name?.trim().charAt(0).toUpperCase() || "B";
 }
 
+function getProfileInitials(name: string | null | undefined) {
+  const initials = name
+    ?.split(" ")
+    .map((part) => part.trim()[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  return initials || getProfileInitial(name);
+}
+
 function isRideAppSelfSettle(ride: HomeRide) {
   return ride.rideCategory === "ride_app_self_settle" || ride.rideService === "ride_app" || ride.taxiType.toLowerCase().includes("ride app");
 }
@@ -667,8 +687,9 @@ function getHomeRideTrustBadge(summary: RideAppTrustSummary) {
   };
 }
 
-function RideProfileAvatar({ ride }: { ride: HomeRide }) {
+function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; currentUserAvatar?: CurrentUserAvatar | null }) {
   const isRideApp = isRideAppSelfSettle(ride);
+  const showCurrentUserAvatar = ride.currentUserRole === "host" && Boolean(currentUserAvatar);
   const Icon = isRideApp
     ? Smartphone
     : rideMatchesTab("quote_ready", ride)
@@ -683,13 +704,23 @@ function RideProfileAvatar({ ride }: { ride: HomeRide }) {
     <div
       aria-label={`${ride.hostName || "Profile"} profile`}
       className={cn(
-        "relative grid h-12 w-12 shrink-0 place-items-center rounded-full border text-2xl font-black shadow-[0_14px_30px_rgba(0,0,0,0.28)] min-[560px]:h-16 min-[560px]:w-16 min-[560px]:text-3xl",
+        "relative grid h-12 w-12 shrink-0 place-items-center overflow-visible rounded-full border text-2xl font-black shadow-[0_14px_30px_rgba(0,0,0,0.28)] min-[560px]:h-16 min-[560px]:w-16 min-[560px]:text-3xl",
         isRideApp
           ? "border-sky-300/50 bg-[radial-gradient(circle_at_35%_28%,rgba(56,189,248,0.2),var(--rp-card-muted)_74%)] text-sky-300"
           : "border-[color-mix(in_srgb,var(--rp-primary)_46%,var(--rp-border))] bg-[radial-gradient(circle_at_35%_28%,color-mix(in_srgb,var(--rp-primary)_20%,transparent),var(--rp-card-muted)_74%)] text-[var(--rp-primary)]",
       )}
     >
-      {getProfileInitial(ride.hostName)}
+      {showCurrentUserAvatar && currentUserAvatar ? (
+        <RidePodAvatar
+          avatarUrl={currentUserAvatar.avatarUrl}
+          avatarPreference={currentUserAvatar.avatarPreference}
+          initials={currentUserAvatar.initials}
+          displayName={currentUserAvatar.displayName}
+          className="h-full w-full rounded-full text-xl min-[560px]:text-2xl"
+        />
+      ) : (
+        getProfileInitial(ride.hostName)
+      )}
       <span
         className={cn(
           "absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full border bg-[var(--rp-shell)] shadow-[0_8px_16px_rgba(0,0,0,0.24)] min-[560px]:h-6 min-[560px]:w-6",
@@ -802,7 +833,7 @@ function RideMetaTags({ ride }: { ride: HomeRide }) {
   );
 }
 
-function HomeRideCard({ ride }: { ride: HomeRide }) {
+function HomeRideCard({ ride, currentUserAvatar }: { ride: HomeRide; currentUserAvatar: CurrentUserAvatar }) {
   const isRideApp = isRideAppSelfSettle(ride);
   const currentUserRelationship = getCurrentUserRideRelationship(ride);
   const rideAppEstimateDisplay = getRideAppTotalEstimateDisplay(ride);
@@ -870,7 +901,7 @@ function HomeRideCard({ ride }: { ride: HomeRide }) {
       <div className={cn("grid gap-3 min-[560px]:grid-cols-[minmax(0,1fr)_minmax(152px,184px)] min-[560px]:items-stretch", currentUserRelationship && "mt-4")}>
         <div className="grid min-w-0 gap-3">
           <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-            <RideProfileAvatar ride={ride} />
+            <RideProfileAvatar ride={ride} currentUserAvatar={currentUserAvatar} />
 
             <div className="min-w-0">
               <h2 className="text-balance text-base font-black leading-tight text-[var(--rp-text)] min-[390px]:text-lg min-[760px]:text-xl">
@@ -1235,6 +1266,17 @@ const initialToDistrict = "All districts";
 
 export default function HomePage() {
   const { user, profile } = useAuth();
+  const displayName = user ? profile?.display_name ?? profile?.preferred_name ?? "RidePod account" : "Guest rider";
+  const [avatarPreference] = useRidePodAvatarPreference(profile?.id);
+  const currentUserAvatar = useMemo(
+    () => ({
+      avatarPreference,
+      avatarUrl: profile?.avatar_url,
+      displayName,
+      initials: getProfileInitials(displayName),
+    }),
+    [avatarPreference, displayName, profile?.avatar_url],
+  );
   const createdHomeRides = useCreatedHomeRides();
   const [fromDistrict, setFromDistrict] = useState(initialFromDistrict);
   const [toDistrict, setToDistrict] = useState(initialToDistrict);
@@ -1588,7 +1630,7 @@ export default function HomePage() {
 
         <div className="grid gap-3">
           {visibleRides.length > 0 ? (
-            visibleRides.map((ride) => <HomeRideCard key={ride.id} ride={ride} />)
+            visibleRides.map((ride) => <HomeRideCard key={ride.id} ride={ride} currentUserAvatar={currentUserAvatar} />)
           ) : (
             <EmptyRides tab={activeTab} rideModeFilter={rideModeFilter} hasAnyRides={filteredRides.length > 0} />
           )}
