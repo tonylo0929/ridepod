@@ -1065,7 +1065,7 @@ function routePointSummary(value: string, fallback: string) {
 }
 
 function getMapboxAccessToken() {
-  return process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim() ?? "";
+  return process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim() || process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim() || "";
 }
 
 function getMapboxFeatureCoordinates(feature: MapboxFeature): RouteCoordinates | null {
@@ -1148,6 +1148,55 @@ function makeDirectionsUrl(pickup: RouteCoordinates, dropoff: RouteCoordinates, 
   });
 
   return `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?${params.toString()}`;
+}
+
+function lngLatToTile(lng: number, lat: number, zoom: number) {
+  const scale = 2 ** zoom;
+  const x = Math.floor(((lng + 180) / 360) * scale);
+  const latRad = (lat * Math.PI) / 180;
+  const y = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * scale);
+
+  return { x, y };
+}
+
+function getFallbackMapTiles() {
+  const zoom = 12;
+  const centerTile = lngLatToTile(114.1694, 22.3193, zoom);
+
+  return [-1, 0, 1].flatMap((row) =>
+    [-1, 0, 1].map((column) => ({
+      key: `${row}-${column}`,
+      url: `https://basemaps.cartocdn.com/dark_all/${zoom}/${centerTile.x + column}/${centerTile.y + row}.png`,
+    })),
+  );
+}
+
+const fallbackMapTiles = getFallbackMapTiles();
+
+function FallbackRouteMap() {
+  return (
+    <div className="absolute inset-0 overflow-hidden bg-[#07111d]">
+      <div className="absolute left-1/2 top-1/2 grid aspect-square w-[112%] min-w-[330px] -translate-x-1/2 -translate-y-1/2 grid-cols-3 grid-rows-3 opacity-85 saturate-[1.1]">
+        {fallbackMapTiles.map((tile) => (
+          <span
+            key={tile.key}
+            className="bg-cover bg-center"
+            style={{ backgroundImage: `url('${tile.url}')` }}
+          />
+        ))}
+      </div>
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_42%,rgba(86,217,239,0.14),transparent_34%),linear-gradient(180deg,rgba(2,9,18,0.18),rgba(2,9,18,0.54))]" />
+      <div className="absolute left-[45%] top-[42%] grid h-10 w-10 place-items-center rounded-full border border-[#f6c453]/70 bg-[#07111d]/80 text-[#f6c453] shadow-[0_0_28px_rgba(246,196,83,0.22)] backdrop-blur">
+        <MapPin className="h-5 w-5" />
+      </div>
+      <div className="absolute left-3 top-3 rounded-full border border-white/10 bg-[#06111d]/82 px-3 py-1 text-[11px] font-black text-slate-100 backdrop-blur">
+        Hong Kong map preview
+      </div>
+      <div className="absolute bottom-1.5 right-2 rounded bg-[#06111d]/72 px-1.5 py-0.5 text-[9px] font-bold text-slate-300">
+        © OpenStreetMap © CARTO
+      </div>
+    </div>
+  );
 }
 
 function RouteJourneyPreview({
@@ -1450,15 +1499,7 @@ function RouteJourneyPreview({
             </div>
           </>
         ) : (
-          <div className="absolute inset-0 grid place-items-center bg-[radial-gradient(circle_at_top,#10263a,#06111d_64%)] px-5 text-center">
-            <div>
-              <MapPin className="mx-auto h-7 w-7 text-[var(--rp-primary)]" />
-              <p className="mt-3 text-sm font-black text-[#f8fafc]">Live map preview unavailable</p>
-              <p className="mt-1 text-xs font-bold leading-5 text-slate-400">
-                Map search will be enabled soon. Manual entry still works.
-              </p>
-            </div>
-          </div>
+          <FallbackRouteMap />
         )}
       </div>
 
@@ -1628,7 +1669,7 @@ function MapboxPlaceField({
           onChange={onChange}
         />
         <p className="px-1 text-xs font-bold leading-5 text-slate-500">
-          Map search will be enabled soon. Manual entry still works.
+          Type the pickup or dropoff address manually.
         </p>
       </div>
     );
