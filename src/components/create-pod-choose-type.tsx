@@ -6715,11 +6715,6 @@ function PodCreatedSummaryCard({
           })}
         </dl>
       </section>
-      {isRideAppSelfSettle ? (
-        <p className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-          Riders join first as interest / seat hold. Chat opens after required riders confirm current details.
-        </p>
-      ) : null}
     </section>
   );
 }
