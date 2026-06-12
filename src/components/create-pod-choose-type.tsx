@@ -3954,8 +3954,8 @@ function RideAppBookingRulesStep({
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-7">
         <section className="text-center">
           <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Ride app</p>
-          <h1 className="mt-2 text-[26px] font-black leading-tight text-[var(--rp-text)]">
-            Booking & payment rules
+          <h1 className="mt-2 whitespace-nowrap text-[25px] font-black leading-tight text-[var(--rp-text)]">
+            Booking & Payment Rules
           </h1>
           <p className="mx-auto mt-2 max-w-[300px] text-sm font-medium leading-6 text-[var(--rp-muted)]">
             Set when the host should book and how riders will settle after the ride.
