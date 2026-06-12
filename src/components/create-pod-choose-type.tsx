@@ -4051,23 +4051,6 @@ function RideAppBookingRulesStep({
           ) : null}
         </section>
 
-        <section className="mt-4 rounded-[22px] border border-cyan-300/25 bg-cyan-300/10 p-4 shadow-[var(--rp-shadow-soft)]">
-          <div className="flex items-start gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cyan-300/30 bg-cyan-300/10 text-cyan-100">
-              <Info className="h-5 w-5" />
-            </span>
-            <div className="min-w-0">
-              <h2 className="text-lg font-black text-cyan-100">Optional fare estimate screenshot</h2>
-              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                Hosts may add a local/mock screenshot placeholder after creation. RidePod does not verify ride app screenshots.
-              </p>
-              <p className="mt-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-                Do not upload screenshots showing phone numbers, payment details, or private account info.
-              </p>
-            </div>
-          </div>
-        </section>
-
         <div className="mt-5">
           <CreatePodStepActions onBack={onBack} onContinue={onContinue} disabled={!canContinue} />
         </div>
