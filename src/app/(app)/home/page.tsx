@@ -16,6 +16,7 @@ import {
   SlidersHorizontal,
   Smartphone,
   Star,
+  UserRound,
   UsersRound,
   X,
 } from "lucide-react";
@@ -670,20 +671,34 @@ function getHomeRideTrustBadge(summary: RideAppTrustSummary) {
   if (rating !== null && summary.hostStats.hostRatingCount > 0) {
     return {
       tone: "rating" as const,
-      label: rating.toFixed(1),
+      label: `Host ${rating.toFixed(1)}`,
     };
   }
 
   if (summary.trustLevel === "New") {
     return {
-      tone: "new" as const,
-      label: "New",
+      tone: "new_host" as const,
+      label: "New host",
+    };
+  }
+
+  if (summary.trustLevel === "Recent issues") {
+    return {
+      tone: "warning" as const,
+      label: "Host issues",
+    };
+  }
+
+  if (summary.trustLevel === "Limited access") {
+    return {
+      tone: "warning" as const,
+      label: "Host limited",
     };
   }
 
   return {
-    tone: summary.warningLevel === "none" ? "level" as const : "warning" as const,
-    label: summary.trustLevel,
+    tone: "level" as const,
+    label: `${summary.trustLevel} host`,
   };
 }
 
@@ -914,14 +929,22 @@ function HomeRideCard({ ride, currentUserAvatar }: { ride: HomeRide; currentUser
                     "mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black",
                     rideAppTrustBadge.tone === "rating"
                       ? "border-amber-300/30 bg-amber-300/12 text-amber-100"
-                      : rideAppTrustBadge.tone === "warning"
-                        ? "border-rose-300/30 bg-rose-400/12 text-rose-100"
-                        : "border-sky-300/25 bg-sky-400/10 text-sky-100",
+                      : rideAppTrustBadge.tone === "new_host"
+                        ? "border-sky-300/35 bg-sky-400/12 text-sky-100"
+                        : rideAppTrustBadge.tone === "warning"
+                          ? "border-rose-300/30 bg-rose-400/12 text-rose-100"
+                          : "border-sky-300/25 bg-sky-400/10 text-sky-100",
                   )}
                 >
                   {rideAppTrustBadge.tone === "rating" ? (
                     <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
-                  ) : null}
+                  ) : rideAppTrustBadge.tone === "new_host" ? (
+                    <UserRound className="h-3.5 w-3.5 text-sky-200" />
+                  ) : rideAppTrustBadge.tone === "warning" ? (
+                    <ShieldCheck className="h-3.5 w-3.5 text-rose-100" />
+                  ) : (
+                    <ShieldCheck className="h-3.5 w-3.5 text-sky-200" />
+                  )}
                   <span className="truncate">{rideAppTrustBadge.label}</span>
                 </p>
               ) : null}
