@@ -757,13 +757,6 @@ export default function RegisterPage() {
               required
             />
 
-            <RegisterAvatarField
-              avatarPreference={avatarPreference}
-              displayName={displayName.trim() || accountName || "RidePod user"}
-              onChooseSticker={() => setAvatarPickerOpen(true)}
-              onUseInitials={() => setAvatarPreference({ avatarType: "initials", animalAvatarId: null })}
-            />
-
             <SelectField
               label="Gender / rider eligibility"
               helper="Used only for pod eligibility. Not shown publicly."
@@ -783,6 +776,13 @@ export default function RegisterPage() {
               RidePod does not collect ID documents during this beta registration. Rider eligibility details are not
               shown publicly.
             </p>
+
+            <RegisterAvatarField
+              avatarPreference={avatarPreference}
+              displayName={displayName.trim() || accountName || "RidePod user"}
+              onChooseSticker={() => setAvatarPickerOpen(true)}
+              onUseInitials={() => setAvatarPreference({ avatarType: "initials", animalAvatarId: null })}
+            />
 
             <button
               type="submit"
