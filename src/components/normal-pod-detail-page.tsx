@@ -1719,7 +1719,7 @@ export function PodStatusPanel({
               </span>
               <div className="min-w-0 text-center">
                 <h3 className="text-lg font-black text-white">{getPodStatusTitle(ride, chatAccess)}</h3>
-                <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                <p className="mx-auto mt-1 max-w-[280px] text-center text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
                   {getPodStatusSubtitle(ride, chatAccess)}
                 </p>
                 {deadlineState.status === "active" || deadlineState.status === "soon" ? (
