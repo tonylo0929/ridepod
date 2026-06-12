@@ -165,7 +165,7 @@ function initialsFor(name: string) {
 function FieldLabel({ label, helper }: { label: string; helper?: string }) {
   return (
     <span className="grid gap-1">
-      <span className="text-sm font-black text-[var(--rp-text)]">{label}</span>
+      <span className="text-sm font-black text-[var(--rp-primary)]">{label}</span>
       {helper ? <span className="text-xs font-bold leading-5 text-[var(--rp-muted)]">{helper}</span> : null}
     </span>
   );
@@ -654,7 +654,7 @@ export default function RegisterPage() {
           <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
             {accountType === "taxi_partner" ? <CarFront className="h-5 w-5" /> : <UserRound className="h-5 w-5" />}
           </span>
-          <h1 className="text-3xl font-black text-[var(--rp-text)]">
+          <h1 className="text-3xl font-black text-[var(--rp-primary)]">
             {step === "account_type"
               ? "Create your RidePod account"
               : accountType === "taxi_partner"
