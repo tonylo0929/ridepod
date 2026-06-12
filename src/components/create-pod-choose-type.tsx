@@ -2036,7 +2036,7 @@ function RouteStopsStep({
           </p>
         </section>
 
-        <div className="mt-5 grid grid-cols-[44px_1fr_44px] items-center gap-3 rounded-full border border-white/10 bg-[rgba(15,27,39,0.72)] p-1.5">
+        <div className="relative mt-5 flex items-center justify-between rounded-full border border-white/10 bg-[rgba(15,27,39,0.72)] p-1.5">
           <button
             type="button"
             aria-label="Previous route section"
@@ -2045,7 +2045,7 @@ function RouteStopsStep({
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <div className="text-center">
+          <div className="pointer-events-none absolute left-1/2 top-1/2 w-[calc(100%-7rem)] -translate-x-1/2 -translate-y-1/2 text-center">
             <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
               {isRoutePanel ? `Step 1 of ${routePanelCount}` : `Step 2 of ${routePanelCount}`}
             </p>
