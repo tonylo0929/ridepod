@@ -47,14 +47,6 @@ const genderEligibilityOptions = [
   "Man",
 ];
 
-const districtOptions = [
-  "Hong Kong Island",
-  "Kowloon",
-  "New Territories",
-  "HK Airport / Tung Chung",
-  "Other / not sure",
-];
-
 const ageRangeOptions = ["18-24", "25-34", "35-44", "45-54", "55+"];
 
 const accessibilityOptions = [
@@ -471,7 +463,6 @@ export default function RegisterPage() {
     animalAvatarId: ANIMAL_AVATARS[0]?.id ?? null,
   });
   const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
-  const [homeDistrict, setHomeDistrict] = useState(districtOptions[0]);
   const [genderEligibility, setGenderEligibility] = useState(genderEligibilityOptions[0]);
   const [ageRange, setAgeRange] = useState(ageRangeOptions[0]);
   const [accessibilityPreference, setAccessibilityPreference] = useState(accessibilityOptions[0]);
@@ -546,7 +537,7 @@ export default function RegisterPage() {
       password,
       displayName: displayName.trim() || accountName,
       phone: formatHongKongPhone(phone),
-      homeDistrict,
+      homeDistrict: null,
       accountType: "rider",
       avatarPreference,
     });
@@ -773,7 +764,6 @@ export default function RegisterPage() {
               onUseInitials={() => setAvatarPreference({ avatarType: "initials", animalAvatarId: null })}
             />
 
-            <SelectField label="Home district" value={homeDistrict} options={districtOptions} onChange={setHomeDistrict} />
             <SelectField
               label="Gender / rider eligibility"
               helper="Used only for pod eligibility. Not shown publicly."
