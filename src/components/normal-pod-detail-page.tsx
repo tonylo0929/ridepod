@@ -1352,8 +1352,6 @@ export function PodStatusPanel({
     (item) => item.role === "rider" && (item.status === "pending" || item.status === "needs_review" || item.status === "review_needed"),
   );
   const pendingNudgeCount = pendingNudgeRiders.length;
-  const ridersNeedingReviewCount = riders.filter((item) => item.role === "rider" && item.status === "needs_review").length;
-  const meaningfulUpdatePendingReview = ride.bookingDetailsUpdated === true && ridersNeedingReviewCount > 0;
   const currentUserSeatHoldExpired = !getCurrentUserIsHost(ride) && (ride.currentUserConfirmationExpired === true || ride.currentUserJoinIntentStatus === "seat_hold_expired" || isRideAppSeatHoldExpired(ride));
   const currentUserConfirmed =
     ride.currentUserBookingDetailsConfirmed === true ||
@@ -1398,34 +1396,6 @@ export function PodStatusPanel({
   const canNudgePendingRiders = isHost && detailsComplete && pendingNudgeCount > 0;
   const nudgeSentRecently = Boolean(lastNudgeAt);
   const currentDashboardStep = ride.rideAppPodStatus === "ride_booked" ? 4 : chatAccess.canAccess ? 3 : detailsComplete ? 2 : 1;
-  const statusBody =
-    replacementNeeded
-      ? "Host cancelled. A confirmed rider can become the new booker."
-      : replacementBookerSelected
-        ? `${getReplacementBookerDisplayName(ride)} is now coordinating this ride app pod. Riders may need to review details if anything changes.`
-      : hostCancelledPod
-        ? hostCancellationStatus === "host_cancelled"
-          ? "No RidePod fee was confirmed."
-          : "No new booker was selected."
-    : currentUserSeatHoldExpired
-      ? "You did not confirm before the confirm-by time, so your seat was released for other riders."
-      : ride.bookingDetailsUpdated || meaningfulUpdatePendingReview
-        ? getPodStatusUpdateSubtitle(ride)
-        : detailsReady && !pickupVenueSet
-          ? coreDetailsExceptGatherPointComplete
-            ? "Host must set where riders meet before riders can confirm."
-            : `${ride.hostName || "Host"} needs to share fare, split, payment, gather point, and confirm-by time.`
-        : detailsReady && !fareEstimateSet
-          ? `${ride.hostName || "Host"} still needs to add the ride app fare estimate.`
-        : detailsReady && (!splitMethodSet || !paymentMethodSet)
-          ? `${ride.hostName || "Host"} still needs to confirm split and payment method.`
-        : detailsReady && !confirmBySet
-          ? `${ride.hostName || "Host"} still needs to set the confirm-by time.`
-        : detailsReady
-          ? isHost
-            ? `Riders must confirm by ${confirmByLabel}.`
-            : "Review the shared ride app details and confirm before the confirm-by time."
-          : `${ride.hostName || "Host"} needs to share fare, split, payment, gather point, and confirm-by time.`;
   const detailChecklistRows = [
     {
       icon: WalletCards,
@@ -1806,23 +1776,8 @@ export function PodStatusPanel({
             </nav>
           )}
 
-          {activeTab === "summary" ? (
+          {activeTab === "summary" && !currentUserSeatHoldExpired ? (
             <div className="mt-3 grid gap-3">
-              <section className="rounded-[20px] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(242,193,91,0.11),transparent_36%),rgba(255,255,255,0.04)] p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Current status</p>
-                <div className="mt-3 flex items-start gap-3 rounded-[18px] border border-white/10 bg-black/20 p-3">
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]">
-                    <ListChecks className="h-6 w-6" />
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="text-lg font-black leading-tight text-white">{getPodStatusTitle(ride, chatAccess)}</h3>
-                    <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{statusBody}</p>
-                  </div>
-                </div>
-              </section>
-
-              {currentUserSeatHoldExpired ? null : (
-                <>
               {hostCancellationStatus !== "active" ? (
                 <section className="rounded-[20px] border border-[var(--rp-primary)]/45 bg-[linear-gradient(135deg,rgba(242,193,91,0.14),rgba(8,47,73,0.14),rgba(255,255,255,0.04))] p-4">
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Host cancellation</p>
@@ -1986,8 +1941,6 @@ export function PodStatusPanel({
                   Nudge sent
                 </p>
               ) : null}
-                </>
-              )}
             </div>
           ) : null}
 
