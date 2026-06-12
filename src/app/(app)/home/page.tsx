@@ -1552,7 +1552,7 @@ export default function HomePage() {
 
       <section className="relative mt-4 px-4 sm:px-6 lg:px-10">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h1 className="text-base font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
+          <h1 className="whitespace-nowrap text-base font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
           <div className="flex shrink-0 items-center gap-2">
             {hasActiveFilters ? (
               <button
