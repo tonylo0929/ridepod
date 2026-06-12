@@ -261,7 +261,7 @@ function TabButton({
 }
 
 function formatRideRoute(ride: HomeRide) {
-  return `${ride.fromLabel} -> ${ride.toLabel}`;
+  return `From (${ride.fromLabel}) to (${ride.toLabel})`;
 }
 
 function formatRideTime(ride: HomeRide) {
