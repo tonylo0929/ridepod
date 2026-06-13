@@ -510,10 +510,10 @@ function RideModeSwitch({
                 "inline-flex min-h-14 items-center justify-center gap-2 rounded-full px-4 text-base font-black transition min-[420px]:text-lg",
                 selected
                   ? option.id === "ride_app"
-                    ? "bg-[var(--rp-primary)] text-[#07111a] shadow-[0_16px_32px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
+                    ? "bg-[linear-gradient(180deg,#0a5fb4_0%,#064884_100%)] text-white shadow-[0_16px_32px_rgba(6,72,132,0.32)]"
                     : "bg-[var(--rp-primary)] text-[#07111a] shadow-[0_16px_32px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
                   : option.id === "ride_app"
-                    ? "text-orange-900 hover:bg-orange-100"
+                    ? "text-blue-900 hover:bg-blue-100"
                     : "text-amber-900 hover:bg-amber-100",
               )}
             >
@@ -526,7 +526,7 @@ function RideModeSwitch({
           aria-hidden="true"
           className={cn(
             "pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border bg-white/92 px-2 py-0.5 text-xs font-black tracking-[0.12em] shadow-[0_8px_18px_rgba(15,23,42,0.14)]",
-            value === "ride_app" ? "border-orange-200 text-orange-700" : "border-amber-200 text-amber-700",
+            value === "ride_app" ? "border-blue-200 text-blue-700" : "border-amber-200 text-amber-700",
           )}
         >
           {value === "ride_app" ? "<--" : "-->"}
@@ -1331,7 +1331,7 @@ export default function HomePage() {
     }),
     [avatarPreference, displayName, profile?.avatar_url],
   );
-  const createdHomeRides = useCreatedHomeRides();
+  const createdHomeRides = useCreatedHomeRides(user?.id ?? null);
   const [fromDistrict, setFromDistrict] = useState(initialFromDistrict);
   const [toDistrict, setToDistrict] = useState(initialToDistrict);
   const [activeTab, setActiveTab] = useState<HomeTab>("all");
