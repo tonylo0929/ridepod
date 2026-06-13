@@ -1465,7 +1465,6 @@ export default function HomePage() {
   function resetRouteFilters() {
     setFromDistrict(initialFromDistrict);
     setToDistrict(initialToDistrict);
-    setActiveTab("all");
     setPodPreferenceFilter("all");
     setTaxiDriverFilter("all");
     setTaxiTypeFilter("all");
@@ -1530,7 +1529,6 @@ export default function HomePage() {
             ? "Minimum not reached"
             : "";
   const hasActiveFilters =
-    activeTab !== "all" ||
     fromDistrict !== initialFromDistrict ||
     toDistrict !== initialToDistrict ||
     podPreferenceFilter !== "all" ||
