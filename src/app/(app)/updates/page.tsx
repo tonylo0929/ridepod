@@ -278,8 +278,6 @@ function NotificationCard({
   onOpen: () => void;
 }) {
   const unread = !notification.read_at;
-  const relatedRoute = relatedRide ? formatRideRoute(relatedRide) : null;
-  const relatedTime = relatedRide ? formatRideTime(relatedRide) : null;
   const displayBody = notification.type === "demo_ride_app_estimate_needed" ? null : notification.body;
   const viewStatusLabel = unread ? "Not viewed" : "Viewed";
 
@@ -300,13 +298,8 @@ function NotificationCard({
         {displayBody ? (
           <span className="mt-1 block text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{displayBody}</span>
         ) : null}
-        {relatedRoute ? (
-          <span className="mt-3 block rounded-[14px] border border-[var(--rp-primary)]/25 bg-[var(--rp-primary)]/10 px-3 py-2">
-            <span className="block text-sm font-black leading-5 text-[var(--rp-primary)]">{relatedRoute}</span>
-            {relatedTime ? (
-              <span className="mt-1 block text-xs font-bold text-[var(--rp-muted-strong)]">{relatedTime}</span>
-            ) : null}
-          </span>
+        {relatedRide ? (
+          <NotificationRouteGraphic ride={relatedRide} />
         ) : notification.related_pod_id ? (
           <span className="mt-2 block text-xs font-black text-[var(--rp-primary)]">Pod {notification.related_pod_id}</span>
         ) : null}
@@ -325,6 +318,39 @@ function NotificationCard({
         </span>
       </span>
     </button>
+  );
+}
+
+function NotificationRouteGraphic({ ride }: { ride: HomeRide }) {
+  return (
+    <span className="mt-3 block rounded-[16px] border border-[var(--rp-primary)]/25 bg-[var(--rp-card-soft)] px-3 py-3">
+      <span className="grid grid-cols-[minmax(0,1fr)_44px_minmax(0,1fr)] items-start gap-2">
+        <span className="min-w-0">
+          <span className="flex items-center gap-2">
+            <span className="h-3 w-3 shrink-0 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,0.32)]" />
+            <span className="text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">From</span>
+          </span>
+          <span className="mt-1 block truncate pl-5 text-sm font-black leading-5 text-[var(--rp-text)]">
+            {ride.fromLabel}
+          </span>
+        </span>
+        <span className="mt-[5px] flex items-center justify-center" aria-hidden="true">
+          <span className="h-px w-full bg-[linear-gradient(90deg,#67e8f9,#f2c15b,#fb7185)]" />
+        </span>
+        <span className="min-w-0 text-right">
+          <span className="flex items-center justify-end gap-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">To</span>
+            <span className="h-3 w-3 shrink-0 rounded-full bg-rose-300 shadow-[0_0_14px_rgba(253,164,175,0.28)]" />
+          </span>
+          <span className="mt-1 block truncate pr-5 text-sm font-black leading-5 text-[var(--rp-text)]">
+            {ride.toLabel}
+          </span>
+        </span>
+      </span>
+      <span className="mt-3 block border-t border-[var(--rp-border)] pt-2 text-xs font-bold text-[var(--rp-muted-strong)]">
+        {formatRideTime(ride)}
+      </span>
+    </span>
   );
 }
 
