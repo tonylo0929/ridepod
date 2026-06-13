@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { PodChatClient } from "@/app/(app)/pods/[id]/chat/pod-chat-client";
 import { AirportPodDetailPage } from "@/components/airport-pod-detail-page";
 import { HomePodDetailPage } from "@/components/home-pod-detail-page";
@@ -8,6 +10,7 @@ import { NormalPodDetailPage, PodStatusPanel } from "@/components/normal-pod-det
 import { RecurringPodDetailPage } from "@/components/recurring-pod-detail-page";
 import { useCreatedHomeRides } from "@/lib/created-home-rides";
 import { getRideAppChatAccessState } from "@/lib/ride-app-chat-unlock";
+import { useAuth } from "@/providers/AuthProvider";
 
 function CreatedPodMissingState() {
   return (
@@ -26,8 +29,35 @@ function CreatedPodMissingState() {
   );
 }
 
+function CreatedPodLoginRedirectState() {
+  return (
+    <section className="rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 text-center shadow-[var(--rp-shadow-soft)]">
+      <h1 className="text-2xl font-black text-[var(--rp-text)]">Log in to view this pod.</h1>
+      <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+        RidePod opens created pod details after you log in.
+      </p>
+    </section>
+  );
+}
+
+function useRequireLoginForCreatedPod() {
+  const { user, isLoading } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (isLoading || user) return;
+    router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+  }, [isLoading, pathname, router, user]);
+
+  return { user, isLoading };
+}
+
 export function CreatedPodDetailRouteClient({ id }: { id: string }) {
+  const { user, isLoading } = useRequireLoginForCreatedPod();
   const ride = useCreatedHomeRides().find((item) => item.id === id);
+
+  if (isLoading || !user) return <CreatedPodLoginRedirectState />;
 
   if (!ride) return <CreatedPodMissingState />;
 
@@ -47,7 +77,10 @@ export function CreatedPodDetailRouteClient({ id }: { id: string }) {
 }
 
 export function CreatedPodStatusRouteClient({ id }: { id: string }) {
+  const { user, isLoading } = useRequireLoginForCreatedPod();
   const ride = useCreatedHomeRides().find((item) => item.id === id);
+
+  if (isLoading || !user) return <CreatedPodLoginRedirectState />;
 
   if (!ride || ride.rideCategory !== "ride_app_self_settle") return <CreatedPodMissingState />;
 
@@ -77,7 +110,10 @@ export function CreatedPodChatRouteClient({
     bookingNote: string;
   } | null;
 }) {
+  const { user, isLoading } = useRequireLoginForCreatedPod();
   const ride = useCreatedHomeRides().find((item) => item.id === id);
+
+  if (isLoading || !user) return <CreatedPodLoginRedirectState />;
 
   if (!ride) return <CreatedPodMissingState />;
 

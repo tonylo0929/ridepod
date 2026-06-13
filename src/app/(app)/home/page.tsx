@@ -666,6 +666,26 @@ function getCurrentUserRideRelationship(ride: HomeRide) {
   return null;
 }
 
+function withoutCurrentUserRelationship(ride: HomeRide): HomeRide {
+  return {
+    ...ride,
+    currentUserRole: undefined,
+    currentUserName: undefined,
+    currentUserJoined: false,
+    currentUserBookingDetailsConfirmed: false,
+    currentUserConfirmedBookingDetailsVersion: null,
+    currentUserRideAppDetailVersionConfirmed: undefined,
+    currentUserQuoteAccepted: false,
+    currentUserJoinIntentStatus: "not_joined",
+    currentUserConfirmationExpired: false,
+    selfSettleConfirmationStatus: undefined,
+    riderConfirmations: ride.riderConfirmations?.map((rider) => ({
+      ...rider,
+      isCurrentUser: false,
+    })),
+  };
+}
+
 function getHomeRideTrustBadge(summary: RideAppTrustSummary) {
   const rating = summary.hostStats.hostRatingAverage;
   if (rating !== null && summary.hostStats.hostRatingCount > 0) {
@@ -848,11 +868,21 @@ function RideMetaTags({ ride }: { ride: HomeRide }) {
   );
 }
 
-function HomeRideCard({ ride, currentUserAvatar }: { ride: HomeRide; currentUserAvatar: CurrentUserAvatar }) {
+function HomeRideCard({
+  ride,
+  currentUserAvatar,
+  isAuthenticated,
+}: {
+  ride: HomeRide;
+  currentUserAvatar: CurrentUserAvatar;
+  isAuthenticated: boolean;
+}) {
   const isRideApp = isRideAppSelfSettle(ride);
-  const currentUserRelationship = getCurrentUserRideRelationship(ride);
+  const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
   const rideAppEstimateDisplay = getRideAppTotalEstimateDisplay(ride);
   const currentUserIsHost = currentUserRelationship?.tone === "host";
+  const podHref = `/pods/${ride.id}`;
+  const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
   const rideAppEstimateLabel = currentUserIsHost
     ? rideAppEstimateDisplay.updated
       ? "Updated estimate"
@@ -879,7 +909,7 @@ function HomeRideCard({ ride, currentUserAvatar }: { ride: HomeRide; currentUser
 
   return (
     <Link
-      href={`/pods/${ride.id}`}
+      href={cardHref}
       className={cn(
         "block rounded-[26px] border bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-card)_96%,transparent),var(--rp-card-soft))] p-4 shadow-[var(--rp-shadow-soft)] transition min-[560px]:p-5",
         currentUserRelationship?.tone === "host"
@@ -1289,6 +1319,7 @@ const initialToDistrict = "All districts";
 
 export default function HomePage() {
   const { user, profile } = useAuth();
+  const isAuthenticated = Boolean(user);
   const displayName = user ? profile?.display_name ?? profile?.preferred_name ?? "RidePod account" : "Guest rider";
   const [avatarPreference] = useRidePodAvatarPreference(profile?.id);
   const currentUserAvatar = useMemo(
@@ -1316,13 +1347,14 @@ export default function HomePage() {
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const today = useMemo(() => new Date(), []);
-  const allHomeRides = useMemo(
-    () => [
+  const allHomeRides = useMemo(() => {
+    const rides = [
       ...homeRides.map((ride) => applyRideAppDemoPersona(ride, { profile, user })),
       ...createdHomeRides.filter((createdRide) => !homeRides.some((ride) => ride.id === createdRide.id)),
-    ],
-    [createdHomeRides, profile, user],
-  );
+    ];
+
+    return isAuthenticated ? rides : rides.map(withoutCurrentUserRelationship);
+  }, [createdHomeRides, isAuthenticated, profile, user]);
 
   const taxiTypeOptions = useMemo(
     () =>
@@ -1656,7 +1688,14 @@ export default function HomePage() {
 
         <div className="grid gap-3">
           {visibleRides.length > 0 ? (
-            visibleRides.map((ride) => <HomeRideCard key={ride.id} ride={ride} currentUserAvatar={currentUserAvatar} />)
+            visibleRides.map((ride) => (
+              <HomeRideCard
+                key={ride.id}
+                ride={ride}
+                currentUserAvatar={currentUserAvatar}
+                isAuthenticated={isAuthenticated}
+              />
+            ))
           ) : (
             <EmptyRides tab={activeTab} rideModeFilter={rideModeFilter} hasAnyRides={filteredRides.length > 0} />
           )}
