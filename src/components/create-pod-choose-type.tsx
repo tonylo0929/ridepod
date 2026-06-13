@@ -5208,15 +5208,6 @@ function SelfSettleReviewSummaryCard({
           ))}
         </dl>
       </section>
-
-      <div className="grid gap-2">
-        <p className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-          No fare protection is provided. Settle the final ride fare after the ride with the booker.
-        </p>
-        <p className="rounded-[18px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] p-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-          {defaultRideAppCreateFeeSentence} Fee applies only when riders confirm ride details.
-        </p>
-      </div>
     </section>
   );
 }
