@@ -6850,7 +6850,7 @@ export function CreatePodChooseType() {
     rideAppBookingTrigger: "minimum_riders_confirmed",
     rideAppMinimumConfirmedRiders: 2,
     rideAppFarePaymentTiming: "after_ride",
-    rideAppAcceptedPaymentMethods: ["payme", "fps"],
+    rideAppAcceptedPaymentMethods: [],
   });
   const [genderMode, setGenderMode] = useState<GenderMode>("mixed");
   const [accessMode, setAccessMode] = useState<AccessMode>("open");
