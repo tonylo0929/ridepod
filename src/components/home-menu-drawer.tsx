@@ -161,13 +161,13 @@ export function HomeMenuDrawer() {
             open ? "translate-x-0" : "-translate-x-full",
           )}
         >
-          <div className="ridepod-drawer-header border-b px-5 pb-5 pt-[max(18px,env(safe-area-inset-top))]">
+          <div className="ridepod-drawer-header border-b px-5 pb-4 pt-[max(12px,env(safe-area-inset-top))]">
             <div className="flex justify-end">
               <button
                 type="button"
                 aria-label="Close sidebar"
                 onClick={closeDrawer}
-                className="ridepod-drawer-close grid h-14 w-14 shrink-0 place-items-center rounded-2xl border transition"
+                className="ridepod-drawer-close grid h-12 w-12 shrink-0 place-items-center rounded-2xl border transition"
               >
                 <X className="h-6 w-6" />
               </button>
@@ -176,7 +176,7 @@ export function HomeMenuDrawer() {
             <Link
               href={profileHref}
               onClick={closeDrawer}
-              className="ridepod-drawer-profile mt-4 flex items-center gap-3 rounded-2xl border p-3 transition"
+              className="ridepod-drawer-profile mt-2 flex items-center gap-3 rounded-2xl border p-3 transition"
             >
               <RidePodAvatar
                 avatarUrl={profile?.avatar_url}
