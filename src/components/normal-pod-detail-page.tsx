@@ -22,6 +22,7 @@ import {
   ListChecks,
   MapPin,
   MessageCircle,
+  MessagesSquare,
   ReceiptText,
   Share2,
   ShieldCheck,
@@ -4139,14 +4140,23 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
           </Link>
           <span className="h-10 w-10" aria-hidden="true" />
           {selfSettlePod ? (
-            <button
-              type="button"
-              onClick={sharePod}
-              aria-label="Share pod"
-              className="grid h-10 w-10 place-items-center rounded-full border border-cyan-200/35 bg-[rgba(4,10,18,0.72)] text-cyan-100 shadow-[0_8px_22px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm transition hover:bg-[rgba(20,27,34,0.92)]"
-            >
-              <Share2 className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/pods/${ride.id}/chat`}
+                aria-label="Open pod chat"
+                className="grid h-10 w-10 place-items-center rounded-full border border-cyan-200/35 bg-[rgba(4,10,18,0.72)] text-cyan-100 shadow-[0_8px_22px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm transition hover:bg-[rgba(20,27,34,0.92)]"
+              >
+                <MessagesSquare className="h-5 w-5" />
+              </Link>
+              <button
+                type="button"
+                onClick={sharePod}
+                aria-label="Share pod"
+                className="grid h-10 w-10 place-items-center rounded-full border border-cyan-200/35 bg-[rgba(4,10,18,0.72)] text-cyan-100 shadow-[0_8px_22px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm transition hover:bg-[rgba(20,27,34,0.92)]"
+              >
+                <Share2 className="h-5 w-5" />
+              </button>
+            </div>
           ) : (
             <span className="h-10 w-10" aria-hidden="true" />
           )}
