@@ -642,7 +642,7 @@ function RiderStack({ ride, seatsUsed }: { ride: HomeRide; seatsUsed: number }) 
 type PodStatusTab = "summary" | "riders" | "route" | "chat";
 type ManagePodActionsTab = "confirmations" | "route_requests" | "pod_settings";
 type ConfirmByUnit = "hours" | "days";
-type PodStatusRiderState = "host" | "confirmed" | "review_needed" | "pending" | "seat_hold_expired" | "left_pod" | "needs_review";
+type PodStatusRiderState = "host" | "joined_interest" | "confirmed" | "review_needed" | "pending" | "seat_hold_expired" | "left_pod" | "needs_review";
 type PodStatusRider = {
   name: string;
   role: "host" | "rider";
@@ -733,6 +733,99 @@ function clampConfirmByAmount(value: number, unit: ConfirmByUnit) {
   return Math.min(max, Math.max(1, Math.round(value)));
 }
 
+function getNextRejoinConfirmByDate(ride: HomeRide, now = new Date()) {
+  const currentConfirmBy = getRideAppConfirmByDate(ride, now);
+  if (currentConfirmBy.getTime() > now.getTime()) return currentConfirmBy;
+  return new Date(now.getTime() + 24 * 60 * 60 * 1000);
+}
+
+function getCurrentUserRiderName(ride: HomeRide) {
+  return ride.currentUserName?.trim() || "You";
+}
+
+function getRiderConfirmationStatusCounts(riders: NonNullable<HomeRide["riderConfirmations"]>, detailVersion: number) {
+  const joined = riders.filter((item) => item.role === "rider" && item.status !== "seat_hold_expired" && item.status !== "expired" && item.status !== "left").length;
+  const confirmed = riders.filter((item) => {
+    if (item.role !== "rider" || item.status !== "confirmed") return false;
+    const confirmedVersion = item.confirmedBookingDetailsVersion ?? item.confirmedDetailVersion ?? detailVersion;
+    return confirmedVersion >= detailVersion;
+  }).length;
+
+  return { joined, confirmed };
+}
+
+function buildRequestToRejoinPatch(ride: HomeRide, detailVersion: number, now = new Date()): Partial<HomeRide> {
+  const nextConfirmBy = getNextRejoinConfirmByDate(ride, now);
+  const nextConfirmByIso = nextConfirmBy.toISOString();
+  const riderName = getCurrentUserRiderName(ride);
+  const existingRows = ride.riderConfirmations?.length
+    ? ride.riderConfirmations
+    : [
+        { name: ride.hostName || "Host", role: "host" as const, status: "host" as const },
+        { name: riderName, role: "rider" as const, status: "seat_hold_expired" as const, isCurrentUser: true },
+      ];
+  let currentUserRowFound = false;
+  const riderConfirmations = existingRows.map((item) => {
+    const isCurrentUser = item.isCurrentUser === true || isCurrentUserRiderName(item.name);
+    if (!isCurrentUser || item.role !== "rider") return item;
+    currentUserRowFound = true;
+    return {
+      ...item,
+      name: item.name?.trim() || riderName,
+      status: "joined_interest" as const,
+      isCurrentUser: true,
+      confirmBy: nextConfirmByIso,
+      seatHoldExpiredAt: null,
+      confirmedBookingDetailsVersion: undefined,
+      confirmedDetailVersion: undefined,
+    };
+  });
+
+  if (!currentUserRowFound) {
+    riderConfirmations.push({
+      name: riderName,
+      role: "rider",
+      status: "joined_interest",
+      isCurrentUser: true,
+      confirmBy: nextConfirmByIso,
+      seatHoldExpiredAt: null,
+    });
+  }
+
+  const counts = getRiderConfirmationStatusCounts(riderConfirmations, detailVersion);
+  const joinedCount = Math.min(ride.seatsTotal, counts.joined);
+  const nextPodStatus =
+    ride.bookingDetailsShared || ride.rideAppBookingDetailsFinalized || ride.rideAppBookingDetailsConfirmed
+      ? "awaiting_rider_confirmation"
+      : "booking_details_needed";
+
+  return {
+    currentUserJoined: true,
+    currentUserRole: "joined_rider",
+    currentUserJoinIntentStatus: "joined_interest",
+    currentUserConfirmationExpired: false,
+    currentUserBookingDetailsConfirmed: false,
+    currentUserConfirmedBookingDetailsVersion: null,
+    currentUserRideAppDetailVersionConfirmed: undefined,
+    selfSettleConfirmationStatus: "pending",
+    platformFeeStatus: "pending",
+    seatHoldExpiredAt: null,
+    seatHoldReleasedAt: null,
+    confirmationDeadlineAt: nextConfirmByIso,
+    rideAppConfirmBy: nextConfirmByIso,
+    confirmationDeadlineLabel: formatConfirmByLabel(nextConfirmBy),
+    rideAppPodStatus: nextPodStatus,
+    seatsUsed: joinedCount,
+    joinedRiderCount: joinedCount,
+    confirmedRiderCount: counts.confirmed,
+    rideAppConfirmedRiderCount: counts.confirmed,
+    riderConfirmations,
+    rideAppSeatReleasedAt: ride.rideAppSeatReleasedAt ?? ride.seatHoldReleasedAt ?? ride.seatHoldExpiredAt ?? now.toISOString(),
+    rideAppRejoinRequestedAt: now.toISOString(),
+    rideAppRejoinRequestedBy: riderName,
+  };
+}
+
 function mergeRidePatch<T extends Partial<HomeRide>>(base: T, patch?: Partial<HomeRide> | null) {
   if (!patch) return base;
   const merged: Partial<HomeRide> = {
@@ -789,7 +882,7 @@ function buildPodStatusRiders(ride: HomeRide): PodStatusRider[] {
                   : item.status === "left"
                     ? "left_pod"
                   : item.status === "joined_interest"
-                    ? "pending"
+                    ? "joined_interest"
                   : "host",
       };
     });
@@ -874,6 +967,7 @@ function getPodStatusRiderHelper(rider: PodStatusRider, bookingDetailsVersion: n
   if (rider.status === "needs_review" || rider.status === "review_needed") return "Confirmed older details";
   if (rider.status === "seat_hold_expired") return "Seat released";
   if (rider.status === "left_pod") return "Left pod";
+  if (rider.status === "joined_interest") return "Waiting to confirm";
   return "Pending confirmation";
 }
 
@@ -1064,6 +1158,8 @@ function StatusChip({ status }: { status: PodStatusRiderState }) {
             ? getSeatHoldDisplayLabel(status)
           : status === "left_pod"
             ? "Left pod"
+            : status === "joined_interest"
+              ? "Joined"
             : status === "needs_review"
               ? "Needs review"
               : "Pending";
@@ -1096,6 +1192,7 @@ function getPodStatusParticipantChipLabel(rider: PodStatusRider, confirmationNot
   if (rider.status === "needs_review" || rider.status === "review_needed") return "Needs review";
   if (rider.status === "seat_hold_expired") return getSeatHoldDisplayLabel(rider.status);
   if (rider.status === "left_pod") return "Left";
+  if (rider.status === "joined_interest") return "Joined";
   if (confirmationNotStarted && isCurrentUserRiderName(rider.name)) return "Joined";
   return "Pending";
 }
@@ -1111,6 +1208,7 @@ function getPodStatusParticipantHelper(rider: PodStatusRider, bookingDetailsVers
   if (rider.status === "needs_review" || rider.status === "review_needed") return "Review updated details";
   if (rider.status === "seat_hold_expired") return "Missed confirm-by time";
   if (rider.status === "left_pod") return "Left pod";
+  if (rider.status === "joined_interest") return isCurrentUserRiderName(rider.name) ? "Waiting to confirm" : "Pending confirmation";
   if (isCurrentUserRiderName(rider.name)) return confirmationNotStarted ? "Joined - waiting for host" : "Waiting to confirm";
   return detailsReady ? "Pending confirmation" : "Not joined yet";
 }
@@ -1333,6 +1431,8 @@ export function PodStatusPanel({
   const [showGatherPointModal, setShowGatherPointModal] = useState(false);
   const [showNudgeModal, setShowNudgeModal] = useState(false);
   const [showBecomeBookerModal, setShowBecomeBookerModal] = useState(false);
+  const [showRejoinModal, setShowRejoinModal] = useState(false);
+  const [rejoinMessage, setRejoinMessage] = useState<string | null>(null);
   const [becomeBookerUnderstood, setBecomeBookerUnderstood] = useState(false);
   const [nudgeSent, setNudgeSent] = useState(false);
   const [lastNudgeAt, setLastNudgeAt] = useState<string | null>(null);
@@ -1393,6 +1493,17 @@ export function PodStatusPanel({
   const pickupVenueSet = Boolean(ride.pickupLabel);
   const coreDetailsExceptGatherPointComplete = detailsReady && fareEstimateSet && splitMethodSet && paymentMethodSet && confirmBySet;
   const detailsComplete = coreDetailsExceptGatherPointComplete && pickupVenueSet;
+  const podStillAcceptsRejoin =
+    ride.status !== "cancelled" &&
+    ride.status !== "expired" &&
+    ride.rideAppPodStatus !== "cancelled" &&
+    ride.rideAppPodStatus !== "expired" &&
+    ride.rideAppPodStatus !== "ride_booked" &&
+    ride.rideAppPodStatus !== "completed" &&
+    !hostCancelledPod;
+  const rejoinOpenSeatCount = Math.max(0, ride.seatsTotal - effectiveSeatsUsed);
+  const canRequestRejoin = currentUserSeatHoldExpired && podStillAcceptsRejoin && rejoinOpenSeatCount > 0;
+  const rejoinUnavailableHelper = podStillAcceptsRejoin ? "Your released seat is no longer available." : "This pod is no longer accepting riders.";
   const canNudgePendingRiders = isHost && detailsComplete && pendingNudgeCount > 0;
   const nudgeSentRecently = Boolean(lastNudgeAt);
   const currentDashboardStep = ride.rideAppPodStatus === "ride_booked" ? 4 : chatAccess.canAccess ? 3 : detailsComplete ? 2 : 1;
@@ -1509,8 +1620,9 @@ export function PodStatusPanel({
   ].filter((reason): reason is string => Boolean(reason));
   const chatLockedReasons = currentUserSeatHoldExpired
     ? [
-        "Your seat was released because you did not confirm before the confirm-by time.",
-        "No RidePod fee was confirmed. Waiver was not used.",
+        "You did not confirm before the confirm-by time, so your seat was released for other riders.",
+        "No RidePod fee was confirmed.",
+        "Waiver was not used.",
       ]
     : replacementNeeded
     ? [
@@ -1638,6 +1750,23 @@ export function PodStatusPanel({
     setShowBecomeBookerModal(false);
   }
 
+  function requestToRejoin() {
+    if (!currentUserSeatHoldExpired) return;
+    if (!canRequestRejoin) {
+      setRejoinMessage(podStillAcceptsRejoin ? "Pod is full" : "This pod is no longer accepting riders.");
+      setShowRejoinModal(false);
+      return;
+    }
+
+    const patch = buildRequestToRejoinPatch(ride, currentDetailVersion);
+    setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
+    saveStoredSelfSettleRidePatch(ride.id, patch);
+    updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+    setActiveTab("summary");
+    setRejoinMessage(detailsComplete ? "Confirm ride details" : "Waiting for host details");
+    setShowRejoinModal(false);
+  }
+
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(timer);
@@ -1742,7 +1871,57 @@ export function PodStatusPanel({
             </div>
           </section>}
 
-          {currentUserSeatHoldExpired ? null : (
+          {currentUserSeatHoldExpired ? (
+            <section className="mt-3 rounded-[20px] border border-rose-300/25 bg-rose-400/10 p-4">
+              <div className="flex items-start gap-3">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-rose-300/30 bg-rose-400/12 text-rose-100">
+                  <Clock3 className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-lg font-black leading-tight text-rose-100">Seat released</h3>
+                  <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                    You did not confirm before the confirm-by time, so your seat was released for other riders.
+                  </p>
+                  <div className="mt-3 grid gap-2">
+                    <p className="rounded-[14px] border border-white/10 bg-black/20 px-3 py-2 text-xs font-black leading-5 text-rose-100">
+                      No RidePod fee was confirmed.
+                    </p>
+                    <p className="rounded-[14px] border border-white/10 bg-black/20 px-3 py-2 text-xs font-black leading-5 text-rose-100">
+                      Waiver was not used.
+                    </p>
+                    {!canRequestRejoin ? (
+                      <p className="rounded-[14px] border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-xs font-black leading-5 text-amber-100">
+                        {podStillAcceptsRejoin ? "Pod is full. " : ""}{rejoinUnavailableHelper}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-2">
+                {canRequestRejoin ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRejoinMessage(null);
+                        setShowRejoinModal(true);
+                      }}
+                      className="inline-flex min-h-12 items-center justify-center rounded-[16px] bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[#07111a] shadow-[0_14px_30px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)] transition hover:brightness-105"
+                    >
+                      Request to rejoin
+                    </button>
+                    <Link href="/home" className="inline-flex min-h-12 items-center justify-center rounded-[16px] border border-cyan-300/35 bg-cyan-300/10 px-4 text-sm font-black text-cyan-100 transition hover:bg-cyan-300/14">
+                      Find another pod
+                    </Link>
+                  </>
+                ) : (
+                  <Link href="/home" className="inline-flex min-h-12 items-center justify-center rounded-[16px] bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[#07111a] shadow-[0_14px_30px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)] transition hover:brightness-105">
+                    Find another pod
+                  </Link>
+                )}
+              </div>
+            </section>
+          ) : (
             <nav className="sticky top-0 z-10 mt-3 grid grid-cols-4 rounded-[18px] border border-white/10 bg-[rgba(8,14,22,0.92)] p-1 backdrop-blur-xl">
               {podStatusTabs.map((tab) => {
                 const Icon = tab.icon;
@@ -1775,6 +1954,12 @@ export function PodStatusPanel({
               })}
             </nav>
           )}
+
+          {!currentUserSeatHoldExpired && rejoinMessage ? (
+            <p className="mt-3 rounded-[16px] border border-cyan-300/25 bg-cyan-300/10 px-4 py-3 text-center text-sm font-black text-cyan-100">
+              {rejoinMessage}
+            </p>
+          ) : null}
 
           {activeTab === "summary" && !currentUserSeatHoldExpired ? (
             <div className="mt-3 grid gap-3">
@@ -2390,6 +2575,51 @@ export function PodStatusPanel({
                   className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105 disabled:opacity-45"
                 >
                   Become booker
+                </button>
+              </div>
+            </section>
+          </div>
+        ) : null}
+
+        {showRejoinModal ? (
+          <div className="fixed inset-0 z-[105] grid place-items-center bg-black/68 px-4 py-6 backdrop-blur-sm">
+            <section
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="request-rejoin-title"
+              className="w-full max-w-[380px] rounded-[26px] border border-cyan-200/25 bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.48)]"
+            >
+              <div className="flex items-start gap-3">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border border-cyan-200/35 bg-cyan-300/12 text-cyan-100">
+                  <UserPlus className="h-6 w-6" />
+                </span>
+                <div className="min-w-0">
+                  <h2 id="request-rejoin-title" className="text-xl font-black leading-tight text-white">Request to rejoin?</h2>
+                  <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                    You can request this seat again if the pod still has space. You'll need to confirm ride details before the new confirm-by time.
+                  </p>
+                </div>
+              </div>
+
+              <p className="mt-4 rounded-[18px] border border-[var(--rp-primary)]/25 bg-[var(--rp-primary)]/10 p-4 text-sm font-black leading-6 text-[var(--rp-primary)]">
+                No RidePod fee is confirmed until you confirm ride details.
+              </p>
+
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowRejoinModal(false)}
+                  className="min-h-12 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={requestToRejoin}
+                  disabled={!canRequestRejoin}
+                  className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105 disabled:opacity-45"
+                >
+                  Request to rejoin
                 </button>
               </div>
             </section>

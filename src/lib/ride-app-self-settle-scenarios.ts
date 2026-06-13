@@ -274,7 +274,7 @@ const scenarios: RideAppSelfSettleScenario[] = [
       { name: "Mark", role: "host", status: "host", confirmedBookingDetailsVersion: 1 },
       { name: "You", role: "rider", status: "seat_hold_expired", isCurrentUser: true, confirmBy: expiredConfirmBy, seatHoldExpiredAt: expiredConfirmBy },
     ],
-  }), "Seat hold expired. Rejoin pod CTA. Chat locked."),
+  }), "Seat hold expired. Request to rejoin CTA. Chat locked."),
   scenario("RA-R-05", "Rider needs review after fare update", confirmed({
     bookingDetailsVersion: 2,
     bookingDetailsUpdated: true,

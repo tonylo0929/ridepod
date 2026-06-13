@@ -314,6 +314,16 @@ export function getRideAppConfirmationState(ride: HomeRide, currentUser?: unknow
   const requiredConfirmations = getRideAppRequiredConfirmations(ride);
   const confirmedRiders = getRideAppConfirmedRiderCount(ride);
   const hostBooked = ride.rideAppPodStatus === "ride_booked";
+  const podAcceptsRejoin =
+    ride.status !== "cancelled" &&
+    ride.status !== "expired" &&
+    ride.rideAppPodStatus !== "cancelled" &&
+    ride.rideAppPodStatus !== "expired" &&
+    ride.rideAppPodStatus !== "ride_booked" &&
+    ride.rideAppPodStatus !== "completed";
+  const releasedSeatCount =
+    ride.riderConfirmations?.filter((rider) => rider.role === "rider" && (rider.status === "seat_hold_expired" || rider.status === "expired")).length ?? 1;
+  const seatsAvailableAfterRelease = Math.max(0, ride.seatsTotal - Math.max(0, ride.seatsUsed - releasedSeatCount)) > 0;
 
   if (ride.status === "cancelled" || ride.rideAppPodStatus === "cancelled") {
     return confirmationState("cancelled", "Cancelled", "This self-settle pod was cancelled.", null, null);
@@ -336,8 +346,8 @@ export function getRideAppConfirmationState(ride: HomeRide, currentUser?: unknow
       "seat_hold_expired",
       "Seat released",
       "You did not confirm before the confirm-by time, so your seat was released for other riders.",
-      "Find another pod",
-      null,
+      podAcceptsRejoin && seatsAvailableAfterRelease ? "Request to rejoin" : "Find another pod",
+      podAcceptsRejoin && seatsAvailableAfterRelease ? "Find another pod" : null,
     );
   }
 
@@ -529,7 +539,7 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
       "Seat released",
       "Find another pod",
       "Chat unavailable",
-      "Your seat was released because you did not confirm before the confirm-by time.",
+      "You did not confirm before the confirm-by time, so your seat was released for other riders.",
       requiredConfirmations,
       confirmedRiders,
     );

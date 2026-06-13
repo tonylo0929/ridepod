@@ -3392,11 +3392,18 @@ export function SelfSettleBookingDetailsCard({
   const [showRiderConfirmRidingModal, setShowRiderConfirmRidingModal] = useState(false);
   const [riderConfirmRidingChecked, setRiderConfirmRidingChecked] = useState(false);
   const [riderConfirmRidingMessage, setRiderConfirmRidingMessage] = useState<string | null>(null);
+  const [showRejoinModal, setShowRejoinModal] = useState(false);
+  const [rejoinMessage, setRejoinMessage] = useState<string | null>(null);
   const [currentUserBookingDetailsConfirmedState, setCurrentUserBookingDetailsConfirmedState] = useState(
     ride.selfSettleConfirmationStatus !== "needs_review" &&
       ride.selfSettleConfirmationStatus !== "expired" &&
       (ride.currentUserBookingDetailsConfirmed === true || ride.selfSettleConfirmationStatus === "confirmed"),
   );
+  const [currentUserConfirmationExpiredState, setCurrentUserConfirmationExpiredState] = useState(ride.currentUserConfirmationExpired === true);
+  const [seatHoldExpiredAtState, setSeatHoldExpiredAtState] = useState<string | null>(ride.seatHoldExpiredAt ?? null);
+  const [seatHoldReleasedAtState, setSeatHoldReleasedAtState] = useState<string | null>(ride.seatHoldReleasedAt ?? null);
+  const [confirmByOverride, setConfirmByOverride] = useState<string | null>(null);
+  const [confirmByLabelOverride, setConfirmByLabelOverride] = useState<string | null>(null);
   const [riderConfirmations, setRiderConfirmations] = useState<SelfSettleRiderConfirmation[]>(() =>
     buildSelfSettleRiderConfirmations(ride),
   );
@@ -3454,13 +3461,26 @@ export function SelfSettleBookingDetailsCard({
     ride.selfSettleConfirmationStatus === "needs_review" ||
     (typeof currentUserConfirmedBookingDetailsVersion === "number" &&
       currentUserConfirmedBookingDetailsVersion < detailVersion);
-  const seatHoldExpired = isRideAppSeatHoldExpired(ride);
-  const deadlineState = getRideAppConfirmDeadlineState({
+  const rideForSelfSettleState: HomeRide = {
     ...ride,
+    currentUserJoinIntentStatus,
+    currentUserConfirmationExpired: currentUserConfirmationExpiredState,
+    seatHoldExpiredAt: seatHoldExpiredAtState,
+    seatHoldReleasedAt: seatHoldReleasedAtState,
+    confirmationDeadlineAt: confirmByOverride ?? ride.confirmationDeadlineAt,
+    rideAppConfirmBy: confirmByOverride ?? ride.rideAppConfirmBy,
+    confirmationDeadlineLabel: confirmByLabelOverride ?? ride.confirmationDeadlineLabel,
+    platformFeeStatus,
     currentUserBookingDetailsConfirmed: currentUserBookingDetailsConfirmedState,
-  });
-  const confirmByDate = getRideAppConfirmByDate(ride);
-  const confirmByLabel = formatSelfSettleConfirmBy(confirmByDate);
+    selfSettleConfirmationStatus:
+      currentUserJoinIntentStatus === "joined_interest" && !currentUserConfirmationExpiredState
+        ? "pending"
+        : ride.selfSettleConfirmationStatus,
+  };
+  const seatHoldExpired = isRideAppSeatHoldExpired(rideForSelfSettleState);
+  const deadlineState = getRideAppConfirmDeadlineState(rideForSelfSettleState);
+  const confirmByDate = getRideAppConfirmByDate(rideForSelfSettleState);
+  const confirmByLabel = confirmByLabelOverride ?? formatSelfSettleConfirmBy(confirmByDate);
   const confirmTimeLeftLabel = deadlineState.timeLeftLabel ?? formatSelfSettleTimeLeft(confirmByDate);
   const currentUserBookingDetailsConfirmed = !currentUserNeedsReview && !seatHoldExpired && (currentUserBookingDetailsConfirmedState || riderAcknowledged);
   const currentUserAlreadyConfirmedCurrentVersion =
@@ -3474,11 +3494,21 @@ export function SelfSettleBookingDetailsCard({
           ? {
               ...item,
               status: "seat_hold_expired" as const,
-              seatHoldExpiredAt: ride.seatHoldExpiredAt ?? new Date().toISOString(),
+              seatHoldExpiredAt: seatHoldExpiredAtState ?? new Date().toISOString(),
             }
           : item,
       )
     : riderConfirmations;
+  const podStillAcceptsRejoin =
+    ride.status !== "cancelled" &&
+    ride.status !== "expired" &&
+    ride.rideAppPodStatus !== "cancelled" &&
+    ride.rideAppPodStatus !== "expired" &&
+    ride.rideAppPodStatus !== "ride_booked" &&
+    ride.rideAppPodStatus !== "completed";
+  const rejoinOpenSeatCount = Math.max(0, ride.seatsTotal - effectiveSeatsUsed);
+  const canRequestRejoin = currentUserSeatHoldExpired && podStillAcceptsRejoin && rejoinOpenSeatCount > 0;
+  const rejoinUnavailableHelper = podStillAcceptsRejoin ? "Your released seat is no longer available." : "This pod is no longer accepting riders.";
   const joinedRiderCount = ride.joinedRiderCount ?? countJoinedSelfSettleRiders(displayedRiderConfirmations);
   const confirmedRiderCount = Math.min(
     joinedRiderCount,
@@ -3487,7 +3517,7 @@ export function SelfSettleBookingDetailsCard({
       : Math.max(rideAppConfirmedRiderCount, countConfirmedSelfSettleRiders(displayedRiderConfirmations, detailVersion)),
   );
   const chatAccess = getRideAppChatAccessState({
-    ...ride,
+    ...rideForSelfSettleState,
     platformFeeStatus,
     confirmedRiderCount,
     rideAppConfirmedRiderCount,
@@ -3497,7 +3527,7 @@ export function SelfSettleBookingDetailsCard({
     bookingDetailsVersion: detailVersion,
     rideAppCurrentDetailVersion: detailVersion,
     currentUserJoinIntentStatus: currentUserSeatHoldExpired ? "seat_hold_expired" : currentUserJoinIntentStatus,
-    currentUserConfirmationExpired: currentUserSeatHoldExpired || ride.currentUserConfirmationExpired,
+    currentUserConfirmationExpired: currentUserSeatHoldExpired || currentUserConfirmationExpiredState,
     currentUserBookingDetailsConfirmed,
   });
   const requiredRidersConfirmedCurrentDetails = confirmedRiderCount >= chatAccess.requiredConfirmations;
@@ -3774,6 +3804,99 @@ export function SelfSettleBookingDetailsCard({
     );
   }
 
+  function requestToRejoin() {
+    if (!currentUserSeatHoldExpired) return;
+    if (!canRequestRejoin) {
+      setRejoinMessage(podStillAcceptsRejoin ? "Pod is full" : "This pod is no longer accepting riders.");
+      setShowRejoinModal(false);
+      return;
+    }
+
+    const requestedAt = new Date();
+    const nextConfirmBy = confirmByDate.getTime() > requestedAt.getTime()
+      ? confirmByDate
+      : new Date(requestedAt.getTime() + 24 * 60 * 60 * 1000);
+    const nextConfirmByIso = nextConfirmBy.toISOString();
+    const nextConfirmByLabel = formatSelfSettleConfirmBy(nextConfirmBy);
+    const riderName = ride.currentUserName?.trim() || profile?.display_name?.trim() || profile?.preferred_name?.trim() || "You";
+    let currentUserFound = false;
+    const nextRiderConfirmations = riderConfirmations.map((item) => {
+      const isCurrentUser = item.isCurrentUser === true || item.name.trim().toLowerCase() === "you";
+      if (!isCurrentUser || item.role !== "rider") return item;
+      currentUserFound = true;
+      return {
+        ...item,
+        name: item.name?.trim() || riderName,
+        status: "joined_interest" as const,
+        isCurrentUser: true,
+        confirmBy: nextConfirmByIso,
+        seatHoldExpiredAt: null,
+        confirmedDetailVersion: undefined,
+        confirmedBookingDetailsVersion: undefined,
+      };
+    });
+
+    if (!currentUserFound) {
+      nextRiderConfirmations.push({
+        name: riderName,
+        role: "rider",
+        status: "joined_interest",
+        isCurrentUser: true,
+        confirmBy: nextConfirmByIso,
+        seatHoldExpiredAt: null,
+      });
+    }
+
+    const nextJoinedCount = Math.min(
+      ride.seatsTotal,
+      countJoinedSelfSettleRiders(nextRiderConfirmations),
+    );
+    const nextConfirmedCount = Math.min(
+      nextJoinedCount,
+      countConfirmedSelfSettleRiders(nextRiderConfirmations, detailVersion),
+    );
+    const patch: Partial<HomeRide> = {
+      currentUserJoined: true,
+      currentUserRole: "joined_rider",
+      currentUserJoinIntentStatus: "joined_interest",
+      currentUserConfirmationExpired: false,
+      currentUserBookingDetailsConfirmed: false,
+      currentUserConfirmedBookingDetailsVersion: null,
+      currentUserRideAppDetailVersionConfirmed: undefined,
+      selfSettleConfirmationStatus: "pending",
+      platformFeeStatus: "pending",
+      seatHoldExpiredAt: null,
+      seatHoldReleasedAt: null,
+      confirmationDeadlineAt: nextConfirmByIso,
+      rideAppConfirmBy: nextConfirmByIso,
+      confirmationDeadlineLabel: nextConfirmByLabel,
+      rideAppPodStatus: rideAppBookingDetailsFinalized ? "awaiting_rider_confirmation" : "booking_details_needed",
+      seatsUsed: nextJoinedCount,
+      joinedRiderCount: nextJoinedCount,
+      confirmedRiderCount: nextConfirmedCount,
+      rideAppConfirmedRiderCount: nextConfirmedCount,
+      riderConfirmations: nextRiderConfirmations,
+      rideAppSeatReleasedAt: ride.rideAppSeatReleasedAt ?? seatHoldReleasedAtState ?? seatHoldExpiredAtState ?? requestedAt.toISOString(),
+      rideAppRejoinRequestedAt: requestedAt.toISOString(),
+      rideAppRejoinRequestedBy: riderName,
+    };
+
+    setCurrentUserJoinIntentStatus("joined_interest");
+    setCurrentUserConfirmationExpiredState(false);
+    setCurrentUserBookingDetailsConfirmedState(false);
+    setCurrentUserConfirmedBookingDetailsVersion(null);
+    setSeatHoldExpiredAtState(null);
+    setSeatHoldReleasedAtState(null);
+    setConfirmByOverride(nextConfirmByIso);
+    setConfirmByLabelOverride(nextConfirmByLabel);
+    setPlatformFeeStatus("pending");
+    setRiderConfirmations(nextRiderConfirmations);
+    setRideAppConfirmedRiderCount(nextConfirmedCount);
+    saveStoredSelfSettleRidePatch(ride.id, patch);
+    setRejoinMessage(rideAppBookingDetailsFinalized ? "Confirm ride details" : "Waiting for host details");
+    setShowRejoinModal(false);
+  }
+
   function addMockFareEstimateScreenshot() {
     const addedAt = new Date().toISOString();
     const mockScreenshot = {
@@ -4020,8 +4143,39 @@ export function SelfSettleBookingDetailsCard({
                   You did not confirm before the confirm-by time, so your seat was released for other riders.
                 </p>
                 <p className="mt-2 text-xs font-black leading-5 text-rose-100">
-                  No RidePod fee was confirmed. Waiver was not used.
+                  No RidePod fee was confirmed.
                 </p>
+                <p className="mt-1 text-xs font-black leading-5 text-rose-100">
+                  Waiver was not used.
+                </p>
+                {!canRequestRejoin ? (
+                  <p className="mt-2 rounded-[12px] border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-xs font-black leading-5 text-amber-100">
+                    {podStillAcceptsRejoin ? "Pod is full. " : ""}{rejoinUnavailableHelper}
+                  </p>
+                ) : null}
+                <div className="mt-4 grid gap-2">
+                  {canRequestRejoin ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRejoinMessage(null);
+                          setShowRejoinModal(true);
+                        }}
+                        className="inline-flex min-h-11 items-center justify-center rounded-[14px] bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_30px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)] transition hover:brightness-105"
+                      >
+                        Request to rejoin
+                      </button>
+                      <Link href="/home" className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-blue-300/20 bg-[var(--rp-card-muted)] px-4 text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-soft)] hover:text-[var(--rp-text)]">
+                        Find another pod
+                      </Link>
+                    </>
+                  ) : (
+                    <Link href="/home" className="inline-flex min-h-11 items-center justify-center rounded-[14px] bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_30px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)] transition hover:brightness-105">
+                      Find another pod
+                    </Link>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -4079,6 +4233,12 @@ export function SelfSettleBookingDetailsCard({
           </p>
         ) : null}
 
+        {!seatHoldExpired && rejoinMessage ? (
+          <p className="mt-5 rounded-[16px] border border-blue-300/20 bg-blue-400/10 px-4 py-3 text-center text-sm font-black leading-6 text-blue-100">
+            {rejoinMessage}
+          </p>
+        ) : null}
+
         {feeConfirmationMessage ? (
           <p className="mt-3 rounded-[16px] border border-emerald-300/20 bg-emerald-400/10 px-4 py-3 text-sm font-bold leading-6 text-emerald-100">
             {feeConfirmationMessage}
@@ -4113,7 +4273,18 @@ export function SelfSettleBookingDetailsCard({
       </div>
 
       <div className="grid gap-2 border-t border-blue-300/15 bg-[rgba(2,6,23,0.28)] p-4 sm:grid-cols-3">
-        {currentUserSeatHoldExpired ? (
+        {currentUserSeatHoldExpired && canRequestRejoin ? (
+          <button
+            type="button"
+            onClick={() => {
+              setRejoinMessage(null);
+              setShowRejoinModal(true);
+            }}
+            className="inline-flex min-h-12 items-center justify-center rounded-[16px] bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_30px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)] transition hover:brightness-105"
+          >
+            Request to rejoin
+          </button>
+        ) : currentUserSeatHoldExpired ? (
           <Link
             href="/home"
             className="inline-flex min-h-12 items-center justify-center rounded-[16px] bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_30px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)] transition hover:brightness-105"
@@ -4225,6 +4396,55 @@ export function SelfSettleBookingDetailsCard({
         )}
       </div>
     </section>
+    {showRejoinModal ? (
+      <div
+        className="fixed inset-0 z-[90] grid place-items-end bg-[rgba(3,7,18,0.74)] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-6 backdrop-blur-sm sm:place-items-center sm:py-6"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="self-settle-rejoin-title"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) setShowRejoinModal(false);
+        }}
+      >
+        <section className="flex max-h-[92vh] w-full max-w-[460px] flex-col overflow-hidden rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.46)]">
+          <div className="overflow-y-auto p-5">
+            <div className="flex items-start gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-blue-300/35 bg-blue-400/12 text-blue-100">
+                <UserPlus className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 id="self-settle-rejoin-title" className="text-2xl font-black leading-tight">
+                  Request to rejoin?
+                </h2>
+                <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                  You can request this seat again if the pod still has space. You'll need to confirm ride details before the new confirm-by time.
+                </p>
+              </div>
+            </div>
+            <p className="mt-5 rounded-[16px] border border-[var(--rp-primary)]/25 bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-4 py-3 text-sm font-black leading-6 text-[var(--rp-primary)]">
+              No RidePod fee is confirmed until you confirm ride details.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 border-t border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_96%,transparent)] p-4">
+            <button
+              type="button"
+              onClick={() => setShowRejoinModal(false)}
+              className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={!canRequestRejoin}
+              onClick={requestToRejoin}
+              className="min-h-12 rounded-2xl bg-[var(--rp-gradient-primary)] text-sm font-black text-[var(--rp-primary-text)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Request to rejoin
+            </button>
+          </div>
+        </section>
+      </div>
+    ) : null}
     {showRiderConfirmRidingModal ? (
       <SelfSettleRiderBookingConfirmationModal
         summaryRows={riderBookingSummaryRows}

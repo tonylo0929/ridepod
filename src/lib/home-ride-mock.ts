@@ -185,6 +185,9 @@ export type HomeRide = {
   rideAppReplacementDeadlineLabel?: string | null;
   rideAppFeeResolution?: RideAppFeeResolution;
   rideAppHostCancellationActivity?: string[];
+  rideAppSeatReleasedAt?: string | null;
+  rideAppRejoinRequestedAt?: string | null;
+  rideAppRejoinRequestedBy?: string | null;
   chatUnlockedAt?: string | null;
   rideAppFarePaymentTiming?: "after_ride";
   rideAppProviderName?: string;

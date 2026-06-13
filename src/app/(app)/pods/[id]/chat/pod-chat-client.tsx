@@ -81,6 +81,7 @@ type RideAppChatActivityType =
   | "ride_details_confirmed"
   | "ride_details_needs_review"
   | "seat_hold_expired"
+  | "rejoin_requested"
   | "stop_requested"
   | "stop_approved"
   | "stop_declined"
@@ -275,20 +276,53 @@ function buildRideAppTimelineEvents({
       }
 
       if (rider.status === "seat_hold_expired" || rider.status === "expired") {
-        const currentUserReleased = rider.isCurrentUser === true || rider.name.toLowerCase().includes("(you)");
+        const currentUserReleased = rider.isCurrentUser === true || rider.name.toLowerCase().includes("(you)") || rider.name.trim().toLowerCase() === "you";
+        const releasedName = currentUserReleased ? ride.currentUserName?.trim() || "Yuna" : rider.name;
+        const releasedPronoun = releasedName.trim().toLowerCase() === "yuna" ? "she" : "they";
         addTimelineEvent(events, {
           id: `seat-expired-${rider.name}-${index}`,
           type: "seat_hold_expired",
           kind: "system",
           actorName: rider.name,
-          text: currentUserReleased
-            ? "Your seat was released because you did not confirm in time."
-            : `${rider.name}'s seat was released because they did not confirm in time.`,
+          text: `${releasedName}'s seat was released because ${releasedPronoun} did not confirm in time.`,
           sortTime: safeDateMs(rider.seatHoldExpiredAt, -8 + index),
           visibility: "pod_members",
         });
       }
     });
+
+    if (
+      ride.rideAppSeatReleasedAt &&
+      !ride.riderConfirmations?.some((rider) => rider.role === "rider" && (rider.status === "seat_hold_expired" || rider.status === "expired"))
+    ) {
+      const releasedName = ride.rideAppRejoinRequestedBy?.trim() || ride.currentUserName?.trim() || "Yuna";
+      const releasedPronoun = releasedName.trim().toLowerCase() === "yuna" ? "she" : "they";
+      addTimelineEvent(events, {
+        id: "seat-expired-before-rejoin",
+        type: "seat_hold_expired",
+        kind: "system",
+        actorName: releasedName,
+        text: `${releasedName}'s seat was released because ${releasedPronoun} did not confirm in time.`,
+        sortTime: safeDateMs(ride.rideAppSeatReleasedAt, -8),
+        visibility: "pod_members",
+      });
+    }
+
+    if (ride.rideAppRejoinRequestedAt) {
+      const requestedBy = ride.rideAppRejoinRequestedBy?.trim() || ride.currentUserName?.trim() || "Yuna";
+      const currentUserRequested =
+        ride.currentUserJoinIntentStatus === "joined_interest" &&
+        (requestedBy === ride.currentUserName?.trim() || requestedBy.toLowerCase() === "you");
+      addTimelineEvent(events, {
+        id: "rejoin-requested",
+        type: "rejoin_requested",
+        kind: "system",
+        actorName: currentUserRequested ? "You" : requestedBy,
+        text: currentUserRequested ? "You requested to rejoin the pod." : `${requestedBy} requested to rejoin the pod.`,
+        sortTime: safeDateMs(ride.rideAppRejoinRequestedAt, -7),
+        visibility: "pod_members",
+      });
+    }
 
     ride.proposedStops?.forEach((stop) => {
       addTimelineEvent(events, {
