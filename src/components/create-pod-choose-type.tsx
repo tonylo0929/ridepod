@@ -6719,6 +6719,7 @@ function SuccessStep({
   pricing,
   stops,
   stopRequestPolicy,
+  podDetailHref,
   currentStep = 5,
   stepLabels = baseCreateSteps,
 }: {
@@ -6730,12 +6731,14 @@ function SuccessStep({
   pricing: PricingState;
   stops: RouteStop[];
   stopRequestPolicy: StopRequestPolicy;
+  podDetailHref?: string | null;
   currentStep?: CreateStep;
   stepLabels?: string[];
 }) {
   const routeFrom = routeCode(pickupAddress, "USC");
   const routeTo = routeCode(dropoffAddress, "LAX");
   const isRideAppSelfSettle = normalizeRideOptionId(peopleVehicle.rideOption) === "ride_app_fixed_quote";
+  const detailHref = podDetailHref ?? "/pods";
 
   return (
     <>
@@ -6760,7 +6763,7 @@ function SuccessStep({
 
         <div className="mt-5 grid gap-3">
           <Link
-            href="/pods"
+            href={detailHref}
             className="flex h-14 w-full items-center justify-center gap-3 rounded-[12px] border border-[var(--rp-border-strong)] text-base font-black shadow-[0_18px_34px_color-mix(in_srgb,var(--rp-primary)_34%,transparent)] transition hover:brightness-105"
             style={{
               background: "var(--rp-gradient-primary)",
@@ -6770,10 +6773,20 @@ function SuccessStep({
             View my pod
             <ArrowRight className="h-5 w-5" />
           </Link>
-          <SecondaryButton onClick={() => undefined}>
-            {isRideAppSelfSettle ? "Share booking details" : "Invite riders"}
-            {isRideAppSelfSettle ? <Smartphone className="h-5 w-5" /> : <UserPlus className="h-5 w-5" />}
-          </SecondaryButton>
+          {isRideAppSelfSettle ? (
+            <Link
+              href={detailHref}
+              className="flex h-14 w-full items-center justify-center gap-3 rounded-[12px] border border-[var(--rp-primary)] bg-transparent text-base font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)]"
+            >
+              Share booking details
+              <Smartphone className="h-5 w-5" />
+            </Link>
+          ) : (
+            <SecondaryButton onClick={() => undefined}>
+              Invite riders
+              <UserPlus className="h-5 w-5" />
+            </SecondaryButton>
+          )}
           {isRideAppSelfSettle ? (
             <p className="text-center text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
               You can track this pod in My Ride. Its calendar color updates as the status changes.
@@ -6849,6 +6862,7 @@ export function CreatePodChooseType() {
   const [taxiPartnerPreferenceTouched, setTaxiPartnerPreferenceTouched] = useState(false);
   const [stopRequestPolicy, setStopRequestPolicy] = useState<StopRequestPolicy>("direct_only");
   const [stopRequestPolicyTouched, setStopRequestPolicyTouched] = useState(false);
+  const [createdPodDetailHref, setCreatedPodDetailHref] = useState<string | null>(null);
   const [pricing] = useState<PricingState>({
     estimatedFare: 84,
     estimatedShare: 21,
@@ -6925,6 +6939,7 @@ export function CreatePodChooseType() {
         stopRequestPolicy: displayedStopRequestPolicy,
       });
       saveCreatedHomeRide(createdRide);
+      setCreatedPodDetailHref(`/pods/${createdRide.id}`);
       if (user && !createdRide.estimatedRideAppFare?.trim()) {
         const rideRouteLabel = `${createdRide.fromLabel} -> ${createdRide.toLabel}`;
         const rideTimeLabel = `${createdRide.dateLabel} - ${createdRide.timeLabel}`;
@@ -6944,6 +6959,8 @@ export function CreatePodChooseType() {
           },
         });
       }
+    } else {
+      setCreatedPodDetailHref(null);
     }
 
     setStep(isRideAppSelfSettle ? 6 : 5);
@@ -6961,6 +6978,7 @@ export function CreatePodChooseType() {
           pricing={pricing}
           stops={stops}
           stopRequestPolicy={displayedStopRequestPolicy}
+          podDetailHref={createdPodDetailHref}
           currentStep={isRideAppSelfSettle ? 6 : 5}
           stepLabels={activeStepLabels}
         />
