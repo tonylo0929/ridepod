@@ -6916,7 +6916,14 @@ export function CreatePodChooseType() {
     return true;
   }
 
+  function continueToStep(nextStep: CreateStep) {
+    if (!ensureCreateAuth()) return;
+    setStep(nextStep);
+  }
+
   function completeCreate() {
+    if (!ensureCreateAuth()) return;
+
     if (isRideAppSelfSettle) {
       const createdRide = buildCreatedRideAppHomeRide({
         pickupAddress,
@@ -6991,7 +6998,7 @@ export function CreatePodChooseType() {
           peopleVehicle={peopleVehicle}
           onPeopleVehicleChange={setPeopleVehicle}
           onBack={() => setStep(3)}
-          onContinue={() => setStep(5)}
+          onContinue={() => continueToStep(5)}
         />
       ) : step === 3 ? (
         <DateTimeStep
@@ -7002,7 +7009,7 @@ export function CreatePodChooseType() {
           stepLabels={activeStepLabels}
           onDateTimeChange={setDateTime}
           onBack={() => setStep(2)}
-          onContinue={() => setStep(4)}
+          onContinue={() => continueToStep(4)}
         />
       ) : step === 2 ? (
         <RouteStopsStep
@@ -7035,7 +7042,7 @@ export function CreatePodChooseType() {
             setStops((currentStops) => currentStops.filter((stop) => stop.id !== id));
           }}
           onStopRequestPolicyChange={handleStopRequestPolicyChange}
-          onContinue={() => setStep(3)}
+          onContinue={() => continueToStep(3)}
         />
       ) : step === 1 ? (
         <>
@@ -7072,7 +7079,7 @@ export function CreatePodChooseType() {
           </main>
 
           <footer className="px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
-            <CreatePodStepActions onBack={() => setStep(0)} onContinue={() => setStep(2)} />
+            <CreatePodStepActions onBack={() => setStep(0)} onContinue={() => continueToStep(2)} />
           </footer>
         </>
       ) : (
@@ -7090,7 +7097,7 @@ export function CreatePodChooseType() {
           onTaxiPartnerPreferenceChange={handleTaxiPartnerPreferenceChange}
           onStopRequestPolicyChange={handleStopRequestPolicyChange}
           onBack={() => undefined}
-          onContinue={() => setStep(1)}
+          onContinue={() => continueToStep(1)}
           currentStep={0}
           stepLabels={activeStepLabels}
           onRequireAuth={ensureCreateAuth}
