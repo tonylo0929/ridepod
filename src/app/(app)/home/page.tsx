@@ -495,7 +495,7 @@ function RideModeSwitch({
 
   return (
     <div className="mb-5 grid justify-items-center">
-      <div className="w-full max-w-[600px] rounded-[34px] border border-[color-mix(in_srgb,var(--rp-primary)_62%,rgba(34,211,238,0.55))] bg-[linear-gradient(135deg,rgba(242,193,91,0.16),rgba(34,211,238,0.12)_48%,rgba(248,250,252,0.08))] p-1.5 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_54px_rgba(0,0,0,0.36),0_0_38px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]">
+      <div className="w-full max-w-[600px] rounded-[34px] border border-[color-mix(in_srgb,var(--rp-primary)_62%,rgba(249,115,22,0.55))] bg-[linear-gradient(135deg,rgba(242,193,91,0.16),rgba(249,115,22,0.12)_48%,rgba(248,250,252,0.08))] p-1.5 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_54px_rgba(0,0,0,0.36),0_0_38px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]">
         <div className="relative grid grid-cols-2 rounded-full border border-white/25 bg-[rgba(248,250,252,0.92)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
         {options.map((option) => {
           const selected = value === option.id;
@@ -510,10 +510,10 @@ function RideModeSwitch({
                 "inline-flex min-h-14 items-center justify-center gap-2 rounded-full px-4 text-base font-black transition min-[420px]:text-lg",
                 selected
                   ? option.id === "ride_app"
-                    ? "bg-cyan-300 text-[#06212a] shadow-[0_16px_32px_rgba(34,211,238,0.24)]"
+                    ? "bg-[var(--rp-primary)] text-[#07111a] shadow-[0_16px_32px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
                     : "bg-[var(--rp-primary)] text-[#07111a] shadow-[0_16px_32px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
                   : option.id === "ride_app"
-                    ? "text-sky-900 hover:bg-sky-100"
+                    ? "text-orange-900 hover:bg-orange-100"
                     : "text-amber-900 hover:bg-amber-100",
               )}
             >
@@ -526,7 +526,7 @@ function RideModeSwitch({
           aria-hidden="true"
           className={cn(
             "pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border bg-white/92 px-2 py-0.5 text-xs font-black tracking-[0.12em] shadow-[0_8px_18px_rgba(15,23,42,0.14)]",
-            value === "ride_app" ? "border-cyan-200 text-cyan-700" : "border-amber-200 text-amber-700",
+            value === "ride_app" ? "border-orange-200 text-orange-700" : "border-amber-200 text-amber-700",
           )}
         >
           {value === "ride_app" ? "<--" : "-->"}
