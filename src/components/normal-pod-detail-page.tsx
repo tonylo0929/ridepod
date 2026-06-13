@@ -3043,6 +3043,7 @@ function SelfSettlePodSummaryHero({
   onManageActionsClick,
   hasFareProof,
   onViewFareProof,
+  onSharePod,
 }: {
   ride: HomeRide;
   seatsUsed: number;
@@ -3055,6 +3056,7 @@ function SelfSettlePodSummaryHero({
   onManageActionsClick: () => void;
   hasFareProof: boolean;
   onViewFareProof: () => void;
+  onSharePod: () => void;
 }) {
   const chatAccess = getRideAppChatAccessState(ride);
   const statusTitle = getPodStatusTitle(ride, chatAccess);
@@ -3152,6 +3154,23 @@ function SelfSettlePodSummaryHero({
             )}
           </div>
           <div className="min-w-0">
+            <div className="mb-2 flex items-center gap-1.5">
+              <Link
+                href={`/pods/${ride.id}/chat`}
+                aria-label="Open pod chat"
+                className="grid h-9 w-9 place-items-center rounded-full border border-cyan-200/35 bg-cyan-300/8 text-cyan-100 shadow-[0_8px_18px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:bg-cyan-300/14"
+              >
+                <MessagesSquare className="h-[18px] w-[18px]" />
+              </Link>
+              <button
+                type="button"
+                onClick={onSharePod}
+                aria-label="Share pod"
+                className="grid h-9 w-9 place-items-center rounded-full border border-cyan-200/35 bg-cyan-300/8 text-cyan-100 shadow-[0_8px_18px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:bg-cyan-300/14"
+              >
+                <Share2 className="h-[18px] w-[18px]" />
+              </button>
+            </div>
             <p className="text-sm font-semibold text-[var(--rp-muted-strong)]">Ride type</p>
             <p className="mt-1 truncate text-xl font-black text-white">{getPodStatusVehicleLabel(ride)}</p>
           </div>
@@ -4139,27 +4158,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
             <ArrowLeft className="h-6 w-6" />
           </Link>
           <span className="h-10 w-10" aria-hidden="true" />
-          {selfSettlePod ? (
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/pods/${ride.id}/chat`}
-                aria-label="Open pod chat"
-                className="grid h-10 w-10 place-items-center rounded-full border border-cyan-200/35 bg-[rgba(4,10,18,0.72)] text-cyan-100 shadow-[0_8px_22px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm transition hover:bg-[rgba(20,27,34,0.92)]"
-              >
-                <MessagesSquare className="h-5 w-5" />
-              </Link>
-              <button
-                type="button"
-                onClick={sharePod}
-                aria-label="Share pod"
-                className="grid h-10 w-10 place-items-center rounded-full border border-cyan-200/35 bg-[rgba(4,10,18,0.72)] text-cyan-100 shadow-[0_8px_22px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm transition hover:bg-[rgba(20,27,34,0.92)]"
-              >
-                <Share2 className="h-5 w-5" />
-              </button>
-            </div>
-          ) : (
-            <span className="h-10 w-10" aria-hidden="true" />
-          )}
+          <span className="h-10 w-10" aria-hidden="true" />
         </header>
 
         <main className="relative z-10 grid gap-3 px-4">
@@ -4176,6 +4175,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
               onManageActionsClick={() => setShowManagePodActionsModal(true)}
               hasFareProof={Boolean(rideAppFareProof)}
               onViewFareProof={() => setShowRideAppFareProofModal(true)}
+              onSharePod={sharePod}
             />
           ) : (
           <section className="relative -mx-4 -mt-2 overflow-hidden rounded-b-[28px] border-b border-[var(--rp-border)] bg-[var(--rp-shell)] shadow-[var(--rp-shadow-soft)]">
