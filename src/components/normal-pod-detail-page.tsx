@@ -1064,7 +1064,12 @@ function getManagePodActionsPendingCount(ride: HomeRide) {
   return pendingConfirmationCount + getPendingRouteRequestCount(ride);
 }
 
-function getPodStatusTitle(ride: HomeRide, chatAccess: ReturnType<typeof getRideAppChatAccessState>) {
+type PodStatusContext = {
+  currentUserSeatHoldExpired?: boolean;
+  currentUserViewingFullPod?: boolean;
+};
+
+function getPodStatusTitle(ride: HomeRide, chatAccess: ReturnType<typeof getRideAppChatAccessState>, context: PodStatusContext = {}) {
   const deadlineState = getRideAppConfirmDeadlineState(ride);
   const isHost = getCurrentUserIsHost(ride);
   const expiredSeatHoldCount = getExpiredSeatHoldCount(ride);
@@ -1072,8 +1077,11 @@ function getPodStatusTitle(ride: HomeRide, chatAccess: ReturnType<typeof getRide
   if (isRideAppReplacementBookerSelected(ride)) return "New booker selected";
   if (isRideAppPodCancelledByHost(ride)) return "Pod cancelled";
   if (ride.rideAppPodStatus === "ride_booked") return "Ride booked";
-  if (deadlineState.status === "expired" || isRideAppSeatHoldExpired(ride)) return isHost ? `${expiredSeatHoldCount || 1} seat released` : "Seat released";
+  if (context.currentUserSeatHoldExpired) return "Seat released";
+  if (isHost && (deadlineState.status === "expired" || isRideAppSeatHoldExpired(ride))) return `${expiredSeatHoldCount || 1} seat released`;
   if (isHost && expiredSeatHoldCount > 0) return `${expiredSeatHoldCount} seat released`;
+  if (context.currentUserViewingFullPod) return "Full";
+  if (deadlineState.status === "expired" || isRideAppSeatHoldExpired(ride)) return "Confirm-by time ended";
   if (deadlineState.status === "soon") return isHost ? "Confirm-by time soon" : "Confirm soon";
   if (ride.bookingDetailsUpdated || ride.rideAppPodStatus === "needs_review" || chatAccess.reason === "needs_review") {
     return getPodStatusUpdateTitle(ride);
@@ -1086,7 +1094,7 @@ function getPodStatusTitle(ride: HomeRide, chatAccess: ReturnType<typeof getRide
   return "Booking details needed";
 }
 
-function getPodStatusSubtitle(ride: HomeRide, chatAccess: ReturnType<typeof getRideAppChatAccessState>) {
+function getPodStatusSubtitle(ride: HomeRide, chatAccess: ReturnType<typeof getRideAppChatAccessState>, context: PodStatusContext = {}) {
   const deadlineState = getRideAppConfirmDeadlineState(ride);
   const isHost = getCurrentUserIsHost(ride);
   const expiredSeatHoldCount = getExpiredSeatHoldCount(ride);
@@ -1095,10 +1103,14 @@ function getPodStatusSubtitle(ride: HomeRide, chatAccess: ReturnType<typeof getR
   if (getRideAppHostCancellationStatus(ride) === "host_cancelled") return "Riders will be notified and the pod will no longer accept confirmations.";
   if (isRideAppPodCancelledByHost(ride)) return "No new booker was selected.";
   if (ride.rideAppPodStatus === "ride_booked") return "Use chat for final pickup updates.";
+  if (context.currentUserSeatHoldExpired) return "You did not confirm before the confirm-by time.";
   if (deadlineState.status === "expired" || isRideAppSeatHoldExpired(ride)) {
-    return isHost ? "Unconfirmed seats were released for other riders." : "You did not confirm before the confirm-by time.";
+    if (isHost) return "Unconfirmed seats were released for other riders.";
+    if (context.currentUserViewingFullPod) return "All seats are filled for this pod.";
+    return "The confirm-by time has ended for this pod.";
   }
   if (isHost && expiredSeatHoldCount > 0) return "Unconfirmed seats were released for other riders.";
+  if (context.currentUserViewingFullPod) return "All seats are filled for this pod.";
   if (deadlineState.status === "soon") {
     return isHost ? "Riders must confirm before the confirm-by time." : "Your seat hold may expire soon if you do not confirm.";
   }
@@ -1446,6 +1458,7 @@ export function PodStatusPanel({
   const expiredSeatHoldCount = riders.filter((item) => item.role === "rider" && item.status === "seat_hold_expired").length;
   // TODO: Future: persist released seat count when confirm-by deadline release runs outside mock state.
   const effectiveSeatsUsed = Math.max(0, Math.max(seatsUsed, ride.seatsUsed) - expiredSeatHoldCount);
+  const podIsFull = effectiveSeatsUsed >= ride.seatsTotal;
   const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
   const requiredConfirmationsFromRide = getRideAppRequiredConfirmations(ride);
   const confirmedCurrentRiderCount = riders.filter((item) => isPodStatusRiderConfirmedForCurrentDetails(item, currentDetailVersion)).length;
@@ -1453,11 +1466,25 @@ export function PodStatusPanel({
     (item) => item.role === "rider" && (item.status === "pending" || item.status === "needs_review" || item.status === "review_needed"),
   );
   const pendingNudgeCount = pendingNudgeRiders.length;
-  const currentUserSeatHoldExpired = !getCurrentUserIsHost(ride) && (ride.currentUserConfirmationExpired === true || ride.currentUserJoinIntentStatus === "seat_hold_expired" || isRideAppSeatHoldExpired(ride));
+  const isHost = getCurrentUserIsHost(ride);
+  const currentUserHadRideAppSeat =
+    !isHost &&
+    (ride.currentUserJoined === true ||
+      ride.currentUserRole === "joined_rider" ||
+      ride.quoteStatus === "joined" ||
+      ride.currentUserJoinIntentStatus === "joined_interest" ||
+      ride.currentUserJoinIntentStatus === "confirmed" ||
+      ride.currentUserJoinIntentStatus === "needs_review" ||
+      ride.currentUserJoinIntentStatus === "seat_hold_expired");
   const currentUserConfirmed =
     ride.currentUserBookingDetailsConfirmed === true ||
     ride.selfSettleConfirmationStatus === "confirmed" ||
     riders.some((item) => item.role === "rider" && item.name.toLowerCase().includes("you") && isPodStatusRiderConfirmedForCurrentDetails(item, currentDetailVersion));
+  const currentUserSeatHoldExpired =
+    currentUserHadRideAppSeat &&
+    !currentUserConfirmed &&
+    (ride.currentUserConfirmationExpired === true || ride.currentUserJoinIntentStatus === "seat_hold_expired" || isRideAppSeatHoldExpired(ride));
+  const currentUserViewingFullPod = !isHost && !currentUserHadRideAppSeat && podIsFull;
   const chatAccessBase = getRideAppChatAccessState({
     ...ride,
     confirmedRiderCount: confirmedCurrentRiderCount,
@@ -1485,7 +1512,6 @@ export function PodStatusPanel({
   const deadlineState = getRideAppConfirmDeadlineState(ride, new Date(nowMs));
   const confirmByLabel = formatConfirmByLabel(new Date(confirmationDeadlineMs));
   const confirmationNotStarted = !ride.bookingDetailsShared && !ride.rideAppBookingDetailsFinalized;
-  const isHost = getCurrentUserIsHost(ride);
   const detailsReady = ride.bookingDetailsShared === true || ride.rideAppBookingDetailsFinalized === true || ride.rideAppBookingDetailsConfirmed === true;
   const fareEstimateSet = getHostUpdatedRideAppFare(ride);
   const splitMethodSet = Boolean(ride.rideAppSplitMethod || ride.splitMethod);
@@ -1548,6 +1574,8 @@ export function PodStatusPanel({
   ];
   const actionNoteTitle = currentUserSeatHoldExpired
     ? "Seat released"
+    : currentUserViewingFullPod
+      ? "Pod full"
     : replacementNeeded
       ? isHost
         ? "View status only"
@@ -1577,6 +1605,8 @@ export function PodStatusPanel({
         : "No action needed from you yet";
   const actionNoteBody = currentUserSeatHoldExpired
     ? "No RidePod fee was confirmed. Waiver was not used."
+    : currentUserViewingFullPod
+      ? "All seats are filled for this ride app pod."
     : replacementNeeded
       ? isHost
         ? "Host replacement mode is active. You cannot mark ride app booked."
@@ -1624,6 +1654,11 @@ export function PodStatusPanel({
         "You did not confirm before the confirm-by time, so your seat was released for other riders.",
         "No RidePod fee was confirmed.",
         "Waiver was not used.",
+      ]
+    : currentUserViewingFullPod
+    ? [
+        "All seats are filled for this ride app pod.",
+        "Join another pod or check again if a seat opens.",
       ]
     : replacementNeeded
     ? [
@@ -1773,6 +1808,9 @@ export function PodStatusPanel({
     return () => window.clearInterval(timer);
   }, []);
 
+  const statusContext = { currentUserSeatHoldExpired, currentUserViewingFullPod };
+  const expiredDeadlineLabel = currentUserSeatHoldExpired || isHost ? "Seat released" : currentUserViewingFullPod ? "Full" : "Confirm-by ended";
+
   const statusContent = (
       <section className={cn(
         embedded
@@ -1848,9 +1886,9 @@ export function PodStatusPanel({
                 <CheckSquare className="h-7 w-7" />
               </span>
               <div className="min-w-0 text-center">
-                <h3 className="text-lg font-black text-white">{getPodStatusTitle(ride, chatAccess)}</h3>
+                <h3 className="text-lg font-black text-white">{getPodStatusTitle(ride, chatAccess, statusContext)}</h3>
                 <p className="mx-auto mt-1 max-w-[280px] text-center text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                  {getPodStatusSubtitle(ride, chatAccess)}
+                  {getPodStatusSubtitle(ride, chatAccess, statusContext)}
                 </p>
                 {deadlineState.status === "active" || deadlineState.status === "soon" ? (
                   <span
@@ -1864,8 +1902,17 @@ export function PodStatusPanel({
                     {deadlineState.status === "soon" ? `Confirm soon · ${deadlineState.timeLeftLabel}` : `Confirm by ${confirmByLabel}`}
                   </span>
                 ) : deadlineState.status === "expired" ? (
-                  <span className="mt-2 inline-flex max-w-full rounded-full border border-rose-300/30 bg-rose-400/10 px-3 py-1 text-[11px] font-black text-rose-100">
-                    Seat released
+                  <span
+                    className={cn(
+                      "mt-2 inline-flex max-w-full rounded-full border px-3 py-1 text-[11px] font-black",
+                      currentUserSeatHoldExpired || isHost
+                        ? "border-rose-300/30 bg-rose-400/10 text-rose-100"
+                        : currentUserViewingFullPod
+                          ? "border-cyan-300/35 bg-cyan-300/10 text-cyan-100"
+                          : "border-amber-300/35 bg-amber-400/10 text-amber-100",
+                    )}
+                  >
+                    {expiredDeadlineLabel}
                   </span>
                 ) : null}
               </div>
@@ -2073,6 +2120,10 @@ export function PodStatusPanel({
                         Wait for another rider
                       </button>
                     )
+                  ) : currentUserViewingFullPod ? (
+                    <button type="button" disabled className="min-h-11 rounded-[14px] border border-cyan-300/25 bg-cyan-300/10 px-4 text-sm font-black text-cyan-100">
+                      Full
+                    </button>
                   ) : chatAccess.canAccess ? (
                     <Link href={`/pods/${ride.id}/chat`} className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-cyan-100/55 bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_12px_26px_rgba(56,189,248,0.2)]">
                       Chat
@@ -2234,10 +2285,12 @@ export function PodStatusPanel({
               ) : null}
 
               <section className="rounded-[20px] border border-cyan-300/25 bg-cyan-300/8 p-4">
-                <p className="text-sm font-black text-cyan-100">{currentUserSeatHoldExpired ? "Find another pod" : chatAccess.canAccess ? "Ready to gather" : "When will chat open?"}</p>
+                <p className="text-sm font-black text-cyan-100">{currentUserSeatHoldExpired ? "Find another pod" : currentUserViewingFullPod ? "Pod full" : chatAccess.canAccess ? "Ready to gather" : "When will chat open?"}</p>
                 <p className="mt-1 text-xs font-semibold leading-5 text-cyan-100/85">
                   {currentUserSeatHoldExpired
                     ? "You did not confirm before the confirm-by time, so your seat was released for other riders."
+                    : currentUserViewingFullPod
+                    ? "All seats are filled for this pod."
                     : replacementNeeded
                     ? "Host cancelled. A confirmed rider can become the new booker, then chat can reopen if required riders still confirm."
                     : chatAccess.canAccess
@@ -2252,6 +2305,10 @@ export function PodStatusPanel({
                   <Link href="/home" className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-[14px] bg-[var(--rp-gradient-primary)] text-sm font-black text-[#07111a]">
                     Find another pod
                   </Link>
+                ) : currentUserViewingFullPod ? (
+                  <button type="button" disabled className="mt-3 min-h-11 w-full rounded-[14px] border border-cyan-300/35 bg-cyan-300/10 text-sm font-black text-cyan-100">
+                    Full
+                  </button>
                 ) : (
                   <button type="button" onClick={() => setActiveTab("riders")} className="mt-3 min-h-11 w-full rounded-[14px] border border-cyan-300/35 bg-cyan-300/10 text-sm font-black text-cyan-100">
                     View confirmations
@@ -2597,7 +2654,7 @@ export function PodStatusPanel({
                 <div className="min-w-0">
                   <h2 id="request-rejoin-title" className="text-xl font-black leading-tight text-white">Request to rejoin?</h2>
                   <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                    You can request this seat again if the pod still has space. You'll need to confirm ride details before the new confirm-by time.
+                    You can request this seat again if the pod still has space. You will need to confirm ride details before the new confirm-by time.
                   </p>
                 </div>
               </div>
@@ -3059,8 +3116,33 @@ function SelfSettlePodSummaryHero({
   onSharePod: () => void;
 }) {
   const chatAccess = getRideAppChatAccessState(ride);
-  const statusTitle = getPodStatusTitle(ride, chatAccess);
-  const statusSubtitle = getPodStatusSubtitle(ride, chatAccess);
+  const summaryRiders = buildPodStatusRiders(ride);
+  const summaryCurrentDetailVersion = getRideAppCurrentDetailVersion(ride);
+  const summaryExpiredSeatHoldCount = summaryRiders.filter((item) => item.role === "rider" && item.status === "seat_hold_expired").length;
+  const summaryEffectiveSeatsUsed = Math.max(0, Math.max(seatsUsed, ride.seatsUsed) - summaryExpiredSeatHoldCount);
+  const summaryUserIsHost = getCurrentUserIsHost(ride);
+  const summaryUserHadRideAppSeat =
+    !summaryUserIsHost &&
+    (ride.currentUserJoined === true ||
+      ride.currentUserRole === "joined_rider" ||
+      ride.quoteStatus === "joined" ||
+      ride.currentUserJoinIntentStatus === "joined_interest" ||
+      ride.currentUserJoinIntentStatus === "confirmed" ||
+      ride.currentUserJoinIntentStatus === "needs_review" ||
+      ride.currentUserJoinIntentStatus === "seat_hold_expired");
+  const summaryUserConfirmed =
+    ride.currentUserBookingDetailsConfirmed === true ||
+    ride.selfSettleConfirmationStatus === "confirmed" ||
+    summaryRiders.some((item) => item.role === "rider" && item.name.toLowerCase().includes("you") && isPodStatusRiderConfirmedForCurrentDetails(item, summaryCurrentDetailVersion));
+  const summaryStatusContext = {
+    currentUserSeatHoldExpired:
+      summaryUserHadRideAppSeat &&
+      !summaryUserConfirmed &&
+      (ride.currentUserConfirmationExpired === true || ride.currentUserJoinIntentStatus === "seat_hold_expired" || isRideAppSeatHoldExpired(ride)),
+    currentUserViewingFullPod: !summaryUserIsHost && !summaryUserHadRideAppSeat && summaryEffectiveSeatsUsed >= ride.seatsTotal,
+  };
+  const statusTitle = getPodStatusTitle(ride, chatAccess, summaryStatusContext);
+  const statusSubtitle = getPodStatusSubtitle(ride, chatAccess, summaryStatusContext);
   const hostProfileImageUrl = getHostProfileImageUrl(ride);
   const hostAvatarLabel = canUpdateEstimate ? "You" : getInitials(ride.hostName || "Host").slice(0, 1);
   const hostBadgeLabel = canUpdateEstimate ? "You are hosting" : `Hosted by ${ride.hostName || "host"}`;

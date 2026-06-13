@@ -4133,7 +4133,7 @@ export function SelfSettleBookingDetailsCard({
           </div>
         ) : null}
 
-        {seatHoldExpired ? (
+        {currentUserSeatHoldExpired ? (
           <div className="mt-5 rounded-[18px] border border-rose-300/25 bg-rose-400/10 p-4">
             <div className="flex items-start gap-3">
               <Clock3 className="mt-0.5 h-5 w-5 shrink-0 text-rose-100" />
@@ -4417,7 +4417,7 @@ export function SelfSettleBookingDetailsCard({
                   Request to rejoin?
                 </h2>
                 <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                  You can request this seat again if the pod still has space. You'll need to confirm ride details before the new confirm-by time.
+                  You can request this seat again if the pod still has space. You will need to confirm ride details before the new confirm-by time.
                 </p>
               </div>
             </div>
