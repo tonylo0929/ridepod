@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import type { HomeRide } from "@/lib/home-ride-mock";
 import type { CalendarRide } from "@/lib/my-ride-calendar-mock";
+import {
+  publicCreatedPodToHomeRide,
+  publicCreatedRideSignature,
+  type PublicCreatedRidePod,
+} from "@/lib/public-created-rides";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
 const createdHomeRidesStorageKey = "ridepod-created-home-rides";
 const createdHomeRidesCookieKey = "ridepod_created_home_rides";
@@ -67,21 +73,98 @@ function writeCreatedHomeRides(rides: HomeRide[]) {
   window.dispatchEvent(new Event("ridepod-created-home-rides-updated"));
 }
 
+function isViewerRide(ride: HomeRide) {
+  return ride.currentUserRole === "host" || ride.currentUserRole === "joined_rider" || ride.currentUserJoined === true;
+}
+
+function mergeCreatedHomeRides(
+  localRides: HomeRide[],
+  publicRides: HomeRide[],
+  includePublicRiderCards: boolean,
+) {
+  const rides: HomeRide[] = [];
+  const seenIds = new Set<string>();
+  const seenSignatures = new Set<string>();
+
+  function push(ride: HomeRide) {
+    const signature = publicCreatedRideSignature(ride);
+    if (seenIds.has(ride.id) || seenSignatures.has(signature)) return;
+    rides.push(ride);
+    seenIds.add(ride.id);
+    seenSignatures.add(signature);
+  }
+
+  localRides.forEach(push);
+  publicRides.filter((ride) => includePublicRiderCards || isViewerRide(ride)).forEach(push);
+  return rides;
+}
+
+async function getSupabaseAccessToken() {
+  try {
+    const client = getSupabaseBrowserClient();
+    const result = await client.auth.getSession();
+    return result.data.session?.access_token ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function publishCreatedHomeRide(ride: HomeRide) {
+  const token = await getSupabaseAccessToken();
+  if (!token) return null;
+
+  try {
+    const response = await fetch("/api/public-created-rides", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ ride }),
+    });
+
+    if (!response.ok) throw new Error(`Publish failed with ${response.status}`);
+    window.dispatchEvent(new Event("ridepod-created-home-rides-updated"));
+    return response.json() as Promise<{ pod: PublicCreatedRidePod | null }>;
+  } catch (error) {
+    console.warn("RidePod public created ride publish failed", error);
+    return null;
+  }
+}
+
+async function readPublicCreatedHomeRides(viewerUserId?: string | null) {
+  try {
+    const response = await fetch("/api/public-created-rides", { cache: "no-store" });
+    if (!response.ok) throw new Error(`List failed with ${response.status}`);
+    const payload = (await response.json()) as { pods?: PublicCreatedRidePod[] };
+    return (payload.pods ?? []).map((pod) => publicCreatedPodToHomeRide(pod, viewerUserId));
+  } catch (error) {
+    console.warn("RidePod public created rides list failed", error);
+    return [];
+  }
+}
+
 export function saveCreatedHomeRide(ride: HomeRide) {
   const current = readCreatedHomeRides();
   writeCreatedHomeRides([ride, ...current.filter((item) => item.id !== ride.id)]);
+  void publishCreatedHomeRide(ride);
 }
 
 export function updateCreatedHomeRide(rideId: string, updater: (ride: HomeRide) => HomeRide) {
   const current = readCreatedHomeRides();
   let updated = false;
+  let updatedRide: HomeRide | null = null;
   const next = current.map((ride) => {
     if (ride.id !== rideId) return ride;
     updated = true;
-    return updater(ride);
+    updatedRide = updater(ride);
+    return updatedRide;
   });
 
-  if (updated) writeCreatedHomeRides(next);
+  if (updated) {
+    writeCreatedHomeRides(next);
+    if (updatedRide) void publishCreatedHomeRide(updatedRide);
+  }
   return updated;
 }
 
@@ -144,29 +227,49 @@ function createdHomeRideToCalendarRide(ride: HomeRide): CalendarRide {
   };
 }
 
-export function useCreatedHomeRides() {
-  const [rides, setRides] = useState<HomeRide[]>([]);
+export function useCreatedHomeRides(viewerUserId?: string | null, includePublicRiderCards = true) {
+  const [rides, setRides] = useState<HomeRide[]>(() =>
+    mergeCreatedHomeRides(readCreatedHomeRides(), [], includePublicRiderCards),
+  );
 
   useEffect(() => {
-    function sync() {
-      setRides(readCreatedHomeRides());
+    let cancelled = false;
+    let syncId = 0;
+
+    async function sync() {
+      const currentSyncId = ++syncId;
+      const localRides = readCreatedHomeRides();
+      setRides(mergeCreatedHomeRides(localRides, [], includePublicRiderCards));
+
+      const publicRides = await readPublicCreatedHomeRides(viewerUserId);
+      if (cancelled || currentSyncId !== syncId) return;
+      setRides(mergeCreatedHomeRides(localRides, publicRides, includePublicRiderCards));
     }
 
-    sync();
+    function syncWhenVisible() {
+      if (document.visibilityState === "visible") void sync();
+    }
+
+    void sync();
     window.addEventListener("storage", sync);
     window.addEventListener("ridepod-created-home-rides-updated", sync);
     window.addEventListener("focus", sync);
+    document.addEventListener("visibilitychange", syncWhenVisible);
+    const interval = window.setInterval(sync, 30_000);
 
     return () => {
+      cancelled = true;
       window.removeEventListener("storage", sync);
       window.removeEventListener("ridepod-created-home-rides-updated", sync);
       window.removeEventListener("focus", sync);
+      document.removeEventListener("visibilitychange", syncWhenVisible);
+      window.clearInterval(interval);
     };
-  }, []);
+  }, [includePublicRiderCards, viewerUserId]);
 
   return rides;
 }
 
-export function useCreatedCalendarRides() {
-  return useCreatedHomeRides().map(createdHomeRideToCalendarRide);
+export function useCreatedCalendarRides(viewerUserId?: string | null) {
+  return useCreatedHomeRides(viewerUserId, false).map(createdHomeRideToCalendarRide);
 }

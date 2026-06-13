@@ -249,7 +249,7 @@ function RideCard({ ride, currentUserId }: { ride: CalendarRide; currentUserId?:
 
 export function MyRideDatePage({ date }: { date: string }) {
   const { user, isLoading } = useAuth();
-  const createdCalendarRides = useCreatedCalendarRides();
+  const createdCalendarRides = useCreatedCalendarRides(user?.id ?? null);
   const [filter, setFilter] = useState<RideFilter>("all");
   const validDate = isValidDateKey(date);
   const dateObject = validDate ? dateFromKey(date) : new Date();

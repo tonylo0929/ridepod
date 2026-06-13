@@ -55,7 +55,7 @@ function useRequireLoginForCreatedPod() {
 
 export function CreatedPodDetailRouteClient({ id }: { id: string }) {
   const { user, isLoading } = useRequireLoginForCreatedPod();
-  const ride = useCreatedHomeRides().find((item) => item.id === id);
+  const ride = useCreatedHomeRides(user?.id ?? null).find((item) => item.id === id);
 
   if (isLoading || !user) return <CreatedPodLoginRedirectState />;
 
@@ -78,7 +78,7 @@ export function CreatedPodDetailRouteClient({ id }: { id: string }) {
 
 export function CreatedPodStatusRouteClient({ id }: { id: string }) {
   const { user, isLoading } = useRequireLoginForCreatedPod();
-  const ride = useCreatedHomeRides().find((item) => item.id === id);
+  const ride = useCreatedHomeRides(user?.id ?? null).find((item) => item.id === id);
 
   if (isLoading || !user) return <CreatedPodLoginRedirectState />;
 
@@ -111,7 +111,7 @@ export function CreatedPodChatRouteClient({
   } | null;
 }) {
   const { user, isLoading } = useRequireLoginForCreatedPod();
-  const ride = useCreatedHomeRides().find((item) => item.id === id);
+  const ride = useCreatedHomeRides(user?.id ?? null).find((item) => item.id === id);
 
   if (isLoading || !user) return <CreatedPodLoginRedirectState />;
 

@@ -34,7 +34,7 @@ function timeAgo(value: string | null) {
 export default function UpdatesPage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
-  const createdHomeRides = useCreatedHomeRides();
+  const createdHomeRides = useCreatedHomeRides(user?.id ?? null);
   const [activeTab, setActiveTab] = useState<UpdatesTab>("notifications");
   const [notifications, setNotifications] = useState<RidePodUserNotificationRow[]>([]);
   const [activity, setActivity] = useState<RidePodLiveUpdateRow[]>([]);

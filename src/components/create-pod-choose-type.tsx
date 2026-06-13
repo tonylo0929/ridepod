@@ -4858,7 +4858,7 @@ function buildCreatedRideAppHomeRide({
   accessMode: AccessMode;
   stopRequestPolicy: StopRequestPolicy;
 }): HomeRide {
-  const id = `created-ride-app-${Date.now()}`;
+  const id = crypto.randomUUID();
   const rideAppProviderName = getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther);
   const acceptedPaymentMethods = peopleVehicle.rideAppAcceptedPaymentMethods.map(getSelfSettlePaymentMethodLabel);
   const splitMethod = getSelfSettleSplitMethodLabel(peopleVehicle.splitMethod);

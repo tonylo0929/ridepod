@@ -387,7 +387,7 @@ function MyRideDayPodCard({ ride, currentUserId }: { ride: CalendarRide; current
 
 export default function MyRidePage() {
   const { user, isLoading } = useAuth();
-  const createdCalendarRides = useCreatedCalendarRides();
+  const createdCalendarRides = useCreatedCalendarRides(user?.id ?? null);
   const today = useMemo(() => new Date(), []);
   const todayKey = dateKey(today);
   const [activeFilter, setActiveFilter] = useState<MyRideFilter>("all");
