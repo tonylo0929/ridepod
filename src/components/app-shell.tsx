@@ -7,6 +7,7 @@ import {
   CalendarCheck,
   Coffee,
   Crown,
+  History as HistoryIcon,
   Home,
   Info,
   LogIn,
@@ -29,10 +30,8 @@ const desktopDrawerNav = [
   { href: "/about", label: "About", icon: Info },
   { href: "/support", label: "Support RidePod", icon: Coffee },
   { href: "/membership", label: "RidePod Plus", icon: Crown },
-  { href: "/pods", label: "My Ride", icon: CalendarCheck, requiresAuth: true },
+  { href: "/history", label: "Ride history", icon: HistoryIcon, requiresAuth: true },
   { href: "/chats", label: "Live Chat", icon: MessageCircle, requiresAuth: true },
-  { href: "/home", label: "Search Ride", icon: Search },
-  { href: "/updates", label: "Updates", icon: Bell, requiresAuth: true },
 ];
 
 function NavLink({
@@ -227,7 +226,6 @@ function DesktopDrawerAction({
 
 function PremiumDesktopSidebar() {
   const { profile, logout, user } = useAuth();
-  const unreadCount = useRidePodUnreadCount();
   const membership = useRidePodMembershipState();
   const isLoggedIn = Boolean(user);
   const displayName = isLoggedIn ? profile?.display_name ?? "RidePod account" : "Guest rider";
@@ -276,7 +274,6 @@ function PremiumDesktopSidebar() {
               key={item.href}
               {...item}
               isLoggedIn={isLoggedIn}
-              badgeCount={item.href === "/updates" ? unreadCount : undefined}
             />
           ))}
         </nav>

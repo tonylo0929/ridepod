@@ -3,30 +3,25 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell,
-  CalendarCheck,
   Coffee,
+  History as HistoryIcon,
   Home,
   Info,
   LogIn,
   LogOut,
   MessageCircle,
-  Search,
 } from "lucide-react";
 import { HomeMenuDrawer } from "@/components/home-menu-drawer";
 import { RidePodAvatar, useRidePodAvatarPreference } from "@/components/animal-avatar";
 import { RidePodLogo } from "@/components/ridepod-logo";
 import { cn } from "@/components/ui";
-import { useRidePodUnreadCount } from "@/lib/notifications/use-ridepod-unread-count";
 import { useAuth } from "@/providers/AuthProvider";
 
 const authPrimaryItems = [
   { href: "/about", label: "About", icon: Info },
   { href: "/support", label: "Support RidePod", icon: Coffee },
-  { href: "/pods", label: "My Ride", icon: CalendarCheck, requiresAuth: true },
+  { href: "/history", label: "Ride history", icon: HistoryIcon, requiresAuth: true },
   { href: "/chats", label: "Live Chat", icon: MessageCircle, requiresAuth: true },
-  { href: "/home", label: "Search Ride", icon: Search },
-  { href: "/updates", label: "Updates", icon: Bell, requiresAuth: true },
 ];
 
 function AuthSidebarLink({
@@ -94,7 +89,6 @@ function AuthSidebarAction({
 
 function AuthDesktopSidebar() {
   const { profile, logout, user } = useAuth();
-  const unreadCount = useRidePodUnreadCount();
   const isLoggedIn = Boolean(user);
   const displayName = isLoggedIn ? profile?.display_name ?? "RidePod account" : "Guest rider";
   const profileSubtitle = isLoggedIn ? "View profile" : "Log in or create account";
@@ -136,7 +130,6 @@ function AuthDesktopSidebar() {
               key={item.href}
               {...item}
               isLoggedIn={isLoggedIn}
-              badgeCount={item.href === "/updates" ? unreadCount : undefined}
             />
           ))}
         </nav>

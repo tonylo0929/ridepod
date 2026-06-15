@@ -4,34 +4,29 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  Bell,
-  CalendarCheck,
   Coffee,
   Crown,
+  History as HistoryIcon,
   Home,
   Info,
   LogIn,
   LogOut,
   Menu,
   MessageCircle,
-  Search,
   UserPlus,
   X,
 } from "lucide-react";
 import { cn } from "@/components/ui";
 import { RidePodAvatar, useRidePodAvatarPreference } from "@/components/animal-avatar";
 import { getMembershipTierInfo, useRidePodMembershipState } from "@/lib/ridepod-membership";
-import { useRidePodUnreadCount } from "@/lib/notifications/use-ridepod-unread-count";
 import { useAuth } from "@/providers/AuthProvider";
 
 const primaryItems = [
   { href: "/about", label: "About", icon: Info },
   { href: "/support", label: "Support RidePod", icon: Coffee },
   { href: "/membership", label: "RidePod Plus", icon: Crown },
-  { href: "/pods", label: "My Ride", icon: CalendarCheck, requiresAuth: true },
+  { href: "/history", label: "Ride history", icon: HistoryIcon, requiresAuth: true },
   { href: "/chats", label: "Live Chat", icon: MessageCircle, requiresAuth: true },
-  { href: "/home", label: "Search Ride", icon: Search },
-  { href: "/updates", label: "Updates", icon: Bell, requiresAuth: true },
 ];
 
 function DrawerNavLink({
@@ -107,7 +102,6 @@ function DrawerActionButton({
 
 export function HomeMenuDrawer() {
   const { profile, logout, user } = useAuth();
-  const unreadCount = useRidePodUnreadCount();
   const membership = useRidePodMembershipState();
   const [open, setOpen] = useState(false);
   const closeDrawer = () => setOpen(false);
@@ -204,7 +198,6 @@ export function HomeMenuDrawer() {
                   key={item.href}
                   {...item}
                   isLoggedIn={isLoggedIn}
-                  badgeCount={item.href === "/updates" ? unreadCount : undefined}
                   onNavigate={closeDrawer}
                 />
               ))}
