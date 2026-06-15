@@ -56,6 +56,15 @@ export type RideAppHostMarkBookedGuard = {
   helper: string;
 };
 
+function formatRejoinCooldownTimeLeft(iso: string, now = new Date()) {
+  const until = new Date(iso);
+  if (Number.isNaN(until.getTime()) || until.getTime() <= now.getTime()) return null;
+  const minutes = Math.max(1, Math.ceil((until.getTime() - now.getTime()) / (60 * 1000)));
+  if (minutes < 60) return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  const hours = Math.ceil(minutes / 60);
+  return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+}
+
 export type RideAppConfirmDeadlineStatus =
   | "not_started"
   | "active"
@@ -342,12 +351,25 @@ export function getRideAppConfirmationState(ride: HomeRide, currentUser?: unknow
   }
 
   if (isRideAppSeatHoldExpired(ride)) {
+    const cooldownTimeLeft = ride.rejoinCooldownUntil ? formatRejoinCooldownTimeLeft(ride.rejoinCooldownUntil) : null;
+    const rejoinPrimaryCta = ride.requiresHostApprovalToRejoin
+      ? "Ask host to rejoin"
+      : cooldownTimeLeft
+        ? "Rejoin available soon"
+        : podAcceptsRejoin && seatsAvailableAfterRelease
+          ? "Request to rejoin"
+          : "Find another pod";
+    const rejoinHelper = ride.requiresHostApprovalToRejoin
+      ? "Too many join/leave actions. Host approval is needed before you can rejoin this pod."
+      : cooldownTimeLeft
+        ? `You can request to rejoin after ${cooldownTimeLeft}.`
+        : "You did not confirm before the confirm-by time, so your seat was released for other riders.";
     return confirmationState(
       "seat_hold_expired",
       "Seat released",
-      "You did not confirm before the confirm-by time, so your seat was released for other riders.",
-      podAcceptsRejoin && seatsAvailableAfterRelease ? "Request to rejoin" : "Find another pod",
-      podAcceptsRejoin && seatsAvailableAfterRelease ? "Find another pod" : null,
+      rejoinHelper,
+      rejoinPrimaryCta,
+      rejoinPrimaryCta === "Request to rejoin" ? "Find another pod" : null,
     );
   }
 

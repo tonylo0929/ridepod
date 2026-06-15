@@ -154,6 +154,7 @@ const RECURRING_CONFIRMATION_CUTOFF_HOURS = 12;
 const LATE_CONFIRMATION_MINUTES = 15;
 const HARD_CUTOFF_MINUTES_BEFORE_PICKUP = 30;
 const QUOTE_DEADLINE_SOON_MINUTES = 60;
+export const RIDE_APP_REJOIN_COOLDOWN_MINUTES = 10;
 
 type QuoteDeadlineState =
   | "quote_ready_active"
@@ -724,11 +725,62 @@ export function isRideAppSelfSettlePod(ride: HomeRide) {
   return ride.rideCategory === "ride_app_self_settle";
 }
 
+function formatRejoinTimeLeft(until: Date, now = new Date()) {
+  const minutes = Math.max(1, Math.ceil((until.getTime() - now.getTime()) / (60 * 1000)));
+  if (minutes < 60) return `${minutes} ${minutes === 1 ? "minute" : "minutes"}`;
+  const hours = Math.ceil(minutes / 60);
+  return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+}
+
+export function getRideAppRejoinCooldownInfo(ride: HomeRide, now = new Date()) {
+  if (!ride.rejoinCooldownUntil) return { active: false, timeLeftLabel: null as string | null };
+  const cooldownUntil = new Date(ride.rejoinCooldownUntil);
+  if (Number.isNaN(cooldownUntil.getTime()) || cooldownUntil.getTime() <= now.getTime()) {
+    return { active: false, timeLeftLabel: null as string | null };
+  }
+
+  return {
+    active: true,
+    timeLeftLabel: formatRejoinTimeLeft(cooldownUntil, now),
+  };
+}
+
+export function getRideAppRejoinRestrictionCopy(ride: HomeRide, seatsAvailable = true) {
+  if (ride.requiresHostApprovalToRejoin) {
+    return {
+      kind: "host_approval" as const,
+      cta: "Ask host to rejoin",
+      helper: "Too many join/leave actions. Host approval is needed before you can rejoin this pod.",
+    };
+  }
+
+  const cooldown = getRideAppRejoinCooldownInfo(ride);
+  if (cooldown.active) {
+    return {
+      kind: "cooldown" as const,
+      cta: "Rejoin available soon",
+      helper: `You can request to rejoin after ${cooldown.timeLeftLabel}.`,
+    };
+  }
+
+  if (!seatsAvailable) {
+    return {
+      kind: "full" as const,
+      cta: "Find another pod",
+      helper: "This pod is full.",
+    };
+  }
+
+  return null;
+}
+
 export function getCurrentUserCanJoinSelfSettlePod(ride: HomeRide, joinView: PodDetailJoinView) {
   if (!isRideAppSelfSettlePod(ride)) return false;
   if (joinView !== "quote_pending") return false;
   if (getCurrentUserIsHost(ride)) return false;
   if (ride.currentUserJoined === true || ride.quoteStatus === "joined") return false;
+  if (ride.requiresHostApprovalToRejoin) return false;
+  if (getRideAppRejoinCooldownInfo(ride).active) return false;
 
   return !ride.joinedRiders.some((name) => name.trim().toLowerCase() === "you");
 }
@@ -3507,8 +3559,9 @@ export function SelfSettleBookingDetailsCard({
     ride.rideAppPodStatus !== "ride_booked" &&
     ride.rideAppPodStatus !== "completed";
   const rejoinOpenSeatCount = Math.max(0, ride.seatsTotal - effectiveSeatsUsed);
-  const canRequestRejoin = currentUserSeatHoldExpired && podStillAcceptsRejoin && rejoinOpenSeatCount > 0;
-  const rejoinUnavailableHelper = podStillAcceptsRejoin ? "Your released seat is no longer available." : "This pod is no longer accepting riders.";
+  const rejoinRestriction = getRideAppRejoinRestrictionCopy(ride, rejoinOpenSeatCount > 0);
+  const canRequestRejoin = currentUserSeatHoldExpired && podStillAcceptsRejoin && rejoinOpenSeatCount > 0 && !rejoinRestriction;
+  const rejoinUnavailableHelper = rejoinRestriction?.helper ?? (podStillAcceptsRejoin ? "Your released seat is no longer available." : "This pod is no longer accepting riders.");
   const joinedRiderCount = ride.joinedRiderCount ?? countJoinedSelfSettleRiders(displayedRiderConfirmations);
   const confirmedRiderCount = Math.min(
     joinedRiderCount,
@@ -3807,7 +3860,7 @@ export function SelfSettleBookingDetailsCard({
   function requestToRejoin() {
     if (!currentUserSeatHoldExpired) return;
     if (!canRequestRejoin) {
-      setRejoinMessage(podStillAcceptsRejoin ? "Pod is full" : "This pod is no longer accepting riders.");
+      setRejoinMessage(rejoinRestriction?.helper ?? (podStillAcceptsRejoin ? "This pod is full." : "This pod is no longer accepting riders."));
       setShowRejoinModal(false);
       return;
     }
@@ -3876,6 +3929,9 @@ export function SelfSettleBookingDetailsCard({
       confirmedRiderCount: nextConfirmedCount,
       rideAppConfirmedRiderCount: nextConfirmedCount,
       riderConfirmations: nextRiderConfirmations,
+      rejoinCooldownUntil: null,
+      requiresHostApprovalToRejoin: false,
+      rideAppJoinLeaveActivitySummary: `${riderName} rejoined the pod.`,
       rideAppSeatReleasedAt: ride.rideAppSeatReleasedAt ?? seatHoldReleasedAtState ?? seatHoldExpiredAtState ?? requestedAt.toISOString(),
       rideAppRejoinRequestedAt: requestedAt.toISOString(),
       rideAppRejoinRequestedBy: riderName,
@@ -4150,7 +4206,7 @@ export function SelfSettleBookingDetailsCard({
                 </p>
                 {!canRequestRejoin ? (
                   <p className="mt-2 rounded-[12px] border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-xs font-black leading-5 text-amber-100">
-                    {podStillAcceptsRejoin ? "Pod is full. " : ""}{rejoinUnavailableHelper}
+                    {rejoinUnavailableHelper}
                   </p>
                 ) : null}
                 <div className="mt-4 grid gap-2">
@@ -4171,8 +4227,11 @@ export function SelfSettleBookingDetailsCard({
                       </Link>
                     </>
                   ) : (
-                    <Link href="/home" className="inline-flex min-h-11 items-center justify-center rounded-[14px] bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_30px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)] transition hover:brightness-105">
-                      Find another pod
+                    <Link
+                      href={rejoinRestriction?.kind === "full" || !podStillAcceptsRejoin ? "/home" : `/pods/${ride.id}/status`}
+                      className="inline-flex min-h-11 items-center justify-center rounded-[14px] bg-[var(--rp-gradient-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_30px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)] transition hover:brightness-105"
+                    >
+                      {rejoinRestriction?.cta ?? "Find another pod"}
                     </Link>
                   )}
                 </div>
@@ -5753,11 +5812,11 @@ function CancelAttendanceModal({
 }
 
 export function LeaveSelfSettlePodModal({
-  bookingDetailsShared,
+  confirmed,
   onCancel,
   onConfirm,
 }: {
-  bookingDetailsShared: boolean;
+  confirmed: boolean;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -5784,12 +5843,15 @@ export function LeaveSelfSettlePodModal({
     >
       <section className="w-full max-w-[420px] rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.46)]">
         <h2 id={titleId} className="text-2xl font-black leading-tight">
-          Leave pod?
+          {confirmed ? "Leave after confirming?" : "Leave pod?"}
         </h2>
         <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-          {bookingDetailsShared
-            ? "Leaving after confirmation may forfeit the HK$5 platform fee and may affect your RidePod trust score."
-            : "You will leave the pod chat and your seat will reopen."}
+          {confirmed
+            ? "You already confirmed ride details. Leaving now may affect your RidePod trust score."
+            : "Your seat hold will be released for other riders."}
+        </p>
+        <p className="mt-3 rounded-[16px] border border-cyan-200/18 bg-cyan-300/10 px-4 py-3 text-sm font-black leading-6 text-cyan-100">
+          {confirmed ? "Ride fare is paid outside RidePod." : "No RidePod fee was confirmed."}
         </p>
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button
@@ -5797,14 +5859,14 @@ export function LeaveSelfSettlePodModal({
             onClick={onCancel}
             className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
           >
-            Cancel
+            Stay in pod
           </button>
           <button
             type="button"
             onClick={onConfirm}
             className="min-h-12 rounded-2xl border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)]"
           >
-            Confirm
+            {confirmed ? "Leave anyway" : "Leave pod"}
           </button>
         </div>
       </section>
@@ -6239,8 +6301,9 @@ export function StickyPodDetailCta({
   const taxiPartnerChatAccess = !isRideAppSelfSettlePod(ride) ? getTaxiPartnerChatAccessState(ride) : null;
   const taxiChatUnlocked = taxiPartnerChatAccess?.canAccess === true;
   const taxiChatHelper = taxiPartnerChatAccess?.helper ?? "Chat opens after quote acceptance and taxi partner acceptance.";
+  const rejoinRestriction = getRideAppRejoinRestrictionCopy(ride, ride.seatsUsed < ride.seatsTotal);
 
-  if (joinView === "quote_pending" && !showSelfSettleJoinCta && !showSelfSettleHostCta) {
+  if (joinView === "quote_pending" && !showSelfSettleJoinCta && !showSelfSettleHostCta && !rejoinRestriction) {
     return null;
   }
 
@@ -6271,6 +6334,18 @@ export function StickyPodDetailCta({
                   {rideAppAccessNotice.message}
                 </p>
               ) : null}
+            </div>
+          ) : null}
+
+          {!showSelfSettleJoinCta && rejoinRestriction ? (
+            <div className="grid gap-2">
+              <PrimaryCta disabled>
+                {rejoinRestriction.kind === "full" ? <UsersRound className="h-5 w-5" /> : <Clock3 className="h-5 w-5" />}
+                {rejoinRestriction.cta}
+              </PrimaryCta>
+              <p className="rounded-[14px] border border-[var(--rp-primary)]/20 bg-[var(--rp-primary)]/10 px-3 py-2 text-center text-xs font-bold leading-5 text-[var(--rp-primary)]">
+                {rejoinRestriction.helper}
+              </p>
             </div>
           ) : null}
 
@@ -6520,7 +6595,7 @@ export function StickyPodDetailCta({
 
       {showLeaveSelfSettleModal ? (
         <LeaveSelfSettlePodModal
-          bookingDetailsShared={ride.bookingDetailsShared === true}
+          confirmed={ride.currentUserJoinIntentStatus === "confirmed" || ride.currentUserBookingDetailsConfirmed === true}
           onCancel={() => setShowLeaveSelfSettleModal(false)}
           onConfirm={confirmLeaveSelfSettle}
         />

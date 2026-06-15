@@ -388,6 +388,18 @@ function buildRideAppTimelineEvents({
       });
     });
 
+    if (ride.rideAppJoinLeaveActivitySummary?.trim()) {
+      addTimelineEvent(events, {
+        id: "join-leave-summary",
+        type: "system_note",
+        kind: "system",
+        actorName: ride.currentUserName ?? undefined,
+        text: ride.rideAppJoinLeaveActivitySummary.trim(),
+        sortTime: safeDateMs(ride.lastLeftAt ?? ride.rideAppRejoinRequestedAt ?? null, -4),
+        visibility: "pod_members",
+      });
+    }
+
     if (ride.rideAppPodStatus === "chat_unlocked" || ride.chatUnlockedAt) {
       addTimelineEvent(events, {
         id: "chat-unlocked",

@@ -127,6 +127,11 @@ export type HomeRide = {
   confirmationDeadlineLabel?: string;
   confirmationDeadlineAt?: string | null;
   currentUserJoinIntentStatus?: RideAppJoinIntentStatus;
+  joinLeaveCountForCurrentUser?: number;
+  lastLeftAt?: string | null;
+  rejoinCooldownUntil?: string | null;
+  requiresHostApprovalToRejoin?: boolean;
+  rideAppJoinLeaveActivitySummary?: string | null;
   currentUserConfirmationExpired?: boolean;
   seatHoldReleasedAt?: string | null;
   seatHoldExpiredAt?: string | null;

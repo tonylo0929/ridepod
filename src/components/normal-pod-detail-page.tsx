@@ -48,8 +48,10 @@ import {
   SelfSettleJoinConfirmationModal,
   SelfSettleJoinSuccessModal,
   StickyPodDetailCta,
+  RIDE_APP_REJOIN_COOLDOWN_MINUTES,
   getCurrentUserCanJoinSelfSettlePod,
   getCurrentUserIsHost,
+  getRideAppRejoinRestrictionCopy,
   isRideAppSelfSettlePod,
   type LuggageContribution,
   usePodDetailJoinState,
@@ -87,12 +89,52 @@ import {
 } from "@/lib/ridepod-membership";
 import { useAuth } from "@/providers/AuthProvider";
 
-function getSelfSettleRideAfterLeave(ride: HomeRide): HomeRide {
+function getRideAppJoinLeaveActivitySummary(ride: HomeRide, nextJoinLeaveCount: number) {
+  const riderName = getCurrentUserRiderName(ride);
+  if (ride.requiresHostApprovalToRejoin || nextJoinLeaveCount >= 3) return `${riderName} asked to rejoin.`;
+  if (nextJoinLeaveCount >= 2) return `${riderName} joined and left this pod ${nextJoinLeaveCount} times.`;
+  return `${riderName} left the pod.`;
+}
+
+function getSelfSettleRideAfterLeave(ride: HomeRide, now = new Date()): HomeRide {
   const currentUserName = ride.currentUserName?.trim().toLowerCase() || "you";
   const joinedRiders = ride.joinedRiders.filter((name) => {
     const normalized = name.trim().toLowerCase();
     return normalized !== "you" && normalized !== currentUserName;
   });
+  const nextJoinLeaveCount = (ride.joinLeaveCountForCurrentUser ?? 0) + 1;
+  const requiresHostApprovalToRejoin = nextJoinLeaveCount >= 3;
+  const rejoinCooldownUntil =
+    nextJoinLeaveCount === 2 && !requiresHostApprovalToRejoin
+      ? new Date(now.getTime() + RIDE_APP_REJOIN_COOLDOWN_MINUTES * 60 * 1000).toISOString()
+      : null;
+  const riderName = getCurrentUserRiderName(ride);
+  let currentUserRiderFound = false;
+  const riderConfirmations = (ride.riderConfirmations ?? [
+    { name: ride.hostName || "Host", role: "host" as const, status: "host" as const },
+    { name: riderName, role: "rider" as const, status: "joined_interest" as const, isCurrentUser: true },
+  ]).map((item) => {
+    const isCurrentUser = item.isCurrentUser === true || item.name.trim().toLowerCase() === "you" || item.name.trim().toLowerCase() === currentUserName;
+    if (!isCurrentUser || item.role !== "rider") return item;
+    currentUserRiderFound = true;
+    return {
+      ...item,
+      name: item.name?.trim() || riderName,
+      status: "left" as const,
+      isCurrentUser: true,
+      confirmedBookingDetailsVersion: undefined,
+      confirmedDetailVersion: undefined,
+    };
+  });
+
+  if (!currentUserRiderFound) {
+    riderConfirmations.push({
+      name: riderName,
+      role: "rider",
+      status: "left",
+      isCurrentUser: true,
+    });
+  }
 
   return {
     ...ride,
@@ -103,10 +145,15 @@ function getSelfSettleRideAfterLeave(ride: HomeRide): HomeRide {
     selfSettleConfirmationStatus: undefined,
     platformFeeStatus: "pending",
     quoteStatus: "quote_pending",
+    joinLeaveCountForCurrentUser: nextJoinLeaveCount,
+    lastLeftAt: now.toISOString(),
+    rejoinCooldownUntil,
+    requiresHostApprovalToRejoin,
+    rideAppJoinLeaveActivitySummary: getRideAppJoinLeaveActivitySummary(ride, nextJoinLeaveCount),
     joinedRiders,
     joinedRiderCount: Math.max(0, (ride.joinedRiderCount ?? ride.joinedRiders.length) - 1),
     seatsUsed: Math.max(1, ride.seatsUsed - 1),
-    riderConfirmations: ride.riderConfirmations?.filter((item) => item.isCurrentUser !== true && item.name.trim().toLowerCase() !== "you"),
+    riderConfirmations,
   };
 }
 
@@ -655,7 +702,17 @@ function RiderStack({ ride, seatsUsed }: { ride: HomeRide; seatsUsed: number }) 
 type PodStatusTab = "summary" | "riders" | "route" | "chat";
 type ManagePodActionsTab = "confirmations" | "route_requests" | "pod_settings";
 type ConfirmByUnit = "hours" | "days";
-type PodStatusRiderState = "host" | "joined_interest" | "confirmed" | "review_needed" | "pending" | "seat_hold_expired" | "left_pod" | "needs_review";
+type PodStatusRiderState =
+  | "host"
+  | "joined_interest"
+  | "confirmed"
+  | "review_needed"
+  | "pending"
+  | "seat_hold_expired"
+  | "left_pod"
+  | "rejoin_cooldown"
+  | "host_approval_needed"
+  | "needs_review";
 type PodStatusRider = {
   name: string;
   role: "host" | "rider";
@@ -833,6 +890,9 @@ function buildRequestToRejoinPatch(ride: HomeRide, detailVersion: number, now = 
     confirmedRiderCount: counts.confirmed,
     rideAppConfirmedRiderCount: counts.confirmed,
     riderConfirmations,
+    rejoinCooldownUntil: null,
+    requiresHostApprovalToRejoin: false,
+    rideAppJoinLeaveActivitySummary: `${riderName} rejoined the pod.`,
     rideAppSeatReleasedAt: ride.rideAppSeatReleasedAt ?? ride.seatHoldReleasedAt ?? ride.seatHoldExpiredAt ?? now.toISOString(),
     rideAppRejoinRequestedAt: now.toISOString(),
     rideAppRejoinRequestedBy: riderName,
@@ -903,6 +963,9 @@ function buildInitialSelfSettleJoinPatch(ride: HomeRide, detailVersion: number, 
     confirmedRiderCount: counts.confirmed,
     rideAppConfirmedRiderCount: counts.confirmed,
     riderConfirmations,
+    rejoinCooldownUntil: null,
+    requiresHostApprovalToRejoin: false,
+    rideAppJoinLeaveActivitySummary: ride.joinLeaveCountForCurrentUser ? `${riderName} rejoined the pod.` : `${riderName} joined the pod.`,
   };
 }
 
@@ -962,6 +1025,8 @@ function buildPodStatusRiders(ride: HomeRide): PodStatusRider[] {
         item.status === "confirmed" &&
         typeof confirmedVersion === "number" &&
         confirmedVersion < currentDetailVersion;
+      const isCurrentUser = item.isCurrentUser === true || isCurrentUserRiderName(item.name);
+      const cooldownActive = getRideAppRejoinRestrictionCopy(ride)?.kind === "cooldown";
 
       return {
         name: item.name,
@@ -970,7 +1035,11 @@ function buildPodStatusRiders(ride: HomeRide): PodStatusRider[] {
         confirmedDetailVersion: item.confirmedDetailVersion,
         seatHoldExpiredAt: item.seatHoldExpiredAt,
         status:
-          item.status === "pending"
+          item.role === "rider" && isCurrentUser && ride.requiresHostApprovalToRejoin
+            ? "host_approval_needed"
+            : item.role === "rider" && isCurrentUser && cooldownActive
+              ? "rejoin_cooldown"
+              : item.status === "pending"
             ? "pending"
             : item.status === "confirmed"
               ? confirmedOldDetails
@@ -1067,6 +1136,8 @@ function getPodStatusRiderHelper(rider: PodStatusRider, bookingDetailsVersion: n
   }
   if (rider.status === "needs_review" || rider.status === "review_needed") return "Confirmed older details";
   if (rider.status === "seat_hold_expired") return "Seat released";
+  if (rider.status === "rejoin_cooldown") return "Rejoin cooldown";
+  if (rider.status === "host_approval_needed") return "Host approval needed";
   if (rider.status === "left_pod") return "Left pod";
   if (rider.status === "joined_interest") return "Waiting to confirm";
   return "Pending confirmation";
@@ -1178,6 +1249,8 @@ function getPodStatusTitle(ride: HomeRide, chatAccess: ReturnType<typeof getRide
   if (isRideAppPodCancelledByHost(ride)) return "Pod cancelled";
   if (ride.rideAppPodStatus === "ride_booked") return "Ride booked";
   if (context.currentUserSeatHoldExpired) return "Seat released";
+  if (!isHost && ride.requiresHostApprovalToRejoin) return "Ask host to rejoin";
+  if (!isHost && getRideAppRejoinRestrictionCopy(ride)?.kind === "cooldown") return "Rejoin available soon";
   if (isHost && (deadlineState.status === "expired" || isRideAppSeatHoldExpired(ride))) return `${expiredSeatHoldCount || 1} seat released`;
   if (isHost && expiredSeatHoldCount > 0) return `${expiredSeatHoldCount} seat released`;
   if (context.currentUserViewingFullPod) return "Full";
@@ -1204,6 +1277,11 @@ function getPodStatusSubtitle(ride: HomeRide, chatAccess: ReturnType<typeof getR
   if (isRideAppPodCancelledByHost(ride)) return "No new booker was selected.";
   if (ride.rideAppPodStatus === "ride_booked") return "Use chat for final pickup updates.";
   if (context.currentUserSeatHoldExpired) return "You did not confirm before the confirm-by time.";
+  if (!isHost && ride.requiresHostApprovalToRejoin) return "Too many join/leave actions. Host approval is needed before you can rejoin this pod.";
+  if (!isHost) {
+    const rejoinRestriction = getRideAppRejoinRestrictionCopy(ride);
+    if (rejoinRestriction?.kind === "cooldown") return rejoinRestriction.helper;
+  }
   if (deadlineState.status === "expired" || isRideAppSeatHoldExpired(ride)) {
     if (isHost) return "Unconfirmed seats were released for other riders.";
     if (context.currentUserViewingFullPod) return "All seats are filled for this pod.";
@@ -1269,6 +1347,10 @@ function StatusChip({ status }: { status: PodStatusRiderState }) {
           ? "Review needed"
           : status === "seat_hold_expired"
             ? getSeatHoldDisplayLabel(status)
+          : status === "rejoin_cooldown"
+            ? "Rejoin cooldown"
+          : status === "host_approval_needed"
+            ? "Host approval needed"
           : status === "left_pod"
             ? "Left pod"
             : status === "joined_interest"
@@ -1282,6 +1364,8 @@ function StatusChip({ status }: { status: PodStatusRiderState }) {
       : status === "confirmed"
         ? "border-emerald-300/30 bg-emerald-400/10 text-emerald-200"
         : status === "seat_hold_expired"
+          ? "border-amber-300/35 bg-amber-400/10 text-amber-200"
+        : status === "rejoin_cooldown" || status === "host_approval_needed"
           ? "border-amber-300/35 bg-amber-400/10 text-amber-200"
         : status === "review_needed" || status === "needs_review"
           ? "border-amber-300/35 bg-amber-400/10 text-amber-200"
@@ -1304,6 +1388,8 @@ function getPodStatusParticipantChipLabel(rider: PodStatusRider, confirmationNot
   if (rider.status === "confirmed") return "Confirmed";
   if (rider.status === "needs_review" || rider.status === "review_needed") return "Needs review";
   if (rider.status === "seat_hold_expired") return getSeatHoldDisplayLabel(rider.status);
+  if (rider.status === "rejoin_cooldown") return "Rejoin cooldown";
+  if (rider.status === "host_approval_needed") return "Host approval needed";
   if (rider.status === "left_pod") return "Left";
   if (rider.status === "joined_interest") return "Joined";
   if (confirmationNotStarted && isCurrentUserRiderName(rider.name)) return "Joined";
@@ -1320,6 +1406,8 @@ function getPodStatusParticipantHelper(rider: PodStatusRider, bookingDetailsVers
   if (rider.status === "confirmed") return getPodStatusRiderHelper(rider, bookingDetailsVersion);
   if (rider.status === "needs_review" || rider.status === "review_needed") return "Review updated details";
   if (rider.status === "seat_hold_expired") return "Missed confirm-by time";
+  if (rider.status === "rejoin_cooldown") return "Rejoin available soon";
+  if (rider.status === "host_approval_needed") return isCurrentUserRiderName(rider.name) ? "Too many join/leave actions" : "Wants to rejoin";
   if (rider.status === "left_pod") return "Left pod";
   if (rider.status === "joined_interest") return isCurrentUserRiderName(rider.name) ? "Waiting to confirm" : "Pending confirmation";
   if (isCurrentUserRiderName(rider.name)) return confirmationNotStarted ? "Joined - waiting for host" : "Waiting to confirm";
@@ -1629,8 +1717,9 @@ export function PodStatusPanel({
     ride.rideAppPodStatus !== "completed" &&
     !hostCancelledPod;
   const rejoinOpenSeatCount = Math.max(0, ride.seatsTotal - effectiveSeatsUsed);
-  const canRequestRejoin = currentUserSeatHoldExpired && podStillAcceptsRejoin && rejoinOpenSeatCount > 0;
-  const rejoinUnavailableHelper = podStillAcceptsRejoin ? "Your released seat is no longer available." : "This pod is no longer accepting riders.";
+  const rejoinRestriction = getRideAppRejoinRestrictionCopy(ride, rejoinOpenSeatCount > 0);
+  const canRequestRejoin = currentUserSeatHoldExpired && podStillAcceptsRejoin && rejoinOpenSeatCount > 0 && !rejoinRestriction;
+  const rejoinUnavailableHelper = rejoinRestriction?.helper ?? (podStillAcceptsRejoin ? "Your released seat is no longer available." : "This pod is no longer accepting riders.");
   const canNudgePendingRiders = isHost && detailsComplete && pendingNudgeCount > 0;
   const nudgeSentRecently = Boolean(lastNudgeAt);
   const currentDashboardStep = ride.rideAppPodStatus === "ride_booked" ? 4 : chatAccess.canAccess ? 3 : detailsComplete ? 2 : 1;
@@ -1961,7 +2050,7 @@ export function PodStatusPanel({
   function requestToRejoin() {
     if (!currentUserSeatHoldExpired) return;
     if (!canRequestRejoin) {
-      setRejoinMessage(podStillAcceptsRejoin ? "Pod is full" : "This pod is no longer accepting riders.");
+      setRejoinMessage(rejoinRestriction?.helper ?? (podStillAcceptsRejoin ? "This pod is full." : "This pod is no longer accepting riders."));
       setShowRejoinModal(false);
       return;
     }
@@ -2378,6 +2467,24 @@ export function PodStatusPanel({
               </section>
 
               <section className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
+                {isHost && ride.requiresHostApprovalToRejoin ? (
+                  <div className="mb-3 rounded-[16px] border border-amber-300/25 bg-amber-400/10 p-3">
+                    <p className="text-sm font-black text-amber-100">
+                      {ride.rideAppRejoinRequestedBy ?? getCurrentUserRiderName(ride)} wants to rejoin.
+                    </p>
+                    <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                      Too many join/leave actions. Host approval is needed before rejoin in this local mock flow.
+                    </p>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button type="button" disabled className="min-h-10 rounded-[14px] border border-amber-300/30 bg-amber-300/10 text-xs font-black text-amber-100 opacity-80">
+                        Approve rejoin
+                      </button>
+                      <button type="button" disabled className="min-h-10 rounded-[14px] border border-white/12 bg-white/8 text-xs font-black text-[var(--rp-muted-strong)] opacity-80">
+                        Decline
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
                 <div className="grid gap-1">
                   {riders.map((rider, index) => {
                     const chipLabel = getPodStatusParticipantChipLabel(rider, confirmationNotStarted, ride);
@@ -2462,6 +2569,15 @@ export function PodStatusPanel({
                       </div>
                     ))}
                   </div>
+                </section>
+              ) : null}
+
+              {ride.rideAppJoinLeaveActivitySummary ? (
+                <section className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Pod activity</p>
+                  <p className="mt-3 rounded-[16px] border border-white/10 bg-black/20 px-4 py-3 text-sm font-black leading-6 text-white">
+                    {ride.rideAppJoinLeaveActivitySummary}
+                  </p>
                 </section>
               ) : null}
 
@@ -3318,6 +3434,7 @@ function SelfSettlePodSummaryHero({
   const hostAvatarLabel = canUpdateEstimate ? "You" : getInitials(ride.hostName || "Host").slice(0, 1);
   const hostBadgeLabel = canUpdateEstimate ? "You are hosting" : ride.hostName || "New host";
   const canJoinRide = getCurrentUserCanJoinSelfSettlePod(ride, "quote_pending");
+  const rejoinRestriction = getRideAppRejoinRestrictionCopy(ride, ride.seatsUsed < ride.seatsTotal);
   const hostEstimateUpdated = canUpdateEstimate && estimateUpdated;
   const canLeaveRideFromHero = summaryUserHadRideAppSeat && !summaryUserIsHost;
   const displayEstimateLabel = hostEstimateUpdated ? "Updated estimate" : canUpdateEstimate ? "Your estimate" : estimateLabel;
@@ -3533,6 +3650,24 @@ function SelfSettlePodSummaryHero({
             <ArrowRight className="h-6 w-6 stroke-[3]" />
           </span>
         </button>
+      ) : rejoinRestriction ? (
+        <a
+          href={rejoinRestriction.kind === "full" ? "/home" : `/pods/${ride.id}/status`}
+          className="grid grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 rounded-[22px] border border-[var(--rp-primary)]/70 bg-[linear-gradient(90deg,rgba(242,193,91,0.13),rgba(3,10,18,0.92))] p-4 shadow-[0_16px_42px_rgba(0,0,0,0.28)]"
+        >
+          <span className="grid h-14 w-14 place-items-center rounded-full border border-[var(--rp-primary)]/40 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]">
+            <Clock3 className="h-7 w-7" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-base font-black text-white">{rejoinRestriction.cta}</span>
+            <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              {rejoinRestriction.helper}
+            </span>
+          </span>
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)]/40 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]">
+            <ArrowRight className="h-6 w-6 stroke-[3]" />
+          </span>
+        </a>
       ) : (
         <a
           href={`/pods/${ride.id}/status`}
@@ -4232,12 +4367,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
   }
 
   function completeSelfSettleJoin(showSuccessModal: boolean) {
-    // TODO: replace with HK$5 payment checkout once payment provider is connected.
-    if (selfSettleWaiverSource === "launch") {
-      markRideAppWaiverUsed();
-    } else if (selfSettleWaiverSource === "plus") {
-      consumeRidePodPlusJoinFeeWaiver();
-    }
+    if (getRideAppRejoinRestrictionCopy(ride, ride.seatsUsed < ride.seatsTotal)) return;
     setSelfSettleLeft(false);
     joinSelfSettlePod();
     const patch = buildInitialSelfSettleJoinPatch(ride, getRideAppCurrentDetailVersion(ride));
@@ -4246,7 +4376,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     const joinedViewerRide = mergeRidePatch(ride, patch) as HomeRide;
     const updatedExistingRide = updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     if (!updatedExistingRide) saveViewerHomeRide(joinedViewerRide);
-    if (user) {
+    if (user && !ride.joinLeaveCountForCurrentUser) {
       const actorDisplayName =
         profile?.display_name?.trim() ||
         profile?.preferred_name?.trim() ||
@@ -4311,28 +4441,32 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
             : "Rider left before booking details were shared.",
         createdBy: user.id,
       });
-      void cancelPodAttendance({
-        podId: ride.id,
-        userId: user.id,
-        actorDisplayName: detailActorName,
-        podTitle: detailRouteTitle,
-        relatedUrl: `/pods/${ride.id}`,
-      }).then((result) => {
-        if (!result.success) {
-          console.warn("RidePod self-settle membership leave failed", result.error);
-        }
-      });
+      if ((leavePatch.joinLeaveCountForCurrentUser ?? 0) <= 1) {
+        void cancelPodAttendance({
+          podId: ride.id,
+          userId: user.id,
+          actorDisplayName: detailActorName,
+          podTitle: detailRouteTitle,
+          relatedUrl: `/pods/${ride.id}`,
+        }).then((result) => {
+          if (!result.success) {
+            console.warn("RidePod self-settle membership leave failed", result.error);
+          }
+        });
+      }
     }
 
-    notifyRideDetailAction({
-      type: "attendance_cancelled",
-      title: "Rider left this ride",
-      body: `${detailActorName} left ${detailRouteTitle}.`,
-      selfTitle: "You left this ride",
-      selfBody: `${detailRouteTitle} was removed from your active rides.`,
-      action: "attendance_cancelled",
-      delivery: "local",
-    });
+    if ((leavePatch.joinLeaveCountForCurrentUser ?? 0) <= 1) {
+      notifyRideDetailAction({
+        type: "attendance_cancelled",
+        title: "Rider left this ride",
+        body: `${detailActorName} left ${detailRouteTitle}.`,
+        selfTitle: "You left this ride",
+        selfBody: `${detailRouteTitle} was removed from your active rides.`,
+        action: "attendance_cancelled",
+        delivery: "local",
+      });
+    }
   }
 
   function openRideAppEstimateModal() {
@@ -5096,7 +5230,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
       ) : null}
       {showLeaveSelfSettleModal ? (
         <LeaveSelfSettlePodModal
-          bookingDetailsShared={ride.bookingDetailsShared === true}
+          confirmed={ride.currentUserJoinIntentStatus === "confirmed" || ride.currentUserBookingDetailsConfirmed === true}
           onCancel={() => setShowLeaveSelfSettleModal(false)}
           onConfirm={confirmLeaveSelfSettle}
         />
