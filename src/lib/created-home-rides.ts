@@ -164,21 +164,82 @@ function createdHomeRideSortKey(ride: HomeRide) {
   return `${toDateKey(ride.dateLabel)}T${toTimeKey(ride.timeLabel)}`;
 }
 
+function getEffectiveJoinedRiderCount(ride: HomeRide) {
+  return Math.max(ride.joinedRiderCount ?? 0, Math.max(0, ride.seatsUsed - 1));
+}
+
+function mergeRiderConfirmations(existing: HomeRide, incoming: HomeRide) {
+  const existingRows = existing.riderConfirmations ?? [];
+  const incomingRows = incoming.riderConfirmations ?? [];
+  if (!existingRows.length) return incoming.riderConfirmations;
+  if (!incomingRows.length) return existing.riderConfirmations;
+
+  const keepExistingCurrentUser = existingRows.some((row) => row.role === "rider" && row.isCurrentUser);
+  if (!keepExistingCurrentUser && incomingRows.length > existingRows.length) return incomingRows;
+
+  const mergedRows = [...existingRows];
+  const incomingRiderRows = incomingRows.filter((row) => row.role === "rider");
+  for (const incomingRow of incomingRiderRows) {
+    const duplicate = mergedRows.some((row) => row.role === incomingRow.role && row.name === incomingRow.name);
+    if (!duplicate && mergedRows.filter((row) => row.role === "rider").length < incomingRiderRows.length) {
+      mergedRows.push(incomingRow);
+    }
+  }
+
+  return mergedRows;
+}
+
+function mergeCreatedHomeRide(existing: HomeRide, incoming: HomeRide): HomeRide {
+  const shouldUseIncomingRelationship =
+    existing.currentUserRole !== "host" &&
+    (incoming.currentUserRole === "host" || incoming.currentUserRole === "joined_rider" || incoming.currentUserJoined === true);
+  const seatsTotal = Math.max(1, existing.seatsTotal || incoming.seatsTotal || 4);
+  const seatsUsed = Math.min(seatsTotal, Math.max(existing.seatsUsed, incoming.seatsUsed));
+  const joinedRiderCount = Math.max(getEffectiveJoinedRiderCount(existing), getEffectiveJoinedRiderCount(incoming));
+  const riderConfirmations = mergeRiderConfirmations(existing, incoming);
+
+  return {
+    ...existing,
+    ...(shouldUseIncomingRelationship
+      ? {
+          currentUserRole: incoming.currentUserRole,
+          currentUserName: incoming.currentUserName,
+          currentUserJoined: incoming.currentUserJoined,
+          currentUserJoinIntentStatus: incoming.currentUserJoinIntentStatus,
+          quoteStatus: incoming.quoteStatus,
+          hostName: incoming.currentUserRole === "host" ? incoming.hostName : existing.hostName,
+        }
+      : null),
+    seatsUsed,
+    joinedRiderCount,
+    confirmedRiderCount: Math.max(existing.confirmedRiderCount ?? 0, incoming.confirmedRiderCount ?? 0),
+    rideAppConfirmedRiderCount: Math.max(existing.rideAppConfirmedRiderCount ?? 0, incoming.rideAppConfirmedRiderCount ?? 0),
+    riderConfirmations,
+    joinedRiders: Array.from(new Set([...(existing.joinedRiders ?? []), ...(incoming.joinedRiders ?? [])])),
+  };
+}
+
 function mergeCreatedHomeRides(
   localRides: HomeRide[],
   publicRides: HomeRide[],
   includePublicRiderCards: boolean,
 ) {
   const rides: HomeRide[] = [];
-  const seenIds = new Set<string>();
-  const seenSignatures = new Set<string>();
+  const indexesById = new Map<string, number>();
+  const indexesBySignature = new Map<string, number>();
 
   function push(ride: HomeRide) {
     const signature = publicCreatedRideSignature(ride);
-    if (seenIds.has(ride.id) || seenSignatures.has(signature)) return;
+    const existingIndex = indexesById.get(ride.id) ?? indexesBySignature.get(signature);
+    if (existingIndex !== undefined) {
+      rides[existingIndex] = mergeCreatedHomeRide(rides[existingIndex], ride);
+      return;
+    }
+
     rides.push(ride);
-    seenIds.add(ride.id);
-    seenSignatures.add(signature);
+    const index = rides.length - 1;
+    indexesById.set(ride.id, index);
+    indexesBySignature.set(signature, index);
   }
 
   localRides.forEach(push);

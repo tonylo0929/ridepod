@@ -24,7 +24,10 @@ export type PublicCreatedRidePod = Pick<
   | "recurring_pattern"
   | "created_at"
   | "updated_at"
->;
+> & {
+  active_member_count?: number | null;
+  active_member_user_ids?: string[] | null;
+};
 
 const rideDateMonths: Record<string, number> = {
   jan: 1,
@@ -196,6 +199,35 @@ export function publicCreatedPodToHomeRide(pod: PublicCreatedRidePod, viewerUser
   const estimateTotal = centsToDollars(pod.current_estimate_cents);
   const seatsTotal = Math.max(1, pod.ideal_pod_size || 4);
   const minimumRiders = Math.max(1, Math.min(pod.minimum_locked_guests || 2, seatsTotal));
+  const activeMemberUserIds = Array.from(
+    new Set(
+      (pod.active_member_user_ids ?? [])
+        .map((memberId) => memberId?.trim())
+        .filter((memberId): memberId is string => Boolean(memberId)),
+    ),
+  );
+  const joinedRiderCount = Math.min(
+    Math.max(0, seatsTotal - 1),
+    Math.max(0, pod.active_member_count ?? activeMemberUserIds.length),
+  );
+  const seatsUsed = Math.min(seatsTotal, Math.max(1, 1 + joinedRiderCount));
+  const viewerJoined = Boolean(viewerUserId && activeMemberUserIds.includes(viewerUserId));
+  const joinedRiderNames = Array.from({ length: joinedRiderCount }, (_, index) => {
+    const memberId = activeMemberUserIds[index];
+    return viewerUserId && memberId === viewerUserId ? "You" : `Rider ${index + 1}`;
+  });
+  const riderConfirmations = isRideApp
+    ? [
+        { name: isHost ? "You" : "Host", role: "host" as const, status: "host" as const, confirmedBookingDetailsVersion: 1 },
+        ...joinedRiderNames.map((name) => ({
+          name,
+          role: "rider" as const,
+          status: "joined_interest" as const,
+          isCurrentUser: name === "You",
+          confirmedBookingDetailsVersion: undefined,
+        })),
+      ]
+    : undefined;
 
   return {
     id: pod.id,
@@ -205,7 +237,7 @@ export function publicCreatedPodToHomeRide(pod: PublicCreatedRidePod, viewerUser
     toLabel,
     dateLabel,
     timeLabel,
-    seatsUsed: 1,
+    seatsUsed,
     seatsTotal,
     pricePerPerson: estimateTotal ? Math.round(estimateTotal / seatsTotal) : 0,
     rideKind: pod.pod_type === "RECURRING" ? "recurring" : "one_off",
@@ -216,7 +248,7 @@ export function publicCreatedPodToHomeRide(pod: PublicCreatedRidePod, viewerUser
     rideAppBookingDetailsFinalized: false,
     confirmationDeadlineLabel: "Not set yet",
     confirmationDeadlineAt: null,
-    currentUserJoinIntentStatus: isHost ? "not_joined" : "not_joined",
+    currentUserJoinIntentStatus: isHost ? "not_joined" : viewerJoined ? "joined_interest" : "not_joined",
     currentUserConfirmationExpired: false,
     bookingDetailsVersion: 1,
     bookingDetailsUpdated: false,
@@ -249,18 +281,16 @@ export function publicCreatedPodToHomeRide(pod: PublicCreatedRidePod, viewerUser
     rideAppAcceptedPaymentMethods: isRideApp ? ["PayMe"] : undefined,
     airportDirection: null,
     status: "available",
-    quoteStatus: "quote_pending",
-    currentUserRole: isHost ? "host" : "rider",
-    currentUserName: isHost ? "You" : undefined,
-    currentUserJoined: false,
+    quoteStatus: viewerJoined ? "joined" : "quote_pending",
+    currentUserRole: isHost ? "host" : viewerJoined ? "joined_rider" : "rider",
+    currentUserName: isHost || viewerJoined ? "You" : undefined,
+    currentUserJoined: viewerJoined,
     currentUserBookingDetailsConfirmed: false,
     platformFeeStatus: isRideApp ? "pending" : undefined,
     confirmedRiderCount: 0,
-    joinedRiderCount: 0,
+    joinedRiderCount,
     rideAppConfirmedRiderCount: 0,
-    riderConfirmations: isRideApp
-      ? [{ name: isHost ? "You" : "Host", role: "host", status: "host", confirmedBookingDetailsVersion: 1 }]
-      : undefined,
+    riderConfirmations,
     taxiType: isRideApp ? "Ride app" : "Taxi",
     platformFee: isRideApp ? 5 : undefined,
     bookingFareCapCents: pod.booking_fare_cap_cents,
@@ -277,7 +307,7 @@ export function publicCreatedPodToHomeRide(pod: PublicCreatedRidePod, viewerUser
     accessibility: "No special access needs",
     podType: "Open pod",
     hostName: isHost ? "You" : "New host",
-    joinedRiders: [],
+    joinedRiders: joinedRiderNames,
     pickupLabel: pod.pickup_point ?? fromLabel,
     pickupTime: timeLabel,
     dropoffLabel: pod.dropoff_point ?? toLabel,

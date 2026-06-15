@@ -79,7 +79,40 @@ export async function GET() {
 
     if (result.error) throw result.error;
 
-    return noStoreJson({ pods: (result.data ?? []) as unknown as PublicCreatedRidePod[] });
+    const pods = (result.data ?? []) as unknown as PublicCreatedRidePod[];
+    const podIds = pods.map((pod) => pod.id).filter(Boolean);
+    const activeMemberUserIdsByPod = new Map<string, string[]>();
+
+    if (podIds.length > 0) {
+      const membersResult = await client
+        .from("pod_members")
+        .select("pod_id,user_id")
+        .in("pod_id", podIds)
+        .eq("status", "joined");
+
+      if (membersResult.error) {
+        console.warn("RidePod public created ride member counts unavailable", membersResult.error);
+      } else {
+        for (const member of membersResult.data ?? []) {
+          if (!member.pod_id || !member.user_id) continue;
+          activeMemberUserIdsByPod.set(member.pod_id, [
+            ...(activeMemberUserIdsByPod.get(member.pod_id) ?? []),
+            member.user_id,
+          ]);
+        }
+      }
+    }
+
+    return noStoreJson({
+      pods: pods.map((pod) => {
+        const activeMemberUserIds = Array.from(new Set(activeMemberUserIdsByPod.get(pod.id) ?? []));
+        return {
+          ...pod,
+          active_member_count: activeMemberUserIds.length,
+          active_member_user_ids: activeMemberUserIds,
+        } satisfies PublicCreatedRidePod;
+      }),
+    });
   } catch (error) {
     console.warn("RidePod public created rides list failed", error);
     return noStoreJson({ pods: [], fallbackNote: "Public created rides are unavailable." }, { status: 200 });

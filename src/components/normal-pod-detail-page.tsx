@@ -67,6 +67,13 @@ import {
 import { getRideWithStoredSelfSettleJoin, saveStoredSelfSettleRidePatch } from "@/lib/ride-app-local-join";
 import { markRideAppWaiverUsed, useRideAppWaiverState } from "@/lib/ride-app-waiver";
 import { updateCreatedHomeRide } from "@/lib/created-home-rides";
+import { joinPod as joinRidePodMembership } from "@/lib/pods/ridepod-membership";
+import {
+  isUuid,
+  publicCreatedPodToHomeRide,
+  publicCreatedRideSignature,
+  type PublicCreatedRidePod,
+} from "@/lib/public-created-rides";
 import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
 import {
   consumeRidePodPlusJoinFeeWaiver,
@@ -892,6 +899,27 @@ function buildInitialSelfSettleJoinPatch(ride: HomeRide, detailVersion: number, 
     rideAppConfirmedRiderCount: counts.confirmed,
     riderConfirmations,
   };
+}
+
+async function resolveSelfSettleMembershipTarget(ride: HomeRide, viewerUserId?: string | null) {
+  if (isUuid(ride.id)) return { podId: ride.id, hostUserId: null as string | null };
+
+  try {
+    const response = await fetch("/api/public-created-rides", { cache: "no-store" });
+    if (!response.ok) throw new Error(`Public ride lookup failed with ${response.status}`);
+
+    const payload = (await response.json()) as { pods?: PublicCreatedRidePod[] };
+    const rideSignature = publicCreatedRideSignature(ride);
+    const matchingPod = (payload.pods ?? []).find(
+      (pod) => publicCreatedRideSignature(publicCreatedPodToHomeRide(pod, viewerUserId)) === rideSignature,
+    );
+
+    if (matchingPod) return { podId: matchingPod.id, hostUserId: matchingPod.host_user_id ?? null };
+  } catch (error) {
+    console.warn("RidePod self-settle shared ride lookup failed", error);
+  }
+
+  return { podId: ride.id, hostUserId: null as string | null };
 }
 
 function mergeRidePatch<T extends Partial<HomeRide>>(base: T, patch?: Partial<HomeRide> | null) {
@@ -4073,6 +4101,34 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     setRideActionPatch((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
     saveStoredSelfSettleRidePatch(ride.id, patch);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+    if (user) {
+      const actorDisplayName =
+        profile?.display_name?.trim() ||
+        profile?.preferred_name?.trim() ||
+        user.email?.split("@")[0] ||
+        "RidePod rider";
+      void resolveSelfSettleMembershipTarget(ride, user.id)
+        .then((target) =>
+          joinRidePodMembership({
+            podId: target.podId,
+            userId: user.id,
+            actorDisplayName,
+            podTitle: `${ride.fromLabel} -> ${ride.toLabel}`,
+            hostUserId: target.hostUserId,
+            relatedUrl: `/pods/${ride.id}`,
+          }),
+        )
+        .then((result) => {
+          if (!result.success) {
+            console.warn("RidePod self-settle membership join failed", result.error);
+            return;
+          }
+          window.dispatchEvent(new Event("ridepod-created-home-rides-updated"));
+        })
+        .catch((error) => {
+          console.warn("RidePod self-settle membership join failed", error);
+        });
+    }
     setShowSelfSettleJoinModal(false);
     setSelfSettleUnderstood(false);
     setShowSelfSettleJoinSuccessModal(showSuccessModal);
