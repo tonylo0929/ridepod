@@ -3398,7 +3398,7 @@ function SelfSettlePodSummaryHero({
             <button
               type="button"
               onClick={onLeaveRide}
-              className="shrink-0 rounded-full border border-rose-300/45 bg-rose-400/10 px-3 py-1.5 text-xs font-black text-rose-100 transition hover:bg-rose-400/16"
+              className="shrink-0 rounded-full border border-rose-200/75 bg-rose-500/24 px-3.5 py-1.5 text-xs font-black text-rose-50 shadow-[0_0_18px_rgba(251,113,133,0.22)] transition hover:bg-rose-500/34"
             >
               Leave Ride
             </button>
