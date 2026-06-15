@@ -66,7 +66,7 @@ import {
 } from "@/lib/ride-app-chat-unlock";
 import { getRideWithStoredSelfSettleJoin, saveStoredSelfSettleRidePatch } from "@/lib/ride-app-local-join";
 import { markRideAppWaiverUsed, useRideAppWaiverState } from "@/lib/ride-app-waiver";
-import { updateCreatedHomeRide } from "@/lib/created-home-rides";
+import { saveViewerHomeRide, updateCreatedHomeRide } from "@/lib/created-home-rides";
 import {
   notifyPodAudience,
   type NotifyPodAudienceInput,
@@ -4252,7 +4252,9 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     const patch = buildInitialSelfSettleJoinPatch(ride, getRideAppCurrentDetailVersion(ride));
     setRideActionPatch((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
     saveStoredSelfSettleRidePatch(ride.id, patch);
-    updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+    const joinedViewerRide = mergeRidePatch(ride, patch) as HomeRide;
+    const updatedExistingRide = updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+    if (!updatedExistingRide) saveViewerHomeRide(joinedViewerRide);
     if (user) {
       const actorDisplayName =
         profile?.display_name?.trim() ||
@@ -4301,7 +4303,9 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     leaveSelfSettlePod();
     setRideActionPatch((current) => mergeRidePatch(current ?? {}, leavePatch) as Partial<HomeRide>);
     saveStoredSelfSettleRidePatch(ride.id, leavePatch);
-    updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, leavePatch) as HomeRide);
+    const leftViewerRide = mergeRidePatch(ride, leavePatch) as HomeRide;
+    const updatedExistingRide = updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, leavePatch) as HomeRide);
+    if (!updatedExistingRide) saveViewerHomeRide(leftViewerRide);
     setSelfSettleLeft(true);
     setShowLeaveSelfSettleModal(false);
 

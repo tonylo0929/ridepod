@@ -398,6 +398,11 @@ export function saveCreatedHomeRide(ride: HomeRide) {
   void broadcastCreatedHomeRide(ride);
 }
 
+export function saveViewerHomeRide(ride: HomeRide) {
+  const current = readCreatedHomeRides();
+  writeCreatedHomeRides([ride, ...current.filter((item) => item.id !== ride.id)]);
+}
+
 export function updateCreatedHomeRideHostAvatar(hostAvatar: CreatedHomeRideHostAvatar) {
   const current = readCreatedHomeRides();
   let changed = false;
@@ -438,9 +443,10 @@ export function updateCreatedHomeRide(rideId: string, updater: (ride: HomeRide) 
 
   if (updated) {
     writeCreatedHomeRides(next);
-    if (updatedRide) {
-      void publishCreatedHomeRide(updatedRide);
-      void broadcastCreatedHomeRide(updatedRide);
+    const rideToPublish = updatedRide as HomeRide | null;
+    if (rideToPublish?.currentUserRole === "host") {
+      void publishCreatedHomeRide(rideToPublish);
+      void broadcastCreatedHomeRide(rideToPublish);
     }
   }
   return updated;
