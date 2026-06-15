@@ -1016,7 +1016,10 @@ function HomeRideCard({
                 <UsersRound className="h-3.5 w-3.5 shrink-0 text-[var(--rp-primary)]" />
                 Seats
               </span>
-              <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-black leading-5 text-[var(--rp-text)]">
+              <span className="mt-1 grid gap-0.5 text-xs font-black leading-5 text-[var(--rp-text)]">
+                {currentUserHasJoined ? (
+                  <span className="text-[var(--rp-primary)]">Joined</span>
+                ) : null}
                 <span>{ride.seatsUsed} / {ride.seatsTotal} seats</span>
               </span>
             </span>
