@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
+import { useRidePodAvatarPreference, type RidePodAvatarPreference } from "@/components/animal-avatar";
 import type { GeoJSONSource, Map as MapboxMap } from "mapbox-gl";
 import {
   ArrowLeft,
@@ -4850,6 +4851,9 @@ function buildCreatedRideAppHomeRide({
   peopleVehicle,
   accessMode,
   stopRequestPolicy,
+  hostAvatarPreference,
+  hostAvatarUrl,
+  hostDisplayName,
 }: {
   pickupAddress: string;
   dropoffAddress: string;
@@ -4857,6 +4861,9 @@ function buildCreatedRideAppHomeRide({
   peopleVehicle: PeopleVehicleState;
   accessMode: AccessMode;
   stopRequestPolicy: StopRequestPolicy;
+  hostAvatarPreference?: RidePodAvatarPreference;
+  hostAvatarUrl?: string | null;
+  hostDisplayName?: string | null;
 }): HomeRide {
   const id = crypto.randomUUID();
   const rideAppProviderName = getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther);
@@ -4935,6 +4942,9 @@ function buildCreatedRideAppHomeRide({
     accessibility: getAccessLabel(peopleVehicle),
     podType: accessMode === "verified_only" ? "Verified-only" : accessMode === "invite_only" ? "Invite-only" : "Open pod",
     hostName: "You",
+    hostAvatarPreference,
+    hostAvatarUrl,
+    hostDisplayName,
     joinedRiders: [],
     pickupLabel: peopleVehicle.pickupVenue || pickupAddress,
     pickupTime: getScheduleTimeSummary(dateTime),
@@ -6800,7 +6810,9 @@ function SuccessStep({
 
 export function CreatePodChooseType() {
   const router = useRouter();
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { user, profile, isLoading: isAuthLoading } = useAuth();
+  const [avatarPreference] = useRidePodAvatarPreference(profile?.id ?? user?.id);
+  const hostDisplayName = profile?.display_name ?? profile?.preferred_name ?? user?.email?.split("@")[0] ?? "RidePod host";
   const todayIsoDate = getTodayIsoDate();
   const todayDate = parseIsoDateToLocalDate(todayIsoDate);
   const [step, setStep] = useState<CreateStep>(0);
@@ -6937,6 +6949,9 @@ export function CreatePodChooseType() {
         peopleVehicle,
         accessMode,
         stopRequestPolicy: displayedStopRequestPolicy,
+        hostAvatarPreference: avatarPreference,
+        hostAvatarUrl: profile?.avatar_url ?? null,
+        hostDisplayName,
       });
       saveCreatedHomeRide(createdRide);
       setCreatedPodDetailHref(`/pods/${createdRide.id}`);

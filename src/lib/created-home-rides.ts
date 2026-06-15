@@ -30,6 +30,7 @@ type PublicCreatedHomeRideSyncRequest = {
   requesterUserId: string | null;
   sentAt: string;
 };
+export type CreatedHomeRideHostAvatar = Pick<HomeRide, "hostAvatarPreference" | "hostAvatarUrl" | "hostDisplayName">;
 type PublicCreatedHomeRidesChannel = ReturnType<ReturnType<typeof getSupabaseBrowserClient>["channel"]>;
 const rideDateMonths: Record<string, number> = {
   jan: 0,
@@ -327,6 +328,33 @@ export function saveCreatedHomeRide(ride: HomeRide) {
   writeCreatedHomeRides([ride, ...current.filter((item) => item.id !== ride.id)]);
   void publishCreatedHomeRide(ride);
   void broadcastCreatedHomeRide(ride);
+}
+
+export function updateCreatedHomeRideHostAvatar(hostAvatar: CreatedHomeRideHostAvatar) {
+  const current = readCreatedHomeRides();
+  let changed = false;
+  const next = current.map((ride) => {
+    if (ride.currentUserRole !== "host") return ride;
+    const updated = {
+      ...ride,
+      hostAvatarPreference: hostAvatar.hostAvatarPreference,
+      hostAvatarUrl: hostAvatar.hostAvatarUrl,
+      hostDisplayName: hostAvatar.hostDisplayName,
+    };
+    const didChange =
+      JSON.stringify(ride.hostAvatarPreference ?? null) !== JSON.stringify(updated.hostAvatarPreference ?? null) ||
+      (ride.hostAvatarUrl ?? null) !== (updated.hostAvatarUrl ?? null) ||
+      (ride.hostDisplayName ?? null) !== (updated.hostDisplayName ?? null);
+    if (didChange) changed = true;
+    return updated;
+  });
+
+  if (!changed) return;
+  writeCreatedHomeRides(next);
+  next.forEach((ride) => {
+    if (ride.currentUserRole === "host") void publishCreatedHomeRide(ride);
+    if (ride.currentUserRole === "host") void broadcastCreatedHomeRide(ride);
+  });
 }
 
 export function updateCreatedHomeRide(rideId: string, updater: (ride: HomeRide) => HomeRide) {

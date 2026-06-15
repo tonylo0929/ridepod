@@ -1,5 +1,6 @@
 import type { TaxiType } from "@/lib/hkTaxiFare";
 import { getActiveRideAppSelfSettleRide } from "@/lib/ride-app-self-settle-scenarios";
+import type { RidePodAvatarPreference } from "@/components/animal-avatar";
 
 export type HomeTab = "all" | "airport" | "one_off" | "recurring" | "quote_ready";
 export type AirportDirection = "to_airport" | "from_airport" | null;
@@ -251,6 +252,9 @@ export type HomeRide = {
   accessibility: string;
   podType: "Open pod" | "Women-only" | "Verified-only" | "Invite-only";
   hostName: string;
+  hostAvatarPreference?: RidePodAvatarPreference;
+  hostAvatarUrl?: string | null;
+  hostDisplayName?: string | null;
   joinedRiders: string[];
   pickupLabel?: string;
   pickupTime?: string;

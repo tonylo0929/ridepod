@@ -20,7 +20,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { RidePodAvatar, useRidePodAvatarPreference, type RidePodAvatarPreference } from "@/components/animal-avatar";
 import { cn } from "@/components/ui";
 import {
@@ -35,7 +35,7 @@ import { getRideAppHostFareEstimate, getRideAppHostFareEstimateDisplay } from "@
 import { ridePodJoinFeeWaiverCopy } from "@/lib/ridepod-membership";
 import { claimRideAppWaiver, useRideAppWaiverState } from "@/lib/ride-app-waiver";
 import { getRideAppTrustSummary, type RideAppTrustSummary } from "@/lib/ride-app-trust";
-import { useCreatedHomeRides } from "@/lib/created-home-rides";
+import { updateCreatedHomeRideHostAvatar, useCreatedHomeRides } from "@/lib/created-home-rides";
 import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -725,6 +725,8 @@ function getHomeRideTrustBadge(summary: RideAppTrustSummary) {
 function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; currentUserAvatar?: CurrentUserAvatar | null }) {
   const isRideApp = isRideAppSelfSettle(ride);
   const showCurrentUserAvatar = ride.currentUserRole === "host" && Boolean(currentUserAvatar);
+  const showHostAvatar = !showCurrentUserAvatar && Boolean(ride.hostAvatarPreference);
+  const hostDisplayName = ride.hostDisplayName?.trim() || ride.hostName || "Host";
   const Icon = isRideApp
     ? Smartphone
     : rideMatchesTab("quote_ready", ride)
@@ -751,6 +753,14 @@ function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; curren
           avatarPreference={currentUserAvatar.avatarPreference}
           initials={currentUserAvatar.initials}
           displayName={currentUserAvatar.displayName}
+          className="h-full w-full rounded-full text-xl min-[560px]:text-2xl"
+        />
+      ) : showHostAvatar && ride.hostAvatarPreference ? (
+        <RidePodAvatar
+          avatarUrl={ride.hostAvatarUrl}
+          avatarPreference={ride.hostAvatarPreference}
+          initials={getProfileInitials(hostDisplayName)}
+          displayName={hostDisplayName}
           className="h-full w-full rounded-full text-xl min-[560px]:text-2xl"
         />
       ) : (
@@ -1332,6 +1342,14 @@ export default function HomePage() {
     [avatarPreference, displayName, profile?.avatar_url],
   );
   const createdHomeRides = useCreatedHomeRides(user?.id ?? null);
+  useEffect(() => {
+    if (!user) return;
+    updateCreatedHomeRideHostAvatar({
+      hostAvatarPreference: avatarPreference,
+      hostAvatarUrl: profile?.avatar_url ?? null,
+      hostDisplayName: displayName,
+    });
+  }, [avatarPreference, displayName, profile?.avatar_url, user]);
   const [fromDistrict, setFromDistrict] = useState(initialFromDistrict);
   const [toDistrict, setToDistrict] = useState(initialToDistrict);
   const [activeTab, setActiveTab] = useState<HomeTab>("all");
