@@ -298,11 +298,6 @@ function NotificationCard({
         {displayBody ? (
           <span className="mt-1 block text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{displayBody}</span>
         ) : null}
-        {relatedRide ? (
-          <NotificationRouteGraphic ride={relatedRide} />
-        ) : notification.related_pod_id ? (
-          <span className="mt-2 block text-xs font-black text-[var(--rp-primary)]">Pod {notification.related_pod_id}</span>
-        ) : null}
       </span>
       <span className="flex shrink-0 flex-col items-end gap-2">
         <span className="whitespace-nowrap text-xs font-bold text-[var(--rp-muted)]">{timeAgo(notification.created_at)}</span>
@@ -317,28 +312,35 @@ function NotificationCard({
           {viewStatusLabel}
         </span>
       </span>
+      {relatedRide ? (
+        <span className="col-span-3">
+          <NotificationRouteGraphic ride={relatedRide} />
+        </span>
+      ) : notification.related_pod_id ? (
+        <span className="col-span-3 text-xs font-black text-[var(--rp-primary)]">Pod {notification.related_pod_id}</span>
+      ) : null}
     </button>
   );
 }
 
 function NotificationRouteGraphic({ ride }: { ride: HomeRide }) {
   return (
-    <span className="mt-3 block rounded-[16px] border border-[var(--rp-primary)]/25 bg-[var(--rp-card-soft)] px-3 py-3">
+    <span className="block rounded-[18px] border border-[var(--rp-primary)]/25 bg-[var(--rp-card-soft)] px-3 py-3">
       <span className="grid grid-cols-[auto_1fr_auto] items-center gap-2" aria-hidden="true">
         <span className="h-3 w-3 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,0.32)]" />
         <span className="h-px bg-[linear-gradient(90deg,#67e8f9,#f2c15b,#fb7185)]" />
         <span className="h-3 w-3 rounded-full bg-rose-300 shadow-[0_0_14px_rgba(253,164,175,0.28)]" />
       </span>
-      <span className="mt-3 grid gap-2">
-        <span className="grid gap-1">
-          <span className="text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">From</span>
-          <span className="block whitespace-normal break-words text-sm font-black leading-5 text-[var(--rp-text)]">
+      <span className="mt-3 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
+        <span className="rounded-[14px] border border-cyan-300/15 bg-cyan-300/[0.08] px-3 py-2">
+          <span className="block text-[10px] font-black uppercase tracking-[0.08em] text-cyan-100">From</span>
+          <span className="mt-1 block whitespace-normal break-words text-sm font-black leading-5 text-[var(--rp-text)]">
             {ride.fromLabel}
           </span>
         </span>
-        <span className="grid gap-1">
-          <span className="text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">To</span>
-          <span className="block whitespace-normal break-words text-sm font-black leading-5 text-[var(--rp-text)]">
+        <span className="rounded-[14px] border border-rose-300/15 bg-rose-300/[0.08] px-3 py-2">
+          <span className="block text-[10px] font-black uppercase tracking-[0.08em] text-rose-100">To</span>
+          <span className="mt-1 block whitespace-normal break-words text-sm font-black leading-5 text-[var(--rp-text)]">
             {ride.toLabel}
           </span>
         </span>
