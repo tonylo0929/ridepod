@@ -72,6 +72,22 @@ function selectedDateLabel(date: string) {
   }).format(dateFromKey(date));
 }
 
+function historyDateLabel(date: string) {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(dateFromKey(date));
+}
+
+function isHistoryRide(ride: CalendarRide, todayKey: string) {
+  return ride.date < todayKey;
+}
+
+function sortHistoryRides(rides: CalendarRide[]) {
+  return [...rides].sort((first, second) => `${second.date}T${second.time}`.localeCompare(`${first.date}T${first.time}`));
+}
+
 function statusTone(status: MyRideCalendarStatus): StatusTone {
   if (status.isActionNeeded || status.colorKey === "gold") return "action";
   if (status.statusKey === "completed") return "completed";
@@ -166,7 +182,7 @@ function getRideTypeLabel(ride: CalendarRide) {
 }
 
 function getRouteStops(route: string) {
-  const parts = route.split(/\s+to\s+/i);
+  const parts = route.split(/\s*(?:->|→|\bto\b)\s*/i).filter(Boolean);
   if (parts.length >= 2) {
     return {
       pickup: parts[0].trim(),
@@ -323,6 +339,19 @@ function StatusBadge({ status }: { status: MyRideCalendarStatus }) {
   );
 }
 
+function getHistoryStatus(status: MyRideCalendarStatus): MyRideCalendarStatus {
+  if (status.statusKey === "cancelled" || status.statusKey === "expired") return status;
+
+  return {
+    ...status,
+    statusKey: "completed",
+    label: "Finished",
+    colorKey: "green",
+    helperText: "Ride moved to history",
+    isActionNeeded: false,
+  };
+}
+
 function MyRideDayPodCard({ ride, currentUserId }: { ride: CalendarRide; currentUserId?: string | null }) {
   const role = getMyRideCalendarRole(ride, currentUserId);
   const status = getMyRideCalendarStatus({ pod: ride, currentUserId, role });
@@ -385,6 +414,73 @@ function MyRideDayPodCard({ ride, currentUserId }: { ride: CalendarRide; current
   );
 }
 
+function HistoryRideCard({ ride, currentUserId }: { ride: CalendarRide; currentUserId?: string | null }) {
+  const role = getMyRideCalendarRole(ride, currentUserId);
+  const status = getHistoryStatus(getMyRideCalendarStatus({ pod: ride, currentUserId, role }));
+
+  return (
+    <article className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className="inline-flex min-h-7 items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] px-2.5 text-[11px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
+              {role === "host" ? "Created" : "Joined"}
+            </span>
+            <StatusBadge status={status} />
+          </div>
+          <h3 className="mt-3 break-words text-left text-lg font-black leading-6 text-[var(--rp-text)]">{ride.route}</h3>
+          <p className="mt-1 text-left text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
+            {historyDateLabel(ride.date)} · {timeLabel(ride.time)}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <RideTypeBadge ride={ride} />
+            <RideKindBadge ride={ride} />
+          </div>
+        </div>
+        <Link
+          href={`/pods/${ride.id}`}
+          aria-label={`View ${ride.route} history details`}
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cyan-300/45 bg-cyan-300/10 text-cyan-100 transition hover:bg-cyan-300/15"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+function HistoryGroup({
+  title,
+  rides,
+  emptyText,
+  currentUserId,
+}: {
+  title: string;
+  rides: CalendarRide[];
+  emptyText: string;
+  currentUserId?: string | null;
+}) {
+  return (
+    <div className="border-t border-[var(--rp-border)] pt-4 first:border-t-0 first:pt-0">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-left text-base font-black text-[var(--rp-text)]">{title}</h3>
+        <span className="grid h-7 min-w-7 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] px-2 text-xs font-black text-[var(--rp-muted-strong)]">
+          {rides.length}
+        </span>
+      </div>
+      <div className="mt-3 grid gap-3">
+        {rides.length ? (
+          rides.map((ride) => <HistoryRideCard key={ride.id} ride={ride} currentUserId={currentUserId} />)
+        ) : (
+          <div className="rounded-[18px] border border-[var(--rp-border)] bg-[rgba(255,255,255,0.035)] p-4 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+            {emptyText}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function MyRidePage() {
   const { user, isLoading } = useAuth();
   const createdCalendarRides = useCreatedCalendarRides(user?.id ?? null);
@@ -404,10 +500,26 @@ export default function MyRidePage() {
     ],
     [createdCalendarRides, user?.id],
   );
+  const activeRideItems = useMemo(
+    () => myRideItems.filter((ride) => !isHistoryRide(ride, todayKey)),
+    [myRideItems, todayKey],
+  );
+  const historyRideItems = useMemo(
+    () => sortHistoryRides(myRideItems.filter((ride) => isHistoryRide(ride, todayKey))),
+    [myRideItems, todayKey],
+  );
+  const createdHistoryRides = useMemo(
+    () => historyRideItems.filter((ride) => getMyRideCalendarRole(ride, user?.id) === "host"),
+    [historyRideItems, user?.id],
+  );
+  const joinedHistoryRides = useMemo(
+    () => historyRideItems.filter((ride) => getMyRideCalendarRole(ride, user?.id) !== "host"),
+    [historyRideItems, user?.id],
+  );
 
   const filteredItems = useMemo(
-    () => myRideItems.filter((ride) => matchesFilter(ride, activeFilter, user?.id)),
-    [activeFilter, myRideItems, user?.id],
+    () => activeRideItems.filter((ride) => matchesFilter(ride, activeFilter, user?.id)),
+    [activeFilter, activeRideItems, user?.id],
   );
   const monthDays = useMemo(() => buildMonthDays(currentMonth), [currentMonth]);
   const ridesByDate = useMemo(() => ridesByDateMap(filteredItems), [filteredItems]);
@@ -566,6 +678,34 @@ export default function MyRidePage() {
                   No pods for this date.
                 </div>
               )}
+            </div>
+          </section>
+
+          <section className="rounded-[24px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-4 shadow-[var(--rp-shadow-soft)]">
+            <div className="flex items-start gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[16px] border border-emerald-300/35 bg-emerald-300/10 text-emerald-100">
+                <CheckCircle2 className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-left text-xl font-black text-[var(--rp-text)]">Ride history</h2>
+                <p className="mt-1 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                  Finished-date pods move here after their ride date passes.
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-4">
+              <HistoryGroup
+                title="Created"
+                rides={createdHistoryRides}
+                emptyText="No created ride history yet."
+                currentUserId={user.id}
+              />
+              <HistoryGroup
+                title="Joined"
+                rides={joinedHistoryRides}
+                emptyText="No joined ride history yet."
+                currentUserId={user.id}
+              />
             </div>
           </section>
         </>

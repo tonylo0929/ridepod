@@ -180,11 +180,13 @@ function startOfLocalDay(date: Date) {
 }
 
 function parseRideDateLabel(dateLabel: string, referenceDate: Date) {
-  const match = dateLabel.match(/(\d{1,2})\s+([A-Za-z]+)/);
-  if (!match) return null;
+  const dayMonthMatch = dateLabel.match(/(\d{1,2})\s+([A-Za-z]+)/);
+  const monthDayMatch = dateLabel.match(/([A-Za-z]+)\s+(\d{1,2})/);
+  if (!dayMonthMatch && !monthDayMatch) return null;
 
-  const day = Number(match[1]);
-  const month = rideDateMonths[match[2].toLowerCase()];
+  const day = Number(dayMonthMatch?.[1] ?? monthDayMatch?.[2]);
+  const monthName = dayMonthMatch?.[2] ?? monthDayMatch?.[1] ?? "";
+  const month = rideDateMonths[monthName.toLowerCase()];
   if (!Number.isFinite(day) || month === undefined) return null;
 
   return new Date(referenceDate.getFullYear(), month, day);
