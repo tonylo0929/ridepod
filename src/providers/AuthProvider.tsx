@@ -91,6 +91,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 const mockAuthKey = "ridepod:mock-auth";
 const mockAuthRegistryKey = "ridepod:mock-auth-registry";
+const authRequestTimeoutMs = 15_000;
 
 type MockStoredProfile = RidePodProfileRow & {
   account_type?: RidePodAccountType;
@@ -102,6 +103,27 @@ type MockStoredProfile = RidePodProfileRow & {
 
 function isMissingSupabaseConfig(error: unknown) {
   return error instanceof Error && error.message.includes("Supabase is not configured");
+}
+
+class RidePodAuthTimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "RidePodAuthTimeoutError";
+  }
+}
+
+function isAuthTimeoutError(error: unknown) {
+  return error instanceof RidePodAuthTimeoutError;
+}
+
+function withAuthTimeout<T>(promise: PromiseLike<T>, message: string) {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = globalThis.setTimeout(() => reject(new RidePodAuthTimeoutError(message)), authRequestTimeoutMs);
+
+    Promise.resolve(promise)
+      .then(resolve, reject)
+      .finally(() => globalThis.clearTimeout(timeout));
+  });
 }
 
 function nowIso() {
@@ -139,7 +161,10 @@ async function resolveEmailForLogin(
       args: Record<string, string>,
     ) => Promise<{ data: string | null; error: { message?: string } | null }>;
   };
-  const result = await resolver.rpc("resolve_account_login", { account_name_input: accountName });
+  const result = await withAuthTimeout(
+    resolver.rpc("resolve_account_login", { account_name_input: accountName }),
+    "Account lookup took too long.",
+  );
   if (result.error || !result.data) return null;
   return normalizeEmail(result.data);
 }
@@ -290,14 +315,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const client = getSupabaseBrowserClient();
-    const result = await client.from("profiles").select("*").eq("id", targetUser.id).maybeSingle();
+    const result = await withAuthTimeout(
+      client.from("profiles").select("*").eq("id", targetUser.id).maybeSingle(),
+      "Profile load took too long.",
+    );
 
     if (result.error) {
       setProfile(null);
       return;
     }
 
-    const nextProfile = result.data ?? await ensureProfileForUser(targetUser);
+    const nextProfile = result.data ?? await withAuthTimeout(
+      ensureProfileForUser(targetUser),
+      "Profile setup took too long.",
+    );
     setProfile(nextProfile);
   }, []);
 
@@ -306,7 +337,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       const client = getSupabaseBrowserClient();
-      const result = await client.auth.getSession();
+      const result = await withAuthTimeout(client.auth.getSession(), "Session check took too long.");
       const nextSession = result.data.session;
       setSource("supabase");
       setFallbackNote(null);
@@ -356,7 +387,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setFallbackNote(null);
           setSession(nextSession);
           setUser(nextSession?.user ?? null);
-          await loadProfile(nextSession?.user ?? null, "supabase");
+          try {
+            await loadProfile(nextSession?.user ?? null, "supabase");
+          } catch (error) {
+            console.warn("RidePod profile refresh after auth state change failed", error);
+            setProfile(null);
+          }
         });
         unsubscribe = () => subscription.data.subscription.unsubscribe();
       } catch {
@@ -385,16 +421,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         const client = getSupabaseBrowserClient();
-        const result = await client.auth.signUp({
-          email,
-          password: input.password,
-          options: {
-            data: {
-              account_name: accountName,
-              display_name: displayName,
+        const result = await withAuthTimeout(
+          client.auth.signUp({
+            email,
+            password: input.password,
+            options: {
+              data: {
+                account_name: accountName,
+                display_name: displayName,
+              },
             },
-          },
-        });
+          }),
+          "Account creation took too long.",
+        );
 
         if (result.error) {
           return {
@@ -403,21 +442,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
         }
         if (result.data.user) {
-          const nextProfile = await ensureProfileForUser(result.data.user, displayName);
+          const nextProfile = await withAuthTimeout(
+            ensureProfileForUser(result.data.user, displayName),
+            "Profile setup took too long.",
+          );
           if (input.avatarPreference) {
             saveAvatarPreference(result.data.user.id, input.avatarPreference);
           }
           if (input.homeDistrict?.trim() || input.phone?.trim() || accountName) {
-            await client
-              .from("profiles")
-              .update({
-                account_name: accountName,
-                home_district: input.homeDistrict?.trim() || null,
-                phone: input.phone?.trim() || null,
-                updated_at: nowIso(),
-              })
-              .eq("id", result.data.user.id);
-            await loadProfile(result.data.user, "supabase");
+            await withAuthTimeout(
+              client
+                .from("profiles")
+                .update({
+                  account_name: accountName,
+                  home_district: input.homeDistrict?.trim() || null,
+                  phone: input.phone?.trim() || null,
+                  updated_at: nowIso(),
+                })
+                .eq("id", result.data.user.id),
+              "Profile update took too long.",
+            );
+            void loadProfile(result.data.user, "supabase").catch((error) => {
+              console.warn("RidePod profile refresh after registration failed", error);
+            });
           } else {
             setProfile(nextProfile);
           }
@@ -429,7 +476,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         return { ok: true };
       } catch (error) {
-        if (!isMissingSupabaseConfig(error)) return { ok: false, error: "Couldn't create account. Try again later." };
+        if (!isMissingSupabaseConfig(error)) {
+          return {
+            ok: false,
+            error: isAuthTimeoutError(error)
+              ? "Account creation is taking too long. Check your connection and try again."
+              : "Couldn't create account. Try again later.",
+          };
+        }
 
         const nextProfile = buildMockProfile({
           id: mockIdFromEmail(email),
@@ -486,19 +540,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const client = getSupabaseBrowserClient();
       const email = await resolveEmailForLogin(client, loginIdentifier);
       if (!email) return { ok: false, error: "Account name not found. Try your email or check the spelling." };
-      const result = await client.auth.signInWithPassword({ email, password });
+      const result = await withAuthTimeout(
+        client.auth.signInWithPassword({ email, password }),
+        "Login took too long.",
+      );
       if (result.error || !result.data.user) return { ok: false, error: "Couldn't log in. Check your details and try again." };
 
       setSource("supabase");
       setFallbackNote(null);
       setSession(result.data.session);
       setUser(result.data.user);
-      await loadProfile(result.data.user, "supabase");
+      void loadProfile(result.data.user, "supabase").catch((error) => {
+        console.warn("RidePod profile refresh after login failed", error);
+      });
       const accountType =
         result.data.user.user_metadata?.account_type === "taxi_partner" ? "taxi_partner" : "rider";
       return { ok: true, accountType, redirectTo: getRedirectForAccountType(accountType) };
     } catch (error) {
-      if (!isMissingSupabaseConfig(error)) return { ok: false, error: "Couldn't log in. Try again later." };
+      if (!isMissingSupabaseConfig(error)) {
+        return {
+          ok: false,
+          error: isAuthTimeoutError(error)
+            ? "Login is taking too long. Check your connection and try again."
+            : "Couldn't log in. Try again later.",
+        };
+      }
 
       const stored = readMockProfile();
       const registered = getMockRegistryProfile(loginIdentifier);

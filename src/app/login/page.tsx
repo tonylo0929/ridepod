@@ -22,17 +22,22 @@ export default function LoginPage() {
     setStatus(null);
     setError(null);
 
-    const result = await login(loginIdentifier, password);
-    setSubmitting(false);
+    try {
+      const result = await login(loginIdentifier, password);
 
-    if (!result.ok) {
-      setError(result.error ?? "Couldn't log in. Try again later.");
-      return;
+      if (!result.ok) {
+        setError(result.error ?? "Couldn't log in. Try again later.");
+        return;
+      }
+
+      setStatus(result.accountType === "taxi_partner" ? "Logged in as Taxi Partner." : "Logged in as Rider.");
+      const next = new URLSearchParams(window.location.search).get("next");
+      router.push(next && next.startsWith("/") ? next : result.redirectTo ?? "/home");
+    } catch {
+      setError("Couldn't log in. Try again later.");
+    } finally {
+      setSubmitting(false);
     }
-
-    setStatus(result.accountType === "taxi_partner" ? "Logged in as Taxi Partner." : "Logged in as Rider.");
-    const next = new URLSearchParams(window.location.search).get("next");
-    router.push(next && next.startsWith("/") ? next : result.redirectTo ?? "/home");
   }
 
   return (
