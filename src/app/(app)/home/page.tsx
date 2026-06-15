@@ -1348,9 +1348,10 @@ export default function HomePage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const today = useMemo(() => new Date(), []);
   const allHomeRides = useMemo(() => {
+    const demoHomeRides = homeRides.map((ride) => applyRideAppDemoPersona(ride, { profile, user }));
     const rides = [
-      ...homeRides.map((ride) => applyRideAppDemoPersona(ride, { profile, user })),
-      ...createdHomeRides.filter((createdRide) => !homeRides.some((ride) => ride.id === createdRide.id)),
+      ...createdHomeRides,
+      ...demoHomeRides.filter((ride) => !createdHomeRides.some((createdRide) => createdRide.id === ride.id)),
     ];
 
     return isAuthenticated ? rides : rides.map(withoutCurrentUserRelationship);

@@ -159,6 +159,10 @@ function isViewerRide(ride: HomeRide) {
   return ride.currentUserRole === "host" || ride.currentUserRole === "joined_rider" || ride.currentUserJoined === true;
 }
 
+function createdHomeRideSortKey(ride: HomeRide) {
+  return `${toDateKey(ride.dateLabel)}T${toTimeKey(ride.timeLabel)}`;
+}
+
 function mergeCreatedHomeRides(
   localRides: HomeRide[],
   publicRides: HomeRide[],
@@ -178,7 +182,7 @@ function mergeCreatedHomeRides(
 
   localRides.forEach(push);
   publicRides.filter((ride) => includePublicRiderCards || isViewerRide(ride)).forEach(push);
-  return rides;
+  return rides.sort((first, second) => createdHomeRideSortKey(second).localeCompare(createdHomeRideSortKey(first)));
 }
 
 async function getSupabaseSessionContext() {
@@ -359,17 +363,19 @@ function isPublicCreatedHomeRideSyncRequest(value: unknown): value is PublicCrea
 }
 
 function toDateKey(dateLabel: string) {
-  const match = dateLabel.match(/(\d{1,2})\s+([A-Za-z]+)/);
+  const dayMonthMatch = dateLabel.match(/(\d{1,2})\s+([A-Za-z]+)/);
+  const monthDayMatch = dateLabel.match(/([A-Za-z]+)\s+(\d{1,2})/);
   const fallback = new Date();
-  if (!match) {
+  if (!dayMonthMatch && !monthDayMatch) {
     const year = fallback.getFullYear();
     const month = String(fallback.getMonth() + 1).padStart(2, "0");
     const day = String(fallback.getDate()).padStart(2, "0");
     return `${year}-${month}-${day}`;
   }
 
-  const day = Number(match[1]);
-  const month = rideDateMonths[match[2].toLowerCase()];
+  const day = Number(dayMonthMatch?.[1] ?? monthDayMatch?.[2]);
+  const monthName = dayMonthMatch?.[2] ?? monthDayMatch?.[1] ?? "";
+  const month = rideDateMonths[monthName.toLowerCase()];
   if (!Number.isFinite(day) || month === undefined) {
     const year = fallback.getFullYear();
     const fallbackMonth = String(fallback.getMonth() + 1).padStart(2, "0");
