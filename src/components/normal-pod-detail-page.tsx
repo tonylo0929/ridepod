@@ -3363,7 +3363,13 @@ function SelfSettlePodSummaryHero({
             )}
           </span>
           <div className="min-w-0">
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {canLeaveRideFromHero ? (
+                <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-cyan-300/45 bg-cyan-300/10 px-2.5 py-1 text-[10px] font-black uppercase text-cyan-100">
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                  Joined by you
+                </span>
+              ) : null}
               <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-primary)]">
                 <Crown className="h-3.5 w-3.5 shrink-0" />
                 {hostBadgeLabel}
