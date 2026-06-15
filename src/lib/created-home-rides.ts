@@ -25,6 +25,12 @@ type PublicCreatedHomeRideBroadcast = {
   hostUserId: string | null;
   sentAt: string;
 };
+type PublicCreatedHomeRideSyncRequest = {
+  version: 1;
+  requesterUserId: string | null;
+  sentAt: string;
+};
+type PublicCreatedHomeRidesChannel = ReturnType<ReturnType<typeof getSupabaseBrowserClient>["channel"]>;
 const rideDateMonths: Record<string, number> = {
   jan: 0,
   january: 0,
@@ -229,20 +235,54 @@ async function broadcastCreatedHomeRide(ride: HomeRide) {
         resolve();
       });
     });
-    await channel.send({
-      type: "broadcast",
-      event: "created",
-      payload: {
-        version: 1,
-        ride,
-        hostUserId: session.userId,
-        sentAt: new Date().toISOString(),
-      } satisfies PublicCreatedHomeRideBroadcast,
-    });
+    await sendCreatedHomeRideBroadcast(channel, ride, session.userId);
   } catch (error) {
     console.warn("RidePod public created ride broadcast failed", error);
   } finally {
     void session.client.removeChannel(channel);
+  }
+}
+
+async function sendCreatedHomeRideBroadcast(
+  channel: PublicCreatedHomeRidesChannel,
+  ride: HomeRide,
+  hostUserId: string | null,
+) {
+  await channel.send({
+    type: "broadcast",
+    event: "created",
+    payload: {
+      version: 1,
+      ride,
+      hostUserId,
+      sentAt: new Date().toISOString(),
+    } satisfies PublicCreatedHomeRideBroadcast,
+  });
+}
+
+async function sendPublicCreatedHomeRideSyncRequest(
+  channel: PublicCreatedHomeRidesChannel,
+  requesterUserId: string | null,
+) {
+  await channel.send({
+    type: "broadcast",
+    event: "sync-request",
+    payload: {
+      version: 1,
+      requesterUserId,
+      sentAt: new Date().toISOString(),
+    } satisfies PublicCreatedHomeRideSyncRequest,
+  });
+}
+
+async function broadcastLocalCreatedHomeRides(
+  channel: PublicCreatedHomeRidesChannel,
+  hostUserId: string | null | undefined,
+) {
+  if (!hostUserId) return;
+
+  for (const ride of readCreatedHomeRides()) {
+    await sendCreatedHomeRideBroadcast(channel, ride, hostUserId);
   }
 }
 
@@ -290,6 +330,12 @@ function isPublicCreatedHomeRideBroadcast(value: unknown): value is PublicCreate
   if (!value || typeof value !== "object") return false;
   const payload = value as Partial<PublicCreatedHomeRideBroadcast>;
   return payload.version === 1 && Boolean(payload.ride?.id);
+}
+
+function isPublicCreatedHomeRideSyncRequest(value: unknown): value is PublicCreatedHomeRideSyncRequest {
+  if (!value || typeof value !== "object") return false;
+  const payload = value as Partial<PublicCreatedHomeRideSyncRequest>;
+  return payload.version === 1 && "requesterUserId" in payload;
 }
 
 function toDateKey(dateLabel: string) {
@@ -372,7 +418,18 @@ export function useCreatedHomeRides(viewerUserId?: string | null, includePublicR
     }
 
     function syncWhenVisible() {
-      if (document.visibilityState === "visible") void sync();
+      if (document.visibilityState === "visible") void syncAndRequest();
+    }
+
+    async function requestRealtimeSync() {
+      if (!realtimeChannel) return;
+      await sendPublicCreatedHomeRideSyncRequest(realtimeChannel, viewerUserId ?? null);
+      await broadcastLocalCreatedHomeRides(realtimeChannel, viewerUserId);
+    }
+
+    function syncAndRequest() {
+      void sync();
+      void requestRealtimeSync();
     }
 
     void sync();
@@ -380,21 +437,28 @@ export function useCreatedHomeRides(viewerUserId?: string | null, includePublicR
     let realtimeChannel: ReturnType<ReturnType<typeof getSupabaseBrowserClient>["channel"]> | null = null;
     try {
       realtimeClient = getSupabaseBrowserClient();
-      realtimeChannel = realtimeClient
+      const channel = realtimeClient
         .channel(publicCreatedHomeRidesChannel, { config: { broadcast: { self: false } } })
         .on("broadcast", { event: "created" }, ({ payload }) => {
           if (!isPublicCreatedHomeRideBroadcast(payload)) return;
           cachePublicCreatedHomeRide(payload.ride, payload.hostUserId);
           void sync();
+        })
+        .on("broadcast", { event: "sync-request" }, ({ payload }) => {
+          if (!isPublicCreatedHomeRideSyncRequest(payload) || payload.requesterUserId === viewerUserId) return;
+          void broadcastLocalCreatedHomeRides(channel, viewerUserId);
         });
-      realtimeChannel.subscribe();
+      realtimeChannel = channel;
+      realtimeChannel.subscribe((status) => {
+        if (status === "SUBSCRIBED") void requestRealtimeSync();
+      });
     } catch {
       realtimeClient = null;
       realtimeChannel = null;
     }
     window.addEventListener("storage", sync);
     window.addEventListener("ridepod-created-home-rides-updated", sync);
-    window.addEventListener("focus", sync);
+    window.addEventListener("focus", syncAndRequest);
     document.addEventListener("visibilitychange", syncWhenVisible);
     const interval = window.setInterval(sync, 30_000);
 
@@ -402,7 +466,7 @@ export function useCreatedHomeRides(viewerUserId?: string | null, includePublicR
       cancelled = true;
       window.removeEventListener("storage", sync);
       window.removeEventListener("ridepod-created-home-rides-updated", sync);
-      window.removeEventListener("focus", sync);
+      window.removeEventListener("focus", syncAndRequest);
       document.removeEventListener("visibilitychange", syncWhenVisible);
       window.clearInterval(interval);
       if (realtimeClient && realtimeChannel) void realtimeClient.removeChannel(realtimeChannel);
