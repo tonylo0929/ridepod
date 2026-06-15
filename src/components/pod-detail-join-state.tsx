@@ -5791,23 +5791,20 @@ export function LeaveSelfSettlePodModal({
             ? "Leaving after confirmation may forfeit the HK$5 platform fee and may affect your RidePod trust score."
             : "You will leave the pod chat and your seat will reopen."}
         </p>
-        <p className="mt-3 rounded-[14px] border border-blue-300/20 bg-blue-400/10 px-3 py-2 text-xs font-bold leading-5 text-blue-100">
-          RidePod join fee status is separate from the external ride fare because the ride fare is settled after the ride outside RidePod.
-        </p>
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button
             type="button"
             onClick={onCancel}
             className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
           >
-            Keep seat
+            Cancel
           </button>
           <button
             type="button"
             onClick={onConfirm}
             className="min-h-12 rounded-2xl border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-soft)]"
           >
-            Leave pod
+            Confirm
           </button>
         </div>
       </section>
