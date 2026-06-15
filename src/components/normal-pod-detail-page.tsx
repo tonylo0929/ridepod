@@ -3397,8 +3397,13 @@ function SelfSettlePodSummaryHero({
           {canLeaveRideFromHero ? (
             <button
               type="button"
+              onPointerUp={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onLeaveRide();
+              }}
               onClick={onLeaveRide}
-              className="shrink-0 rounded-full border border-rose-200/75 bg-rose-500/24 px-3.5 py-1.5 text-xs font-black text-rose-50 shadow-[0_0_18px_rgba(251,113,133,0.22)] transition hover:bg-rose-500/34"
+              className="relative z-10 min-h-9 shrink-0 rounded-full border border-rose-200/75 bg-rose-500/24 px-3.5 py-1.5 text-xs font-black text-rose-50 shadow-[0_0_18px_rgba(251,113,133,0.22)] transition hover:bg-rose-500/34"
             >
               Leave Ride
             </button>
