@@ -4079,8 +4079,6 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
   const [selfSettleUnderstood, setSelfSettleUnderstood] = useState(false);
   const rideAppWaiver = useRideAppWaiverState();
   const membership = useRidePodMembershipState();
-  const [selfSettleWaiverAppliedSource, setSelfSettleWaiverAppliedSource] = useState<"none" | "launch" | "plus">("none");
-  const [plusWaiversAfterJoin, setPlusWaiversAfterJoin] = useState<number | null>(null);
   const [lockSeatLuggage, setLockSeatLuggage] = useState<LuggageContribution>({
     bagsCount: 0,
     hasLargeLuggage: false,
@@ -4237,15 +4235,8 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     // TODO: replace with HK$5 payment checkout once payment provider is connected.
     if (selfSettleWaiverSource === "launch") {
       markRideAppWaiverUsed();
-      setSelfSettleWaiverAppliedSource("launch");
-      setPlusWaiversAfterJoin(null);
     } else if (selfSettleWaiverSource === "plus") {
-      const nextMembership = consumeRidePodPlusJoinFeeWaiver();
-      setSelfSettleWaiverAppliedSource("plus");
-      setPlusWaiversAfterJoin(nextMembership.monthlyJoinFeeWaiversRemaining);
-    } else {
-      setSelfSettleWaiverAppliedSource("none");
-      setPlusWaiversAfterJoin(null);
+      consumeRidePodPlusJoinFeeWaiver();
     }
     setSelfSettleLeft(false);
     joinSelfSettlePod();
@@ -4295,7 +4286,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
 
   function joinSelfSettleFromSummary() {
     if (!showSelfSettleJoin) return;
-    completeSelfSettleJoin(false);
+    completeSelfSettleJoin(true);
   }
 
   function confirmLeaveSelfSettle() {
@@ -5100,10 +5091,6 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
       ) : null}
       {showSelfSettleJoinSuccessModal ? (
         <SelfSettleJoinSuccessModal
-          ride={ride}
-          waiverSource={selfSettleWaiverAppliedSource}
-          plusWaiversRemaining={plusWaiversAfterJoin ?? membership.monthlyJoinFeeWaiversRemaining}
-          plusWaiversTotal={membership.monthlyJoinFeeWaiversTotal}
           onClose={() => setShowSelfSettleJoinSuccessModal(false)}
         />
       ) : null}

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { CalendarDays, CarFront, CheckCircle2, Clock3, Info, MapPin, Plane, ShieldCheck, Smartphone, Star, UserPlus, UsersRound, WalletCards } from "lucide-react";
+import { CalendarDays, CarFront, CheckCircle2, Clock3, Info, MapPin, Plane, ShieldCheck, Smartphone, Star, UserPlus, UsersRound, WalletCards, X } from "lucide-react";
 import { cn } from "@/components/ui";
 import { PodDetailFareReferenceRows } from "@/components/pod-detail-fare-reference-card";
 import { SelfSettleReportIssue } from "@/components/self-settle-report-issue";
@@ -5866,58 +5866,32 @@ function getCancellationPolicyCopy(joinView: PodDetailJoinView) {
 }
 
 export function SelfSettleJoinSuccessModal({
-  ride,
-  waiverSource = "none",
-  plusWaiversRemaining,
-  plusWaiversTotal,
   onClose,
 }: {
-  ride: HomeRide;
-  waiverSource?: JoinFeeWaiverSource;
-  plusWaiversRemaining?: number;
-  plusWaiversTotal?: number;
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-[90] grid place-items-end bg-[rgba(3,7,18,0.74)] px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-6 backdrop-blur-sm sm:place-items-center sm:py-6">
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-[rgba(3,7,18,0.74)] px-4 py-6 backdrop-blur-sm">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby="self-settle-joined-title"
-        className="w-full max-w-[420px] rounded-[28px] border border-blue-300/25 bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.46)]"
+        className="relative w-full max-w-[340px] rounded-[26px] border border-cyan-200/25 bg-[var(--rp-shell)] px-5 pb-6 pt-14 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.46)]"
       >
-        <span className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-blue-300/35 bg-blue-400/12 text-blue-100">
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-[var(--rp-muted-strong)] transition hover:border-cyan-200/35 hover:text-white"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <span className="mx-auto grid h-14 w-14 place-items-center rounded-full border border-cyan-200/35 bg-cyan-300/12 text-cyan-100">
           <CheckCircle2 className="h-7 w-7" />
         </span>
         <h2 id="self-settle-joined-title" className="mt-4 text-center text-2xl font-black leading-tight">
-          You joined this pod
+          Now you joined the pod
         </h2>
-        <p className="mt-3 text-center text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-          You joined as interest / seat hold. RidePod fee is not demo-confirmed until you confirm ride details.
-        </p>
-        {waiverSource === "plus" && plusWaiversRemaining !== undefined && plusWaiversTotal !== undefined ? (
-          <p className="mt-2 text-center text-xs font-black leading-5 text-blue-100">
-            {plusWaiversRemaining} / {plusWaiversTotal} monthly waivers available before confirmation.
-          </p>
-        ) : null}
-        <p className="mt-2 text-center text-xs font-bold leading-5 text-[var(--rp-muted)]">
-          Review booking details when the host shares them. Chat remains locked until required riders confirm current details.
-        </p>
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex min-h-12 items-center justify-center rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] px-4 text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-soft)]"
-          >
-            Close
-          </button>
-          <Link
-            href={`/pods/${ride.id}/status`}
-            className="inline-flex min-h-12 items-center justify-center rounded-[16px] border border-blue-300/24 bg-[var(--rp-card-muted)] px-4 text-sm font-black text-[var(--rp-text)] transition hover:bg-[var(--rp-card-soft)]"
-          >
-            View Pod Status
-          </Link>
-        </div>
       </section>
     </div>
   );
@@ -6148,8 +6122,6 @@ export function StickyPodDetailCta({
   });
   const rideAppWaiver = useRideAppWaiverState();
   const membership = useRidePodMembershipState();
-  const [selfSettleWaiverAppliedSource, setSelfSettleWaiverAppliedSource] = useState<JoinFeeWaiverSource>("none");
-  const [plusWaiversAfterJoin, setPlusWaiversAfterJoin] = useState<number | null>(null);
 
   function closeLockModal() {
     setShowLockModal(false);
@@ -6219,8 +6191,6 @@ export function StickyPodDetailCta({
 
   function confirmSelfSettleJoin() {
     if (!selfSettleUnderstood) return;
-    setSelfSettleWaiverAppliedSource(selfSettleWaiverSource);
-    setPlusWaiversAfterJoin(null);
     onJoinSelfSettle?.();
     closeSelfSettleJoinModal();
     setShowSelfSettleJoinSuccessModal(true);
@@ -6544,10 +6514,6 @@ export function StickyPodDetailCta({
 
       {showSelfSettleJoinSuccessModal ? (
         <SelfSettleJoinSuccessModal
-          ride={ride}
-          waiverSource={selfSettleWaiverAppliedSource}
-          plusWaiversRemaining={plusWaiversAfterJoin ?? membership.monthlyJoinFeeWaiversRemaining}
-          plusWaiversTotal={membership.monthlyJoinFeeWaiversTotal}
           onClose={() => setShowSelfSettleJoinSuccessModal(false)}
         />
       ) : null}
