@@ -891,6 +891,7 @@ function HomeRideCard({
 }) {
   const isRideApp = isRideAppSelfSettle(ride);
   const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
+  const currentUserHasJoined = currentUserRelationship?.tone === "joined";
   const rideAppEstimateDisplay = getRideAppTotalEstimateDisplay(ride);
   const currentUserIsHost = currentUserRelationship?.tone === "host";
   const podHref = `/pods/${ride.id}`;
@@ -1003,13 +1004,26 @@ function HomeRideCard({
                 {ride.dateLabel} {"\u00b7"} {ride.timeLabel}
               </span>
             </span>
-            <span className="rounded-[16px] border border-white/10 bg-white/[0.04] px-3 py-2">
+            <span
+              className={cn(
+                "rounded-[16px] border px-3 py-2",
+                currentUserHasJoined
+                  ? "border-cyan-300/35 bg-cyan-400/10"
+                  : "border-white/10 bg-white/[0.04]",
+              )}
+            >
               <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">
                 <UsersRound className="h-3.5 w-3.5 shrink-0 text-[var(--rp-primary)]" />
                 Seats
               </span>
-              <span className="mt-1 block text-xs font-black leading-5 text-[var(--rp-text)]">
-                {ride.seatsUsed} / {ride.seatsTotal} seats
+              <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs font-black leading-5 text-[var(--rp-text)]">
+                <span>{ride.seatsUsed} / {ride.seatsTotal} seats</span>
+                {currentUserHasJoined ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-cyan-200/35 bg-cyan-300/14 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-[0.08em] text-cyan-100">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Joined
+                  </span>
+                ) : null}
               </span>
             </span>
             {recurringTiming ? (
