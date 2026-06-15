@@ -4297,7 +4297,11 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
   }
 
   function confirmLeaveSelfSettle() {
+    const leavePatch = getSelfSettleRideAfterLeave(ride);
     leaveSelfSettlePod();
+    setRideActionPatch((current) => mergeRidePatch(current ?? {}, leavePatch) as Partial<HomeRide>);
+    saveStoredSelfSettleRidePatch(ride.id, leavePatch);
+    updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, leavePatch) as HomeRide);
     setSelfSettleLeft(true);
     setShowLeaveSelfSettleModal(false);
 
