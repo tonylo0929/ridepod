@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Fragment, useEffect, useState } from "react";
-import { AnimalAvatar, getDemoAnimalAvatarId } from "@/components/animal-avatar";
+import { AnimalAvatar, RidePodAvatar, getDemoAnimalAvatarId } from "@/components/animal-avatar";
 import {
   ArrowLeft,
   ArrowRight,
@@ -3144,6 +3144,8 @@ function SelfSettlePodSummaryHero({
   const statusTitle = getPodStatusTitle(ride, chatAccess, summaryStatusContext);
   const statusSubtitle = getPodStatusSubtitle(ride, chatAccess, summaryStatusContext);
   const hostProfileImageUrl = getHostProfileImageUrl(ride);
+  const hostAvatarPreference = ride.hostAvatarPreference ?? null;
+  const hostAvatarDisplayName = ride.hostDisplayName?.trim() || ride.hostName || "Host";
   const hostAvatarLabel = canUpdateEstimate ? "You" : getInitials(ride.hostName || "Host").slice(0, 1);
   const hostBadgeLabel = canUpdateEstimate ? "You are hosting" : `Hosted by ${ride.hostName || "host"}`;
   const hostEstimateUpdated = canUpdateEstimate && estimateUpdated;
@@ -3176,10 +3178,20 @@ function SelfSettlePodSummaryHero({
         <div className="relative grid grid-cols-[64px_minmax(0,1fr)] gap-4">
           <span
             className="grid h-16 w-16 place-items-center overflow-hidden rounded-full border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/8 bg-cover bg-center text-2xl font-black text-[var(--rp-primary)] shadow-[0_14px_32px_rgba(0,0,0,0.28)]"
-            style={hostProfileImageUrl ? { backgroundImage: `url(${hostProfileImageUrl})` } : undefined}
-            aria-label={`${ride.hostName || "Host"} profile`}
+            style={!hostAvatarPreference && hostProfileImageUrl ? { backgroundImage: `url(${hostProfileImageUrl})` } : undefined}
+            aria-label={`${hostAvatarDisplayName} profile`}
           >
-            {hostProfileImageUrl ? null : hostAvatarLabel}
+            {hostAvatarPreference ? (
+              <RidePodAvatar
+                avatarUrl={hostProfileImageUrl}
+                avatarPreference={hostAvatarPreference}
+                initials={getInitials(hostAvatarDisplayName) || hostAvatarLabel}
+                displayName={hostAvatarDisplayName}
+                className="h-full w-full rounded-full text-xl"
+              />
+            ) : hostProfileImageUrl ? null : (
+              hostAvatarLabel
+            )}
           </span>
           <div className="min-w-0">
             <div className="flex items-center justify-between gap-2">
