@@ -275,7 +275,27 @@ async function sendPublicCreatedHomeRideSyncRequest(
   });
 }
 
-async function broadcastLocalCreatedHomeRides(
+async function broadcastKnownCreatedHomeRides(
+  channel: PublicCreatedHomeRidesChannel,
+  hostUserId: string | null | undefined,
+) {
+  const sentRideIds = new Set<string>();
+
+  if (hostUserId) {
+    for (const ride of readCreatedHomeRides()) {
+      sentRideIds.add(ride.id);
+      await sendCreatedHomeRideBroadcast(channel, ride, hostUserId);
+    }
+  }
+
+  for (const cached of readCachedPublicCreatedHomeRides()) {
+    if (sentRideIds.has(cached.ride.id)) continue;
+    sentRideIds.add(cached.ride.id);
+    await sendCreatedHomeRideBroadcast(channel, cached.ride, cached.hostUserId);
+  }
+}
+
+async function announceLocalCreatedHomeRides(
   channel: PublicCreatedHomeRidesChannel,
   hostUserId: string | null | undefined,
 ) {
@@ -424,7 +444,7 @@ export function useCreatedHomeRides(viewerUserId?: string | null, includePublicR
     async function requestRealtimeSync() {
       if (!realtimeChannel) return;
       await sendPublicCreatedHomeRideSyncRequest(realtimeChannel, viewerUserId ?? null);
-      await broadcastLocalCreatedHomeRides(realtimeChannel, viewerUserId);
+      await broadcastKnownCreatedHomeRides(realtimeChannel, viewerUserId);
     }
 
     function syncAndRequest() {
@@ -446,7 +466,9 @@ export function useCreatedHomeRides(viewerUserId?: string | null, includePublicR
         })
         .on("broadcast", { event: "sync-request" }, ({ payload }) => {
           if (!isPublicCreatedHomeRideSyncRequest(payload) || payload.requesterUserId === viewerUserId) return;
-          void broadcastLocalCreatedHomeRides(channel, viewerUserId);
+          window.setTimeout(() => {
+            void broadcastKnownCreatedHomeRides(channel, viewerUserId);
+          }, 250);
         });
       realtimeChannel = channel;
       realtimeChannel.subscribe((status) => {
@@ -457,18 +479,24 @@ export function useCreatedHomeRides(viewerUserId?: string | null, includePublicR
       realtimeChannel = null;
     }
     window.addEventListener("storage", sync);
-    window.addEventListener("ridepod-created-home-rides-updated", sync);
+    window.addEventListener("ridepod-created-home-rides-updated", syncAndRequest);
     window.addEventListener("focus", syncAndRequest);
     document.addEventListener("visibilitychange", syncWhenVisible);
     const interval = window.setInterval(sync, 30_000);
+    const realtimeSyncInterval = window.setInterval(() => {
+      if (!realtimeChannel) return;
+      void announceLocalCreatedHomeRides(realtimeChannel, viewerUserId);
+      void sendPublicCreatedHomeRideSyncRequest(realtimeChannel, viewerUserId ?? null);
+    }, 5_000);
 
     return () => {
       cancelled = true;
       window.removeEventListener("storage", sync);
-      window.removeEventListener("ridepod-created-home-rides-updated", sync);
+      window.removeEventListener("ridepod-created-home-rides-updated", syncAndRequest);
       window.removeEventListener("focus", syncAndRequest);
       document.removeEventListener("visibilitychange", syncWhenVisible);
       window.clearInterval(interval);
+      window.clearInterval(realtimeSyncInterval);
       if (realtimeClient && realtimeChannel) void realtimeClient.removeChannel(realtimeChannel);
     };
   }, [includePublicRiderCards, viewerUserId]);
