@@ -190,9 +190,15 @@ function mergeRiderConfirmations(existing: HomeRide, incoming: HomeRide) {
 }
 
 function mergeCreatedHomeRide(existing: HomeRide, incoming: HomeRide): HomeRide {
+  const incomingIsPublicViewerCopy =
+    incoming.currentUserRole === "rider" && incoming.currentUserJoined === false && incoming.hostName !== "You";
+  const shouldDemoteStaleHost = existing.currentUserRole === "host" && incomingIsPublicViewerCopy;
   const shouldUseIncomingRelationship =
-    existing.currentUserRole !== "host" &&
-    (incoming.currentUserRole === "host" || incoming.currentUserRole === "joined_rider" || incoming.currentUserJoined === true);
+    (existing.currentUserRole !== "host" || shouldDemoteStaleHost) &&
+    (incoming.currentUserRole === "host" ||
+      incoming.currentUserRole === "joined_rider" ||
+      incoming.currentUserJoined === true ||
+      shouldDemoteStaleHost);
   const seatsTotal = Math.max(1, existing.seatsTotal || incoming.seatsTotal || 4);
   const seatsUsed = Math.min(seatsTotal, Math.max(existing.seatsUsed, incoming.seatsUsed));
   const joinedRiderCount = Math.max(getEffectiveJoinedRiderCount(existing), getEffectiveJoinedRiderCount(incoming));
@@ -200,6 +206,7 @@ function mergeCreatedHomeRide(existing: HomeRide, incoming: HomeRide): HomeRide 
 
   return {
     ...existing,
+    id: shouldDemoteStaleHost ? incoming.id : existing.id,
     ...(shouldUseIncomingRelationship
       ? {
           currentUserRole: incoming.currentUserRole,
@@ -207,7 +214,7 @@ function mergeCreatedHomeRide(existing: HomeRide, incoming: HomeRide): HomeRide 
           currentUserJoined: incoming.currentUserJoined,
           currentUserJoinIntentStatus: incoming.currentUserJoinIntentStatus,
           quoteStatus: incoming.quoteStatus,
-          hostName: incoming.currentUserRole === "host" ? incoming.hostName : existing.hostName,
+          hostName: incoming.hostName,
         }
       : null),
     seatsUsed,
