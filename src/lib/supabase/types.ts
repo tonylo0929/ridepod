@@ -230,7 +230,24 @@ export type Database = {
       pod_member_status: TableDefinition<RidePodMemberStatusRow>;
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      notify_pod_audience: {
+        Args: {
+          p_pod_id: string;
+          p_actor_user_id: string;
+          p_audiences: string[];
+          p_type: string;
+          p_title: string;
+          p_body?: string | null;
+          p_self_title?: string | null;
+          p_self_body?: string | null;
+          p_related_url?: string | null;
+          p_metadata?: Json;
+          p_dedupe?: boolean;
+        };
+        Returns: number;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

@@ -6,6 +6,7 @@ import { ArrowLeft, LockKeyhole, MessageCircle, Send, Smartphone, UserCheck } fr
 import { SelfSettleCompletionCard } from "@/components/self-settle-completion-card";
 import { SelfSettleReportIssue } from "@/components/self-settle-report-issue";
 import type { HomeRide, RideAppChecklist } from "@/lib/home-ride-mock";
+import { notifyPodAudience } from "@/lib/notifications/pod-notification-fanout";
 import { getRideAppChatAccessState, type RideAppChatAccessState } from "@/lib/ride-app-chat-unlock";
 import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
 import type { TaxiPartnerChatAccessState } from "@/lib/taxi-partner-chat-unlock";
@@ -559,6 +560,31 @@ export function PodChatClient({
       : canUseChat
         ? "Type a message..."
         : "Chat is locked.";
+  const currentUserDisplayName =
+    profile?.display_name?.trim() ||
+    profile?.preferred_name?.trim() ||
+    user?.email?.split("@")[0] ||
+    "Someone";
+
+  async function notifyChatMessage(body: string) {
+    if (!user) return;
+
+    await notifyPodAudience({
+      podId,
+      actorUserId: user.id,
+      actorDisplayName: currentUserDisplayName,
+      type: "pod_chat_message",
+      audiences: ["others"],
+      title: `${currentUserDisplayName} sent a message`,
+      body,
+      relatedUrl: `/pods/${podId}/chat`,
+      metadata: {
+        action: "chat_message",
+        route: routeLabel,
+      },
+      dedupe: false,
+    });
+  }
 
   async function refresh() {
     if (!user) return;
@@ -604,6 +630,7 @@ export function PodChatClient({
       updateType: "coordination_note",
       message: body,
     });
+    await notifyChatMessage(body);
     setMessage("");
     await refresh();
     setSending(false);
@@ -619,6 +646,7 @@ export function PodChatClient({
       updateType: "coordination_note",
       message: body,
     });
+    await notifyChatMessage(body);
     await refresh();
     setSending(false);
   }
@@ -662,6 +690,22 @@ export function PodChatClient({
           "Self-settle checklist completed. Please follow the agreed details and settle the final ride fare after the ride directly with the booker.",
         metadata: {
           rideAppChecklist: nextChecklist,
+        },
+      });
+      await notifyPodAudience({
+        podId,
+        actorUserId: user.id,
+        actorDisplayName: currentUserDisplayName,
+        type: "ride_app_details_updated",
+        audiences: ["actor", "others"],
+        title: "Booking checklist completed",
+        body: `${currentUserDisplayName} completed the booking checklist for ${routeLabel}.`,
+        selfTitle: "You completed the booking checklist",
+        selfBody: "Riders can follow the agreed details.",
+        relatedUrl: `/pods/${podId}/chat`,
+        metadata: {
+          action: "checklist_completed",
+          route: routeLabel,
         },
       });
       setChecklistCompletedUpdateSent(true);

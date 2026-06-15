@@ -67,6 +67,11 @@ import {
 import { getRideWithStoredSelfSettleJoin, saveStoredSelfSettleRidePatch } from "@/lib/ride-app-local-join";
 import { markRideAppWaiverUsed, useRideAppWaiverState } from "@/lib/ride-app-waiver";
 import { updateCreatedHomeRide } from "@/lib/created-home-rides";
+import {
+  notifyPodAudience,
+  type NotifyPodAudienceInput,
+  type PodNotificationAudience,
+} from "@/lib/notifications/pod-notification-fanout";
 import { joinPod as joinRidePodMembership } from "@/lib/pods/ridepod-membership";
 import {
   isUuid,
@@ -1775,6 +1780,45 @@ export function PodStatusPanel({
   const ridePickupDate = getRidePickupDate(ride);
   const confirmByDeadlinePreview = getConfirmByDeadline(ride, confirmByAmount, confirmByUnit);
   const confirmByDeadlineIsPast = Boolean(confirmByDeadlinePreview && confirmByDeadlinePreview.getTime() <= nowMs);
+  const podStatusRouteTitle = `${ride.fromLabel} -> ${ride.toLabel}`;
+  const podStatusActorName =
+    profile?.display_name?.trim() ||
+    profile?.preferred_name?.trim() ||
+    user?.email?.split("@")[0] ||
+    ride.currentUserName?.trim() ||
+    "Someone";
+
+  function notifyPodStatusAction(input: {
+    type?: NotifyPodAudienceInput["type"];
+    audiences?: PodNotificationAudience[];
+    title: string;
+    body?: string | null;
+    selfTitle?: string | null;
+    selfBody?: string | null;
+    action: string;
+    relatedUrl?: string;
+    dedupe?: boolean;
+  }) {
+    if (!user || !isRideAppSelfSettlePod(ride)) return;
+
+    void notifyPodAudience({
+      podId: ride.id,
+      actorUserId: user.id,
+      actorDisplayName: podStatusActorName,
+      type: input.type ?? "ride_app_action_required",
+      audiences: input.audiences ?? ["actor", "others"],
+      title: input.title,
+      body: input.body ?? null,
+      selfTitle: input.selfTitle,
+      selfBody: input.selfBody,
+      relatedUrl: input.relatedUrl ?? `/pods/${ride.id}/status`,
+      metadata: {
+        action: input.action,
+        route: podStatusRouteTitle,
+      },
+      dedupe: input.dedupe,
+    });
+  }
 
   function saveConfirmByTime() {
     if (!confirmByDeadlinePreview || confirmByDeadlineIsPast) return;
@@ -1795,6 +1839,14 @@ export function PodStatusPanel({
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
     saveStoredSelfSettleRidePatch(ride.id, patch);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+    notifyPodStatusAction({
+      type: "ride_app_action_required",
+      title: "Confirm-by time updated",
+      body: `${podStatusActorName} set confirm-by to ${deadlineLabel}. Please review current details.`,
+      selfTitle: "You updated confirm-by time",
+      selfBody: `Riders need to confirm by ${deadlineLabel}.`,
+      action: "confirm_by_updated",
+    });
     setShowConfirmByModal(false);
   }
 
@@ -1844,6 +1896,14 @@ export function PodStatusPanel({
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
     saveStoredSelfSettleRidePatch(ride.id, patch);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+    notifyPodStatusAction({
+      type: gatherPointChanged ? "ride_app_action_required" : "ride_app_details_updated",
+      title: gatherPointChanged ? "Gather point updated" : "Gather point set",
+      body: `${podStatusActorName} ${gatherPointChanged ? "updated" : "set"} the gather point: ${nextGatherPoint}.`,
+      selfTitle: gatherPointChanged ? "You updated the gather point" : "You set the gather point",
+      selfBody: nextGatherPoint,
+      action: gatherPointChanged ? "gather_point_updated" : "gather_point_set",
+    });
     setShowGatherPointModal(false);
   }
 
@@ -1853,7 +1913,14 @@ export function PodStatusPanel({
     setLastNudgeAt(new Date().toISOString());
     setNudgeSent(true);
     setShowNudgeModal(false);
-    // TODO: Add a local/mock pod activity event: `${ride.hostName || "Host"} nudged pending riders to confirm.`
+    notifyPodStatusAction({
+      type: "ride_app_action_required",
+      audiences: ["members"],
+      title: "Please confirm ride details",
+      body: `${podStatusActorName} asked pending riders to confirm before ${confirmByLabel}.`,
+      action: "confirmation_nudge_sent",
+      dedupe: false,
+    });
   }
 
   function confirmBecomeBooker() {
@@ -1877,6 +1944,14 @@ export function PodStatusPanel({
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
     saveStoredSelfSettleRidePatch(ride.id, patch);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+    notifyPodStatusAction({
+      type: "ride_app_details_updated",
+      title: "New booker selected",
+      body: `${bookerName} became the new booker for ${podStatusRouteTitle}.`,
+      selfTitle: "You became the new booker",
+      selfBody: "You can now coordinate and book the ride app outside RidePod.",
+      action: "replacement_booker_selected",
+    });
     setBecomeBookerUnderstood(false);
     setShowBecomeBookerModal(false);
   }
@@ -1893,6 +1968,15 @@ export function PodStatusPanel({
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
     saveStoredSelfSettleRidePatch(ride.id, patch);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+    notifyPodStatusAction({
+      type: "ride_app_rejoin_requested",
+      audiences: ["actor", "host"],
+      title: "Rider wants to rejoin",
+      body: `${podStatusActorName} requested to rejoin ${podStatusRouteTitle}.`,
+      selfTitle: "You requested to rejoin",
+      selfBody: detailsComplete ? "Please confirm ride details again." : "Waiting for host details.",
+      action: "rejoin_requested",
+    });
     setActiveTab("summary");
     setRejoinMessage(detailsComplete ? "Confirm ride details" : "Waiting for host details");
     setShowRejoinModal(false);
@@ -3181,6 +3265,7 @@ function SelfSettlePodSummaryHero({
   onViewFareProof,
   onSharePod,
   onJoinRide,
+  onLeaveRide,
 }: {
   ride: HomeRide;
   seatsUsed: number;
@@ -3195,6 +3280,7 @@ function SelfSettlePodSummaryHero({
   onViewFareProof: () => void;
   onSharePod: () => void;
   onJoinRide: () => void;
+  onLeaveRide: () => void;
 }) {
   const chatAccess = getRideAppChatAccessState(ride);
   const summaryRiders = buildPodStatusRiders(ride);
@@ -3231,6 +3317,7 @@ function SelfSettlePodSummaryHero({
   const hostBadgeLabel = canUpdateEstimate ? "You are hosting" : ride.hostName || "New host";
   const canJoinRide = getCurrentUserCanJoinSelfSettlePod(ride, "quote_pending");
   const hostEstimateUpdated = canUpdateEstimate && estimateUpdated;
+  const canLeaveRideFromHero = summaryUserHadRideAppSeat && !summaryUserIsHost;
   const displayEstimateLabel = hostEstimateUpdated ? "Updated estimate" : canUpdateEstimate ? "Your estimate" : estimateLabel;
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
   const hostCancellationActive = hostCancellationStatus !== "active";
@@ -3294,9 +3381,20 @@ function SelfSettlePodSummaryHero({
           </div>
         </div>
 
-        <div className="relative mt-4 flex items-center gap-2 text-sm font-semibold text-[var(--rp-muted-strong)]">
-          <span>Pod ID: {ride.id.slice(0, 8).toUpperCase()}</span>
-          <Copy className="h-4 w-4" />
+        <div className="relative mt-4 flex items-center justify-between gap-3 text-sm font-semibold text-[var(--rp-muted-strong)]">
+          <span className="inline-flex min-w-0 items-center gap-2">
+            <span className="truncate">Pod ID: {ride.id.slice(0, 8).toUpperCase()}</span>
+            <Copy className="h-4 w-4 shrink-0" />
+          </span>
+          {canLeaveRideFromHero ? (
+            <button
+              type="button"
+              onClick={onLeaveRide}
+              className="shrink-0 rounded-full border border-rose-300/45 bg-rose-400/10 px-3 py-1.5 text-xs font-black text-rose-100 transition hover:bg-rose-400/16"
+            >
+              Leave Ride
+            </button>
+          ) : null}
         </div>
 
         <div className="relative mt-4 grid grid-cols-[0.9fr_1.2fr_0.82fr] gap-3 border-t border-white/12 pt-4">
@@ -4075,6 +4173,45 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
         ? "plus"
         : "none";
   const lockSeatWaiverSource = launchWaiverAvailable ? "launch" : plusWaiverAvailable ? "plus" : "none";
+  const detailRouteTitle = `${ride.fromLabel} -> ${ride.toLabel}`;
+  const detailActorName =
+    profile?.display_name?.trim() ||
+    profile?.preferred_name?.trim() ||
+    user?.email?.split("@")[0] ||
+    ride.currentUserName?.trim() ||
+    "Someone";
+
+  function notifyRideDetailAction(input: {
+    type?: NotifyPodAudienceInput["type"];
+    audiences?: PodNotificationAudience[];
+    title: string;
+    body?: string | null;
+    selfTitle?: string | null;
+    selfBody?: string | null;
+    action: string;
+    relatedUrl?: string;
+    dedupe?: boolean;
+  }) {
+    if (!user || !isRideAppSelfSettlePod(ride)) return;
+
+    void notifyPodAudience({
+      podId: ride.id,
+      actorUserId: user.id,
+      actorDisplayName: detailActorName,
+      type: input.type ?? "ride_app_action_required",
+      audiences: input.audiences ?? ["actor", "others"],
+      title: input.title,
+      body: input.body ?? null,
+      selfTitle: input.selfTitle,
+      selfBody: input.selfBody,
+      relatedUrl: input.relatedUrl ?? `/pods/${ride.id}`,
+      metadata: {
+        action: input.action,
+        route: detailRouteTitle,
+      },
+      dedupe: input.dedupe,
+    });
+  }
 
   function joinPod(luggage?: LuggageContribution) {
     lockSeat(luggage);
@@ -4159,6 +4296,14 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     }
 
     leaveSelfSettlePod();
+    notifyRideDetailAction({
+      type: "attendance_cancelled",
+      title: "Rider left this ride",
+      body: `${detailActorName} left ${detailRouteTitle}.`,
+      selfTitle: "You left this ride",
+      selfBody: `${detailRouteTitle} was removed from your active rides.`,
+      action: "attendance_cancelled",
+    });
     setSelfSettleLeft(true);
     setShowLeaveSelfSettleModal(false);
   }
@@ -4254,6 +4399,14 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
         ...updatedRidePatch.rideAppChecklist,
       } as HomeRide["rideAppChecklist"],
     }));
+    notifyRideDetailAction({
+      type: "ride_app_details_updated",
+      title: "Ride estimate updated",
+      body: `${detailActorName} updated the estimate to ${formattedEstimate}.`,
+      selfTitle: "You updated the ride estimate",
+      selfBody: formattedEstimate,
+      action: "estimate_updated",
+    });
     setRideAppEstimateError(null);
     setShowRideAppEstimateModal(false);
   }
@@ -4304,6 +4457,16 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
         };
 
     applyRideActionPatch(patch);
+    notifyRideDetailAction({
+      type: "ride_app_host_cancelled",
+      title: hostCancellationHasConfirmedRiders ? "Host replacement needed" : "Host cancelled ride",
+      body: hostCancellationHasConfirmedRiders
+        ? `${detailActorName} can no longer host ${detailRouteTitle}. A confirmed rider can become the new booker.`
+        : `${detailActorName} cancelled ${detailRouteTitle}.`,
+      selfTitle: "You marked this ride cancelled",
+      selfBody: hostCancellationReason,
+      action: hostCancellationHasConfirmedRiders ? "host_replacement_needed" : "host_cancelled",
+    });
     closeHostCancellationModal();
     setShowManagePodActionsModal(false);
   }
@@ -4331,6 +4494,14 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     };
 
     applyRideActionPatch(patch);
+    notifyRideDetailAction({
+      type: "ride_app_action_required",
+      title: "Route request approved",
+      body: `${detailActorName} approved ${stop.label}. Please review the latest ride details.`,
+      selfTitle: "You approved a route request",
+      selfBody: stop.label,
+      action: "route_request_approved",
+    });
   }
 
   function declineRouteStop(stop: RoutePlanStop) {
@@ -4341,6 +4512,14 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     };
 
     applyRideActionPatch(patch);
+    notifyRideDetailAction({
+      type: "ride_app_details_updated",
+      title: "Route request declined",
+      body: `${detailActorName} declined ${stop.label}.`,
+      selfTitle: "You declined a route request",
+      selfBody: stop.label,
+      action: "route_request_declined",
+    });
   }
 
   function closeLockSeatModal() {
@@ -4413,6 +4592,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
               onViewFareProof={() => setShowRideAppFareProofModal(true)}
               onSharePod={sharePod}
               onJoinRide={joinSelfSettleFromSummary}
+              onLeaveRide={() => setShowLeaveSelfSettleModal(true)}
             />
           ) : (
           <section className="relative -mx-4 -mt-2 overflow-hidden rounded-b-[28px] border-b border-[var(--rp-border)] bg-[var(--rp-shell)] shadow-[var(--rp-shadow-soft)]">

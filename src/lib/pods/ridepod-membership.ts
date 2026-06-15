@@ -1,5 +1,6 @@
 import { getHomeRide } from "@/lib/home-ride-mock";
 import { getHostedPods, getPod, getUserPods, type RidePod } from "@/lib/mock-data";
+import { notifyPodAudience } from "@/lib/notifications/pod-notification-fanout";
 import { createUserNotificationOnce } from "@/lib/notifications/ridepod-notifications";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { RidePodMemberRow, RidePodPodRow } from "@/lib/supabase/types";
@@ -355,19 +356,25 @@ async function publishJoinSideEffects(input: RidePodMembershipInput, pod?: RideP
     }),
   ];
 
-  if (hostUserId && hostUserId !== input.userId) {
-    tasks.push(
-      createUserNotificationOnce({
-        recipientUserId: hostUserId,
-        actorUserId: input.userId,
-        type: "pod_joined",
-        title: "Someone joined your ride",
-        body: `${actorName} joined ${rideTitle}.`,
-        relatedPodId: input.podId,
-        relatedUrl,
-      }),
-    );
-  }
+  tasks.push(
+    notifyPodAudience({
+      podId: input.podId,
+      actorUserId: input.userId,
+      actorDisplayName: actorName,
+      type: "pod_joined",
+      audiences: ["actor", "others"],
+      selfTitle: "You joined this ride",
+      selfBody: `${rideTitle} is now in your rides.`,
+      title: "New rider joined",
+      body: `${actorName} joined ${rideTitle}.`,
+      relatedUrl,
+      metadata: {
+        action: "pod_joined",
+        route: rideTitle,
+      },
+      fallbackRecipientUserIds: hostUserId && hostUserId !== input.userId ? [hostUserId] : [],
+    }),
+  );
 
   await Promise.allSettled(tasks);
   emitUpdatesChanged();
@@ -395,6 +402,29 @@ async function publishCancelSideEffects(input: RidePodMembershipInput, context?:
         message: "Can’t make it",
       }),
     ];
+
+    tasks.push(
+      notifyPodAudience({
+        podId: input.podId,
+        actorUserId: input.userId,
+        actorDisplayName: actorName,
+        type: "attendance_cancelled",
+        audiences: ["actor", "others"],
+        selfTitle: "You cancelled this ride",
+        selfBody: `${rideTitle} was removed from your active rides.`,
+        title: "Rider cancelled attendance",
+        body: `${actorName} can’t make it to ${rideTitle}.`,
+        relatedUrl,
+        metadata: {
+          action: "attendance_cancelled",
+          route: rideTitle,
+        },
+        fallbackRecipientUserIds: [
+          ...(hostUserId && hostUserId !== input.userId ? [hostUserId] : []),
+          ...memberRecipientIds,
+        ],
+      }),
+    );
 
     if (hostUserId && hostUserId !== input.userId) {
       tasks.push(
