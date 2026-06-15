@@ -116,7 +116,7 @@ export function HomeMenuDrawer() {
     .slice(0, 2)
     .join("")
     .toUpperCase() || "R";
-  const [avatarPreference] = useRidePodAvatarPreference(profile?.id);
+  const [avatarPreference] = useRidePodAvatarPreference(profile?.id ?? user?.id);
   const profileHref = isLoggedIn ? "/profile" : `/login?next=${encodeURIComponent("/profile")}`;
 
   return (

@@ -1332,8 +1332,15 @@ const initialToDistrict = "All districts";
 export default function HomePage() {
   const { user, profile } = useAuth();
   const isAuthenticated = Boolean(user);
-  const displayName = user ? profile?.display_name ?? profile?.preferred_name ?? "RidePod account" : "Guest rider";
-  const [avatarPreference] = useRidePodAvatarPreference(profile?.id);
+  const displayName = user
+    ? profile?.display_name ??
+      profile?.preferred_name ??
+      (typeof user.user_metadata?.display_name === "string" ? user.user_metadata.display_name : null) ??
+      user.email?.split("@")[0] ??
+      "RidePod account"
+    : "Guest rider";
+  const avatarProfileId = profile?.id ?? user?.id ?? null;
+  const [avatarPreference] = useRidePodAvatarPreference(avatarProfileId);
   const currentUserAvatar = useMemo(
     () => ({
       avatarPreference,
@@ -1345,13 +1352,13 @@ export default function HomePage() {
   );
   const createdHomeRides = useCreatedHomeRides(user?.id ?? null);
   useEffect(() => {
-    if (!user) return;
+    if (!user || !avatarProfileId) return;
     updateCreatedHomeRideHostAvatar({
       hostAvatarPreference: avatarPreference,
       hostAvatarUrl: profile?.avatar_url ?? null,
       hostDisplayName: displayName,
     });
-  }, [avatarPreference, displayName, profile?.avatar_url, user]);
+  }, [avatarPreference, avatarProfileId, displayName, profile?.avatar_url, user]);
   const [fromDistrict, setFromDistrict] = useState(initialFromDistrict);
   const [toDistrict, setToDistrict] = useState(initialToDistrict);
   const [activeTab, setActiveTab] = useState<HomeTab>("all");
