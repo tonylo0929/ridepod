@@ -29,6 +29,12 @@ export type RidePodMembershipResult = {
   error?: string;
 };
 
+type JoinPodServerResult = {
+  membership?: RidePodMemberRow | null;
+  pod?: RidePodPodRow | null;
+  error?: string;
+};
+
 export type MyPodSummary = {
   podId: string;
   title: string;
@@ -258,6 +264,33 @@ async function getSupabaseMembership(podId: string, userId: string) {
   return result.data;
 }
 
+async function joinPodViaServer(input: RidePodMembershipInput) {
+  const client = getSupabaseBrowserClient();
+  const sessionResult = await client.auth.getSession();
+  const token = sessionResult.data.session?.access_token;
+  if (!token) throw new Error("Authentication required.");
+
+  const response = await fetch("/api/pod-membership", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      action: "join",
+      podId: input.podId,
+    }),
+  });
+
+  const payload = (await response.json().catch(() => null)) as JoinPodServerResult | null;
+  if (!response.ok) throw new Error(payload?.error ?? `Join failed with ${response.status}`);
+
+  return {
+    membership: payload?.membership ?? null,
+    pod: payload?.pod ?? null,
+  };
+}
+
 async function getSupabasePodJoinState(podId: string) {
   const client = getSupabaseBrowserClient();
   const podResult = await client.from("pods").select("*").eq("id", podId).maybeSingle();
@@ -485,6 +518,16 @@ export async function joinPod(input: RidePodMembershipInput): Promise<RidePodMem
       membership,
       warning: "Using local mock membership.",
     };
+  }
+
+  try {
+    const serverJoin = await joinPodViaServer(input);
+    await publishJoinSideEffects(input, serverJoin.pod);
+    return { success: true, membership: serverJoin.membership };
+  } catch (error) {
+    if (!isMissingSupabaseConfig(error)) {
+      console.warn("RidePod server join failed", error);
+    }
   }
 
   try {

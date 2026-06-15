@@ -25,7 +25,7 @@ export function useRidePodUnreadCount() {
     const initialRefresh = window.setTimeout(onRefreshRequested, 0);
     window.addEventListener("focus", onRefreshRequested);
     window.addEventListener("ridepod:updates-changed", onRefreshRequested);
-    const interval = window.setInterval(onRefreshRequested, 45_000);
+    const interval = window.setInterval(onRefreshRequested, 10_000);
 
     return () => {
       window.clearTimeout(initialRefresh);
