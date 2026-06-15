@@ -1,6 +1,6 @@
 import {
-  createUserNotification,
-  createUserNotificationOnce,
+  createLocalUserNotification,
+  createLocalUserNotificationOnce,
   type RidePodNotificationType,
 } from "@/lib/notifications/ridepod-notifications";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -22,6 +22,7 @@ export type NotifyPodAudienceInput = {
   metadata?: Record<string, unknown>;
   dedupe?: boolean;
   fallbackRecipientUserIds?: string[];
+  delivery?: "auto" | "local";
 };
 
 type NotifyPodAudienceRpc = {
@@ -164,7 +165,7 @@ async function notifyLocalFallback(input: NotifyPodAudienceInput) {
       },
     };
 
-    return input.dedupe === false ? createUserNotification(payload) : createUserNotificationOnce(payload);
+    return input.dedupe === false ? createLocalUserNotification(payload) : createLocalUserNotificationOnce(payload);
   });
 
   await Promise.allSettled(tasks);
@@ -172,6 +173,11 @@ async function notifyLocalFallback(input: NotifyPodAudienceInput) {
 }
 
 export async function notifyPodAudience(input: NotifyPodAudienceInput) {
+  if (input.delivery === "local") {
+    await notifyLocalFallback(input);
+    return { ok: true, source: "local" as const };
+  }
+
   const serverResult = await notifyViaServer(input).catch((error) => {
     console.warn("RidePod pod notification fanout API failed", error);
     return { ok: false, skipped: true };

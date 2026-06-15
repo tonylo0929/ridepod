@@ -219,6 +219,13 @@ export async function createUserNotification(input: CreateUserNotificationInput)
   }
 }
 
+export function createLocalUserNotification(input: CreateUserNotificationInput) {
+  const notification = localNotificationFromInput(input);
+  writeLocalNotifications([notification, ...readLocalNotifications()]);
+  emitUpdatesChanged();
+  return { ok: true, notification, source: "mock" as const };
+}
+
 export async function createUserNotificationOnce(input: CreateUserNotificationInput) {
   const dedupeKey = notificationDedupeKey(input);
   const metadata = {
@@ -253,6 +260,24 @@ export async function createUserNotificationOnce(input: CreateUserNotificationIn
     emitUpdatesChanged();
     return { ok: true, notification, source: "mock" as const, deduped: false };
   }
+}
+
+export function createLocalUserNotificationOnce(input: CreateUserNotificationInput) {
+  const dedupeKey = notificationDedupeKey(input);
+  const dedupedInput = {
+    ...input,
+    metadata: {
+      ...(input.metadata ?? {}),
+      dedupeKey,
+    },
+  };
+  const existing = findLocalDuplicate(dedupedInput);
+  if (existing) {
+    return { ok: true, notification: existing, source: "mock" as const, deduped: true };
+  }
+
+  const result = createLocalUserNotification(dedupedInput);
+  return { ...result, deduped: false };
 }
 
 export async function listUserNotifications(userId: string) {

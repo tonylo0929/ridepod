@@ -1798,6 +1798,7 @@ export function PodStatusPanel({
     action: string;
     relatedUrl?: string;
     dedupe?: boolean;
+    delivery?: NotifyPodAudienceInput["delivery"];
   }) {
     if (!user || !isRideAppSelfSettlePod(ride)) return;
 
@@ -1817,6 +1818,7 @@ export function PodStatusPanel({
         route: podStatusRouteTitle,
       },
       dedupe: input.dedupe,
+      delivery: input.delivery,
     });
   }
 
@@ -4197,6 +4199,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     action: string;
     relatedUrl?: string;
     dedupe?: boolean;
+    delivery?: NotifyPodAudienceInput["delivery"];
   }) {
     if (!user || !isRideAppSelfSettlePod(ride)) return;
 
@@ -4216,6 +4219,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
         route: detailRouteTitle,
       },
       dedupe: input.dedupe,
+      delivery: input.delivery,
     });
   }
 
@@ -4309,6 +4313,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
       selfTitle: "You left this ride",
       selfBody: `${detailRouteTitle} was removed from your active rides.`,
       action: "attendance_cancelled",
+      delivery: "local",
     });
     setSelfSettleLeft(true);
     setShowLeaveSelfSettleModal(false);
