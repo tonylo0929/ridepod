@@ -827,6 +827,73 @@ function buildRequestToRejoinPatch(ride: HomeRide, detailVersion: number, now = 
   };
 }
 
+function buildInitialSelfSettleJoinPatch(ride: HomeRide, detailVersion: number, now = new Date()): Partial<HomeRide> {
+  const nextConfirmBy = getNextRejoinConfirmByDate(ride, now);
+  const nextConfirmByIso = nextConfirmBy.toISOString();
+  const riderName = getCurrentUserRiderName(ride);
+  const existingRows = ride.riderConfirmations?.length
+    ? ride.riderConfirmations
+    : [{ name: ride.hostName || "Host", role: "host" as const, status: "host" as const }];
+  let currentUserRowFound = false;
+  const riderConfirmations = existingRows.map((item) => {
+    const isCurrentUser = item.isCurrentUser === true || isCurrentUserRiderName(item.name);
+    if (!isCurrentUser || item.role !== "rider") return item;
+    currentUserRowFound = true;
+    return {
+      ...item,
+      name: item.name?.trim() || riderName,
+      status: "joined_interest" as const,
+      isCurrentUser: true,
+      confirmBy: nextConfirmByIso,
+      seatHoldExpiredAt: null,
+      confirmedBookingDetailsVersion: undefined,
+      confirmedDetailVersion: undefined,
+    };
+  });
+
+  if (!currentUserRowFound) {
+    riderConfirmations.push({
+      name: riderName,
+      role: "rider",
+      status: "joined_interest",
+      isCurrentUser: true,
+      confirmBy: nextConfirmByIso,
+      seatHoldExpiredAt: null,
+    });
+  }
+
+  const counts = getRiderConfirmationStatusCounts(riderConfirmations, detailVersion);
+  const joinedSeatCount = Math.min(ride.seatsTotal, Math.max(ride.seatsUsed + 1, counts.joined));
+  const nextPodStatus =
+    ride.bookingDetailsShared || ride.rideAppBookingDetailsFinalized || ride.rideAppBookingDetailsConfirmed
+      ? "awaiting_rider_confirmation"
+      : "booking_details_needed";
+
+  return {
+    currentUserJoined: true,
+    currentUserRole: "joined_rider",
+    currentUserJoinIntentStatus: "joined_interest",
+    currentUserConfirmationExpired: false,
+    currentUserBookingDetailsConfirmed: false,
+    currentUserConfirmedBookingDetailsVersion: null,
+    currentUserRideAppDetailVersionConfirmed: undefined,
+    selfSettleConfirmationStatus: "pending",
+    platformFeeStatus: "pending",
+    quoteStatus: "joined",
+    seatHoldExpiredAt: null,
+    seatHoldReleasedAt: null,
+    confirmationDeadlineAt: nextConfirmByIso,
+    rideAppConfirmBy: nextConfirmByIso,
+    confirmationDeadlineLabel: formatConfirmByLabel(nextConfirmBy),
+    rideAppPodStatus: nextPodStatus,
+    seatsUsed: joinedSeatCount,
+    joinedRiderCount: counts.joined,
+    confirmedRiderCount: counts.confirmed,
+    rideAppConfirmedRiderCount: counts.confirmed,
+    riderConfirmations,
+  };
+}
+
 function mergeRidePatch<T extends Partial<HomeRide>>(base: T, patch?: Partial<HomeRide> | null) {
   if (!patch) return base;
   const merged: Partial<HomeRide> = {
@@ -3101,6 +3168,7 @@ function SelfSettlePodSummaryHero({
   hasFareProof,
   onViewFareProof,
   onSharePod,
+  onJoinRide,
 }: {
   ride: HomeRide;
   seatsUsed: number;
@@ -3114,6 +3182,7 @@ function SelfSettlePodSummaryHero({
   hasFareProof: boolean;
   onViewFareProof: () => void;
   onSharePod: () => void;
+  onJoinRide: () => void;
 }) {
   const chatAccess = getRideAppChatAccessState(ride);
   const summaryRiders = buildPodStatusRiders(ride);
@@ -3147,7 +3216,8 @@ function SelfSettlePodSummaryHero({
   const hostAvatarPreference = ride.hostAvatarPreference ?? null;
   const hostAvatarDisplayName = ride.hostDisplayName?.trim() || ride.hostName || "Host";
   const hostAvatarLabel = canUpdateEstimate ? "You" : getInitials(ride.hostName || "Host").slice(0, 1);
-  const hostBadgeLabel = canUpdateEstimate ? "You are hosting" : `Hosted by ${ride.hostName || "host"}`;
+  const hostBadgeLabel = canUpdateEstimate ? "You are hosting" : ride.hostName || "New host";
+  const canJoinRide = getCurrentUserCanJoinSelfSettlePod(ride, "quote_pending");
   const hostEstimateUpdated = canUpdateEstimate && estimateUpdated;
   const displayEstimateLabel = hostEstimateUpdated ? "Updated estimate" : canUpdateEstimate ? "Your estimate" : estimateLabel;
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
@@ -3321,6 +3391,25 @@ function SelfSettlePodSummaryHero({
             </Link>
           </div>
         </section>
+      ) : canJoinRide ? (
+        <button
+          type="button"
+          onClick={onJoinRide}
+          className="grid w-full grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-4 rounded-[22px] border border-[var(--rp-primary)]/70 bg-[linear-gradient(90deg,rgba(242,193,91,0.16),rgba(3,10,18,0.92))] p-4 text-left shadow-[0_16px_42px_rgba(0,0,0,0.28)] transition hover:bg-[linear-gradient(90deg,rgba(242,193,91,0.2),rgba(3,10,18,0.92))]"
+        >
+          <span className="grid h-14 w-14 place-items-center rounded-full border border-cyan-300/35 bg-cyan-300/10 text-cyan-100">
+            <UserPlus className="h-7 w-7" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-base font-black text-white">Join Ride</span>
+            <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              Hold your seat before reviewing booking details.
+            </span>
+          </span>
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)]/40 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]">
+            <ArrowRight className="h-6 w-6 stroke-[3]" />
+          </span>
+        </button>
       ) : (
         <a
           href={`/pods/${ride.id}/status`}
@@ -3980,8 +4069,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     setShowJoinedModal(true);
   }
 
-  function confirmSelfSettleJoin() {
-    if (!selfSettleUnderstood) return;
+  function completeSelfSettleJoin(showSuccessModal: boolean) {
     // TODO: replace with HK$5 payment checkout once payment provider is connected.
     if (selfSettleWaiverSource === "launch") {
       markRideAppWaiverUsed();
@@ -3997,9 +4085,23 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     }
     setSelfSettleLeft(false);
     joinSelfSettlePod();
+    const patch = buildInitialSelfSettleJoinPatch(ride, getRideAppCurrentDetailVersion(ride));
+    setRideActionPatch((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
+    saveStoredSelfSettleRidePatch(ride.id, patch);
+    updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     setShowSelfSettleJoinModal(false);
     setSelfSettleUnderstood(false);
-    setShowSelfSettleJoinSuccessModal(true);
+    setShowSelfSettleJoinSuccessModal(showSuccessModal);
+  }
+
+  function confirmSelfSettleJoin() {
+    if (!selfSettleUnderstood) return;
+    completeSelfSettleJoin(true);
+  }
+
+  function joinSelfSettleFromSummary() {
+    if (!showSelfSettleJoin) return;
+    completeSelfSettleJoin(false);
   }
 
   function confirmLeaveSelfSettle() {
@@ -4270,6 +4372,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
               hasFareProof={Boolean(rideAppFareProof)}
               onViewFareProof={() => setShowRideAppFareProofModal(true)}
               onSharePod={sharePod}
+              onJoinRide={joinSelfSettleFromSummary}
             />
           ) : (
           <section className="relative -mx-4 -mt-2 overflow-hidden rounded-b-[28px] border-b border-[var(--rp-border)] bg-[var(--rp-shell)] shadow-[var(--rp-shadow-soft)]">
