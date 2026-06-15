@@ -3032,22 +3032,6 @@ function CompactRideAppRoutePanel({ ride }: { ride: HomeRide }) {
   return (
     <div id="route-requests" className="scroll-mt-24 grid gap-2">
       <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
-        <div className="mb-4 rounded-[18px] border border-cyan-300/25 bg-[linear-gradient(135deg,rgba(34,211,238,0.14),rgba(15,23,42,0.7))] p-4 shadow-[0_16px_34px_rgba(34,211,238,0.08)]">
-          <div className="flex items-start gap-3">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border border-cyan-200/35 bg-cyan-300/12 text-cyan-100">
-              <MapPin className="h-6 w-6" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Gather venue</p>
-              <h3 className="mt-1 break-words text-xl font-black leading-6 text-white">{gatherVenue}</h3>
-              <p className="mt-1 text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">{gatherArea}</p>
-              <p className="mt-3 rounded-[14px] border border-cyan-300/18 bg-black/18 px-3 py-2 text-xs font-bold leading-5 text-cyan-100">
-                Riders meet here before the host books the ride app.
-              </p>
-            </div>
-          </div>
-        </div>
-
         <div className="grid gap-4 min-[390px]:grid-cols-[minmax(0,1fr)_132px]">
           <ol className="grid gap-0">
             {routeRows.map((row, index) => {
