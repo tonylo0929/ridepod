@@ -72,7 +72,7 @@ import {
   type NotifyPodAudienceInput,
   type PodNotificationAudience,
 } from "@/lib/notifications/pod-notification-fanout";
-import { joinPod as joinRidePodMembership } from "@/lib/pods/ridepod-membership";
+import { cancelPodAttendance, joinPod as joinRidePodMembership } from "@/lib/pods/ridepod-membership";
 import {
   isUuid,
   publicCreatedPodToHomeRide,
@@ -4292,6 +4292,10 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
   }
 
   function confirmLeaveSelfSettle() {
+    leaveSelfSettlePod();
+    setSelfSettleLeft(true);
+    setShowLeaveSelfSettleModal(false);
+
     if (user && isRideAppSelfSettlePod(ride)) {
       createRideAppTrustEvent({
         userId: user.id,
@@ -4303,9 +4307,19 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
             : "Rider left before booking details were shared.",
         createdBy: user.id,
       });
+      void cancelPodAttendance({
+        podId: ride.id,
+        userId: user.id,
+        actorDisplayName: detailActorName,
+        podTitle: detailRouteTitle,
+        relatedUrl: `/pods/${ride.id}`,
+      }).then((result) => {
+        if (!result.success) {
+          console.warn("RidePod self-settle membership leave failed", result.error);
+        }
+      });
     }
 
-    leaveSelfSettlePod();
     notifyRideDetailAction({
       type: "attendance_cancelled",
       title: "Rider left this ride",
@@ -4315,8 +4329,6 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
       action: "attendance_cancelled",
       delivery: "local",
     });
-    setSelfSettleLeft(true);
-    setShowLeaveSelfSettleModal(false);
   }
 
   function openRideAppEstimateModal() {

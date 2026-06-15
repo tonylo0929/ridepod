@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     const action = typeof body?.action === "string" ? body.action : "";
     const podId = typeof body?.podId === "string" ? body.podId.trim() : "";
 
-    if (action !== "join" || !uuidPattern.test(podId)) {
+    if ((action !== "join" && action !== "cancel") || !uuidPattern.test(podId)) {
       return noStoreJson({ error: "Invalid membership payload." }, { status: 400 });
     }
 
@@ -67,7 +67,9 @@ export async function POST(request: NextRequest) {
     if (podResult.error) throw podResult.error;
     if (!podResult.data) return noStoreJson({ error: "Pod not found." }, { status: 404 });
     if (isTerminalPod(podResult.data)) return noStoreJson({ error: "This pod is no longer joinable." }, { status: 409 });
-    if (podResult.data.host_user_id === userId) return noStoreJson({ error: "Host cannot join their own pod." }, { status: 409 });
+    if (action === "join" && podResult.data.host_user_id === userId) {
+      return noStoreJson({ error: "Host cannot join their own pod." }, { status: 409 });
+    }
 
     const existingResult = await client
       .from("pod_members")
@@ -76,6 +78,28 @@ export async function POST(request: NextRequest) {
       .eq("user_id", userId)
       .maybeSingle();
     if (existingResult.error) throw existingResult.error;
+    if (action === "cancel") {
+      if (!existingResult.data || existingResult.data.status !== "joined") {
+        return noStoreJson({ error: "No joined membership found." }, { status: 404 });
+      }
+
+      const timestamp = new Date().toISOString();
+      const result = await client
+        .from("pod_members")
+        .update({
+          status: "cancelled",
+          member_state: "CANCELED",
+          cancelled_at: timestamp,
+          updated_at: timestamp,
+        })
+        .eq("id", existingResult.data.id)
+        .select("*")
+        .maybeSingle();
+
+      if (result.error) throw result.error;
+      return noStoreJson({ membership: result.data as RidePodMemberRow | null, pod: podResult.data as RidePodPodRow });
+    }
+
     if (existingResult.data?.status === "joined") {
       return noStoreJson({ membership: existingResult.data as RidePodMemberRow, pod: podResult.data as RidePodPodRow });
     }

@@ -264,7 +264,7 @@ async function getSupabaseMembership(podId: string, userId: string) {
   return result.data;
 }
 
-async function joinPodViaServer(input: RidePodMembershipInput) {
+async function updatePodMembershipViaServer(input: RidePodMembershipInput, action: "join" | "cancel") {
   const client = getSupabaseBrowserClient();
   const sessionResult = await client.auth.getSession();
   const token = sessionResult.data.session?.access_token;
@@ -277,18 +277,26 @@ async function joinPodViaServer(input: RidePodMembershipInput) {
       Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({
-      action: "join",
+      action,
       podId: input.podId,
     }),
   });
 
   const payload = (await response.json().catch(() => null)) as JoinPodServerResult | null;
-  if (!response.ok) throw new Error(payload?.error ?? `Join failed with ${response.status}`);
+  if (!response.ok) throw new Error(payload?.error ?? `Membership update failed with ${response.status}`);
 
   return {
     membership: payload?.membership ?? null,
     pod: payload?.pod ?? null,
   };
+}
+
+async function joinPodViaServer(input: RidePodMembershipInput) {
+  return updatePodMembershipViaServer(input, "join");
+}
+
+async function cancelPodViaServer(input: RidePodMembershipInput) {
+  return updatePodMembershipViaServer(input, "cancel");
 }
 
 async function getSupabasePodJoinState(podId: string) {
@@ -635,6 +643,16 @@ export async function cancelPodAttendance(input: RidePodMembershipInput): Promis
       membership,
       warning: "Using local mock membership.",
     };
+  }
+
+  try {
+    const serverCancel = await cancelPodViaServer(input);
+    await publishCancelSideEffects(input, { pod: serverCancel.pod });
+    return { success: true, membership: serverCancel.membership };
+  } catch (error) {
+    if (!isMissingSupabaseConfig(error)) {
+      console.warn("RidePod server cancel failed", error);
+    }
   }
 
   try {
