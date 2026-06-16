@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Bell, CheckCheck, Clock3, MessageCircle, RefreshCw } from "lucide-react";
-import { RidePodAvatar } from "@/components/animal-avatar";
 import { cn } from "@/components/ui";
 import {
   createUserNotificationOnce,
@@ -262,7 +261,7 @@ function TabButton({
 }
 
 function formatRideRoute(ride: HomeRide) {
-  return `From (${ride.fromLabel}) to (${ride.toLabel})`;
+  return `${ride.fromLabel} -> ${ride.toLabel}`;
 }
 
 function formatRideTime(ride: HomeRide) {
@@ -325,27 +324,13 @@ function NotificationCard({
 }
 
 function NotificationRouteGraphic({ ride }: { ride: HomeRide }) {
-  const hostDisplayName = ride.hostDisplayName?.trim() || ride.hostName || "RidePod host";
-  const hostInitial = hostDisplayName.trim().slice(0, 1).toUpperCase() || "R";
-
   return (
-    <span className="block rounded-[18px] border border-[var(--rp-primary)]/25 bg-[var(--rp-card-soft)] px-3 py-3">
-      <span className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
-        <RidePodAvatar
-          avatarUrl={ride.hostAvatarUrl}
-          avatarPreference={ride.hostAvatarPreference ?? { avatarType: "initials", animalAvatarId: null }}
-          initials={hostInitial}
-          displayName={hostDisplayName}
-          className="h-12 w-12 shrink-0 rounded-full text-base"
-        />
-        <span className="min-w-0">
-          <span className="block truncate text-base font-black leading-5 text-[var(--rp-text)]">
-            {ride.fromLabel} {"\u2192"} {ride.toLabel}
-          </span>
-          <span className="mt-1 block text-xs font-bold text-[var(--rp-muted-strong)]">
-            {formatRideTime(ride)}
-          </span>
-        </span>
+    <span className="block rounded-[18px] border border-[var(--rp-primary)]/25 bg-[var(--rp-card-soft)] px-4 py-3">
+      <span className="block truncate text-base font-black leading-5 text-[var(--rp-text)]">
+        {ride.fromLabel} {"->"} {ride.toLabel}
+      </span>
+      <span className="mt-2 block border-t border-white/10 pt-2 text-xs font-bold text-[var(--rp-muted-strong)]">
+        {formatRideTime(ride)}
       </span>
     </span>
   );
