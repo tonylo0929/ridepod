@@ -1248,7 +1248,17 @@ function getManagePodActionsPendingCount(ride: HomeRide) {
 type PodStatusContext = {
   currentUserSeatHoldExpired?: boolean;
   currentUserViewingFullPod?: boolean;
+  currentUserWaitingForHostDetails?: boolean;
+  detailedHostDetailsMissing?: boolean;
 };
+
+function getRideAppHostDetailsCompactCopy(ride: HomeRide) {
+  return `Riders can confirm after ${ride.hostName?.trim() || "the host"} shares the required details.`;
+}
+
+function getRideAppHostDetailsDetailedCopy(ride: HomeRide) {
+  return `${ride.hostName?.trim() || "Host"} needs to share fare estimate, split method, payment method, gather point, and confirm-by time before riders can confirm.`;
+}
 
 function getPodStatusTitle(ride: HomeRide, chatAccess: ReturnType<typeof getRideAppChatAccessState>, context: PodStatusContext = {}) {
   const deadlineState = getRideAppConfirmDeadlineState(ride);
@@ -1266,15 +1276,16 @@ function getPodStatusTitle(ride: HomeRide, chatAccess: ReturnType<typeof getRide
   if (context.currentUserViewingFullPod) return "Full";
   if (deadlineState.status === "expired" || isRideAppSeatHoldExpired(ride)) return "Confirm-by time ended";
   if (deadlineState.status === "soon") return isHost ? "Confirm-by time soon" : "Confirm soon";
+  if (context.currentUserWaitingForHostDetails) return "Waiting for host details";
   if (ride.bookingDetailsUpdated || ride.rideAppPodStatus === "needs_review" || chatAccess.reason === "needs_review") {
     return getPodStatusUpdateTitle(ride);
   }
-  if (chatAccess.reason === "waiting_for_gather_point") return "Gather point needed";
-  if (chatAccess.reason === "waiting_for_fare_update") return "Fare estimate needed";
-  if (chatAccess.reason === "waiting_for_host_acceptance") return "Split/payment needed";
+  if (isHost && chatAccess.reason === "waiting_for_gather_point") return "Gather point needed";
+  if (isHost && chatAccess.reason === "waiting_for_fare_update") return "Fare estimate needed";
+  if (isHost && chatAccess.reason === "waiting_for_host_acceptance") return "Split/payment needed";
   if (chatAccess.canAccess) return "Chat unlocked";
   if (ride.bookingDetailsShared || ride.rideAppBookingDetailsConfirmed) return "Booking details shared";
-  return "Booking details needed";
+  return "Waiting for host details";
 }
 
 function getPodStatusSubtitle(ride: HomeRide, chatAccess: ReturnType<typeof getRideAppChatAccessState>, context: PodStatusContext = {}) {
@@ -1302,6 +1313,9 @@ function getPodStatusSubtitle(ride: HomeRide, chatAccess: ReturnType<typeof getR
   if (deadlineState.status === "soon") {
     return isHost ? "Riders must confirm before the confirm-by time." : "Your seat hold may expire soon if you do not confirm.";
   }
+  if (context.currentUserWaitingForHostDetails) {
+    return context.detailedHostDetailsMissing ? getRideAppHostDetailsDetailedCopy(ride) : getRideAppHostDetailsCompactCopy(ride);
+  }
   if (ride.bookingDetailsUpdated || ride.rideAppPodStatus === "needs_review" || chatAccess.reason === "needs_review") {
     return getPodStatusUpdateSubtitle(ride);
   }
@@ -1313,7 +1327,7 @@ function getPodStatusSubtitle(ride: HomeRide, chatAccess: ReturnType<typeof getR
     return isHost ? `Riders must confirm by ${ride.confirmationDeadlineLabel ?? "5:00 PM"}.` : "Confirm ride details before the confirm-by time.";
   }
   if (isHost) return "Update the estimate, send booking info to riders, and review confirmations.";
-  return "Chat opens after required riders confirm ride details.";
+  return getRideAppHostDetailsCompactCopy(ride);
 }
 
 function getPodStatusFareLabel(ride: HomeRide) {
@@ -1718,6 +1732,18 @@ export function PodStatusPanel({
   const pickupVenueSet = Boolean(ride.pickupLabel);
   const coreDetailsExceptGatherPointComplete = detailsReady && fareEstimateSet && splitMethodSet && paymentMethodSet && confirmBySet;
   const detailsComplete = coreDetailsExceptGatherPointComplete && pickupVenueSet;
+  const currentUserWaitingForHostDetails =
+    !currentUserSeatHoldExpired &&
+    !isHost &&
+    currentUserHadRideAppSeat &&
+    !currentUserConfirmed &&
+    !chatAccess.canAccess &&
+    (!detailsReady ||
+      !detailsComplete ||
+      chatAccess.reason === "waiting_for_fare_update" ||
+      chatAccess.reason === "waiting_for_host_acceptance" ||
+      chatAccess.reason === "waiting_for_gather_point" ||
+      chatAccess.reason === "waiting_for_booking_details");
   const podStillAcceptsRejoin =
     ride.status !== "cancelled" &&
     ride.status !== "expired" &&
@@ -1785,6 +1811,8 @@ export function PodStatusPanel({
       ? "Pod continues"
     : hostCancelledPod
       ? "Pod cancelled"
+    : currentUserWaitingForHostDetails
+      ? "Waiting for host details"
     : isHost
       ? detailsReady
         ? !pickupVenueSet
@@ -1818,6 +1846,8 @@ export function PodStatusPanel({
       ? ride.rideAppFeeResolution === "not_confirmed"
         ? `${getRideAppFeeResolutionCopy(ride.rideAppFeeResolution)} No live payment was charged in this version.`
         : `${getRideAppFeeResolutionCopy(ride.rideAppFeeResolution ?? "restore_waiver")} No live payment was charged in this version.`
+    : currentUserWaitingForHostDetails
+      ? "View what is still missing."
     : isHost
       ? detailsReady
         ? detailsComplete
@@ -2088,7 +2118,7 @@ export function PodStatusPanel({
     return () => window.clearInterval(timer);
   }, []);
 
-  const statusContext = { currentUserSeatHoldExpired, currentUserViewingFullPod };
+  const statusContext = { currentUserSeatHoldExpired, currentUserViewingFullPod, currentUserWaitingForHostDetails, detailedHostDetailsMissing: pageMode };
   const expiredDeadlineLabel = currentUserSeatHoldExpired || isHost ? "Seat released" : currentUserViewingFullPod ? "Full" : "Confirm-by ended";
 
   const statusContent = (
@@ -2561,8 +2591,10 @@ export function PodStatusPanel({
                         : replacementNeeded
                         ? "Chat reopens when a confirmed rider becomes the new booker."
                         : chatAccess.canAccess
-                        ? "All required riders confirmed. Use chat to gather before the host books."
-                        : "Chat opens after the host shares details and required riders confirm."}
+                        ? "Ready to gather. Chat is open for confirmed riders."
+                        : currentUserWaitingForHostDetails
+                          ? getRideAppHostDetailsCompactCopy(ride)
+                          : "Waiting for required riders to confirm."}
                     </p>
                   </div>
                 </div>
@@ -2592,12 +2624,14 @@ export function PodStatusPanel({
               ) : null}
 
               <section className="rounded-[20px] border border-cyan-300/25 bg-cyan-300/8 p-4">
-                <p className="text-sm font-black text-cyan-100">{currentUserSeatHoldExpired ? "Find another pod" : currentUserViewingFullPod ? "Pod full" : chatAccess.canAccess ? "Ready to gather" : "When will chat open?"}</p>
+                <p className="text-sm font-black text-cyan-100">{currentUserSeatHoldExpired ? "Find another pod" : currentUserViewingFullPod ? "Pod full" : currentUserWaitingForHostDetails ? "Waiting for host details" : chatAccess.canAccess ? "Ready to gather" : "When will chat open?"}</p>
                 <p className="mt-1 text-xs font-semibold leading-5 text-cyan-100/85">
                   {currentUserSeatHoldExpired
                     ? "You did not confirm before the confirm-by time, so your seat was released for other riders."
                     : currentUserViewingFullPod
                     ? "All seats are filled for this pod."
+                    : currentUserWaitingForHostDetails
+                    ? "View what is still missing."
                     : replacementNeeded
                     ? "Host cancelled. A confirmed rider can become the new booker, then chat can reopen if required riders still confirm."
                     : chatAccess.canAccess
@@ -3435,6 +3469,15 @@ function SelfSettlePodSummaryHero({
       !summaryUserConfirmed &&
       (ride.currentUserConfirmationExpired === true || ride.currentUserJoinIntentStatus === "seat_hold_expired" || isRideAppSeatHoldExpired(ride)),
     currentUserViewingFullPod: !summaryUserIsHost && !summaryUserHadRideAppSeat && summaryEffectiveSeatsUsed >= ride.seatsTotal,
+    currentUserWaitingForHostDetails:
+      summaryUserHadRideAppSeat &&
+      !summaryUserConfirmed &&
+      !chatAccess.canAccess &&
+      (ride.rideAppBookingDetailsFinalized !== true ||
+        chatAccess.reason === "waiting_for_fare_update" ||
+        chatAccess.reason === "waiting_for_host_acceptance" ||
+        chatAccess.reason === "waiting_for_gather_point" ||
+        chatAccess.reason === "waiting_for_booking_details"),
   };
   const statusTitle = getPodStatusTitle(ride, chatAccess, summaryStatusContext);
   const statusSubtitle = getPodStatusSubtitle(ride, chatAccess, summaryStatusContext);

@@ -112,7 +112,7 @@ export function getConfirmDeadlineState({
     return {
       status: "not_started",
       label: "Waiting for host details",
-      helper: "Host needs to share booking details before riders can confirm.",
+      helper: "Riders can confirm after the host shares the required details.",
       timeLeftLabel: null,
     };
   }
@@ -375,10 +375,11 @@ export function getRideAppConfirmationState(ride: HomeRide, currentUser?: unknow
   }
 
   if (!bookingDetailsFinalized) {
+    const hostName = ride.hostName?.trim() || "the host";
     return confirmationState(
       isHost ? "booking_details_needed" : "joined_interest",
-      isHost ? "Waiting for host details" : "Joined",
-      isHost ? "Share booking details and set a confirm-by time." : "You joined as interest. Waiting for host details.",
+      "Waiting for host details",
+      isHost ? "Share booking details and set a confirm-by time." : `Riders can confirm after ${hostName} shares the required details.`,
       isHost ? "Share booking details" : "View Pod Status",
       null,
     );
@@ -405,15 +406,15 @@ export function getRideAppConfirmationState(ride: HomeRide, currentUser?: unknow
   }
 
   if (chatAccess.reason === "needs_review" || currentUserNeedsReview) {
-    return confirmationState("needs_review", "Review updated details", "Host updated the booking details. Review again before the ride proceeds.", "Review updated details", "View Pod Status");
+    return confirmationState("needs_review", "Review updated details", "Host updated the details. Please review again.", "Review updated details", "View Pod Status");
   }
 
   if (!isHost && !currentUserConfirmed) {
-    return confirmationState("awaiting_rider_confirmation", "Confirm ride details", "Confirm the route, gather point, fare estimate, split method, and payment method before the confirm-by time.", "Confirm ride details", null);
+    return confirmationState("awaiting_rider_confirmation", "Confirm ride details", "Review the details and confirm before the deadline.", "Confirm ride details", null);
   }
 
   if (currentUserConfirmed && confirmedRiders < requiredConfirmations) {
-    return confirmationState("waiting_for_required_riders", "Waiting for required riders", "Your details are confirmed. Chat opens when required riders confirm.", "View Pod Status", null);
+    return confirmationState("waiting_for_required_riders", "Confirmed", "Waiting for required riders to confirm.", "View Pod Status", null);
   }
 
   if (isHost && confirmedRiders >= requiredConfirmations) {
@@ -573,12 +574,13 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
   }
 
   if (!bookingDetailsFinalized) {
+    const hostName = ride.hostName?.trim() || "the host";
     return locked(
       "waiting_for_booking_details",
       "Waiting for host details",
       isHost ? "Share booking details" : "Waiting for host details",
       "Chat locked",
-      "Host needs to accept the route and share booking details.",
+      isHost ? "Host needs to accept the route and share booking details." : `Riders can confirm after ${hostName} shares the required details.`,
       requiredConfirmations,
       confirmedRiders,
     );
@@ -587,10 +589,10 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
   if (!hasFareEstimate) {
     return locked(
       "waiting_for_fare_update",
-      "Booking details shared",
-      isHost ? "Update fare" : "Waiting for fare",
+      "Waiting for host details",
+      isHost ? "Update fare" : "Waiting for host details",
       "Chat locked",
-      "Host needs to add or accept the ride app fare estimate before chat unlocks.",
+      isHost ? "Host needs to add or accept the ride app fare estimate before chat unlocks." : "Riders can confirm after the host shares the required details.",
       requiredConfirmations,
       confirmedRiders,
     );
@@ -602,7 +604,7 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
       "Waiting for host details",
       isHost ? "Set gather point" : "Waiting for host details",
       "Chat locked",
-      "Host must set the gather point before riders can confirm.",
+      isHost ? "Host must set the gather point before riders can confirm." : "Riders can confirm after the host shares the required details.",
       requiredConfirmations,
       confirmedRiders,
     );
@@ -614,7 +616,7 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
       "Waiting for host details",
       isHost ? "Set confirm-by time" : "Waiting for host details",
       "Chat locked",
-      "Host must set the confirm-by time before riders can confirm.",
+      isHost ? "Host must set the confirm-by time before riders can confirm." : "Riders can confirm after the host shares the required details.",
       requiredConfirmations,
       confirmedRiders,
     );
@@ -623,10 +625,10 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
   if (!hasSplitMethod || !hasPaymentMethod) {
     return locked(
       "waiting_for_host_acceptance",
-      "Booking details shared",
-      isHost ? "Confirm details" : "Waiting for host",
+      "Waiting for host details",
+      isHost ? "Confirm details" : "Waiting for host details",
       "Chat locked",
-      "Host needs to confirm the split method and accepted payment method.",
+      isHost ? "Host needs to confirm the split method and accepted payment method." : "Riders can confirm after the host shares the required details.",
       requiredConfirmations,
       confirmedRiders,
     );
@@ -635,12 +637,12 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
   if (!isHost && !currentUserConfirmed) {
     return locked(
       currentDetailsNeedReview ? "needs_review" : "waiting_for_rider_confirmation",
-      currentDetailsNeedReview ? "Needs review" : "Awaiting rider confirmation",
+      currentDetailsNeedReview ? "Review updated details" : "Confirm ride details",
       currentDetailsNeedReview ? "Review updated details" : "Confirm ride details",
       "Chat locked",
       currentDetailsNeedReview
-        ? "Details changed. Review the updated route, gather point, fare estimate, split method, and payment method."
-        : "Confirm the route, gather point, fare estimate, split method, and payment method to unlock chat.",
+        ? "Host updated the details. Please review again."
+        : "Review the details and confirm before the deadline.",
       requiredConfirmations,
       confirmedRiders,
     );
@@ -678,7 +680,7 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
       "Waiting for required riders",
       isHost ? "Waiting for riders" : "Confirmed",
       "Chat locked",
-      "Chat opens after required riders confirm ride details.",
+      "Waiting for required riders to confirm.",
       requiredConfirmations,
       confirmedRiders,
     );
@@ -693,7 +695,7 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
     secondaryLabel: "Ready to gather",
     helper: isHost
       ? "Confirm everyone is ready before booking."
-      : "Gather at the gather point and confirm everyone is ready before host books.",
+      : "Ready to gather. Chat is open for confirmed riders.",
     requiredConfirmations,
     confirmedRiders,
   };

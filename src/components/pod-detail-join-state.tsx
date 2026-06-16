@@ -2885,7 +2885,7 @@ function SelfSettleRiderBookingConfirmationModal({
   const title = detailsComplete ? (needsReview ? "Review updated details?" : "Confirm ride details?") : "Waiting for host details";
   const body = detailsComplete
     ? needsReview
-      ? "Host updated the booking details. Review the latest details before confirming again."
+      ? "Host updated the details. Please review again."
       : "Review the host's gather point, drop-off, fare estimate, split method, and payment method before confirming."
     : "Host must set the gather point before riders can confirm.";
   const confirmLabel = needsReview ? "Confirm updated details" : "Confirm ride details";
@@ -4245,7 +4245,7 @@ export function SelfSettleBookingDetailsCard({
               <div>
                 <h3 className="text-base font-black text-amber-100">Review updated details</h3>
                 <p className="mt-1 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
-                  The host changed meaningful ride details. Reconfirm the current version before the host books. No second RidePod fee applies.
+                  Host updated the details. Please review again. No second RidePod fee applies.
                 </p>
               </div>
             </div>
@@ -4263,7 +4263,7 @@ export function SelfSettleBookingDetailsCard({
                 <p className="mt-1 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
                   {allRidersConfirmed
                     ? "All required riders confirmed the booking details. Gather at the gather point."
-                    : "You confirmed the booking details. Chat opens after required riders confirm ride details."}
+                    : "Waiting for required riders to confirm."}
                 </p>
                 <p className="mt-2 text-xs font-black leading-5 text-emerald-100">
                   Ride fare is paid outside RidePod.
@@ -4923,12 +4923,12 @@ export function SelfSettleHostBookingStatusCard({ ride }: { ride: HomeRide }) {
   const cardTitle = rideAppBookingShared
     ? "Ride app booking shared"
     : hasJoinedRiders
-      ? "Booking details needed"
+      ? "Waiting for host details"
       : "Waiting for riders";
   const cardBody = rideAppBookingShared
     ? "Riders can review the gather point, fare estimate, split method, and after-ride payment recipient."
     : hasJoinedRiders
-      ? "Set where riders meet before you book, then share the ride app details with your pod."
+      ? "Share fare estimate, split method, payment method, gather point, and confirm-by time before riders can confirm."
       : "Riders can join and chat before you book the external ride app.";
   const bookingDetailsErrors = {
     rideAppUsed: bookingDetailsDraft.rideAppUsed ? "" : "Choose the ride app used.",
