@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Bell, CheckCheck, Clock3, MessageCircle, RefreshCw } from "lucide-react";
+import { RidePodAvatar } from "@/components/animal-avatar";
 import { cn } from "@/components/ui";
 import {
   createUserNotificationOnce,
@@ -324,29 +325,27 @@ function NotificationCard({
 }
 
 function NotificationRouteGraphic({ ride }: { ride: HomeRide }) {
+  const hostDisplayName = ride.hostDisplayName?.trim() || ride.hostName || "RidePod host";
+  const hostInitial = hostDisplayName.trim().slice(0, 1).toUpperCase() || "R";
+
   return (
     <span className="block rounded-[18px] border border-[var(--rp-primary)]/25 bg-[var(--rp-card-soft)] px-3 py-3">
-      <span className="grid grid-cols-[auto_1fr_auto] items-center gap-2" aria-hidden="true">
-        <span className="h-3 w-3 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,0.32)]" />
-        <span />
-        <span className="h-3 w-3 rounded-full bg-rose-300 shadow-[0_0_14px_rgba(253,164,175,0.28)]" />
-      </span>
-      <span className="mt-3 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
-        <span className="rounded-[14px] border border-cyan-300/15 bg-cyan-300/[0.08] px-3 py-2">
-          <span className="block text-[10px] font-black uppercase tracking-[0.08em] text-cyan-100">From</span>
-          <span className="mt-1 block whitespace-normal break-words text-sm font-black leading-5 text-[var(--rp-text)]">
-            {ride.fromLabel}
+      <span className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3">
+        <RidePodAvatar
+          avatarUrl={ride.hostAvatarUrl}
+          avatarPreference={ride.hostAvatarPreference ?? { avatarType: "initials", animalAvatarId: null }}
+          initials={hostInitial}
+          displayName={hostDisplayName}
+          className="h-12 w-12 shrink-0 rounded-full text-base"
+        />
+        <span className="min-w-0">
+          <span className="block truncate text-base font-black leading-5 text-[var(--rp-text)]">
+            {ride.fromLabel} {"\u2192"} {ride.toLabel}
+          </span>
+          <span className="mt-1 block text-xs font-bold text-[var(--rp-muted-strong)]">
+            {formatRideTime(ride)}
           </span>
         </span>
-        <span className="rounded-[14px] border border-rose-300/15 bg-rose-300/[0.08] px-3 py-2">
-          <span className="block text-[10px] font-black uppercase tracking-[0.08em] text-rose-100">To</span>
-          <span className="mt-1 block whitespace-normal break-words text-sm font-black leading-5 text-[var(--rp-text)]">
-            {ride.toLabel}
-          </span>
-        </span>
-      </span>
-      <span className="mt-3 block border-t border-[var(--rp-border)] pt-2 text-xs font-bold text-[var(--rp-muted-strong)]">
-        {formatRideTime(ride)}
       </span>
     </span>
   );
