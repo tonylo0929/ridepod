@@ -1303,7 +1303,7 @@ function getPodStatusSubtitle(ride: HomeRide, chatAccess: ReturnType<typeof getR
     return isHost ? `Riders must confirm by ${ride.confirmationDeadlineLabel ?? "5:00 PM"}.` : "Confirm ride details before the confirm-by time.";
   }
   if (isHost) return "Update the estimate, send booking info to riders, and review confirmations.";
-  return "Chat opens after the required riders confirm.";
+  return "Chat opens after required riders confirm ride details.";
 }
 
 function getPodStatusFareLabel(ride: HomeRide) {

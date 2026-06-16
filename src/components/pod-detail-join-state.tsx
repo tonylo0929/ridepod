@@ -4263,7 +4263,7 @@ export function SelfSettleBookingDetailsCard({
                 <p className="mt-1 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
                   {allRidersConfirmed
                     ? "All required riders confirmed the booking details. Gather at the gather point."
-                    : "You confirmed the booking details. Chat opens when the required riders confirm."}
+                    : "You confirmed the booking details. Chat opens after required riders confirm ride details."}
                 </p>
                 <p className="mt-2 text-xs font-black leading-5 text-emerald-100">
                   Ride fare is paid outside RidePod.

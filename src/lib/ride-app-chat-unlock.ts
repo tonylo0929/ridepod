@@ -677,9 +677,7 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
       "Waiting for required riders",
       isHost ? "Waiting for riders" : "Confirmed",
       "Chat locked",
-      isHost
-        ? "Chat unlocks after required riders confirm the booking details."
-        : "Chat opens when the required riders confirm.",
+      "Chat opens after required riders confirm ride details.",
       requiredConfirmations,
       confirmedRiders,
     );
