@@ -115,18 +115,55 @@ export function AboutRidePodPage() {
   }
 
   const whatRidePodDoes = [
-    "Helps riders create and join shared taxi pods",
-    "Helps groups choose taxi type, luggage needs, and who can join",
-    "Helps taxi partners review route and luggage details before quoting",
-    "Helps guests review and accept the selected quote",
-    "Helps keep ride updates and pod chat in one place",
+    "Create or join a shared ride pod.",
+    "See who has joined and who still needs to act.",
+    "Use Taxi mode for taxi partner quote review.",
+    "Use Ride app mode for self-settle coordination.",
+    "Keep ride details, confirmations, and chat status in one place.",
+  ];
+  const taxiModeSteps = [
+    "Host creates a Taxi pod.",
+    "Riders join before the quote request.",
+    "Taxi partner provides a shared quote.",
+    "Riders review and accept.",
+    "Taxi partner accepts the job.",
+    "Taxi partner chat opens for pickup coordination.",
+  ];
+  const rideAppModeSteps = [
+    "Host creates a Ride app pod.",
+    "Riders join as interest / seat hold.",
+    "Host shares fare estimate, split method, payment method, gather point, and confirm-by time.",
+    "Riders confirm ride details.",
+    "Chat unlocks after required riders confirm.",
+    "Host or agreed booker books the ride app outside RidePod.",
+  ];
+  const taxiPartnerBullets = [
+    "Provide shared taxi quote information.",
+    "Support suitable service areas and ride types.",
+    "Accept jobs only when ready to support the ride.",
+    "Use chat for pickup coordination after the job is accepted.",
+    "Partner access may be reviewed manually.",
   ];
   const whatRidePodDoesNotDo = [
     "RidePod does not provide drivers.",
-    "RidePod is not a taxi operator.",
-    "RidePod does not enable live payment in this version.",
-    "RidePod does not send real payouts in this version.",
-    "RidePod does not guarantee a specific taxi, driver, or route change.",
+    "RidePod does not dispatch taxis directly.",
+    "RidePod does not book external ride apps for self-settle pods.",
+    "RidePod does not verify external ride app screenshots.",
+    "RidePod does not guarantee final fare, route, pickup, or refund outcome.",
+    "Ride app self-settle fares are paid outside RidePod.",
+  ];
+  const trustBullets = [
+    "Use display names and avatars instead of private contact details.",
+    "Phone, email, ID status, admin notes, and safety reports are not shown publicly.",
+    "Community-only pods can help groups coordinate with people from the same school, workplace, building, or community.",
+    "Issue reporting and manual review can be used for unsafe or wrong-detail situations.",
+  ];
+  const currentVersionBullets = [
+    "No live payment is charged.",
+    "No real taxi dispatch is enabled.",
+    "No real ride app booking is made by RidePod.",
+    "No real payout is sent.",
+    "Some countdowns and statuses may use demo/local state.",
   ];
 
   return (
@@ -134,41 +171,156 @@ export function AboutRidePodPage() {
       <AboutTopNav activeTab={activeTab} onChange={setActiveTab} />
       <section className="overflow-hidden rounded-[30px] border border-[var(--rp-border)] bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--rp-primary)_18%,transparent),transparent_34%),linear-gradient(180deg,var(--rp-card),var(--rp-card-soft))] p-5 shadow-[var(--rp-shadow-soft)] sm:p-7">
         <Badge className="bg-[var(--rp-card-muted)] text-[var(--rp-primary)] ring-[var(--rp-border-strong)]">
-          RidePod
+          Shared rides, clearer coordination.
         </Badge>
         <h1 className="mt-5 max-w-2xl text-4xl font-black leading-tight tracking-tight text-[var(--rp-text)] sm:text-5xl">
           About RidePod
         </h1>
         <p className="mt-4 max-w-3xl text-base font-semibold leading-7 text-[var(--rp-muted-strong)] sm:text-lg">
-          RidePod helps people coordinate shared taxi rides with clearer route, quote, and review steps.
+          RidePod helps people coordinate shared rides with clearer roles, safer expectations, and better group status.
         </p>
         <div className="mt-5 flex flex-col gap-3 sm:flex-row">
           <PrimaryButton href="/home" className="w-full whitespace-nowrap sm:w-auto">
-            Search rides
+            Search pods
           </PrimaryButton>
+          <SecondaryButton href="/create" className="w-full whitespace-nowrap sm:w-auto">
+            Create pod
+          </SecondaryButton>
         </div>
       </section>
 
       <Card className="p-5">
-        <CarFront className="h-7 w-7 text-[var(--rp-primary)]" />
-        <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">Why RidePod exists</h2>
+        <UsersRound className="h-7 w-7 text-[var(--rp-primary)]" />
+        <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">What RidePod does</h2>
         <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-          Many people want to share taxi rides, especially for airport trips, events, school routes, and recurring commutes. RidePod helps riders form a group first, then request one shared taxi partner quote.
+          RidePod helps riders form small shared ride pods, review the ride details, and coordinate what needs to happen before the ride.
         </p>
-      </Card>
-
-      <SupportRidePodCard compact />
-
-      <section className="grid gap-3">
-        <ContentHeading eyebrow="What RidePod does" title="Tools for shared taxi pods" />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid gap-2">
           {whatRidePodDoes.map((item) => (
-            <Card key={item} className="p-4">
-              <CheckCircle2 className="h-6 w-6 text-[var(--rp-primary)]" />
-              <p className="mt-4 text-sm font-black leading-6 text-[var(--rp-text)]">{item}</p>
-            </Card>
+            <div key={item} className="flex gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
+              <p className="text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{item}</p>
+            </div>
           ))}
         </div>
+      </Card>
+
+      <section className="grid gap-3">
+        <ContentHeading eyebrow="Two ways to use RidePod" title="Choose the mode that fits the group" />
+        <div className="grid gap-3 md:grid-cols-2">
+          <Card className="border-[color-mix(in_srgb,var(--rp-primary)_58%,var(--rp-border))] bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--rp-primary)_14%,transparent),transparent_44%),var(--rp-card)] p-5">
+            <Badge className="bg-[color-mix(in_srgb,var(--rp-primary)_16%,transparent)] text-[var(--rp-primary)] ring-[color-mix(in_srgb,var(--rp-primary)_38%,var(--rp-border))]">
+              Taxi Partner Quote
+            </Badge>
+            <CarFront className="mt-5 h-8 w-8 text-[var(--rp-primary)]" />
+            <h2 className="mt-4 text-2xl font-black text-[var(--rp-text)]">Taxi mode</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+              Riders form a pod first. A taxi partner can provide one shared quote. Riders review and accept the quote before the ride proceeds.
+            </p>
+            <SecondaryButton href="#taxi-mode" className="mt-4 w-full whitespace-nowrap sm:w-auto">
+              Learn about Taxi mode
+            </SecondaryButton>
+          </Card>
+          <Card className="border-cyan-300/30 bg-[radial-gradient(circle_at_top_left,rgba(103,232,249,0.13),transparent_44%),var(--rp-card)] p-5">
+            <Badge className="bg-cyan-300/10 text-cyan-100 ring-cyan-300/25">
+              Self-settle
+            </Badge>
+            <Smartphone className="mt-5 h-8 w-8 text-cyan-200" />
+            <h2 className="mt-4 text-2xl font-black text-[var(--rp-text)]">Ride app mode</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+              Host and riders coordinate an external ride app booking. The ride app fare is paid outside RidePod by the group.
+            </p>
+            <SecondaryButton href="#ride-app-mode" className="mt-4 w-full whitespace-nowrap sm:w-auto">
+              Learn about Ride app mode
+            </SecondaryButton>
+          </Card>
+        </div>
+      </section>
+
+      <section id="taxi-mode" className="grid gap-3 scroll-mt-28">
+        <ContentHeading eyebrow="Taxi mode" title="For shared taxi pods with taxi partner quote review" />
+        <Card className="border-[color-mix(in_srgb,var(--rp-primary)_42%,var(--rp-border))] p-5">
+          <p className="text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+            In Taxi mode, riders form a pod and wait for a taxi partner quote. Riders can review the total quote, estimated share, RidePod fee, and quote deadline before accepting.
+          </p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {taxiModeSteps.map((step, index) => (
+              <div key={step} className="flex gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-sm font-black text-[var(--rp-primary)]">
+                  {index + 1}
+                </span>
+                <p className="text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{step}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 grid gap-2">
+            {[
+              "Taxi partner quote is separate from the RidePod fee.",
+              "Stop requests close once the taxi quote request starts.",
+              "Taxi partner chat opens only after riders accept and the taxi partner accepts the job.",
+            ].map((note) => (
+              <p key={note} className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 py-3 text-sm font-black leading-6 text-[var(--rp-text)]">
+                {note}
+              </p>
+            ))}
+          </div>
+        </Card>
+      </section>
+
+      <section id="ride-app-mode" className="grid gap-3 scroll-mt-28">
+        <ContentHeading eyebrow="Ride app mode" title="For self-settle ride app coordination" />
+        <Card className="border-cyan-300/25 bg-[radial-gradient(circle_at_top_right,rgba(103,232,249,0.12),transparent_38%),var(--rp-card)] p-5">
+          <p className="text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+            In Ride app mode, RidePod helps the group coordinate, but the external ride app booking and ride fare happen outside RidePod.
+          </p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {rideAppModeSteps.map((step, index) => (
+              <div key={step} className="flex gap-3 rounded-2xl border border-cyan-300/16 bg-cyan-300/8 p-3">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-cyan-300/12 text-sm font-black text-cyan-100">
+                  {index + 1}
+                </span>
+                <p className="text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{step}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 grid gap-2">
+            {[
+              "Ride fare is paid outside RidePod.",
+              "RidePod does not verify ride app fare.",
+              "Fare screenshots are optional context only.",
+              "RidePod does not verify ride app screenshots.",
+              "No fare protection is provided for self-settle Ride app pods.",
+            ].map((note) => (
+              <p key={note} className="rounded-2xl border border-cyan-300/16 bg-cyan-300/8 px-4 py-3 text-sm font-black leading-6 text-cyan-50">
+                {note}
+              </p>
+            ))}
+          </div>
+        </Card>
+      </section>
+
+      <section className="grid gap-3">
+        <ContentHeading eyebrow="Taxi Partners" title="For licensed taxi drivers or service partners" />
+        <Card className="border-[color-mix(in_srgb,var(--rp-primary)_28%,var(--rp-border))] bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--rp-primary)_12%,transparent),transparent_34%),radial-gradient(circle_at_top_right,rgba(103,232,249,0.1),transparent_34%),var(--rp-card)] p-5">
+          <ReceiptText className="h-8 w-8 text-[var(--rp-primary)]" />
+          <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
+            Taxi Partners can review eligible Taxi pods, provide quote information, and accept jobs when available.
+          </p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {taxiPartnerBullets.map((item) => (
+              <div key={item} className="flex gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+                <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
+                <p className="text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{item}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-4 rounded-2xl border border-cyan-300/18 bg-cyan-300/8 px-4 py-3 text-sm font-black leading-6 text-cyan-50">
+            Partner verification is manual during this version. Do not upload ID documents in this version.
+          </p>
+          <PrimaryButton href="/taxi-partner" className="mt-4 w-full whitespace-nowrap sm:w-auto">
+            Apply as Taxi Partner
+          </PrimaryButton>
+        </Card>
       </section>
 
       <section className="grid gap-3">
@@ -182,50 +334,70 @@ export function AboutRidePodPage() {
               </div>
             ))}
           </div>
+          <p className="mt-4 rounded-2xl border border-[var(--rp-primary)]/25 bg-[var(--rp-primary)]/10 px-4 py-3 text-sm font-black leading-6 text-[var(--rp-primary)]">
+            In this version, no live payment, real payout, real taxi dispatch, or real ride app booking is enabled.
+          </p>
         </Card>
       </section>
 
       <section className="grid gap-3 md:grid-cols-2">
         <Card className="p-5">
-          <Sparkles className="h-7 w-7 text-[var(--rp-primary)]" />
-          <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">Our focus</h2>
+          <ShieldCheck className="h-7 w-7 text-[var(--rp-primary)]" />
+          <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">Trust and privacy</h2>
           <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-            RidePod is currently focused on testing whether riders understand and trust the Taxi-first shared pod flow. The product prioritizes clarity, route planning, quote acceptance, pod chat, and manual review states.
+            RidePod is designed to make shared ride coordination clearer without exposing unnecessary private details.
           </p>
+          <div className="mt-4 grid gap-2">
+            {trustBullets.map((item) => (
+              <p key={item} className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 py-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                {item}
+              </p>
+            ))}
+          </div>
         </Card>
         <Card className="p-5">
-          <ShieldCheck className="h-7 w-7 text-[var(--rp-primary)]" />
-          <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">Safety and privacy</h2>
+          <Sparkles className="h-7 w-7 text-[var(--rp-primary)]" />
+          <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">Current version</h2>
           <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-            Public profiles should only show limited information. Private details such as phone, email, gender identity, ID status, admin notes, and safety reports should not be shown publicly.
+            RidePod is currently focused on testing the shared ride coordination flow.
           </p>
+          <div className="mt-4 grid gap-2">
+            {currentVersionBullets.map((item) => (
+              <p key={item} className="rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 py-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                {item}
+              </p>
+            ))}
+          </div>
         </Card>
       </section>
 
-      <Card className="p-5">
-        <ReceiptText className="h-7 w-7 text-[var(--rp-primary)]" />
-        <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">Taxi partners</h2>
-        <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-          Taxi partners are external licensed providers. Taxi partner applications are reviewed manually before partner tools are enabled.
-        </p>
-      </Card>
-
-      <section className="grid gap-3 rounded-[28px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)] sm:flex sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">
-            Ready when your group is
-          </p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight text-[var(--rp-text)]">
-            Start with a shared taxi pod.
-          </h2>
-        </div>
-        <div className="grid gap-3 sm:flex">
-          <PrimaryButton href="/home" className="w-full whitespace-nowrap sm:w-auto">
-            Search rides
-          </PrimaryButton>
-          <SecondaryButton href="/create" className="w-full whitespace-nowrap sm:w-auto">
-            Create taxi pod
-          </SecondaryButton>
+      <section className="grid gap-3">
+        <ContentHeading eyebrow="Ready when your group is" title="Start with the right RidePod flow" />
+        <div className="grid gap-3 md:grid-cols-3">
+          <Card className="p-5">
+            <UsersRound className="h-7 w-7 text-[var(--rp-primary)]" />
+            <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">Find a ride pod</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">Browse Taxi and Ride app pods.</p>
+            <PrimaryButton href="/home" className="mt-4 w-full whitespace-nowrap">
+              Search pods
+            </PrimaryButton>
+          </Card>
+          <Card className="p-5">
+            <CarFront className="h-7 w-7 text-[var(--rp-primary)]" />
+            <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">Create a pod</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">Start a Taxi or Ride app self-settle pod.</p>
+            <SecondaryButton href="/create" className="mt-4 w-full whitespace-nowrap">
+              Create pod
+            </SecondaryButton>
+          </Card>
+          <Card className="p-5">
+            <ReceiptText className="h-7 w-7 text-[var(--rp-primary)]" />
+            <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">Become a Taxi Partner</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted)]">Tell us what taxi services you can support.</p>
+            <SecondaryButton href="/taxi-partner" className="mt-4 w-full whitespace-nowrap">
+              Apply as Taxi Partner
+            </SecondaryButton>
+          </Card>
         </div>
       </section>
     </InfoPageLayout>
