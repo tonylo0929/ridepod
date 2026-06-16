@@ -7,6 +7,7 @@ import {
 } from "@/lib/public-created-rides";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 import type { HomeRide } from "@/lib/home-ride-mock";
+import type { RidePodProfileRow } from "@/lib/supabase/types";
 
 const selectPublicCreatedRideColumns = [
   "id",
@@ -81,7 +82,11 @@ export async function GET() {
 
     const pods = (result.data ?? []) as unknown as PublicCreatedRidePod[];
     const podIds = pods.map((pod) => pod.id).filter(Boolean);
+    const hostUserIds = Array.from(
+      new Set(pods.map((pod) => pod.host_user_id).filter((userId): userId is string => Boolean(userId))),
+    );
     const activeMemberUserIdsByPod = new Map<string, string[]>();
+    const hostDisplayNamesByUserId = new Map<string, string>();
 
     if (podIds.length > 0) {
       const membersResult = await client
@@ -103,13 +108,29 @@ export async function GET() {
       }
     }
 
+    if (hostUserIds.length > 0) {
+      const profilesResult = await client.from("profiles").select("id,display_name").in("id", hostUserIds);
+      if (profilesResult.error) {
+        console.warn("RidePod public created ride host names unavailable", profilesResult.error);
+      } else {
+        for (const profile of (profilesResult.data ?? []) as Pick<RidePodProfileRow, "id" | "display_name">[]) {
+          const displayName = profile.display_name?.trim();
+          if (profile.id && displayName) hostDisplayNamesByUserId.set(profile.id, displayName);
+        }
+      }
+    }
+
     return noStoreJson({
       pods: pods.map((pod) => {
-        const activeMemberUserIds = Array.from(new Set(activeMemberUserIdsByPod.get(pod.id) ?? []));
+        const hostUserId = pod.host_user_id?.trim() ?? null;
+        const activeMemberUserIds = Array.from(new Set(activeMemberUserIdsByPod.get(pod.id) ?? [])).filter(
+          (memberId) => !hostUserId || memberId !== hostUserId,
+        );
         return {
           ...pod,
           active_member_count: activeMemberUserIds.length,
           active_member_user_ids: activeMemberUserIds,
+          host_display_name: pod.host_user_id ? hostDisplayNamesByUserId.get(pod.host_user_id) ?? null : null,
         } satisfies PublicCreatedRidePod;
       }),
     });

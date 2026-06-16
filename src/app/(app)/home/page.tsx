@@ -979,6 +979,9 @@ function HomeRideCard({
               <h2 className="text-balance text-base font-black leading-tight text-[var(--rp-text)] min-[390px]:text-lg min-[760px]:text-xl">
                 {ride.fromLabel} {"\u2192"} {ride.toLabel}
               </h2>
+              <p className="mt-1 truncate text-xs font-black text-[var(--rp-muted-strong)]">
+                Host: {ride.hostName || "RidePod host"}
+              </p>
               <RideMetaTags ride={ride} />
               {rideAppTrustBadge ? (
                 <p

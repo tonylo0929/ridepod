@@ -27,6 +27,7 @@ export type PublicCreatedRidePod = Pick<
 > & {
   active_member_count?: number | null;
   active_member_user_ids?: string[] | null;
+  host_display_name?: string | null;
 };
 
 const rideDateMonths: Record<string, number> = {
@@ -193,7 +194,8 @@ export function rideEstimateCentsFromHomeRide(ride: HomeRide) {
 export function publicCreatedPodToHomeRide(pod: PublicCreatedRidePod, viewerUserId?: string | null): HomeRide {
   const { fromLabel, toLabel } = splitRouteLabel(pod.route_label);
   const isRideApp = pod.ride_option === "RIDE_APP_FIXED_QUOTE";
-  const isHost = Boolean(viewerUserId && pod.host_user_id === viewerUserId);
+  const hostUserId = pod.host_user_id?.trim() ?? null;
+  const isHost = Boolean(viewerUserId && hostUserId === viewerUserId);
   const dateLabel = pod.pod_type === "RECURRING" ? (pod.recurring_pattern ?? "Recurring") : formatDateLabel(pod.departure_at);
   const timeLabel = formatTimeLabel(pod.departure_at);
   const estimateTotal = centsToDollars(pod.current_estimate_cents);
@@ -203,15 +205,18 @@ export function publicCreatedPodToHomeRide(pod: PublicCreatedRidePod, viewerUser
     new Set(
       (pod.active_member_user_ids ?? [])
         .map((memberId) => memberId?.trim())
-        .filter((memberId): memberId is string => Boolean(memberId)),
+        .filter((memberId): memberId is string => Boolean(memberId && memberId !== hostUserId)),
     ),
   );
+  const activeMemberCount = Array.isArray(pod.active_member_user_ids)
+    ? activeMemberUserIds.length
+    : (pod.active_member_count ?? activeMemberUserIds.length);
   const joinedRiderCount = Math.min(
     Math.max(0, seatsTotal - 1),
-    Math.max(0, pod.active_member_count ?? activeMemberUserIds.length),
+    Math.max(0, activeMemberCount),
   );
   const seatsUsed = Math.min(seatsTotal, Math.max(1, 1 + joinedRiderCount));
-  const viewerJoined = Boolean(viewerUserId && activeMemberUserIds.includes(viewerUserId));
+  const viewerJoined = Boolean(!isHost && viewerUserId && activeMemberUserIds.includes(viewerUserId));
   const joinedRiderNames = Array.from({ length: joinedRiderCount }, (_, index) => {
     const memberId = activeMemberUserIds[index];
     return viewerUserId && memberId === viewerUserId ? "You" : `Rider ${index + 1}`;
@@ -306,7 +311,8 @@ export function publicCreatedPodToHomeRide(pod: PublicCreatedRidePod, viewerUser
     luggage: "No luggage",
     accessibility: "No special access needs",
     podType: "Open pod",
-    hostName: isHost ? "You" : "New host",
+    hostName: isHost ? "You" : pod.host_display_name?.trim() || "New host",
+    hostDisplayName: pod.host_display_name?.trim() || undefined,
     joinedRiders: joinedRiderNames,
     pickupLabel: pod.pickup_point ?? fromLabel,
     pickupTime: timeLabel,
