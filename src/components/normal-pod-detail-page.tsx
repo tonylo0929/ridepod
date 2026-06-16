@@ -591,6 +591,16 @@ function getRideAppProviderDisplay(ride: HomeRide) {
   return "Selected by host";
 }
 
+function getRideAppMinimumRidersToGoLabel(ride: HomeRide) {
+  const maxJoinedRiders = Math.max(1, ride.seatsTotal - 1);
+  const minimum = Math.max(
+    1,
+    Math.min(maxJoinedRiders, ride.rideAppMinimumConfirmedRiders ?? ride.rideAppRequiredConfirmations ?? Math.min(2, maxJoinedRiders)),
+  );
+
+  return `At least ${minimum} rider${minimum === 1 ? "" : "s"} to go`;
+}
+
 function getRideAppAcceptedPaymentDisplay(ride: HomeRide) {
   if (ride.rideAppAcceptedPaymentMethods?.length) return ride.rideAppAcceptedPaymentMethods.join(", ");
   if (ride.paymentMethod?.trim()) return ride.paymentMethod.trim();
@@ -3438,6 +3448,7 @@ function SelfSettlePodSummaryHero({
   const hostEstimateUpdated = canUpdateEstimate && estimateUpdated;
   const canLeaveRideFromHero = summaryUserHadRideAppSeat && !summaryUserIsHost;
   const displayEstimateLabel = hostEstimateUpdated ? "Updated estimate" : canUpdateEstimate ? "Your estimate" : estimateLabel;
+  const minimumRidersToGoLabel = getRideAppMinimumRidersToGoLabel(ride);
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
   const hostCancellationActive = hostCancellationStatus !== "active";
   const hostControlTitle = hostCancellationActive ? statusTitle : hostEstimateUpdated ? "Estimate updated" : statusTitle;
@@ -3505,6 +3516,10 @@ function SelfSettlePodSummaryHero({
             </p>
           </div>
         </div>
+
+        <p className="relative mt-3 inline-flex rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[11px] font-black text-[var(--rp-primary)]">
+          {minimumRidersToGoLabel}
+        </p>
 
         <div className="relative mt-4 flex items-center justify-between gap-3 text-sm font-semibold text-[var(--rp-muted-strong)]">
           <span className="inline-flex min-w-0 items-center gap-2">

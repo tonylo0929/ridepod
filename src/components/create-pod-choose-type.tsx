@@ -3906,20 +3906,28 @@ function RideAppBookingRulesStep({
   onBack: () => void;
   onContinue: () => void;
 }) {
-  const maxSuggestedRidersBeforeBooking = Math.max(2, peopleVehicle.seatsAvailable - 1);
-  const minRiderOptions = Array.from(
-    { length: Math.max(1, maxSuggestedRidersBeforeBooking - 1) },
-    (_, index) => index + 2,
+  const maxMinimumRidersToGo = Math.max(1, peopleVehicle.seatsAvailable - 1);
+  const selectedMinimumConfirmedRiders = Math.max(
+    1,
+    Math.min(maxMinimumRidersToGo, peopleVehicle.rideAppMinimumConfirmedRiders),
   );
-  const selectedMinimumConfirmedRiders = minRiderOptions.includes(peopleVehicle.rideAppMinimumConfirmedRiders)
-    ? peopleVehicle.rideAppMinimumConfirmedRiders
-    : minRiderOptions[0];
   const selectedPaymentMethods = peopleVehicle.rideAppAcceptedPaymentMethods;
   const hasPaymentMethod = selectedPaymentMethods.length > 0;
-  const minRidersValid = minRiderOptions.includes(selectedMinimumConfirmedRiders);
+  const minRidersValid =
+    selectedMinimumConfirmedRiders >= 1 && selectedMinimumConfirmedRiders <= maxMinimumRidersToGo;
   const canContinue = hasPaymentMethod && minRidersValid;
   const [isPaymentTimingOpen, setIsPaymentTimingOpen] = useState(true);
   const paymentTimingPanelId = useId();
+
+  function updateMinimumRidersToGo(value: number) {
+    const nextMinimum = Math.max(1, Math.min(maxMinimumRidersToGo, value || 1));
+
+    onPeopleVehicleChange({
+      ...peopleVehicle,
+      rideAppBookingTrigger: "minimum_riders_confirmed",
+      rideAppMinimumConfirmedRiders: nextMinimum,
+    });
+  }
 
   useEffect(() => {
     if (
@@ -3965,33 +3973,28 @@ function RideAppBookingRulesStep({
 
         <section className="mt-6 grid gap-4 rounded-[24px] border border-cyan-300/35 bg-[linear-gradient(135deg,rgba(56,189,248,0.12),rgba(124,58,237,0.10),rgba(15,23,42,0.78))] p-4 shadow-[var(--rp-shadow-soft)]">
           <div>
-            <h2 className="text-lg font-black text-[var(--rp-primary)]">When should the host book?</h2>
+            <h2 className="text-lg font-black text-[var(--rp-primary)]">Minimum riders to go</h2>
             <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-              Choose the rider count the host prefers before booking the ride app.
+              Set the minimum joined riders needed before the host books. If fewer riders join, the pod can be cancelled.
             </p>
           </div>
 
           <label className="grid gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[rgba(5,12,20,0.36)] p-4">
             <span className="text-xs font-black uppercase tracking-[0.13em] text-cyan-100">
-              Preferred riders before booking
+              Minimum riders
             </span>
-            <select
+            <input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={maxMinimumRidersToGo}
               value={selectedMinimumConfirmedRiders}
-              onChange={(event) =>
-                onPeopleVehicleChange({
-                  ...peopleVehicle,
-                  rideAppBookingTrigger: "minimum_riders_confirmed",
-                  rideAppMinimumConfirmedRiders: Number(event.target.value),
-                })
-              }
+              onChange={(event) => updateMinimumRidersToGo(Number(event.target.value))}
               className="min-h-11 rounded-xl border border-[var(--rp-border)] bg-[rgba(5,12,20,0.72)] px-3 text-base font-black text-[var(--rp-text)] outline-none focus:border-cyan-300"
-            >
-              {minRiderOptions.map((count) => (
-                <option key={count} value={count}>
-                  {count} / {peopleVehicle.seatsAvailable} riders
-                </option>
-              ))}
-            </select>
+            />
+            <span className="text-xs font-black text-[var(--rp-primary)]">
+              At least {selectedMinimumConfirmedRiders} rider{selectedMinimumConfirmedRiders === 1 ? "" : "s"} to go
+            </span>
           </label>
         </section>
 
@@ -4802,12 +4805,16 @@ function getSelfSettlePaymentMethodLabel(paymentMethod: SelfSettlePaymentMethod)
   return selfSettlePaymentMethodOptions.find((option) => option.id === paymentMethod)?.title ?? "PayMe";
 }
 
+function formatMinimumRidersToGo(count: number) {
+  return `At least ${count} rider${count === 1 ? "" : "s"} to go`;
+}
+
 function getRideAppBookingTriggerLabel(peopleVehicle: PeopleVehicleState) {
-  return `anytime after group agrees, suggested from ${peopleVehicle.rideAppMinimumConfirmedRiders} riders`;
+  return formatMinimumRidersToGo(peopleVehicle.rideAppMinimumConfirmedRiders);
 }
 
 function getRideAppBookingTriggerSummary(peopleVehicle: PeopleVehicleState) {
-  return `Anytime; suggested from ${peopleVehicle.rideAppMinimumConfirmedRiders} riders`;
+  return formatMinimumRidersToGo(peopleVehicle.rideAppMinimumConfirmedRiders);
 }
 
 function getRideAppAcceptedPaymentMethodsLabel(paymentMethods: SelfSettlePaymentMethod[]) {
@@ -5185,7 +5192,7 @@ function SelfSettleReviewSummaryCard({
     ["Estimated ride app fare", "Ride app estimate after booking"],
     ["Host books when", getRideAppBookingTriggerLabel(peopleVehicle)],
     ...(peopleVehicle.rideAppBookingTrigger === "minimum_riders_confirmed"
-      ? ([["Preferred riders before booking", `${peopleVehicle.rideAppMinimumConfirmedRiders} riders`]] as Array<[string, string]>)
+      ? ([["Minimum riders to go", formatMinimumRidersToGo(peopleVehicle.rideAppMinimumConfirmedRiders)]] as Array<[string, string]>)
       : []),
     ["Payment timing", "After ride completion"],
     ["Accepted payment", getRideAppAcceptedPaymentMethodsLabel(peopleVehicle.rideAppAcceptedPaymentMethods)],
@@ -6606,8 +6613,8 @@ function PodCreatedSummaryCard({
       ? [
           {
             icon: UsersRound,
-            label: "Preferred riders before booking",
-            value: `${peopleVehicle.rideAppMinimumConfirmedRiders} riders`,
+            label: "Minimum riders to go",
+            value: formatMinimumRidersToGo(peopleVehicle.rideAppMinimumConfirmedRiders),
           },
         ]
       : []),

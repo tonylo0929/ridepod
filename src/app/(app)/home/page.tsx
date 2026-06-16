@@ -573,9 +573,22 @@ function availableSeats(ride: HomeRide) {
   return Math.max(ride.seatsTotal - ride.seatsUsed, 0);
 }
 
+function formatMinimumRidersToGo(count: number) {
+  return `At least ${count} rider${count === 1 ? "" : "s"} to go`;
+}
+
+function getRideAppMinimumRidersToGo(ride: HomeRide) {
+  if (!isRideAppSelfSettle(ride)) return null;
+
+  const maxJoinedRiders = Math.max(1, ride.seatsTotal - 1);
+  const fallbackMinimum = Math.min(2, maxJoinedRiders);
+  const minimum = ride.rideAppMinimumConfirmedRiders ?? ride.rideAppRequiredConfirmations ?? fallbackMinimum;
+
+  return Math.max(1, Math.min(maxJoinedRiders, minimum));
+}
+
 function minimumRidersRequired(ride: HomeRide) {
-  // TODO: replace fallback with minimumRidersRequired when persisted on ride app pods.
-  return ride.requiredGuestCount ?? (isRideAppSelfSettle(ride) ? 2 : 1);
+  return getRideAppMinimumRidersToGo(ride) ?? ride.requiredGuestCount ?? 1;
 }
 
 function minimumReached(ride: HomeRide) {
@@ -906,6 +919,7 @@ function HomeRideCard({
       ? getRideAppProviderLabel(ride)
       : "Tap to update"
     : rideAppEstimateDisplay.helper;
+  const minimumRidersToGo = getRideAppMinimumRidersToGo(ride);
   const rideAppTrustBadge = isRideApp ? getHomeRideTrustBadge(getRideAppTrustSummary(getHomeRideHostTrustUserId(ride))) : null;
   const statusBadgeClass = isRideApp
     ? "border-sky-300/35 bg-sky-400/14 text-sky-200"
@@ -1022,6 +1036,11 @@ function HomeRideCard({
                   <span className="text-[var(--rp-primary)]">(Joined)</span>
                 ) : null}
               </span>
+              {minimumRidersToGo ? (
+                <span className="mt-0.5 block text-[11px] font-black leading-4 text-[var(--rp-primary)]">
+                  {formatMinimumRidersToGo(minimumRidersToGo)}
+                </span>
+              ) : null}
             </span>
             {recurringTiming ? (
               <span className="col-span-2 rounded-[16px] border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black leading-5 text-[var(--rp-muted-strong)]">

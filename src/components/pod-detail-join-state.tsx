@@ -4823,8 +4823,13 @@ const paymentMethodOptions = ["Cash", "PayMe", "FPS", "Other"];
 
 function getRideAppBookingTriggerDisplay(ride: HomeRide) {
   if (ride.rideAppBookingTrigger === "minimum_riders_confirmed") {
-    const minimum = ride.rideAppMinimumConfirmedRiders ?? Math.min(ride.seatsTotal, 2);
-    return `minimum riders confirmed (${minimum} riders)`;
+    const maxJoinedRiders = Math.max(1, ride.seatsTotal - 1);
+    const minimum = Math.max(
+      1,
+      Math.min(maxJoinedRiders, ride.rideAppMinimumConfirmedRiders ?? ride.rideAppRequiredConfirmations ?? Math.min(2, maxJoinedRiders)),
+    );
+
+    return `At least ${minimum} rider${minimum === 1 ? "" : "s"} to go`;
   }
 
   return "all seats confirmed";
