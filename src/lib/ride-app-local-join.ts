@@ -14,6 +14,34 @@ type StoredSelfSettleJoin = {
 type StoredSelfSettleJoins = Record<string, StoredSelfSettleJoin>;
 type StoredSelfSettleRidePatches = Record<string, Partial<HomeRide>>;
 
+const hostUnsafeViewerPatchKeys = [
+  "currentUserJoined",
+  "currentUserRole",
+  "currentUserName",
+  "currentUserJoinIntentStatus",
+  "currentUserBookingDetailsConfirmed",
+  "currentUserConfirmedBookingDetailsVersion",
+  "currentUserRideAppDetailVersionConfirmed",
+  "currentUserConfirmationExpired",
+  "selfSettleConfirmationStatus",
+  "platformFeeStatus",
+  "quoteStatus",
+  "joinedRiders",
+  "joinedRiderCount",
+  "confirmedRiderCount",
+  "rideAppConfirmedRiderCount",
+  "riderConfirmations",
+  "seatsUsed",
+  "joinLeaveCountForCurrentUser",
+  "lastLeftAt",
+  "rejoinCooldownUntil",
+  "requiresHostApprovalToRejoin",
+  "rideAppJoinLeaveActivitySummary",
+  "rideAppSeatReleasedAt",
+  "rideAppRejoinRequestedAt",
+  "rideAppRejoinRequestedBy",
+] satisfies Array<keyof HomeRide>;
+
 function canUseLocalStorage() {
   return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
 }
@@ -70,6 +98,29 @@ function mergeRideAppChecklist(base: HomeRide["rideAppChecklist"], patch: HomeRi
     : base;
 }
 
+function hasViewerRelationshipPatch(patch: Partial<HomeRide> | null) {
+  if (!patch) return false;
+
+  return (
+    "currentUserRole" in patch ||
+    "currentUserJoined" in patch ||
+    "currentUserJoinIntentStatus" in patch ||
+    "quoteStatus" in patch ||
+    "joinLeaveCountForCurrentUser" in patch
+  );
+}
+
+function stripViewerRelationshipPatchForHost(patch: Partial<HomeRide> | null) {
+  if (!patch || !hasViewerRelationshipPatch(patch)) return patch;
+
+  const nextPatch = { ...patch };
+  for (const key of hostUnsafeViewerPatchKeys) {
+    delete nextPatch[key];
+  }
+
+  return nextPatch;
+}
+
 export function getStoredSelfSettleJoin(rideId: string) {
   return readStoredJoins()[rideId] ?? null;
 }
@@ -82,8 +133,11 @@ export function getRideWithStoredSelfSettleJoin(ride: HomeRide): HomeRide {
   if (ride.rideCategory !== "ride_app_self_settle") return ride;
 
   const stored = getStoredSelfSettleJoin(ride.id);
-  const patch = getStoredSelfSettleRidePatch(ride.id);
-  const joinedRide = stored
+  const patch =
+    ride.currentUserRole === "host"
+      ? stripViewerRelationshipPatchForHost(getStoredSelfSettleRidePatch(ride.id))
+      : getStoredSelfSettleRidePatch(ride.id);
+  const joinedRide = stored && ride.currentUserRole !== "host"
     ? {
         ...ride,
         currentUserJoined: true,
