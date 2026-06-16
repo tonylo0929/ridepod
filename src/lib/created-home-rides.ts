@@ -193,6 +193,8 @@ function mergeCreatedHomeRide(existing: HomeRide, incoming: HomeRide): HomeRide 
   const incomingIsPublicViewerCopy =
     incoming.currentUserRole === "rider" && incoming.currentUserJoined === false && incoming.hostName !== "You";
   const shouldDemoteStaleHost = existing.currentUserRole === "host" && incomingIsPublicViewerCopy;
+  const shouldDiscardStaleViewerJoin =
+    incoming.currentUserRole === "host" && (existing.currentUserRole === "joined_rider" || existing.currentUserJoined === true);
   const shouldUseIncomingRelationship =
     (existing.currentUserRole !== "host" || shouldDemoteStaleHost) &&
     (incoming.currentUserRole === "host" ||
@@ -200,9 +202,13 @@ function mergeCreatedHomeRide(existing: HomeRide, incoming: HomeRide): HomeRide 
       incoming.currentUserJoined === true ||
       shouldDemoteStaleHost);
   const seatsTotal = Math.max(1, existing.seatsTotal || incoming.seatsTotal || 4);
-  const seatsUsed = Math.min(seatsTotal, Math.max(existing.seatsUsed, incoming.seatsUsed));
-  const joinedRiderCount = Math.max(getEffectiveJoinedRiderCount(existing), getEffectiveJoinedRiderCount(incoming));
-  const riderConfirmations = mergeRiderConfirmations(existing, incoming);
+  const seatsUsed = shouldDiscardStaleViewerJoin
+    ? Math.min(seatsTotal, incoming.seatsUsed)
+    : Math.min(seatsTotal, Math.max(existing.seatsUsed, incoming.seatsUsed));
+  const joinedRiderCount = shouldDiscardStaleViewerJoin
+    ? getEffectiveJoinedRiderCount(incoming)
+    : Math.max(getEffectiveJoinedRiderCount(existing), getEffectiveJoinedRiderCount(incoming));
+  const riderConfirmations = shouldDiscardStaleViewerJoin ? incoming.riderConfirmations : mergeRiderConfirmations(existing, incoming);
 
   return {
     ...existing,
@@ -222,7 +228,9 @@ function mergeCreatedHomeRide(existing: HomeRide, incoming: HomeRide): HomeRide 
     confirmedRiderCount: Math.max(existing.confirmedRiderCount ?? 0, incoming.confirmedRiderCount ?? 0),
     rideAppConfirmedRiderCount: Math.max(existing.rideAppConfirmedRiderCount ?? 0, incoming.rideAppConfirmedRiderCount ?? 0),
     riderConfirmations,
-    joinedRiders: Array.from(new Set([...(existing.joinedRiders ?? []), ...(incoming.joinedRiders ?? [])])),
+    joinedRiders: shouldDiscardStaleViewerJoin
+      ? (incoming.joinedRiders ?? [])
+      : Array.from(new Set([...(existing.joinedRiders ?? []), ...(incoming.joinedRiders ?? [])])),
   };
 }
 
