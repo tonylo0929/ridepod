@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { PodChatClient } from "@/app/(app)/pods/[id]/chat/pod-chat-client";
 import { AirportPodDetailPage } from "@/components/airport-pod-detail-page";
 import { HomePodDetailPage } from "@/components/home-pod-detail-page";
 import { NormalPodDetailPage, PodStatusPanel } from "@/components/normal-pod-detail-page";
 import { RecurringPodDetailPage } from "@/components/recurring-pod-detail-page";
-import { useCreatedHomeRides } from "@/lib/created-home-rides";
+import { createdHomeRideViewerIdentityFromAuth, useCreatedHomeRides } from "@/lib/created-home-rides";
 import { getRideAppChatAccessState } from "@/lib/ride-app-chat-unlock";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -41,7 +41,7 @@ function CreatedPodLoginRedirectState() {
 }
 
 function useRequireLoginForCreatedPod() {
-  const { user, isLoading } = useAuth();
+  const { user, profile, isLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -50,12 +50,13 @@ function useRequireLoginForCreatedPod() {
     router.replace(`/login?next=${encodeURIComponent(pathname)}`);
   }, [isLoading, pathname, router, user]);
 
-  return { user, isLoading };
+  return { user, profile, isLoading };
 }
 
 export function CreatedPodDetailRouteClient({ id }: { id: string }) {
-  const { user, isLoading } = useRequireLoginForCreatedPod();
-  const ride = useCreatedHomeRides(user?.id ?? null).find((item) => item.id === id);
+  const { user, profile, isLoading } = useRequireLoginForCreatedPod();
+  const viewerIdentity = useMemo(() => createdHomeRideViewerIdentityFromAuth({ profile, user }), [profile, user]);
+  const ride = useCreatedHomeRides(user?.id ?? null, true, viewerIdentity).find((item) => item.id === id);
 
   if (isLoading || !user) return <CreatedPodLoginRedirectState />;
 
@@ -77,8 +78,9 @@ export function CreatedPodDetailRouteClient({ id }: { id: string }) {
 }
 
 export function CreatedPodStatusRouteClient({ id }: { id: string }) {
-  const { user, isLoading } = useRequireLoginForCreatedPod();
-  const ride = useCreatedHomeRides(user?.id ?? null).find((item) => item.id === id);
+  const { user, profile, isLoading } = useRequireLoginForCreatedPod();
+  const viewerIdentity = useMemo(() => createdHomeRideViewerIdentityFromAuth({ profile, user }), [profile, user]);
+  const ride = useCreatedHomeRides(user?.id ?? null, true, viewerIdentity).find((item) => item.id === id);
 
   if (isLoading || !user) return <CreatedPodLoginRedirectState />;
 
@@ -110,8 +112,9 @@ export function CreatedPodChatRouteClient({
     bookingNote: string;
   } | null;
 }) {
-  const { user, isLoading } = useRequireLoginForCreatedPod();
-  const ride = useCreatedHomeRides(user?.id ?? null).find((item) => item.id === id);
+  const { user, profile, isLoading } = useRequireLoginForCreatedPod();
+  const viewerIdentity = useMemo(() => createdHomeRideViewerIdentityFromAuth({ profile, user }), [profile, user]);
+  const ride = useCreatedHomeRides(user?.id ?? null, true, viewerIdentity).find((item) => item.id === id);
 
   if (isLoading || !user) return <CreatedPodLoginRedirectState />;
 

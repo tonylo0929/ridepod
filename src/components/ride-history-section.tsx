@@ -15,7 +15,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { cn } from "@/components/ui";
-import { useCreatedCalendarRides } from "@/lib/created-home-rides";
+import { createdHomeRideViewerIdentityFromAuth, useCreatedCalendarRides } from "@/lib/created-home-rides";
 import {
   dateFromKey,
   dateKey,
@@ -212,8 +212,9 @@ function HistoryGroup({
 }
 
 export function RideHistorySection() {
-  const { user, isLoading } = useAuth();
-  const createdCalendarRides = useCreatedCalendarRides(user?.id ?? null);
+  const { user, profile, isLoading } = useAuth();
+  const viewerIdentity = useMemo(() => createdHomeRideViewerIdentityFromAuth({ profile, user }), [profile, user]);
+  const createdCalendarRides = useCreatedCalendarRides(user?.id ?? null, viewerIdentity);
   const today = useMemo(() => new Date(), []);
   const todayKey = dateKey(today);
 

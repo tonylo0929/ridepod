@@ -15,7 +15,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { cn } from "@/components/ui";
-import { useCreatedCalendarRides } from "@/lib/created-home-rides";
+import { createdHomeRideViewerIdentityFromAuth, useCreatedCalendarRides } from "@/lib/created-home-rides";
 import {
   dateFromKey,
   fullDateLabel,
@@ -248,8 +248,9 @@ function RideCard({ ride, currentUserId }: { ride: CalendarRide; currentUserId?:
 }
 
 export function MyRideDatePage({ date }: { date: string }) {
-  const { user, isLoading } = useAuth();
-  const createdCalendarRides = useCreatedCalendarRides(user?.id ?? null);
+  const { user, profile, isLoading } = useAuth();
+  const viewerIdentity = useMemo(() => createdHomeRideViewerIdentityFromAuth({ profile, user }), [profile, user]);
+  const createdCalendarRides = useCreatedCalendarRides(user?.id ?? null, viewerIdentity);
   const [filter, setFilter] = useState<RideFilter>("all");
   const validDate = isValidDateKey(date);
   const dateObject = validDate ? dateFromKey(date) : new Date();

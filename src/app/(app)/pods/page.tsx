@@ -19,7 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/components/ui";
-import { useCreatedCalendarRides } from "@/lib/created-home-rides";
+import { createdHomeRideViewerIdentityFromAuth, useCreatedCalendarRides } from "@/lib/created-home-rides";
 import { useAuth } from "@/providers/AuthProvider";
 import {
   buildMonthDays,
@@ -390,8 +390,9 @@ function MyRideDayPodCard({ ride, currentUserId }: { ride: CalendarRide; current
 }
 
 export default function MyRidePage() {
-  const { user, isLoading } = useAuth();
-  const createdCalendarRides = useCreatedCalendarRides(user?.id ?? null);
+  const { user, profile, isLoading } = useAuth();
+  const viewerIdentity = useMemo(() => createdHomeRideViewerIdentityFromAuth({ profile, user }), [profile, user]);
+  const createdCalendarRides = useCreatedCalendarRides(user?.id ?? null, viewerIdentity);
   const today = useMemo(() => new Date(), []);
   const todayKey = dateKey(today);
   const [activeFilter, setActiveFilter] = useState<MyRideFilter>("all");

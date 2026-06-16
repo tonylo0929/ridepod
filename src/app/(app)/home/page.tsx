@@ -35,7 +35,11 @@ import { getRideAppHostFareEstimate, getRideAppHostFareEstimateDisplay } from "@
 import { ridePodJoinFeeWaiverCopy } from "@/lib/ridepod-membership";
 import { claimRideAppWaiver, useRideAppWaiverState } from "@/lib/ride-app-waiver";
 import { getRideAppTrustSummary, type RideAppTrustSummary } from "@/lib/ride-app-trust";
-import { updateCreatedHomeRideHostAvatar, useCreatedHomeRides } from "@/lib/created-home-rides";
+import {
+  createdHomeRideViewerIdentityFromAuth,
+  updateCreatedHomeRideHostAvatar,
+  useCreatedHomeRides,
+} from "@/lib/created-home-rides";
 import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -1384,7 +1388,11 @@ export default function HomePage() {
     }),
     [avatarPreference, displayName, profile?.avatar_url],
   );
-  const createdHomeRides = useCreatedHomeRides(user?.id ?? null);
+  const createdHomeRideViewerIdentity = useMemo(
+    () => createdHomeRideViewerIdentityFromAuth({ profile, user }),
+    [profile, user],
+  );
+  const createdHomeRides = useCreatedHomeRides(user?.id ?? null, true, createdHomeRideViewerIdentity);
   useEffect(() => {
     if (!user || !avatarProfileId) return;
     updateCreatedHomeRideHostAvatar({

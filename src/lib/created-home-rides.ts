@@ -6,7 +6,9 @@ import type { CalendarRide } from "@/lib/my-ride-calendar-mock";
 import {
   publicCreatedPodToHomeRide,
   publicCreatedRideSignature,
+  viewerIdentityMatchesHostName,
   type PublicCreatedRidePod,
+  type PublicCreatedRideViewerIdentity,
 } from "@/lib/public-created-rides";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
@@ -31,6 +33,7 @@ type PublicCreatedHomeRideSyncRequest = {
   sentAt: string;
 };
 export type CreatedHomeRideHostAvatar = Pick<HomeRide, "hostAvatarPreference" | "hostAvatarUrl" | "hostDisplayName">;
+export type CreatedHomeRideViewerIdentity = PublicCreatedRideViewerIdentity;
 type PublicCreatedHomeRidesChannel = ReturnType<ReturnType<typeof getSupabaseBrowserClient>["channel"]>;
 const rideDateMonths: Record<string, number> = {
   jan: 0,
@@ -109,8 +112,44 @@ function writeCachedPublicCreatedHomeRides(rides: CachedPublicCreatedHomeRide[])
   window.localStorage.setItem(publicCreatedHomeRidesStorageKey, JSON.stringify(rides.slice(0, 100)));
 }
 
-function applyViewerRelationship(ride: HomeRide, hostUserId: string | null, viewerUserId?: string | null): HomeRide {
-  const isHost = Boolean(viewerUserId && hostUserId && viewerUserId === hostUserId);
+export function createdHomeRideViewerIdentityFromAuth({
+  profile,
+  user,
+}: {
+  profile?: {
+    account_name?: string | null;
+    display_name?: string | null;
+    preferred_name?: string | null;
+    email?: string | null;
+  } | null;
+  user?: {
+    email?: string | null;
+    user_metadata?: Record<string, unknown> | null;
+  } | null;
+}): CreatedHomeRideViewerIdentity {
+  return {
+    accountName: profile?.account_name ?? null,
+    displayName: profile?.display_name ?? null,
+    preferredName: profile?.preferred_name ?? null,
+    email: profile?.email ?? user?.email ?? null,
+    metadataAccountName: typeof user?.user_metadata?.account_name === "string" ? user.user_metadata.account_name : null,
+    metadataDisplayName: typeof user?.user_metadata?.display_name === "string" ? user.user_metadata.display_name : null,
+  };
+}
+
+function getRideHostNameForViewerMatch(ride: HomeRide) {
+  return ride.hostDisplayName ?? (ride.hostName !== "You" ? ride.hostName : null);
+}
+
+function applyViewerRelationship(
+  ride: HomeRide,
+  hostUserId: string | null,
+  viewerUserId?: string | null,
+  viewerIdentity?: CreatedHomeRideViewerIdentity | null,
+): HomeRide {
+  const isHost =
+    Boolean(viewerUserId && hostUserId && viewerUserId === hostUserId) ||
+    viewerIdentityMatchesHostName(getRideHostNameForViewerMatch(ride), viewerIdentity);
   if (isHost) {
     return {
       ...ride,
@@ -140,9 +179,12 @@ function applyViewerRelationship(ride: HomeRide, hostUserId: string | null, view
   };
 }
 
-function cachedPublicRidesForViewer(viewerUserId?: string | null) {
+function cachedPublicRidesForViewer(
+  viewerUserId?: string | null,
+  viewerIdentity?: CreatedHomeRideViewerIdentity | null,
+) {
   return readCachedPublicCreatedHomeRides().map((cached) =>
-    applyViewerRelationship(cached.ride, cached.hostUserId, viewerUserId),
+    applyViewerRelationship(cached.ride, cached.hostUserId, viewerUserId, viewerIdentity),
   );
 }
 
@@ -387,12 +429,15 @@ async function announceLocalCreatedHomeRides(
   }
 }
 
-async function readPublicCreatedHomeRides(viewerUserId?: string | null) {
+async function readPublicCreatedHomeRides(
+  viewerUserId?: string | null,
+  viewerIdentity?: CreatedHomeRideViewerIdentity | null,
+) {
   try {
     const response = await fetch("/api/public-created-rides", { cache: "no-store" });
     if (!response.ok) throw new Error(`List failed with ${response.status}`);
     const payload = (await response.json()) as { pods?: PublicCreatedRidePod[] };
-    return (payload.pods ?? []).map((pod) => publicCreatedPodToHomeRide(pod, viewerUserId));
+    return (payload.pods ?? []).map((pod) => publicCreatedPodToHomeRide(pod, viewerUserId, viewerIdentity));
   } catch (error) {
     console.warn("RidePod public created rides list failed", error);
     return [];
@@ -533,9 +578,18 @@ function createdHomeRideToCalendarRide(ride: HomeRide): CalendarRide {
   };
 }
 
-export function useCreatedHomeRides(viewerUserId?: string | null, includePublicRiderCards = true) {
+export function useCreatedHomeRides(
+  viewerUserId?: string | null,
+  includePublicRiderCards = true,
+  viewerIdentity?: CreatedHomeRideViewerIdentity | null,
+) {
+  const stableViewerIdentity = viewerIdentity ?? null;
   const [rides, setRides] = useState<HomeRide[]>(() =>
-    mergeCreatedHomeRides(readCreatedHomeRides(), [], includePublicRiderCards),
+    mergeCreatedHomeRides(
+      readCreatedHomeRides(),
+      cachedPublicRidesForViewer(viewerUserId, stableViewerIdentity),
+      includePublicRiderCards,
+    ),
   );
 
   useEffect(() => {
@@ -545,10 +599,10 @@ export function useCreatedHomeRides(viewerUserId?: string | null, includePublicR
     async function sync() {
       const currentSyncId = ++syncId;
       const localRides = readCreatedHomeRides();
-      const cachedPublicRides = cachedPublicRidesForViewer(viewerUserId);
+      const cachedPublicRides = cachedPublicRidesForViewer(viewerUserId, stableViewerIdentity);
       setRides(mergeCreatedHomeRides(localRides, cachedPublicRides, includePublicRiderCards));
 
-      const publicRides = await readPublicCreatedHomeRides(viewerUserId);
+      const publicRides = await readPublicCreatedHomeRides(viewerUserId, stableViewerIdentity);
       if (cancelled || currentSyncId !== syncId) return;
       setRides(mergeCreatedHomeRides(localRides, [...cachedPublicRides, ...publicRides], includePublicRiderCards));
     }
@@ -615,11 +669,14 @@ export function useCreatedHomeRides(viewerUserId?: string | null, includePublicR
       window.clearInterval(realtimeSyncInterval);
       if (realtimeClient && realtimeChannel) void realtimeClient.removeChannel(realtimeChannel);
     };
-  }, [includePublicRiderCards, viewerUserId]);
+  }, [includePublicRiderCards, stableViewerIdentity, viewerUserId]);
 
   return rides;
 }
 
-export function useCreatedCalendarRides(viewerUserId?: string | null) {
-  return useCreatedHomeRides(viewerUserId, false).map(createdHomeRideToCalendarRide);
+export function useCreatedCalendarRides(
+  viewerUserId?: string | null,
+  viewerIdentity?: CreatedHomeRideViewerIdentity | null,
+) {
+  return useCreatedHomeRides(viewerUserId, false, viewerIdentity).map(createdHomeRideToCalendarRide);
 }

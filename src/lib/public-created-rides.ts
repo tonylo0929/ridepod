@@ -30,6 +30,15 @@ export type PublicCreatedRidePod = Pick<
   host_display_name?: string | null;
 };
 
+export type PublicCreatedRideViewerIdentity = {
+  accountName?: string | null;
+  displayName?: string | null;
+  preferredName?: string | null;
+  email?: string | null;
+  metadataAccountName?: string | null;
+  metadataDisplayName?: string | null;
+};
+
 const rideDateMonths: Record<string, number> = {
   jan: 1,
   january: 1,
@@ -58,6 +67,38 @@ const rideDateMonths: Record<string, number> = {
 
 function compact(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function identityToken(value: string | null | undefined) {
+  return value?.trim().toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9]+/g, "") ?? "";
+}
+
+function emailName(value: string | null | undefined) {
+  return value?.split("@")[0] ?? null;
+}
+
+function viewerIdentityTokens(viewerIdentity?: PublicCreatedRideViewerIdentity | null) {
+  const tokens = [
+    viewerIdentity?.accountName,
+    viewerIdentity?.displayName,
+    viewerIdentity?.preferredName,
+    viewerIdentity?.metadataAccountName,
+    viewerIdentity?.metadataDisplayName,
+    emailName(viewerIdentity?.email),
+  ]
+    .map(identityToken)
+    .filter(Boolean);
+
+  return new Set(tokens);
+}
+
+export function viewerIdentityMatchesHostName(
+  hostName: string | null | undefined,
+  viewerIdentity?: PublicCreatedRideViewerIdentity | null,
+) {
+  const hostToken = identityToken(hostName);
+  if (!hostToken || hostToken === "host" || hostToken === "newhost" || hostToken === "you") return false;
+  return viewerIdentityTokens(viewerIdentity).has(hostToken);
 }
 
 function pad2(value: number) {
@@ -191,11 +232,17 @@ export function rideEstimateCentsFromHomeRide(ride: HomeRide) {
   return Number.isFinite(estimate) ? Math.round(estimate * 100) : null;
 }
 
-export function publicCreatedPodToHomeRide(pod: PublicCreatedRidePod, viewerUserId?: string | null): HomeRide {
+export function publicCreatedPodToHomeRide(
+  pod: PublicCreatedRidePod,
+  viewerUserId?: string | null,
+  viewerIdentity?: PublicCreatedRideViewerIdentity | null,
+): HomeRide {
   const { fromLabel, toLabel } = splitRouteLabel(pod.route_label);
   const isRideApp = pod.ride_option === "RIDE_APP_FIXED_QUOTE";
   const hostUserId = pod.host_user_id?.trim() ?? null;
-  const isHost = Boolean(viewerUserId && hostUserId === viewerUserId);
+  const isHost =
+    Boolean(viewerUserId && hostUserId === viewerUserId) ||
+    viewerIdentityMatchesHostName(pod.host_display_name, viewerIdentity);
   const dateLabel = pod.pod_type === "RECURRING" ? (pod.recurring_pattern ?? "Recurring") : formatDateLabel(pod.departure_at);
   const timeLabel = formatTimeLabel(pod.departure_at);
   const estimateTotal = centsToDollars(pod.current_estimate_cents);

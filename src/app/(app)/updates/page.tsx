@@ -14,7 +14,7 @@ import {
 import type { RidePodLiveUpdateRow, RidePodUserNotificationRow } from "@/lib/supabase/types";
 import { listUserPodActivity } from "@/lib/updates/ridepod-live-updates";
 import { useAuth } from "@/providers/AuthProvider";
-import { useCreatedHomeRides } from "@/lib/created-home-rides";
+import { createdHomeRideViewerIdentityFromAuth, useCreatedHomeRides } from "@/lib/created-home-rides";
 import { getRideAppHostFareEstimate } from "@/lib/ride-app-fare-estimate";
 import type { HomeRide } from "@/lib/home-ride-mock";
 
@@ -33,8 +33,9 @@ function timeAgo(value: string | null) {
 
 export default function UpdatesPage() {
   const router = useRouter();
-  const { user, isLoading } = useAuth();
-  const createdHomeRides = useCreatedHomeRides(user?.id ?? null);
+  const { user, profile, isLoading } = useAuth();
+  const viewerIdentity = useMemo(() => createdHomeRideViewerIdentityFromAuth({ profile, user }), [profile, user]);
+  const createdHomeRides = useCreatedHomeRides(user?.id ?? null, true, viewerIdentity);
   const [activeTab, setActiveTab] = useState<UpdatesTab>("notifications");
   const [notifications, setNotifications] = useState<RidePodUserNotificationRow[]>([]);
   const [activity, setActivity] = useState<RidePodLiveUpdateRow[]>([]);
