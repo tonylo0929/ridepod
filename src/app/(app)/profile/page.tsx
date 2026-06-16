@@ -297,15 +297,6 @@ export default function ProfilePage() {
     setSaveMessage("Confirmed");
   }
 
-  function onUseInitialsAvatar() {
-    if (!profile?.id) return;
-
-    setAvatarPreference({ avatarType: "initials", animalAvatarId: null });
-    setAvatarPickerOpen(false);
-    setSaveError(null);
-    setSaveMessage("Confirmed");
-  }
-
   async function onRequestManualReview() {
     setRequestingReview(true);
     setSaveMessage(null);
@@ -391,7 +382,6 @@ export default function ProfilePage() {
                 uploading={photoUploading}
                 onChooseSticker={() => setAvatarPickerOpen(true)}
                 onChoosePhoto={() => profilePhotoInputRef.current?.click()}
-                onUseInitials={onUseInitialsAvatar}
               />
               <input
                 ref={profilePhotoInputRef}
@@ -708,7 +698,6 @@ function ProfileAvatarField({
   uploading,
   onChooseSticker,
   onChoosePhoto,
-  onUseInitials,
 }: {
   avatarUrl: string | null;
   avatarPreference: RidePodAvatarPreference;
@@ -717,7 +706,6 @@ function ProfileAvatarField({
   uploading: boolean;
   onChooseSticker: () => void;
   onChoosePhoto: () => void;
-  onUseInitials: () => void;
 }) {
   const cleanAvatarUrl = avatarUrl?.trim();
   const activeLabel =
@@ -762,17 +750,10 @@ function ProfileAvatarField({
           className="h-16 w-16 shrink-0 rounded-2xl text-xl"
         />
         <span className="min-w-0 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-          Pick a simple sticker avatar for your RidePod profile, upload a photo, or keep initials.
+          Pick a simple sticker avatar for your RidePod profile or upload a photo.
         </span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={onUseInitials}
-          className="inline-flex min-h-9 items-center justify-center rounded-xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-xs font-black text-[var(--rp-muted-strong)] transition hover:border-[var(--rp-border-strong)] hover:text-[var(--rp-text)]"
-        >
-          Use initials
-        </button>
         <span className="text-xs font-semibold leading-5 text-[var(--rp-muted)]">
           Upload supports PNG, JPG, WebP, or GIF. Max 3 MB.
         </span>
