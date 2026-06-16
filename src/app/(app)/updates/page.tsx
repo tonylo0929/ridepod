@@ -328,7 +328,7 @@ function NotificationRouteGraphic({ ride }: { ride: HomeRide }) {
     <span className="block rounded-[18px] border border-[var(--rp-primary)]/25 bg-[var(--rp-card-soft)] px-3 py-3">
       <span className="grid grid-cols-[auto_1fr_auto] items-center gap-2" aria-hidden="true">
         <span className="h-3 w-3 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,0.32)]" />
-        <span className="h-px bg-[linear-gradient(90deg,#67e8f9,#f2c15b,#fb7185)]" />
+        <span />
         <span className="h-3 w-3 rounded-full bg-rose-300 shadow-[0_0_14px_rgba(253,164,175,0.28)]" />
       </span>
       <span className="mt-3 grid grid-cols-1 gap-2 min-[360px]:grid-cols-2">
