@@ -296,6 +296,7 @@ export function isRideAppSeatHoldExpired(ride: HomeRide, now = new Date()) {
   if (isRideAppSeatHoldExplicitlyExpired(ride)) return true;
   if (ride.currentUserRole === "host") return false;
   if (ride.currentUserBookingDetailsConfirmed === true || ride.selfSettleConfirmationStatus === "confirmed") return false;
+  if (!getRideAppBookingDetailsFinalized(ride)) return false;
   const confirmBy = getRideAppConfirmByDate(ride, now);
   return confirmBy.getTime() <= now.getTime();
 }
@@ -707,12 +708,18 @@ function getRideAppBookingDetailsFinalized(ride: HomeRide) {
 }
 
 function isRideAppSeatHoldExplicitlyExpired(ride: HomeRide) {
-  return (
-    ride.currentUserConfirmationExpired === true ||
+  if (
     ride.currentUserJoinIntentStatus === "seat_hold_expired" ||
     Boolean(ride.seatHoldExpiredAt || ride.seatHoldReleasedAt) ||
     ride.rideAppPodStatus === "seat_hold_expired" ||
     ride.selfSettleConfirmationStatus === "expired"
+  ) {
+    return true;
+  }
+
+  return (
+    ride.currentUserConfirmationExpired === true &&
+    getRideAppBookingDetailsFinalized(ride)
   );
 }
 
