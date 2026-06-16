@@ -955,7 +955,7 @@ function HomeRideCard({
               "inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2",
               currentUserRelationship.tone === "host"
                 ? "border-[color-mix(in_srgb,var(--rp-primary)_58%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)]"
-                : "border-cyan-300/45 bg-cyan-400/14 text-cyan-100",
+                : "border-cyan-300/45 bg-cyan-400/14 text-[var(--rp-primary)]",
             )}
           >
             {currentUserRelationship.tone === "host" ? (
@@ -1035,9 +1035,6 @@ function HomeRideCard({
               </span>
               <span className="mt-1 flex flex-wrap items-center gap-1 text-xs font-black leading-5 text-[var(--rp-text)]">
                 <span>{ride.seatsUsed} / {ride.seatsTotal} seats</span>
-                {currentUserHasJoined ? (
-                  <span className="text-[var(--rp-primary)]">(Joined)</span>
-                ) : null}
               </span>
               {minimumRidersToGo ? (
                 <span className="mt-0.5 block text-[11px] font-black leading-4 text-[var(--rp-primary)]">
