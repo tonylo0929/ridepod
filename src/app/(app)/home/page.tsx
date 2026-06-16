@@ -920,6 +920,8 @@ function HomeRideCard({
       : "Tap to update"
     : rideAppEstimateDisplay.helper;
   const minimumRidersToGo = getRideAppMinimumRidersToGo(ride);
+  const displayHostName = ride.hostName?.trim();
+  const showHostName = Boolean(displayHostName && displayHostName.toLowerCase() !== "new host");
   const rideAppTrustBadge = isRideApp ? getHomeRideTrustBadge(getRideAppTrustSummary(getHomeRideHostTrustUserId(ride))) : null;
   const statusBadgeClass = isRideApp
     ? "border-sky-300/35 bg-sky-400/14 text-sky-200"
@@ -979,9 +981,11 @@ function HomeRideCard({
               <h2 className="text-balance text-base font-black leading-tight text-[var(--rp-text)] min-[390px]:text-lg min-[760px]:text-xl">
                 {ride.fromLabel} {"\u2192"} {ride.toLabel}
               </h2>
-              <p className="mt-1 truncate text-xs font-black text-[var(--rp-muted-strong)]">
-                Host: {ride.hostName || "RidePod host"}
-              </p>
+              {showHostName ? (
+                <p className="mt-1 truncate text-xs font-black text-[var(--rp-muted-strong)]">
+                  Host: {displayHostName}
+                </p>
+              ) : null}
               <RideMetaTags ride={ride} />
               {rideAppTrustBadge ? (
                 <p
