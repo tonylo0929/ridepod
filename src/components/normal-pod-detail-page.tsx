@@ -5494,7 +5494,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
                       aria-label="Selected ride app screenshot preview"
                     />
                   ) : null}
-                  <label className="mt-3 inline-flex min-h-10 cursor-pointer items-center justify-center rounded-[14px] border border-[var(--rp-border-strong)] bg-[rgba(255,255,255,0.04)] px-4 text-xs font-black text-[var(--rp-text)] transition hover:border-cyan-200/50 hover:text-cyan-100">
+                  <label className="mt-3 inline-flex min-h-10 cursor-pointer items-center justify-center rounded-[14px] border border-[var(--rp-border-strong)] bg-[rgba(255,255,255,0.04)] px-4 text-xs font-black text-[var(--rp-primary)] transition hover:border-[var(--rp-primary)]/60 hover:bg-[var(--rp-primary)]/10">
                     {rideAppEstimateScreenshotDraftName ? "Edit Photo" : "Upload screenshot"}
                     <input
                       type="file"
