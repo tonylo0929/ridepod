@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, CheckCheck, Clock3, MessageCircle } from "lucide-react";
+import { Bell, CheckCheck, Clock3, MessageCircle, Trash2 } from "lucide-react";
 import { cn } from "@/components/ui";
 import {
+  clearAllNotifications,
+  clearNotification,
   createUserNotificationOnce,
   listUserNotifications,
   markAllNotificationsRead,
@@ -20,6 +22,8 @@ import type { HomeRide } from "@/lib/home-ride-mock";
 
 type UpdatesTab = "notifications" | "activity";
 
+const clearedNotificationStorageKey = "ridepod:cleared-notifications";
+
 function timeAgo(value: string | null) {
   if (!value) return "now";
   const created = new Date(value);
@@ -29,6 +33,50 @@ function timeAgo(value: string | null) {
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
   return `${Math.round(hours / 24)}d ago`;
+}
+
+function readClearedNotificationKeys() {
+  if (typeof window === "undefined") return new Set<string>();
+
+  try {
+    const keys = JSON.parse(window.localStorage.getItem(clearedNotificationStorageKey) ?? "[]");
+    return new Set(Array.isArray(keys) ? keys.filter((key): key is string => typeof key === "string") : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function writeClearedNotificationKeys(keys: Set<string>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(clearedNotificationStorageKey, JSON.stringify(Array.from(keys)));
+}
+
+function getNotificationDedupeKey(notification: RidePodUserNotificationRow) {
+  const metadata = notification.metadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+
+  const dedupeKey = (metadata as Record<string, unknown>).dedupeKey;
+  return typeof dedupeKey === "string" ? dedupeKey : null;
+}
+
+function getNotificationClearKeys(notification: RidePodUserNotificationRow, userId: string) {
+  return [`${userId}:id:${notification.id}`, getNotificationDedupeKey(notification)].filter((key): key is string => Boolean(key));
+}
+
+function getDemoEstimateDedupeKey(userId: string, rideId: string) {
+  return [userId, userId, rideId, "demo_ride_app_estimate_needed"].join(":");
+}
+
+function isNotificationCleared(notification: RidePodUserNotificationRow, userId: string, clearedKeys: Set<string>) {
+  return getNotificationClearKeys(notification, userId).some((key) => clearedKeys.has(key));
+}
+
+function rememberClearedNotifications(notifications: RidePodUserNotificationRow[], userId: string) {
+  const clearedKeys = readClearedNotificationKeys();
+  notifications.forEach((notification) => {
+    getNotificationClearKeys(notification, userId).forEach((key) => clearedKeys.add(key));
+  });
+  writeClearedNotificationKeys(clearedKeys);
 }
 
 export default function UpdatesPage() {
@@ -48,13 +96,16 @@ export default function UpdatesPage() {
 
   async function refresh() {
     if (!user) return;
+    const clearedKeys = readClearedNotificationKeys();
+
     await Promise.all(
       createdHomeRides
         .filter(
           (ride) =>
             ride.currentUserRole === "host" &&
             ride.rideCategory === "ride_app_self_settle" &&
-            !getRideAppHostFareEstimate(ride),
+            !getRideAppHostFareEstimate(ride) &&
+            !clearedKeys.has(getDemoEstimateDedupeKey(user.id, ride.id)),
         )
         .map((ride) =>
           createUserNotificationOnce({
@@ -78,7 +129,7 @@ export default function UpdatesPage() {
       listUserNotifications(user.id),
       listUserPodActivity(user.id),
     ]);
-    setNotifications(notificationResult.notifications);
+    setNotifications(notificationResult.notifications.filter((notification) => !isNotificationCleared(notification, user.id, clearedKeys)));
     setActivity(activityResult.updates);
     setFallbackNote(notificationResult.fallbackNote ?? activityResult.fallbackNote);
   }
@@ -113,6 +164,20 @@ export default function UpdatesPage() {
     if (!user) return;
     await markAllNotificationsRead(user.id);
     await refresh();
+  }
+
+  async function clearOneNotification(notificationId: string) {
+    const notification = notifications.find((item) => item.id === notificationId);
+    if (user && notification) rememberClearedNotifications([notification], user.id);
+    setNotifications((current) => current.filter((item) => item.id !== notificationId));
+    await clearNotification(notificationId);
+  }
+
+  async function clearAllVisibleNotifications() {
+    if (!user) return;
+    rememberClearedNotifications(notifications, user.id);
+    setNotifications([]);
+    await clearAllNotifications(user.id);
   }
 
   if (isLoading) {
@@ -163,17 +228,28 @@ export default function UpdatesPage() {
 
       {activeTab === "notifications" ? (
         <section className="grid gap-3">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-sm font-black uppercase tracking-[0.14em] text-[var(--rp-muted-strong)]">Notifications</h2>
-            <button
-              type="button"
-              onClick={markAllRead}
-              disabled={!unreadCount}
-              className="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-xs font-black text-[var(--rp-primary)] disabled:opacity-50"
-            >
-              <CheckCheck className="h-4 w-4" />
-              Mark all read
-            </button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                onClick={clearAllVisibleNotifications}
+                disabled={!notifications.length}
+                className="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-xs font-black text-[var(--rp-muted-strong)] disabled:opacity-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                All Clear
+              </button>
+              <button
+                type="button"
+                onClick={markAllRead}
+                disabled={!unreadCount}
+                className="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-xs font-black text-[var(--rp-primary)] disabled:opacity-50"
+              >
+                <CheckCheck className="h-4 w-4" />
+                Mark all read
+              </button>
+            </div>
           </div>
           {notifications.length ? (
             notifications.map((notification) => (
@@ -182,6 +258,7 @@ export default function UpdatesPage() {
                 notification={notification}
                 relatedRide={createdHomeRides.find((ride) => ride.id === notification.related_pod_id) ?? null}
                 onOpen={() => openNotification(notification)}
+                onClear={() => clearOneNotification(notification.id)}
               />
             ))
           ) : (
@@ -248,19 +325,19 @@ function NotificationCard({
   notification,
   relatedRide,
   onOpen,
+  onClear,
 }: {
   notification: RidePodUserNotificationRow;
   relatedRide?: HomeRide | null;
   onOpen: () => void;
+  onClear: () => void;
 }) {
   const unread = !notification.read_at;
   const displayBody = notification.type === "demo_ride_app_estimate_needed" ? null : notification.body;
   const viewStatusLabel = unread ? "Not viewed" : "Viewed";
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
+    <article
       className={cn(
         "grid w-full grid-cols-[auto_1fr_auto] items-start gap-3 rounded-[20px] border bg-[var(--rp-card)] p-4 text-left shadow-[var(--rp-shadow-soft)]",
         unread ? "border-[var(--rp-border-strong)]" : "border-[var(--rp-border)] opacity-80",
@@ -270,7 +347,9 @@ function NotificationCard({
         <Bell className="h-5 w-5" />
       </span>
       <span className="min-w-0">
-        <span className="block text-base font-black text-[var(--rp-text)]">{notification.title}</span>
+        <button type="button" onClick={onOpen} className="block w-full text-left">
+          <span className="block text-base font-black text-[var(--rp-text)]">{notification.title}</span>
+        </button>
         {displayBody ? (
           <span className="mt-1 block text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{displayBody}</span>
         ) : null}
@@ -287,15 +366,25 @@ function NotificationCard({
         >
           {viewStatusLabel}
         </span>
+        <button
+          type="button"
+          onClick={onClear}
+          className="inline-flex min-h-8 items-center gap-1 rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Clear
+        </button>
       </span>
       {relatedRide ? (
-        <span className="col-span-3">
+        <button type="button" onClick={onOpen} className="col-span-3 text-left">
           <NotificationRouteGraphic ride={relatedRide} />
-        </span>
+        </button>
       ) : notification.related_pod_id ? (
-        <span className="col-span-3 text-xs font-black text-[var(--rp-primary)]">Pod {notification.related_pod_id}</span>
+        <button type="button" onClick={onOpen} className="col-span-3 text-left text-xs font-black text-[var(--rp-primary)]">
+          Pod {notification.related_pod_id}
+        </button>
       ) : null}
-    </button>
+    </article>
   );
 }
 

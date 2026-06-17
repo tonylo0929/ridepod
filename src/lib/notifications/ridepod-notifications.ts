@@ -360,6 +360,40 @@ export async function markAllNotificationsRead(userId: string) {
   emitUpdatesChanged();
 }
 
+export async function clearNotification(notificationId: string) {
+  try {
+    const client = getSupabaseBrowserClient();
+    const result = await client.from("user_notifications").delete().eq("id", notificationId);
+
+    if (result.error) throw result.error;
+  } catch (error) {
+    if (!isMissingSupabaseConfig(error)) {
+      console.warn("RidePod clear notification failed", error);
+    }
+
+    writeLocalNotifications(readLocalNotifications().filter((notification) => notification.id !== notificationId));
+  }
+
+  emitUpdatesChanged();
+}
+
+export async function clearAllNotifications(userId: string) {
+  try {
+    const client = getSupabaseBrowserClient();
+    const result = await client.from("user_notifications").delete().eq("recipient_user_id", userId);
+
+    if (result.error) throw result.error;
+  } catch (error) {
+    if (!isMissingSupabaseConfig(error)) {
+      console.warn("RidePod clear all notifications failed", error);
+    }
+
+    writeLocalNotifications(readLocalNotifications().filter((notification) => notification.recipient_user_id !== userId));
+  }
+
+  emitUpdatesChanged();
+}
+
 export async function getUnreadNotificationCount(userId: string) {
   try {
     const client = getSupabaseBrowserClient();
