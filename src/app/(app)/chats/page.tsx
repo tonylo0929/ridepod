@@ -51,6 +51,7 @@ function roleLabel(role: ChatRole) {
 }
 
 function statusLabel(status: ChatStatus) {
+  if (status === "replacement_needed") return "Replacement needed";
   if (status === "locked") return "Chat locked";
   if (status === "quote_ready") return "Quote ready";
   if (status === "pickup_soon") return "Pickup soon";
@@ -77,6 +78,8 @@ function badgeClass(kind: "role" | "status" | "ride", value: string) {
   if (value === "Pickup soon") return "border-emerald-300/25 bg-emerald-400/12 text-emerald-100";
   if (value === "Taxi partner chat") return "border-[var(--rp-primary)]/25 bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] text-[var(--rp-primary)]";
   if (value === "Quote ready") return "border-blue-300/25 bg-blue-400/12 text-blue-100";
+  if (value === "Replacement needed") return "border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]";
+  if (value === "Action needed") return "border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]";
   if (value === "Completed") return "border-white/12 bg-white/8 text-[var(--rp-muted-strong)]";
   if (value === "Chat locked") return "border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted-strong)]";
   if (value === "Airport") return "border-violet-300/25 bg-violet-400/14 text-violet-100";
@@ -135,8 +138,16 @@ function ParticipantStack({ chat }: { chat: PodChatPreview }) {
 }
 
 function ChatCard({ chat }: { chat: PodChatPreview }) {
-  const chatAccess = getChatAccess(chat);
-  const status = chatAccess.locked ? "Chat locked" : chat.rideMode === "taxi" ? "Taxi partner chat" : statusLabel(chat.status);
+  const ride = chat.rideMode === "ride_app" ? getHomeRide(chat.podId) : null;
+  const chatAccess = getChatAccess(chat, ride);
+  const status =
+    ride?.rideAppHostCancellationStatus === "host_replacement_needed"
+      ? "Replacement needed"
+      : chatAccess.locked
+        ? "Chat locked"
+        : chat.rideMode === "taxi"
+          ? "Taxi partner chat"
+          : statusLabel(chat.status);
   const role = roleLabel(chat.role);
 
   return (
@@ -188,14 +199,18 @@ function ChatCard({ chat }: { chat: PodChatPreview }) {
   );
 }
 
-function getChatAccess(chat: PodChatPreview) {
-  const ride = getHomeRide(chat.podId);
+function getChatAccess(chat: PodChatPreview, ride = getHomeRide(chat.podId)) {
   if (chat.rideMode === "ride_app") {
     if (!ride) return { locked: chat.status === "locked", helper: "Chat locked." };
     const access = getRideAppChatAccessState(ride);
     return {
       locked: !access.canAccess,
-      helper: access.reason === "seat_hold_expired" ? "Seat hold expired." : access.helper,
+      helper:
+        access.reason === "host_replacement_needed"
+          ? "Host replacement needed. A confirmed rider can become the new booker."
+          : access.reason === "seat_hold_expired"
+            ? "Seat hold expired."
+            : access.helper,
       access,
     };
   }

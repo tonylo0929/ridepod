@@ -555,13 +555,23 @@ function toTimeKey(timeLabel: string) {
 }
 
 function createdHomeRideToCalendarRide(ride: HomeRide): CalendarRide {
+  const hostCancellationStatus = ride.rideAppHostCancellationStatus;
+  const status =
+    hostCancellationStatus === "host_replacement_needed"
+      ? "host_replacement_needed"
+      : hostCancellationStatus === "replacement_booker_selected"
+        ? "replacement_booker_selected"
+        : hostCancellationStatus === "host_cancelled" || hostCancellationStatus === "cancelled" || ride.status === "cancelled"
+          ? "cancelled"
+          : "confirm_details";
+
   return {
     id: ride.id,
     date: toDateKey(ride.dateLabel),
     time: toTimeKey(ride.timeLabel),
     route: `${ride.fromLabel} \u2192 ${ride.toLabel}`,
     rideKind: ride.rideKind === "recurring" ? "recurring" : ride.airportDirection ? "airport" : "one_off",
-    status: ride.bookingDetailsShared ? "confirm_details" : "confirm_details",
+    status,
     seatsFilled: ride.seatsUsed,
     seatsTotal: ride.seatsTotal,
     rideMode: ride.rideService === "ride_app" ? "ride_app" : "taxi",

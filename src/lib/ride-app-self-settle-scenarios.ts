@@ -561,6 +561,13 @@ export function getActiveRideAppSelfSettleCalendarRide(): CalendarRide | null {
   const scenario = getRideAppSelfSettleScenario();
   if (!scenario?.includeCalendar) return null;
 
+  const hostReplacementNeeded = scenario.ride.rideAppHostCancellationStatus === "host_replacement_needed";
+  const replacementBookerSelected = scenario.ride.rideAppHostCancellationStatus === "replacement_booker_selected";
+  const cancelledByHost =
+    scenario.ride.rideAppHostCancellationStatus === "host_cancelled" ||
+    scenario.ride.rideAppHostCancellationStatus === "cancelled" ||
+    scenario.ride.status === "cancelled";
+
   return {
     id: scenario.ride.id,
     date: "2026-06-08",
@@ -568,13 +575,19 @@ export function getActiveRideAppSelfSettleCalendarRide(): CalendarRide | null {
     route: `${scenario.ride.fromLabel} to ${scenario.ride.toLabel}`,
     rideKind: scenario.ride.rideKind,
     status:
-      scenario.ride.rideAppPodStatus === "ride_booked" || scenario.ride.rideAppPodStatus === "chat_unlocked"
-        ? "ready_for_pickup"
-        : scenario.ride.rideAppPodStatus === "seat_hold_expired"
-          ? "expired"
-          : scenario.ride.bookingDetailsShared
-            ? "confirm_details"
-            : "forming",
+      hostReplacementNeeded
+        ? "host_replacement_needed"
+        : replacementBookerSelected
+          ? "replacement_booker_selected"
+          : cancelledByHost
+            ? "cancelled"
+            : scenario.ride.rideAppPodStatus === "ride_booked" || scenario.ride.rideAppPodStatus === "chat_unlocked"
+              ? "ready_for_pickup"
+              : scenario.ride.rideAppPodStatus === "seat_hold_expired"
+                ? "expired"
+                : scenario.ride.bookingDetailsShared
+                  ? "confirm_details"
+                  : "forming",
     seatsFilled: scenario.ride.seatsUsed,
     seatsTotal: scenario.ride.seatsTotal,
     estimatedShare: scenario.ride.rideAppEstimatedFarePerPerson ?? scenario.ride.pricePerPerson,
@@ -601,6 +614,13 @@ export function getActiveRideAppSelfSettleChatPreview(): PodChatPreview | null {
     scenario.ride.rideAppPodStatus === "ride_booked" ||
     Boolean(scenario.ride.chatUnlockedAt);
 
+  const hostReplacementNeeded = scenario.ride.rideAppHostCancellationStatus === "host_replacement_needed";
+  const replacementBookerSelected = scenario.ride.rideAppHostCancellationStatus === "replacement_booker_selected";
+  const cancelledByHost =
+    scenario.ride.rideAppHostCancellationStatus === "host_cancelled" ||
+    scenario.ride.rideAppHostCancellationStatus === "cancelled" ||
+    scenario.ride.status === "cancelled";
+
   return {
     id: scenario.ride.id,
     podId: scenario.ride.id,
@@ -608,18 +628,32 @@ export function getActiveRideAppSelfSettleChatPreview(): PodChatPreview | null {
     role: scenario.role === "host" ? "hosted" : "joined",
     rideMode: "ride_app",
     rideBadges: [badge],
-    status: chatUnlocked ? "pickup_soon" : "locked",
+    status: hostReplacementNeeded ? "replacement_needed" : cancelledByHost ? "locked" : chatUnlocked ? "pickup_soon" : "locked",
     timeLabel: `${scenario.ride.dateLabel} - ${scenario.ride.timeLabel}`,
     participants: [scenario.ride.hostName, ...scenario.ride.joinedRiders],
-    latestMessage: chatUnlocked ? "Ride app details are ready for pickup coordination." : scenario.expected,
-    unreadCount: chatUnlocked ? 1 : undefined,
+    latestMessage: replacementBookerSelected
+      ? "New booker selected. Ride app booking still happens outside RidePod."
+      : hostReplacementNeeded
+        ? "Host replacement needed. A confirmed rider can become the new booker."
+        : cancelledByHost
+          ? "Pod cancelled. No live payment was charged in this version."
+          : chatUnlocked
+            ? "Ride app details are ready for pickup coordination."
+            : scenario.expected,
+    unreadCount: chatUnlocked || hostReplacementNeeded ? 1 : undefined,
     roomTitle: `${scenario.id} ${scenario.title}`,
     memberCount: Math.max(1, scenario.ride.seatsUsed),
     messages: [
       {
         id: `${scenario.ride.id}-system`,
         sender: "RidePod",
-        body: scenario.expected,
+        body: hostReplacementNeeded
+          ? "Host replacement needed. A confirmed rider can become the new booker."
+          : replacementBookerSelected
+            ? `${scenario.ride.rideAppReplacementBookerName ?? "Yuna"} became the new booker.`
+            : cancelledByHost
+              ? "Pod cancelled. No live payment was charged in this version."
+              : scenario.expected,
         time: "Now",
       },
     ],

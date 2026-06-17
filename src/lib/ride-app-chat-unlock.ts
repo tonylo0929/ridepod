@@ -10,6 +10,7 @@ export type RideAppChatLockedReason =
   | "waiting_for_platform_fee"
   | "waiting_for_minimum_confirmed_riders"
   | "needs_review"
+  | "host_replacement_needed"
   | "seat_hold_expired"
   | "cancelled"
   | "expired";
@@ -542,12 +543,26 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
       getCurrentUserConfirmedBookingDetailsVersion(ride)! < getRideAppCurrentDetailVersion(ride));
 
   if (ride.rideAppHostCancellationStatus === "host_replacement_needed") {
+    if (chatWasUnlocked) {
+      return {
+        canAccess: true,
+        reason: "unlocked",
+        label: "Chat unlocked",
+        statusLabel: "Chat unlocked",
+        primaryLabel: "Open chat",
+        secondaryLabel: "Host replacement needed",
+        helper: "Host replacement mode started. Confirmed riders can keep coordinating while a new booker is selected.",
+        requiredConfirmations,
+        confirmedRiders,
+      };
+    }
+
     return locked(
-      "cancelled",
+      "host_replacement_needed",
       "Read-only",
       "View status",
       "Chat read-only",
-      "Host cancelled. Chat reopens when a confirmed rider becomes the new booker.",
+      "Host replacement needed. A confirmed rider can become the new booker.",
       requiredConfirmations,
       confirmedRiders,
     );

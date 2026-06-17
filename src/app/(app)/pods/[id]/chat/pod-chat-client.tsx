@@ -367,13 +367,13 @@ function buildRideAppTimelineEvents({
     const hostCancellationActivity = ride.rideAppHostCancellationActivity?.length
       ? ride.rideAppHostCancellationActivity
       : ride.rideAppHostCancellationStatus === "cancelled"
-        ? ["Mark cancelled as host.", "Host replacement mode started.", "Pod cancelled because no new booker was selected."]
+        ? [`${hostName} stepped down as host.`, "Host replacement mode started.", "Pod cancelled because no new booker was selected."]
         : ride.rideAppHostCancellationStatus === "host_replacement_needed"
-          ? ["Mark cancelled as host.", "Host replacement mode started."]
+          ? [`${hostName} stepped down as host.`, "Host replacement mode started."]
           : ride.rideAppHostCancellationStatus === "replacement_booker_selected"
-            ? ["Mark cancelled as host.", "Host replacement mode started.", `${ride.rideAppReplacementBookerName ?? "Yuna"} became the new booker.`]
+            ? [`${hostName} stepped down as host.`, "Host replacement mode started.", `${ride.rideAppReplacementBookerName ?? "Yuna"} became the new booker.`]
             : ride.rideAppHostCancellationStatus === "host_cancelled"
-              ? ["Mark cancelled as host."]
+              ? [`${hostName} cancelled the pod.`]
               : [];
 
     hostCancellationActivity.forEach((item, index) => {

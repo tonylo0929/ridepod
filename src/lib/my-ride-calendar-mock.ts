@@ -9,6 +9,8 @@ export type RideStatus =
   | "expired"
   | "issue_reported"
   | "seat_locked"
+  | "host_replacement_needed"
+  | "replacement_booker_selected"
   | "quote_pending"
   | "quote_ready"
   | "quote_deadline_soon"
@@ -168,6 +170,28 @@ export function getMyRideCalendarStatus({
       return { statusKey: "cancelled", label: "Cancelled", colorKey: "red", helperText: "This pod was cancelled", ctaLabel: "View details", isActionNeeded: false };
     }
 
+    if (pod.status === "host_replacement_needed") {
+      return {
+        statusKey: "host_replacement_needed",
+        label: "Host replacement needed",
+        colorKey: "gold",
+        helperText: role === "host" ? "Waiting for new booker" : "Confirmed riders can become the new booker",
+        ctaLabel: "View details",
+        isActionNeeded: role !== "host",
+      };
+    }
+
+    if (pod.status === "replacement_booker_selected") {
+      return {
+        statusKey: "replacement_booker_selected",
+        label: "New booker selected",
+        colorKey: "cyan",
+        helperText: "This pod continues with a new booker",
+        ctaLabel: "View details",
+        isActionNeeded: role === "host",
+      };
+    }
+
     if (pod.status === "expired" || pod.status === "quote_expired" || pod.status === "too_late_to_confirm") {
       return { statusKey: "expired", label: "Expired", colorKey: "gray", helperText: "This pod expired", ctaLabel: "View details", isActionNeeded: false };
     }
@@ -295,6 +319,8 @@ export function rideStatusLabel(status: RideStatus) {
     expired: "Expired",
     issue_reported: "Action needed",
     seat_locked: "Upcoming",
+    host_replacement_needed: "Host replacement needed",
+    replacement_booker_selected: "New booker selected",
     quote_pending: "Waiting for quote",
     quote_ready: "Action needed",
     quote_deadline_soon: "Action needed",

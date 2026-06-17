@@ -83,7 +83,7 @@ function badgeToneForRide(ride: CalendarRide): "gold" | "cyan" | "green" {
 
 function statusBadgeTone(ride: CalendarRide): "default" | "gold" {
   if (ride.rideMode === "ride_app" && ride.status === "ride_started") return "gold";
-  return ["quote_ready", "quote_deadline_soon", "late_confirmation", "ready_for_pickup", "seat_locked"].includes(
+  return ["quote_ready", "quote_deadline_soon", "late_confirmation", "ready_for_pickup", "seat_locked", "host_replacement_needed"].includes(
     ride.status,
   )
     ? "gold"

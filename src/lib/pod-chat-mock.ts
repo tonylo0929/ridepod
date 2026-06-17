@@ -1,6 +1,6 @@
 export type ChatFilter = "all" | "joined" | "hosted" | "completed";
 export type ChatRole = "joined" | "hosted";
-export type ChatStatus = "forming" | "quote_ready" | "pickup_soon" | "completed" | "locked";
+export type ChatStatus = "forming" | "quote_ready" | "pickup_soon" | "completed" | "locked" | "replacement_needed";
 export type ChatRideMode = "taxi" | "ride_app";
 export type RideBadge = "Airport" | "One-off" | "Recurring";
 
