@@ -3498,7 +3498,7 @@ function SelfSettlePodSummaryHero({
   const hostControlSubtitle = hostCancellationActive
     ? statusSubtitle
     : hostEstimateUpdated
-      ? `Updated to ${estimateValue}. Use Edit if the ride app estimate changes.`
+      ? `Updated to ${estimateValue}. Tap your estimate above if the ride app estimate changes.`
       : statusSubtitle;
   const estimateActionLabel = hostEstimateUpdated ? "Edit estimate" : "Update estimate";
   const manageActionsPendingCount = getManagePodActionsPendingCount(ride);
@@ -3598,8 +3598,17 @@ function SelfSettlePodSummaryHero({
           </div>
           <div className="min-w-0 border-r border-white/12 pr-3">
             {canUpdateEstimate ? (
-              <button type="button" onClick={onEstimateClick} className="block w-full text-left transition hover:brightness-110">
+              <button
+                type="button"
+                onClick={onEstimateClick}
+                disabled={hostCancellationActive}
+                className="block w-full rounded-[16px] border border-cyan-300/20 bg-cyan-300/8 px-3 py-2 text-left transition hover:border-cyan-200/40 hover:bg-cyan-300/12 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55"
+              >
                 {estimateContent}
+                <span className="mt-2 inline-flex min-h-7 max-w-full items-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-cyan-100">
+                  <WalletCards className="h-3.5 w-3.5 shrink-0" />
+                  <span className="min-w-0 truncate">{estimateActionLabel}</span>
+                </span>
               </button>
             ) : hasFareProof ? (
               <div className="grid gap-2">
@@ -3658,15 +3667,6 @@ function SelfSettlePodSummaryHero({
           <div className="mt-4 grid grid-cols-1 gap-2 min-[390px]:grid-cols-2">
             <button
               type="button"
-              onClick={onEstimateClick}
-              disabled={hostCancellationActive}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-3 text-sm font-black text-[#061019] shadow-[0_12px_26px_rgba(56,189,248,0.18)] disabled:opacity-45"
-            >
-              <WalletCards className="h-4 w-4" />
-              {estimateActionLabel}
-            </button>
-            <button
-              type="button"
               onClick={onManageActionsClick}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/40 bg-[var(--rp-primary)]/10 px-3 text-sm font-black text-[var(--rp-primary)]"
             >
@@ -3676,13 +3676,6 @@ function SelfSettlePodSummaryHero({
                 <span className={noticeBadgeClass}>{manageActionsPendingCount}</span>
               ) : null}
             </button>
-            <Link
-              href={`/pods/${ride.id}/chat`}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-cyan-300/35 bg-cyan-300/10 px-3 text-sm font-black text-cyan-100"
-            >
-              <MessageCircle className="h-4 w-4" />
-              Chat
-            </Link>
             <Link
               href={`/pods/${ride.id}/status`}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-white/12 bg-white/8 px-3 text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-white/12 hover:text-white"
