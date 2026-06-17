@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, CheckCheck, Clock3, MessageCircle, RefreshCw } from "lucide-react";
+import { Bell, CheckCheck, Clock3, MessageCircle } from "lucide-react";
 import { cn } from "@/components/ui";
 import {
   createUserNotificationOnce,
@@ -40,7 +40,6 @@ export default function UpdatesPage() {
   const [notifications, setNotifications] = useState<RidePodUserNotificationRow[]>([]);
   const [activity, setActivity] = useState<RidePodLiveUpdateRow[]>([]);
   const [fallbackNote, setFallbackNote] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
 
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.read_at).length,
@@ -49,7 +48,6 @@ export default function UpdatesPage() {
 
   async function refresh() {
     if (!user) return;
-    setRefreshing(true);
     await Promise.all(
       createdHomeRides
         .filter(
@@ -83,7 +81,6 @@ export default function UpdatesPage() {
     setNotifications(notificationResult.notifications);
     setActivity(activityResult.updates);
     setFallbackNote(notificationResult.fallbackNote ?? activityResult.fallbackNote);
-    setRefreshing(false);
   }
 
   useEffect(() => {
@@ -121,7 +118,7 @@ export default function UpdatesPage() {
   if (isLoading) {
     return (
       <div className="mx-auto grid w-full max-w-[720px] gap-4">
-        <UpdatesHeader unreadCount={0} refreshing />
+        <UpdatesHeader />
       </div>
     );
   }
@@ -129,7 +126,7 @@ export default function UpdatesPage() {
   if (!user) {
     return (
       <div className="mx-auto grid w-full max-w-[520px] gap-4">
-        <UpdatesHeader unreadCount={0} />
+        <UpdatesHeader />
         <section className="rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 text-center shadow-[var(--rp-shadow-soft)]">
           <Bell className="mx-auto h-8 w-8 text-[var(--rp-primary)]" />
           <h2 className="mt-3 text-2xl font-black text-[var(--rp-text)]">Log in to view updates.</h2>
@@ -146,7 +143,7 @@ export default function UpdatesPage() {
 
   return (
     <div className="mx-auto grid w-full max-w-[760px] gap-4 pb-4">
-      <UpdatesHeader unreadCount={unreadCount} refreshing={refreshing} onRefresh={refresh} />
+      <UpdatesHeader />
 
       {fallbackNote ? (
         <p className="rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
@@ -205,35 +202,13 @@ export default function UpdatesPage() {
   );
 }
 
-function UpdatesHeader({
-  unreadCount,
-  refreshing,
-  onRefresh,
-}: {
-  unreadCount: number;
-  refreshing?: boolean;
-  onRefresh?: () => void;
-}) {
+function UpdatesHeader() {
   return (
-    <header className="flex items-center justify-between gap-4">
+    <header>
       <div>
         <p className="text-sm font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">RidePod</p>
         <h1 className="mt-1 text-3xl font-black text-[var(--rp-text)]">Updates</h1>
       </div>
-      <button
-        type="button"
-        onClick={onRefresh}
-        disabled={!onRefresh}
-        className="relative grid h-12 w-12 place-items-center rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card)] text-[var(--rp-text)]"
-        aria-label="Refresh updates"
-      >
-        <RefreshCw className={cn("h-5 w-5", refreshing && "animate-spin")} />
-        {unreadCount ? (
-          <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--rp-primary)] px-1 text-[10px] font-black text-[var(--rp-primary-text)]">
-            {unreadCount}
-          </span>
-        ) : null}
-      </button>
     </header>
   );
 }
