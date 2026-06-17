@@ -3573,7 +3573,7 @@ function SelfSettlePodSummaryHero({
               {ride.fromLabel} {"->"} {ride.toLabel}
             </h2>
             <p className="mt-1 truncate text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">
-              Host: {hostAvatarDisplayName}
+              Created by {hostAvatarDisplayName}
             </p>
             <p className="mt-1 text-lg font-black text-cyan-200">
               {ride.dateLabel} · {ride.timeLabel}
