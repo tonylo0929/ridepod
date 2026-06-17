@@ -4543,7 +4543,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
   function confirmRideAppEstimateUpdate() {
     const formattedEstimate = formatRideAppEstimateRangeInput(rideAppEstimateDraft);
     if (!formattedEstimate) {
-      setRideAppEstimateError("Add the fixed range shown by the ride app.");
+      setRideAppEstimateError("Add the estimate from Ride App.");
       return;
     }
 
@@ -5444,10 +5444,10 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
               Update total estimate
             </h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              Enter the fixed range shown by the ride app. Final ride fare is paid after the ride.
+              Enter the estimate from Ride App. Final ride fare is paid after the ride.
             </p>
             <label className="mt-5 block">
-              <span className="text-sm font-black text-[var(--rp-text)]">Fixed range</span>
+              <span className="text-sm font-black text-[var(--rp-text)]">Estimate from Ride App</span>
               <input
                 value={rideAppEstimateDraft}
                 onChange={(event) => {
