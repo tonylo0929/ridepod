@@ -1098,6 +1098,39 @@ function buildPodStatusRiders(ride: HomeRide): PodStatusRider[] {
   return rows.slice(0, Math.max(1, ride.seatsTotal));
 }
 
+function buildManagePodActionRiders(ride: HomeRide) {
+  const viewerIsHost = getCurrentUserIsHost(ride);
+  const rows = buildPodStatusRiders(ride).filter(
+    (rider) => !(viewerIsHost && rider.role === "rider" && isCurrentUserRiderName(rider.name)),
+  );
+  const usedNames = new Set(rows.map((rider) => rider.name.trim().toLowerCase()));
+  let nextRiderNumber = Math.max(
+    2,
+    ...rows
+      .map((rider) => rider.name.match(/^Rider\s+(\d+)$/i)?.[1])
+      .map((value) => (value ? Number(value) : 0))
+      .filter(Number.isFinite)
+      .map((value) => value + 1),
+  );
+
+  while (rows.length < ride.seatsTotal) {
+    let name = `Rider ${nextRiderNumber}`;
+    while (usedNames.has(name.toLowerCase())) {
+      nextRiderNumber += 1;
+      name = `Rider ${nextRiderNumber}`;
+    }
+    usedNames.add(name.toLowerCase());
+    nextRiderNumber += 1;
+    rows.push({
+      name,
+      role: "rider",
+      status: "pending",
+    });
+  }
+
+  return rows.slice(0, Math.max(1, ride.seatsTotal));
+}
+
 function getPodStatusUpdateTitle(ride: HomeRide) {
   switch (ride.bookingDetailsLastMeaningfulUpdate) {
     case "fare_estimate":
@@ -3769,7 +3802,7 @@ function ManagePodActionsModal({
     !allowStopRequests && initialTab === "route_requests" ? "confirmations" : initialTab,
   );
   const [actionNote, setActionNote] = useState<string | null>(null);
-  const riders = buildPodStatusRiders(ride);
+  const riders = buildManagePodActionRiders(ride);
   const riderRows = riders.filter((item) => item.role === "rider");
   const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
   const confirmedRiderCount = riderRows.filter((item) => isPodStatusRiderConfirmedForCurrentDetails(item, currentDetailVersion)).length;
@@ -3864,10 +3897,10 @@ function ManagePodActionsModal({
                   }}
                   aria-pressed={activeTab === tab.id}
                   className={cn(
-                    "min-h-10 rounded-[12px] px-3 text-xs font-black transition",
+                    "min-h-10 rounded-[12px] px-2 text-center text-[11px] font-black transition min-[390px]:px-3 min-[390px]:text-xs",
                     activeTab === tab.id
-                      ? "bg-[var(--rp-gradient-primary)] text-[#07111a] shadow-[0_10px_20px_rgba(242,193,91,0.18)]"
-                      : "text-[var(--rp-muted-strong)] hover:bg-white/8 hover:text-white",
+                      ? "bg-[var(--rp-primary)] text-[#07111a] shadow-[0_10px_20px_rgba(242,193,91,0.18)]"
+                      : "text-white/85 hover:bg-white/8 hover:text-white",
                   )}
                 >
                   {tab.label}
