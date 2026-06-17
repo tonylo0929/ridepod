@@ -2630,53 +2630,6 @@ export function PodStatusPanel({
                 </section>
               ) : null}
 
-              <section className="rounded-[20px] border border-cyan-300/25 bg-cyan-300/8 p-4">
-                <p className="text-sm font-black text-cyan-100">{currentUserSeatHoldExpired ? "Find another pod" : currentUserViewingFullPod ? "Pod full" : replacementNeeded ? "Host replacement needed" : currentUserWaitingForHostDetails ? "Waiting for host details" : chatAccess.canAccess ? "Ready to gather" : "When will chat open?"}</p>
-                <p className="mt-1 text-xs font-semibold leading-5 text-cyan-100/85">
-                  {currentUserSeatHoldExpired
-                    ? "You did not confirm before the confirm-by time, so your seat was released for other riders."
-                    : currentUserViewingFullPod
-                    ? "All seats are filled for this pod."
-                    : replacementNeeded
-                    ? chatAccess.canAccess
-                      ? "Host replacement mode started. Confirmed riders can keep coordinating while a new booker is selected."
-                      : "Host stepped down. A confirmed rider can become the new booker, then chat can reopen if required riders still confirm."
-                    : currentUserWaitingForHostDetails
-                    ? "View what is still missing."
-                    : chatAccess.canAccess
-                    ? "Use chat for pickup coordination before the host books the ride app."
-                    : `After ${ride.hostName || "host"} shares details and all required riders confirm ride details.`}
-                </p>
-                {chatAccess.canAccess ? (
-                  <Link href={`/pods/${ride.id}/chat`} className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-[14px] bg-[var(--rp-gradient-primary)] text-sm font-black text-[#07111a]">
-                    Chat
-                  </Link>
-                ) : currentUserSeatHoldExpired ? (
-                  <Link href="/home" className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-[14px] bg-[var(--rp-gradient-primary)] text-sm font-black text-[#07111a]">
-                    Find another pod
-                  </Link>
-                ) : currentUserViewingFullPod ? (
-                  <button type="button" disabled className="mt-3 min-h-11 w-full rounded-[14px] border border-cyan-300/35 bg-cyan-300/10 text-sm font-black text-cyan-100">
-                    Full
-                  </button>
-                ) : replacementNeeded && currentUserCanBecomeBooker ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowBecomeBookerModal(true)}
-                    className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-[14px] bg-[var(--rp-gradient-primary)] text-sm font-black text-[#07111a]"
-                  >
-                    Become new booker
-                  </button>
-                ) : replacementNeeded ? (
-                  <button type="button" onClick={() => setActiveTab("summary")} className="mt-3 min-h-11 w-full rounded-[14px] border border-cyan-300/35 bg-cyan-300/10 text-sm font-black text-cyan-100">
-                    View pod status
-                  </button>
-                ) : (
-                  <button type="button" onClick={() => setActiveTab("riders")} className="mt-3 min-h-11 w-full rounded-[14px] border border-cyan-300/35 bg-cyan-300/10 text-sm font-black text-cyan-100">
-                    View confirmations
-                  </button>
-                )}
-              </section>
             </div>
           ) : null}
         </div>
