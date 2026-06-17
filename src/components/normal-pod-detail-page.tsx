@@ -3518,7 +3518,7 @@ function SelfSettlePodSummaryHero({
     : hostEstimateUpdated
       ? `Updated to ${estimateValue}. Tap your estimate above if the ride app estimate changes.`
       : statusSubtitle;
-  const estimateActionLabel = hostEstimateUpdated ? "Edit estimate" : "Update estimate";
+  const estimateActionLabel = "Edit";
   const manageActionsPendingCount = getManagePodActionsPendingCount(ride);
   const noticeBadgeClass =
     "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-rose-300/35 bg-rose-400/12 px-1.5 text-[11px] font-black leading-none text-rose-200";
