@@ -3605,11 +3605,11 @@ function SelfSettlePodSummaryHero({
           ) : null}
         </div>
 
-        <div className="relative mt-4 grid grid-cols-[0.9fr_1.2fr_0.82fr] gap-3 border-t border-white/12 pt-4">
+        <div className="relative mt-4 grid grid-cols-[1.05fr_1.08fr_0.82fr] gap-3 border-t border-white/12 pt-4">
           <div className="min-w-0 border-r border-white/12 pr-3">
             <p className="whitespace-nowrap text-[12px] font-semibold text-[var(--rp-muted-strong)]">Seats filled</p>
             <p className="mt-1 text-2xl font-black text-cyan-200">{seatsUsed} / {ride.seatsTotal}</p>
-            <p className="mt-1 text-[11px] font-black leading-tight text-[var(--rp-primary)]">{minimumRidersToGoLabel}</p>
+            <p className="mt-1 whitespace-nowrap text-[10px] font-black leading-tight text-[var(--rp-primary)] min-[390px]:text-[11px]">{minimumRidersToGoLabel}</p>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/14">
               <div className="h-full rounded-full bg-cyan-300" style={{ width: `${progress}%` }} />
             </div>
