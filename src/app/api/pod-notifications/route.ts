@@ -91,6 +91,7 @@ async function getAuthenticatedUserId(request: NextRequest) {
 
 function buildRecipients(input: {
   actorUserId: string;
+  actorActsAsHost?: boolean;
   audiences: PodNotificationAudience[];
   hostUserId: string | null;
   memberUserIds: string[];
@@ -105,7 +106,11 @@ function buildRecipients(input: {
     if (audience === "actor") recipients.add(input.actorUserId);
     if (audience === "host" && input.hostUserId) recipients.add(input.hostUserId);
     if (audience === "members" || audience === "riders") {
-      input.memberUserIds.forEach((memberUserId) => recipients.add(memberUserId));
+      input.memberUserIds.forEach((memberUserId) => {
+        if (audience === "riders" && memberUserId === input.actorUserId) return;
+        if (audience === "members" && input.actorActsAsHost && memberUserId === input.actorUserId) return;
+        recipients.add(memberUserId);
+      });
     }
     if (audience === "others") {
       participantIds.forEach((participantId) => {
@@ -119,6 +124,41 @@ function buildRecipients(input: {
   }
 
   return Array.from(recipients);
+}
+
+type ProfileIdentity = {
+  id: string;
+  account_name: string | null;
+  display_name: string | null;
+  preferred_name: string | null;
+  email: string | null;
+};
+
+function identityToken(value: string | null | undefined) {
+  return value?.trim().toLowerCase().replace(/['\u2019]/g, "").replace(/[^a-z0-9]+/g, "") ?? "";
+}
+
+function emailName(value: string | null | undefined) {
+  return value?.split("@")[0] ?? null;
+}
+
+function profileIdentityTokens(profile: ProfileIdentity | null | undefined) {
+  return new Set(
+    [profile?.account_name, profile?.display_name, profile?.preferred_name, emailName(profile?.email)]
+      .map(identityToken)
+      .filter((token) => token && token !== "host" && token !== "newhost" && token !== "you"),
+  );
+}
+
+function profilesShareIdentity(first: ProfileIdentity | null | undefined, second: ProfileIdentity | null | undefined) {
+  const firstTokens = profileIdentityTokens(first);
+  if (!firstTokens.size) return false;
+
+  for (const token of profileIdentityTokens(second)) {
+    if (firstTokens.has(token)) return true;
+  }
+
+  return false;
 }
 
 export async function POST(request: NextRequest) {
@@ -170,10 +210,27 @@ export async function POST(request: NextRequest) {
       ),
     );
     const hostUserId = podResult.data.host_user_id ?? null;
-    const actorCanNotify = actorUserId === hostUserId || memberUserIds.includes(actorUserId);
+    const profileIds = Array.from(new Set([actorUserId, hostUserId].filter((value): value is string => Boolean(value))));
+    const profilesResult = profileIds.length
+      ? await client.from("profiles").select("id,account_name,display_name,preferred_name,email").in("id", profileIds)
+      : { data: [], error: null };
+    if (profilesResult.error) throw profilesResult.error;
+    const profilesById = new Map(((profilesResult.data ?? []) as ProfileIdentity[]).map((profile) => [profile.id, profile]));
+    const actorMatchesHostIdentity = Boolean(
+      hostUserId &&
+        actorUserId !== hostUserId &&
+        profilesShareIdentity(profilesById.get(actorUserId), profilesById.get(hostUserId)),
+    );
+    const actorCanNotify = actorUserId === hostUserId || actorMatchesHostIdentity || memberUserIds.includes(actorUserId);
     if (!actorCanNotify) return noStoreJson({ error: "Not allowed to notify this pod." }, { status: 403 });
 
-    const recipients = buildRecipients({ actorUserId, audiences, hostUserId, memberUserIds });
+    const recipients = buildRecipients({
+      actorUserId,
+      actorActsAsHost: actorUserId === hostUserId || actorMatchesHostIdentity,
+      audiences,
+      hostUserId,
+      memberUserIds,
+    });
     if (!recipients.length) return noStoreJson({ inserted: 0 });
 
     let existingRecipients = new Set<string>();

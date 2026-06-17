@@ -4616,11 +4616,11 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     }));
     notifyRideDetailAction({
       type: "ride_app_details_updated",
+      audiences: ["riders"],
       title: "Ride estimate updated",
-      body: `${detailActorName} updated the estimate to ${formattedEstimate}.`,
-      selfTitle: "You updated the ride estimate",
-      selfBody: formattedEstimate,
+      body: `New ride estimate: ${formattedEstimate}. Please review the pod details.`,
       action: "estimate_updated",
+      dedupe: false,
     });
     setRideAppEstimateError(null);
     setShowRideAppEstimateModal(false);
