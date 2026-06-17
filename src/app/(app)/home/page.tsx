@@ -850,16 +850,22 @@ function RideBadge({ ride, activeTab }: { ride: HomeRide; activeTab: HomeTab }) 
   return null;
 }
 
-function RideMetaTags({ ride }: { ride: HomeRide }) {
+function RideMetaTags({
+  ride,
+  trustBadge,
+}: {
+  ride: HomeRide;
+  trustBadge: ReturnType<typeof getHomeRideTrustBadge> | null;
+}) {
   const isRideApp = isRideAppSelfSettle(ride);
   const KindIcon = ride.rideKind === "recurring" ? RefreshCcw : ride.rideKind === "airport" ? Plane : CarFront;
   const kindLabel = ride.rideKind === "recurring" ? "Recurring" : ride.rideKind === "airport" ? "Airport" : "One-off";
 
   return (
-    <div className="mt-2 flex flex-wrap gap-2">
+    <div className="mt-2 flex max-w-full flex-nowrap items-center gap-1.5 overflow-hidden">
       <span
         className={cn(
-          "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black",
+          "inline-flex min-h-7 shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-black min-[390px]:gap-1.5 min-[390px]:px-2.5 min-[390px]:text-[11px]",
           ride.podType === "Women-only"
             ? "border-emerald-200 bg-emerald-300/14 text-emerald-100"
             : "border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)]",
@@ -874,7 +880,7 @@ function RideMetaTags({ ride }: { ride: HomeRide }) {
       </span>
       <span
         className={cn(
-          "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black",
+          "inline-flex min-h-7 shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-black min-[390px]:gap-1.5 min-[390px]:px-2.5 min-[390px]:text-[11px]",
           ride.rideKind === "recurring"
             ? "border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]"
             : ride.rideKind === "airport"
@@ -887,8 +893,33 @@ function RideMetaTags({ ride }: { ride: HomeRide }) {
         <KindIcon className="h-3.5 w-3.5" />
         {kindLabel}
       </span>
+      {trustBadge ? (
+        <span
+          className={cn(
+            "inline-flex min-h-7 min-w-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-black min-[390px]:gap-1.5 min-[390px]:px-2.5 min-[390px]:text-[11px]",
+            trustBadge.tone === "rating"
+              ? "border-amber-300/30 bg-amber-300/12 text-amber-100"
+              : trustBadge.tone === "new_host"
+                ? "border-sky-300/35 bg-sky-400/12 text-sky-100"
+                : trustBadge.tone === "warning"
+                  ? "border-rose-300/30 bg-rose-400/12 text-rose-100"
+                  : "border-sky-300/25 bg-sky-400/10 text-sky-100",
+          )}
+        >
+          {trustBadge.tone === "rating" ? (
+            <Star className="h-3.5 w-3.5 shrink-0 fill-amber-300 text-amber-300" />
+          ) : trustBadge.tone === "new_host" ? (
+            <UserRound className="h-3.5 w-3.5 shrink-0 text-sky-200" />
+          ) : trustBadge.tone === "warning" ? (
+            <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-rose-100" />
+          ) : (
+            <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-sky-200" />
+          )}
+          <span className="truncate">{trustBadge.label}</span>
+        </span>
+      ) : null}
       {!isRideApp ? (
-        <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] px-2.5 py-1 text-[11px] font-black text-[var(--rp-muted-strong)]">
+        <span className="inline-flex min-h-7 shrink-0 items-center gap-1 rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] px-2 py-1 text-[10px] font-black text-[var(--rp-muted-strong)] min-[390px]:gap-1.5 min-[390px]:px-2.5 min-[390px]:text-[11px]">
           <CarFront className="h-3.5 w-3.5 text-[var(--rp-primary)]" />
           {ride.taxiType}
         </span>
@@ -990,32 +1021,7 @@ function HomeRideCard({
                   Host: {displayHostName}
                 </p>
               ) : null}
-              <RideMetaTags ride={ride} />
-              {rideAppTrustBadge ? (
-                <p
-                  className={cn(
-                    "mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black",
-                    rideAppTrustBadge.tone === "rating"
-                      ? "border-amber-300/30 bg-amber-300/12 text-amber-100"
-                      : rideAppTrustBadge.tone === "new_host"
-                        ? "border-sky-300/35 bg-sky-400/12 text-sky-100"
-                        : rideAppTrustBadge.tone === "warning"
-                          ? "border-rose-300/30 bg-rose-400/12 text-rose-100"
-                          : "border-sky-300/25 bg-sky-400/10 text-sky-100",
-                  )}
-                >
-                  {rideAppTrustBadge.tone === "rating" ? (
-                    <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" />
-                  ) : rideAppTrustBadge.tone === "new_host" ? (
-                    <UserRound className="h-3.5 w-3.5 text-sky-200" />
-                  ) : rideAppTrustBadge.tone === "warning" ? (
-                    <ShieldCheck className="h-3.5 w-3.5 text-rose-100" />
-                  ) : (
-                    <ShieldCheck className="h-3.5 w-3.5 text-sky-200" />
-                  )}
-                  <span className="truncate">{rideAppTrustBadge.label}</span>
-                </p>
-              ) : null}
+              <RideMetaTags ride={ride} trustBadge={rideAppTrustBadge} />
             </div>
           </div>
 
