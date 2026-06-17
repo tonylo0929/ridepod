@@ -147,6 +147,7 @@ export const podDetailQuoteCopy: Record<PodDetailJoinView, { title: string; text
 
 const quoteProgressSteps = ["Seat interest", "Partner quote", "Guest approval"];
 const maxJoinerBags = 6;
+const luggageContributionStorageKey = "ridepod:pod-luggage-contributions:v1";
 const MAX_QUOTE_RESPONSE_HOURS = 24;
 const NORMAL_CONFIRMATION_CUTOFF_HOURS = 2;
 const AIRPORT_CONFIRMATION_CUTOFF_HOURS = 6;
@@ -211,6 +212,75 @@ export function getTaxiMaxBags(taxiType: string) {
   if (normalized.includes("compact")) return 2;
   if (normalized.includes("6-seat") || normalized.includes("6 seater") || normalized.includes("6-seater")) return 2;
   return 3;
+}
+
+type StoredLuggageContributions = Record<string, Record<string, LuggageContribution>>;
+
+function canUseLuggageStorage() {
+  return typeof window !== "undefined" && typeof window.localStorage !== "undefined";
+}
+
+function normalizeLuggageContribution(value: unknown): LuggageContribution {
+  if (!value || typeof value !== "object") return { bagsCount: 0, hasLargeLuggage: false };
+  const contribution = value as Partial<LuggageContribution>;
+
+  return {
+    bagsCount: Math.max(0, Number(contribution.bagsCount) || 0),
+    hasLargeLuggage: Boolean(contribution.hasLargeLuggage),
+  };
+}
+
+function readStoredLuggageContributions(): StoredLuggageContributions {
+  if (!canUseLuggageStorage()) return {};
+
+  try {
+    const raw = window.localStorage.getItem(luggageContributionStorageKey);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as StoredLuggageContributions;
+    if (!parsed || typeof parsed !== "object") return {};
+    return parsed;
+  } catch {
+    return {};
+  }
+}
+
+function writeStoredLuggageContributions(contributions: StoredLuggageContributions) {
+  if (!canUseLuggageStorage()) return;
+  window.localStorage.setItem(luggageContributionStorageKey, JSON.stringify(contributions));
+}
+
+function readPodLuggageContributions(podId: string) {
+  return readStoredLuggageContributions()[podId] ?? {};
+}
+
+function savePodLuggageContribution(podId: string, userId: string, contribution: LuggageContribution) {
+  const contributions = readStoredLuggageContributions();
+  contributions[podId] = {
+    ...(contributions[podId] ?? {}),
+    [userId]: normalizeLuggageContribution(contribution),
+  };
+  writeStoredLuggageContributions(contributions);
+}
+
+function clearPodLuggageContribution(podId: string, userId: string) {
+  const contributions = readStoredLuggageContributions();
+  if (!contributions[podId]?.[userId]) return;
+  delete contributions[podId][userId];
+  if (!Object.keys(contributions[podId]).length) delete contributions[podId];
+  writeStoredLuggageContributions(contributions);
+}
+
+function totalLuggageContributions(contributions: Record<string, LuggageContribution>) {
+  return Object.values(contributions).reduce(
+    (total, contribution) => {
+      const normalized = normalizeLuggageContribution(contribution);
+      return {
+        bagsCount: total.bagsCount + normalized.bagsCount,
+        hasLargeLuggage: total.hasLargeLuggage || normalized.hasLargeLuggage,
+      };
+    },
+    { bagsCount: 0, hasLargeLuggage: false },
+  );
 }
 
 function addMinutes(date: Date, minutes: number) {
@@ -407,6 +477,16 @@ export function usePodDetailJoinState(ride: HomeRide) {
     bagsCount: 0,
     hasLargeLuggage: false,
   });
+  const [storedLuggageContributions, setStoredLuggageContributions] = useState<Record<string, LuggageContribution>>({});
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const contributions = readPodLuggageContributions(ride.id);
+      setStoredLuggageContributions(contributions);
+      if (user?.id && contributions[user.id]) setCurrentUserLuggage(normalizeLuggageContribution(contributions[user.id]));
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [ride.id, user?.id]);
   const full = !joined && (ride.quoteStatus === "full" || seatsUsed >= ride.seatsTotal);
   const requiredGuestCount = ride.requiredGuestCount ?? ride.seatsTotal;
   const allAccepted =
@@ -459,19 +539,19 @@ export function usePodDetailJoinState(ride: HomeRide) {
     }).catch((error) => console.warn("RidePod live update failed", error));
   }
 
+  const storedLuggageTotal = totalLuggageContributions(storedLuggageContributions);
+  const groupLuggageCount = baseLuggageCount + storedLuggageTotal.bagsCount;
+  const groupHasLargeLuggage = baseHasLargeLuggage || storedLuggageTotal.hasLargeLuggage;
+
   return {
     seatsUsed,
     joinView,
     currentUserLuggage,
-    groupLuggageCount: baseLuggageCount + (joined ? currentUserLuggage.bagsCount : 0),
-    groupHasLargeLuggage: baseHasLargeLuggage || (joined && currentUserLuggage.hasLargeLuggage),
-    groupLuggageLabel: formatGroupLuggageLabel(
-      baseLuggageCount + (joined ? currentUserLuggage.bagsCount : 0),
-      baseHasLargeLuggage || (joined && currentUserLuggage.hasLargeLuggage),
-    ),
+    groupLuggageCount,
+    groupHasLargeLuggage,
+    groupLuggageLabel: formatGroupLuggageLabel(groupLuggageCount, groupHasLargeLuggage),
     userLuggageLabel: joined ? formatUserLuggageLabel(currentUserLuggage) : null,
-    luggageCapacityWarning:
-      baseLuggageCount + (joined ? currentUserLuggage.bagsCount : 0) > getTaxiMaxBags(ride.taxiType),
+    luggageCapacityWarning: groupLuggageCount > getTaxiMaxBags(ride.taxiType),
     acceptedGuestCount,
     requiredGuestCount,
     quoteDeadlineInfo,
@@ -488,6 +568,8 @@ export function usePodDetailJoinState(ride: HomeRide) {
       setAttendanceError(null);
       setAttendanceMessage(null);
       setCurrentUserLuggage(nextLuggage);
+      savePodLuggageContribution(ride.id, currentUser.id, nextLuggage);
+      setStoredLuggageContributions(readPodLuggageContributions(ride.id));
       setJoined(true);
       setAttendanceCancelled(false);
       setSeatCanceled(false);
@@ -515,6 +597,10 @@ export function usePodDetailJoinState(ride: HomeRide) {
     },
     leaveSelfSettlePod: () => {
       clearStoredSelfSettleJoin(ride.id);
+      if (user) {
+        clearPodLuggageContribution(ride.id, user.id);
+        setStoredLuggageContributions(readPodLuggageContributions(ride.id));
+      }
       setJoined(false);
       setSelfSettleRiskAccepted(false);
       setCurrentUserRole(undefined);
@@ -546,6 +632,10 @@ export function usePodDetailJoinState(ride: HomeRide) {
     },
     cancelSeat: () => {
       if (!requireLogin()) return;
+      if (user) {
+        clearPodLuggageContribution(ride.id, user.id);
+        setStoredLuggageContributions(readPodLuggageContributions(ride.id));
+      }
       setJoined(false);
       setSeatCanceled(true);
       setAttendanceCancelled(false);
@@ -594,6 +684,8 @@ export function usePodDetailJoinState(ride: HomeRide) {
           return false;
         }
 
+        clearPodLuggageContribution(ride.id, currentUser.id);
+        setStoredLuggageContributions(readPodLuggageContributions(ride.id));
         setJoined(false);
         setAttendanceCancelled(true);
         setQuoteAccepted(false);
