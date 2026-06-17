@@ -1100,35 +1100,14 @@ function buildPodStatusRiders(ride: HomeRide): PodStatusRider[] {
 
 function buildManagePodActionRiders(ride: HomeRide) {
   const viewerIsHost = getCurrentUserIsHost(ride);
-  const rows = buildPodStatusRiders(ride).filter(
-    (rider) => !(viewerIsHost && rider.role === "rider" && isCurrentUserRiderName(rider.name)),
-  );
-  const usedNames = new Set(rows.map((rider) => rider.name.trim().toLowerCase()));
-  let nextRiderNumber = Math.max(
-    2,
-    ...rows
-      .map((rider) => rider.name.match(/^Rider\s+(\d+)$/i)?.[1])
-      .map((value) => (value ? Number(value) : 0))
-      .filter(Number.isFinite)
-      .map((value) => value + 1),
-  );
+  const placeholderPattern = /^Rider\s+\d+$/i;
 
-  while (rows.length < ride.seatsTotal) {
-    let name = `Rider ${nextRiderNumber}`;
-    while (usedNames.has(name.toLowerCase())) {
-      nextRiderNumber += 1;
-      name = `Rider ${nextRiderNumber}`;
-    }
-    usedNames.add(name.toLowerCase());
-    nextRiderNumber += 1;
-    rows.push({
-      name,
-      role: "rider",
-      status: "pending",
-    });
-  }
-
-  return rows.slice(0, Math.max(1, ride.seatsTotal));
+  return buildPodStatusRiders(ride).filter((rider) => {
+    if (rider.role === "host") return true;
+    if (viewerIsHost && isCurrentUserRiderName(rider.name)) return false;
+    if (rider.status === "pending" && placeholderPattern.test(rider.name.trim())) return false;
+    return true;
+  });
 }
 
 function getPodStatusUpdateTitle(ride: HomeRide) {
@@ -3703,14 +3682,14 @@ function SelfSettlePodSummaryHero({
             </span>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-2 min-[390px]:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               type="button"
               onClick={onManageActionsClick}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/40 bg-[var(--rp-primary)]/10 px-3 text-sm font-black text-[var(--rp-primary)]"
             >
               <CheckSquare className="h-4 w-4" />
-              <span className="min-w-0 truncate">Manage pod actions</span>
+              <span className="whitespace-nowrap">Manage pod actions</span>
               {manageActionsPendingCount > 0 ? (
                 <span className={noticeBadgeClass}>{manageActionsPendingCount}</span>
               ) : null}
@@ -3807,9 +3786,7 @@ function ManagePodActionsModal({
   const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
   const confirmedRiderCount = riderRows.filter((item) => isPodStatusRiderConfirmedForCurrentDetails(item, currentDetailVersion)).length;
   const riderTotal = riderRows.length;
-  const pendingNudgeRiders = riders.filter(
-    (item) => item.role === "rider" && (item.status === "pending" || item.status === "needs_review" || item.status === "review_needed"),
-  );
+  const pendingNudgeRiders = riderRows.filter((item) => item.status === "joined_interest" || item.status === "needs_review" || item.status === "review_needed");
   const ridersNeedingReviewCount = riders.filter(
     (item) => item.role === "rider" && (item.status === "needs_review" || item.status === "review_needed"),
   ).length;
