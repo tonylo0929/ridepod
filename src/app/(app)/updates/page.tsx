@@ -9,9 +9,11 @@ import {
   clearAllNotifications,
   clearNotification,
   createUserNotificationOnce,
+  isNotificationCleared,
   listUserNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  rememberClearedNotifications,
 } from "@/lib/notifications/ridepod-notifications";
 import type { RidePodLiveUpdateRow, RidePodUserNotificationRow } from "@/lib/supabase/types";
 import { listUserPodActivity } from "@/lib/updates/ridepod-live-updates";
@@ -46,37 +48,8 @@ function readClearedNotificationKeys() {
   }
 }
 
-function writeClearedNotificationKeys(keys: Set<string>) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(clearedNotificationStorageKey, JSON.stringify(Array.from(keys)));
-}
-
-function getNotificationDedupeKey(notification: RidePodUserNotificationRow) {
-  const metadata = notification.metadata;
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
-
-  const dedupeKey = (metadata as Record<string, unknown>).dedupeKey;
-  return typeof dedupeKey === "string" ? dedupeKey : null;
-}
-
-function getNotificationClearKeys(notification: RidePodUserNotificationRow, userId: string) {
-  return [`${userId}:id:${notification.id}`, getNotificationDedupeKey(notification)].filter((key): key is string => Boolean(key));
-}
-
 function getDemoEstimateDedupeKey(userId: string, rideId: string) {
   return [userId, userId, rideId, "demo_ride_app_estimate_needed"].join(":");
-}
-
-function isNotificationCleared(notification: RidePodUserNotificationRow, userId: string, clearedKeys: Set<string>) {
-  return getNotificationClearKeys(notification, userId).some((key) => clearedKeys.has(key));
-}
-
-function rememberClearedNotifications(notifications: RidePodUserNotificationRow[], userId: string) {
-  const clearedKeys = readClearedNotificationKeys();
-  notifications.forEach((notification) => {
-    getNotificationClearKeys(notification, userId).forEach((key) => clearedKeys.add(key));
-  });
-  writeClearedNotificationKeys(clearedKeys);
 }
 
 export default function UpdatesPage() {
@@ -129,7 +102,7 @@ export default function UpdatesPage() {
       listUserNotifications(user.id),
       listUserPodActivity(user.id),
     ]);
-    setNotifications(notificationResult.notifications.filter((notification) => !isNotificationCleared(notification, user.id, clearedKeys)));
+    setNotifications(notificationResult.notifications.filter((notification) => !isNotificationCleared(notification, user.id)));
     setActivity(activityResult.updates);
     setFallbackNote(notificationResult.fallbackNote ?? activityResult.fallbackNote);
   }

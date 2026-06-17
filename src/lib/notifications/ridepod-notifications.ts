@@ -39,6 +39,7 @@ export type CreateUserNotificationInput = {
 };
 
 const notificationStorageKey = "ridepod:user-notifications";
+const clearedNotificationStorageKey = "ridepod:cleared-notifications";
 const blockedMetadataKeys = new Set([
   "clientsecret",
   "client_secret",
@@ -120,6 +121,48 @@ function readLocalNotifications() {
 function writeLocalNotifications(notifications: RidePodUserNotificationRow[]) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(notificationStorageKey, JSON.stringify(notifications));
+}
+
+function readClearedNotificationKeys() {
+  if (typeof window === "undefined") return new Set<string>();
+
+  try {
+    const keys = JSON.parse(window.localStorage.getItem(clearedNotificationStorageKey) ?? "[]");
+    return new Set(Array.isArray(keys) ? keys.filter((key): key is string => typeof key === "string") : []);
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function writeClearedNotificationKeys(keys: Set<string>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(clearedNotificationStorageKey, JSON.stringify(Array.from(keys)));
+}
+
+function getNotificationDedupeKey(notification: RidePodUserNotificationRow) {
+  const metadata = notification.metadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+
+  const dedupeKey = (metadata as Record<string, unknown>).dedupeKey;
+  return typeof dedupeKey === "string" ? dedupeKey : null;
+}
+
+function getNotificationClearKeys(notification: RidePodUserNotificationRow, userId: string) {
+  return [`${userId}:id:${notification.id}`, getNotificationDedupeKey(notification)].filter((key): key is string => Boolean(key));
+}
+
+export function isNotificationCleared(notification: RidePodUserNotificationRow, userId: string) {
+  const clearedKeys = readClearedNotificationKeys();
+  return getNotificationClearKeys(notification, userId).some((key) => clearedKeys.has(key));
+}
+
+export function rememberClearedNotifications(notifications: RidePodUserNotificationRow[], userId: string) {
+  const clearedKeys = readClearedNotificationKeys();
+  notifications.forEach((notification) => {
+    getNotificationClearKeys(notification, userId).forEach((key) => clearedKeys.add(key));
+  });
+  writeClearedNotificationKeys(clearedKeys);
+  emitUpdatesChanged();
 }
 
 function sanitizeValue(value: unknown): Json {
@@ -399,13 +442,13 @@ export async function getUnreadNotificationCount(userId: string) {
     const client = getSupabaseBrowserClient();
     const result = await client
       .from("user_notifications")
-      .select("id", { count: "exact", head: true })
+      .select("id,metadata", { count: "exact" })
       .eq("recipient_user_id", userId)
       .is("read_at", null);
 
     if (result.error) throw result.error;
-    return result.count ?? 0;
+    return (result.data ?? []).filter((notification) => !isNotificationCleared(notification as RidePodUserNotificationRow, userId)).length;
   } catch {
-    return readLocalNotifications().filter((notification) => notification.recipient_user_id === userId && !notification.read_at).length;
+    return readLocalNotifications().filter((notification) => notification.recipient_user_id === userId && !notification.read_at && !isNotificationCleared(notification, userId)).length;
   }
 }
