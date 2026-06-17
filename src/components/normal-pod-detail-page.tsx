@@ -3165,9 +3165,6 @@ function PodStatusProgressRail({ currentStep }: { currentStep: number }) {
           );
         })}
       </div>
-      <p className="mt-3 rounded-[12px] border border-cyan-300/15 bg-cyan-300/8 px-3 py-2 text-center text-xs font-black text-cyan-100">
-        You are on step {currentStep} of 4
-      </p>
     </div>
   );
 }
@@ -5175,12 +5172,12 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
               </div>
             ) : (
               <div className="mt-4 grid gap-4">
-                <div className="flex flex-wrap gap-2">
-                  <DetailTag tone={ride.podType === "Women-only" ? "green" : "gold"}>{ride.podType}</DetailTag>
-                  <DetailTag tone="blue">Verified route</DetailTag>
-                  {selfSettlePod ? null : <DetailTag tone="gold">Payment protected</DetailTag>}
-                </div>
-                <div className="grid gap-3 border-t border-[var(--rp-border)] pt-4">
+                {selfSettlePod ? null : (
+                  <div className="flex flex-wrap gap-2">
+                    <DetailTag tone="gold">Payment protected</DetailTag>
+                  </div>
+                )}
+                <div className={cn("grid gap-3", selfSettlePod ? "" : "border-t border-[var(--rp-border)] pt-4")}>
                   {selfSettlePod ? (
                     <>
                       <div className="rounded-[18px] border border-cyan-200/22 bg-[linear-gradient(180deg,rgba(8,47,73,0.36),rgba(15,23,42,0.72))] p-4 shadow-[0_0_22px_rgba(56,189,248,0.08)]">
