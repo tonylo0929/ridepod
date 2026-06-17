@@ -1794,11 +1794,13 @@ export function PodStatusPanel({
     {
       icon: MapPin,
       label: "Gather point",
-      value: detailsReady && pickupVenueSet ? ride.pickupLabel ?? "Set" : "Set",
+      value: detailsReady && pickupVenueSet ? ride.pickupLabel ?? "Not set" : "Not set",
       set: detailsReady && pickupVenueSet,
+      helper: detailsReady && pickupVenueSet ? ride.fromLabel : "Where riders meet before booking",
       onClick: isHost ? openGatherPointModal : undefined,
-      actionLabel: isHost && detailsReady && pickupVenueSet ? "Edit" : undefined,
+      actionLabel: isHost ? (detailsReady && pickupVenueSet ? "Edit" : "Set") : undefined,
       tone: detailsReady && !pickupVenueSet ? "warning" : "default",
+      valueLayout: "stacked",
     },
   ];
   const actionNoteTitle = currentUserSeatHoldExpired
@@ -2399,6 +2401,7 @@ export function PodStatusPanel({
                       helper={row.helper}
                       actionLabel={row.actionLabel}
                       tone={"tone" in row ? (row.tone as "default" | "warning" | undefined) : undefined}
+                      valueLayout={"valueLayout" in row ? (row.valueLayout as "badge" | "stacked" | undefined) : undefined}
                       onClick={row.onClick}
                     />
                   ))}
@@ -3130,6 +3133,7 @@ function PodStatusChecklistRow({
   helper,
   actionLabel,
   tone = "default",
+  valueLayout = "badge",
   onClick,
 }: {
   icon: typeof UserRound;
@@ -3139,14 +3143,21 @@ function PodStatusChecklistRow({
   helper?: string;
   actionLabel?: string;
   tone?: "default" | "warning";
+  valueLayout?: "badge" | "stacked";
   onClick?: () => void;
 }) {
   const warning = tone === "warning";
+  const stackedValue = valueLayout === "stacked";
   const content = (
     <>
       <Icon className={cn("h-4 w-4 shrink-0", warning ? "text-amber-200" : "text-[var(--rp-muted-strong)]")} />
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold text-white">{label}</span>
+        {stackedValue ? (
+          <span className={cn("mt-0.5 block break-words text-sm font-black leading-5", set ? "text-white" : "text-amber-100")}>
+            {value}
+          </span>
+        ) : null}
         {helper ? (
           <span className={cn("mt-0.5 block text-[11px] font-semibold leading-4", warning ? "text-amber-100/85" : "text-[var(--rp-muted-strong)]")}>
             {helper}
@@ -3154,18 +3165,20 @@ function PodStatusChecklistRow({
         ) : null}
       </span>
       <span className="flex shrink-0 items-center gap-2">
-        <span
-          className={cn(
-            "rounded-full px-2.5 py-1 text-[10px] font-black",
-            set
-              ? "border border-cyan-300/30 bg-cyan-300/10 text-cyan-100"
-              : warning
-                ? "border border-amber-300/35 bg-amber-400/10 text-amber-100"
-                : "border border-white/10 bg-white/8 text-[var(--rp-muted-strong)]",
-          )}
-        >
-          {value}
-        </span>
+        {stackedValue ? null : (
+          <span
+            className={cn(
+              "rounded-full px-2.5 py-1 text-[10px] font-black",
+              set
+                ? "border border-cyan-300/30 bg-cyan-300/10 text-cyan-100"
+                : warning
+                  ? "border border-amber-300/35 bg-amber-400/10 text-amber-100"
+                  : "border border-white/10 bg-white/8 text-[var(--rp-muted-strong)]",
+            )}
+          >
+            {value}
+          </span>
+        )}
         {actionLabel ? (
           <span className="rounded-full border border-[var(--rp-primary)]/30 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black text-[var(--rp-primary)]">
             {actionLabel}
