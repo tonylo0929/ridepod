@@ -231,6 +231,32 @@ function mergeRiderConfirmations(existing: HomeRide, incoming: HomeRide) {
   return mergedRows;
 }
 
+function hostPublishedRideUpdates(incoming: HomeRide): Partial<HomeRide> {
+  const updates: Partial<HomeRide> = {
+    bookingFareCapCents: incoming.bookingFareCapCents,
+    estimatedRideAppFare: incoming.estimatedRideAppFare,
+    rideAppEstimatedFareTotal: incoming.rideAppEstimatedFareTotal,
+    rideAppEstimatedFarePerPerson: incoming.rideAppEstimatedFarePerPerson,
+    rideAppEstimatedFareCurrency: incoming.rideAppEstimatedFareCurrency,
+    rideAppEstimatedFareUpdatedBy: incoming.rideAppEstimatedFareUpdatedBy,
+    rideAppEstimatedFareUpdatedAt: incoming.rideAppEstimatedFareUpdatedAt,
+    rideAppEstimatedFareNote: incoming.rideAppEstimatedFareNote,
+    rideAppFareEstimateStatus: incoming.rideAppFareEstimateStatus,
+    rideAppFareEstimateScreenshotName: incoming.rideAppFareEstimateScreenshotName,
+    rideAppFareEstimateScreenshotAddedAt: incoming.rideAppFareEstimateScreenshotAddedAt,
+    fareEstimateScreenshot: incoming.fareEstimateScreenshot,
+    rideAppChecklist: incoming.rideAppChecklist,
+    rideAppBookingDetails: incoming.rideAppBookingDetails,
+    pricePerPerson: incoming.pricePerPerson,
+  };
+
+  for (const key of Object.keys(updates) as Array<keyof HomeRide>) {
+    if (updates[key] === undefined) delete updates[key];
+  }
+
+  return updates;
+}
+
 function mergeCreatedHomeRide(existing: HomeRide, incoming: HomeRide): HomeRide {
   const incomingIsPublicViewerCopy =
     incoming.currentUserRole === "rider" && incoming.currentUserJoined === false && incoming.hostName !== "You";
@@ -254,6 +280,7 @@ function mergeCreatedHomeRide(existing: HomeRide, incoming: HomeRide): HomeRide 
 
   return {
     ...existing,
+    ...hostPublishedRideUpdates(incoming),
     id: shouldDemoteStaleHost ? incoming.id : existing.id,
     ...(shouldUseIncomingRelationship
       ? {
