@@ -1182,10 +1182,10 @@ function ChatHeader({
     <header className="grid gap-3">
       <Link
         href={`/pods/${encodeURIComponent(podId)}`}
-        className="inline-flex min-h-10 w-fit items-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/25 bg-[color-mix(in_srgb,var(--rp-primary)_10%,transparent)] px-3.5 text-sm font-black text-[var(--rp-primary)] shadow-[0_8px_18px_rgba(0,0,0,0.16)] transition hover:bg-[color-mix(in_srgb,var(--rp-primary)_16%,transparent)]"
+        aria-label="Back to pod details"
+        className="grid h-11 w-11 place-items-center rounded-full border border-white/14 bg-white/8 text-white shadow-[0_10px_24px_rgba(0,0,0,0.24),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:bg-white/12"
       >
-        <ArrowLeft className="h-4 w-4" />
-        Pod details
+        <ArrowLeft className="h-6 w-6" />
       </Link>
       <div className="rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
         <div className="flex items-start gap-3">

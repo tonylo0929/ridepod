@@ -1377,10 +1377,11 @@ export default function HomePage() {
   const { user, profile } = useAuth();
   const isAuthenticated = Boolean(user);
   const displayName = user
-    ? profile?.display_name ??
-      profile?.preferred_name ??
-      (typeof user.user_metadata?.display_name === "string" ? user.user_metadata.display_name : null) ??
-      user.email?.split("@")[0] ??
+    ? profile?.account_name?.trim() ||
+      profile?.display_name?.trim() ||
+      profile?.preferred_name?.trim() ||
+      (typeof user.user_metadata?.display_name === "string" ? user.user_metadata.display_name.trim() : "") ||
+      user.email?.split("@")[0]?.trim() ||
       "RidePod account"
     : "Guest rider";
   const avatarProfileId = profile?.id ?? user?.id ?? null;

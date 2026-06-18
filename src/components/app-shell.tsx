@@ -26,6 +26,27 @@ import { getMembershipTierInfo, useRidePodMembershipState } from "@/lib/ridepod-
 import { useRidePodUnreadCount } from "@/lib/notifications/use-ridepod-unread-count";
 import { useAuth } from "@/providers/AuthProvider";
 
+function getProfileDisplayName({
+  profile,
+  user,
+  isLoggedIn,
+}: {
+  profile: ReturnType<typeof useAuth>["profile"];
+  user: ReturnType<typeof useAuth>["user"];
+  isLoggedIn: boolean;
+}) {
+  if (!isLoggedIn) return "Guest rider";
+
+  return (
+    profile?.account_name?.trim() ||
+    profile?.display_name?.trim() ||
+    profile?.preferred_name?.trim() ||
+    profile?.email?.split("@")[0]?.trim() ||
+    user?.email?.split("@")[0]?.trim() ||
+    "RidePod account"
+  );
+}
+
 const desktopDrawerNav = [
   { href: "/about", label: "About", icon: Info },
   { href: "/support", label: "Support RidePod", icon: Coffee },
@@ -228,7 +249,7 @@ function PremiumDesktopSidebar() {
   const { profile, logout, user } = useAuth();
   const membership = useRidePodMembershipState();
   const isLoggedIn = Boolean(user);
-  const displayName = isLoggedIn ? profile?.display_name ?? "RidePod account" : "Guest rider";
+  const displayName = getProfileDisplayName({ profile, user, isLoggedIn });
   const profileSubtitle = isLoggedIn ? "View profile" : "Log in or create account";
   const membershipTier = getMembershipTierInfo(membership.membershipTier);
   const initials = displayName

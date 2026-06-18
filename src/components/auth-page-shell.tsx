@@ -17,6 +17,27 @@ import { RidePodLogo } from "@/components/ridepod-logo";
 import { cn } from "@/components/ui";
 import { useAuth } from "@/providers/AuthProvider";
 
+function getProfileDisplayName({
+  profile,
+  user,
+  isLoggedIn,
+}: {
+  profile: ReturnType<typeof useAuth>["profile"];
+  user: ReturnType<typeof useAuth>["user"];
+  isLoggedIn: boolean;
+}) {
+  if (!isLoggedIn) return "Guest rider";
+
+  return (
+    profile?.account_name?.trim() ||
+    profile?.display_name?.trim() ||
+    profile?.preferred_name?.trim() ||
+    profile?.email?.split("@")[0]?.trim() ||
+    user?.email?.split("@")[0]?.trim() ||
+    "RidePod account"
+  );
+}
+
 const authPrimaryItems = [
   { href: "/about", label: "About", icon: Info },
   { href: "/support", label: "Support RidePod", icon: Coffee },
@@ -90,7 +111,7 @@ function AuthSidebarAction({
 function AuthDesktopSidebar() {
   const { profile, logout, user } = useAuth();
   const isLoggedIn = Boolean(user);
-  const displayName = isLoggedIn ? profile?.display_name ?? "RidePod account" : "Guest rider";
+  const displayName = getProfileDisplayName({ profile, user, isLoggedIn });
   const profileSubtitle = isLoggedIn ? "View profile" : "Log in or create account";
   const initials = displayName
     .split(" ")
