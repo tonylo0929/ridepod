@@ -3,20 +3,19 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, CheckCheck, Clock3, MessageCircle, Trash2 } from "lucide-react";
+import { Bell, CheckCheck, CircleAlert, Clock3, MessageCircle, Trash2 } from "lucide-react";
 import { cn } from "@/components/ui";
 import {
-  clearAllNotifications,
   clearNotification,
   createUserNotificationOnce,
   isNotificationCleared,
   listUserNotifications,
-  markAllNotificationsRead,
   markNotificationRead,
   rememberClearedNotifications,
+  type RidePodNotificationType,
 } from "@/lib/notifications/ridepod-notifications";
 import type { RidePodLiveUpdateRow, RidePodUserNotificationRow } from "@/lib/supabase/types";
-import { listUserPodActivity } from "@/lib/updates/ridepod-live-updates";
+import { listUserPodActivity, type PodLiveUpdateType } from "@/lib/updates/ridepod-live-updates";
 import { useAuth } from "@/providers/AuthProvider";
 import { createdHomeRideViewerIdentityFromAuth, useCreatedHomeRides } from "@/lib/created-home-rides";
 import { getRideAppHostFareEstimate } from "@/lib/ride-app-fare-estimate";
@@ -25,6 +24,29 @@ import type { HomeRide } from "@/lib/home-ride-mock";
 type UpdatesTab = "notifications" | "activity";
 
 const clearedNotificationStorageKey = "ridepod:cleared-notifications";
+const activityNotificationTypes = new Set<RidePodNotificationType>([
+  "pod_join_requested",
+  "ride_app_action_required",
+  "ride_app_rejoin_requested",
+  "taxi_quote_ready",
+  "all_guests_accepted",
+  "ready_for_pickup",
+  "proof_uploaded",
+  "dispute_opened",
+  "settlement_ready",
+  "demo_ride_app_estimate_needed",
+]);
+const actionablePodUpdateTypes = new Set<PodLiveUpdateType>([
+  "taxi_quote_ready",
+  "all_guests_accepted",
+  "ready_for_pickup",
+  "issue_reported",
+  "settlement_ready",
+]);
+
+type PodActivityItem =
+  | { kind: "notification"; notification: RidePodUserNotificationRow; createdAt: string | null }
+  | { kind: "update"; update: RidePodLiveUpdateRow; createdAt: string | null };
 
 function timeAgo(value: string | null) {
   if (!value) return "now";
@@ -52,6 +74,18 @@ function getDemoEstimateDedupeKey(userId: string, rideId: string) {
   return [userId, userId, rideId, "demo_ride_app_estimate_needed"].join(":");
 }
 
+function isPodActivityNotification(notification: RidePodUserNotificationRow) {
+  return activityNotificationTypes.has(notification.type as RidePodNotificationType);
+}
+
+function isActionablePodUpdate(update: RidePodLiveUpdateRow) {
+  return actionablePodUpdateTypes.has(update.update_type as PodLiveUpdateType);
+}
+
+function sortActivityItemsByNewest(a: PodActivityItem, b: PodActivityItem) {
+  return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
+}
+
 export default function UpdatesPage() {
   const router = useRouter();
   const { user, profile, isLoading } = useAuth();
@@ -62,9 +96,37 @@ export default function UpdatesPage() {
   const [activity, setActivity] = useState<RidePodLiveUpdateRow[]>([]);
   const [fallbackNote, setFallbackNote] = useState<string | null>(null);
 
-  const unreadCount = useMemo(
-    () => notifications.filter((notification) => !notification.read_at).length,
+  const passiveNotifications = useMemo(
+    () => notifications.filter((notification) => !isPodActivityNotification(notification)),
     [notifications],
+  );
+  const activityNotifications = useMemo(
+    () => notifications.filter(isPodActivityNotification),
+    [notifications],
+  );
+  const podActivityItems = useMemo(
+    () =>
+      [
+        ...activityNotifications.map((notification) => ({
+          kind: "notification" as const,
+          notification,
+          createdAt: notification.created_at,
+        })),
+        ...activity.filter(isActionablePodUpdate).map((update) => ({
+          kind: "update" as const,
+          update,
+          createdAt: update.created_at,
+        })),
+      ].sort(sortActivityItemsByNewest),
+    [activity, activityNotifications],
+  );
+  const unreadCount = useMemo(
+    () => passiveNotifications.filter((notification) => !notification.read_at).length,
+    [passiveNotifications],
+  );
+  const activityUnreadCount = useMemo(
+    () => activityNotifications.filter((notification) => !notification.read_at).length,
+    [activityNotifications],
   );
 
   async function refresh() {
@@ -133,9 +195,12 @@ export default function UpdatesPage() {
     if (notification.related_url) router.push(notification.related_url);
   }
 
-  async function markAllRead() {
-    if (!user) return;
-    await markAllNotificationsRead(user.id);
+  async function markVisibleNotificationsRead() {
+    await Promise.all(
+      passiveNotifications
+        .filter((notification) => !notification.read_at)
+        .map((notification) => markNotificationRead(notification.id)),
+    );
     await refresh();
   }
 
@@ -148,9 +213,9 @@ export default function UpdatesPage() {
 
   async function clearAllVisibleNotifications() {
     if (!user) return;
-    rememberClearedNotifications(notifications, user.id);
-    setNotifications([]);
-    await clearAllNotifications(user.id);
+    rememberClearedNotifications(passiveNotifications, user.id);
+    setNotifications((current) => current.filter(isPodActivityNotification));
+    await Promise.all(passiveNotifications.map((notification) => clearNotification(notification.id)));
   }
 
   if (isLoading) {
@@ -196,6 +261,7 @@ export default function UpdatesPage() {
         </TabButton>
         <TabButton active={activeTab === "activity"} onClick={() => setActiveTab("activity")}>
           Pod activity
+          {activityUnreadCount ? <span className="rounded-full bg-[var(--rp-primary)] px-2 py-0.5 text-[10px] text-[var(--rp-primary-text)]">{activityUnreadCount}</span> : null}
         </TabButton>
       </div>
 
@@ -207,7 +273,7 @@ export default function UpdatesPage() {
               <button
                 type="button"
                 onClick={clearAllVisibleNotifications}
-                disabled={!notifications.length}
+                disabled={!passiveNotifications.length}
                 className="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-xs font-black text-[var(--rp-muted-strong)] disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" />
@@ -215,7 +281,7 @@ export default function UpdatesPage() {
               </button>
               <button
                 type="button"
-                onClick={markAllRead}
+                onClick={markVisibleNotificationsRead}
                 disabled={!unreadCount}
                 className="inline-flex min-h-10 items-center gap-2 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 text-xs font-black text-[var(--rp-primary)] disabled:opacity-50"
               >
@@ -224,8 +290,8 @@ export default function UpdatesPage() {
               </button>
             </div>
           </div>
-          {notifications.length ? (
-            notifications.map((notification) => (
+          {passiveNotifications.length ? (
+            passiveNotifications.map((notification) => (
               <NotificationCard
                 key={notification.id}
                 notification={notification}
@@ -241,10 +307,22 @@ export default function UpdatesPage() {
       ) : (
         <section className="grid gap-3">
           <h2 className="text-sm font-black uppercase tracking-[0.14em] text-[var(--rp-muted-strong)]">Pod activity</h2>
-          {activity.length ? (
-            activity.map((update) => <ActivityCard key={update.id} update={update} />)
+          {podActivityItems.length ? (
+            podActivityItems.map((item) =>
+              item.kind === "notification" ? (
+                <PodActionCard
+                  key={item.notification.id}
+                  notification={item.notification}
+                  relatedRide={createdHomeRides.find((ride) => ride.id === item.notification.related_pod_id) ?? null}
+                  onOpen={() => openNotification(item.notification)}
+                  onClear={() => clearOneNotification(item.notification.id)}
+                />
+              ) : (
+                <ActivityCard key={item.update.id} update={item.update} />
+              ),
+            )
           ) : (
-            <EmptyState icon={MessageCircle} title="No pod activity yet." />
+            <EmptyState icon={MessageCircle} title="No pod activity needs action." />
           )}
         </section>
       )}
@@ -339,6 +417,69 @@ function NotificationCard({
         >
           {viewStatusLabel}
         </span>
+        <button
+          type="button"
+          onClick={onClear}
+          className="inline-flex min-h-8 items-center gap-1 rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Clear
+        </button>
+      </span>
+      {relatedRide ? (
+        <button type="button" onClick={onOpen} className="col-span-3 text-left">
+          <NotificationRouteGraphic ride={relatedRide} />
+        </button>
+      ) : notification.related_pod_id ? (
+        <button type="button" onClick={onOpen} className="col-span-3 text-left text-xs font-black text-[var(--rp-primary)]">
+          Pod {notification.related_pod_id}
+        </button>
+      ) : null}
+    </article>
+  );
+}
+
+function PodActionCard({
+  notification,
+  relatedRide,
+  onOpen,
+  onClear,
+}: {
+  notification: RidePodUserNotificationRow;
+  relatedRide?: HomeRide | null;
+  onOpen: () => void;
+  onClear: () => void;
+}) {
+  const unread = !notification.read_at;
+  const displayBody = notification.type === "demo_ride_app_estimate_needed" ? null : notification.body;
+
+  return (
+    <article
+      className={cn(
+        "grid w-full grid-cols-[auto_1fr_auto] items-start gap-3 rounded-[20px] border bg-[var(--rp-card)] p-4 text-left shadow-[var(--rp-shadow-soft)]",
+        unread ? "border-[var(--rp-primary)]/50" : "border-[var(--rp-border)] opacity-80",
+      )}
+    >
+      <span className="mt-1 grid h-11 w-11 place-items-center rounded-2xl bg-[var(--rp-primary)]/15 text-[var(--rp-primary)]">
+        <CircleAlert className="h-5 w-5" />
+      </span>
+      <span className="min-w-0">
+        <button type="button" onClick={onOpen} className="block w-full text-left">
+          <span className="block text-base font-black text-[var(--rp-text)]">{notification.title}</span>
+        </button>
+        {displayBody ? (
+          <span className="mt-1 block text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{displayBody}</span>
+        ) : null}
+      </span>
+      <span className="flex shrink-0 flex-col items-end gap-2">
+        <span className="whitespace-nowrap text-xs font-bold text-[var(--rp-muted)]">{timeAgo(notification.created_at)}</span>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="inline-flex min-h-8 items-center rounded-full border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/15 px-3 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]"
+        >
+          Open
+        </button>
         <button
           type="button"
           onClick={onClear}
