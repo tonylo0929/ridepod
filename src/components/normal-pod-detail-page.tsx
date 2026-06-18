@@ -3094,63 +3094,6 @@ function CompactRideAppRoutePanel({
   );
 }
 
-function RideAppFareProofCard({
-  ride,
-  canEdit,
-  onEdit,
-  onView,
-}: {
-  ride: HomeRide;
-  canEdit: boolean;
-  onEdit: () => void;
-  onView: () => void;
-}) {
-  const proof = getRideAppFareEstimateProof(ride);
-  if (!proof) return null;
-
-  return (
-    <section className="rounded-[18px] border border-cyan-200/25 bg-[linear-gradient(180deg,rgba(8,47,73,0.28),rgba(15,23,42,0.76))] p-4 shadow-[0_0_22px_rgba(56,189,248,0.08)]">
-      <div className="flex items-start gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] border border-cyan-200/35 bg-cyan-300/12 text-cyan-100">
-          <ImagePlus className="h-5 w-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Estimate proof</p>
-              <h3 className="mt-1 text-base font-black leading-5 text-white">Ride app screenshot</h3>
-            </div>
-            <button
-              type="button"
-              onClick={onView}
-              className="shrink-0 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 py-1.5 text-[10px] font-black uppercase text-cyan-100 transition hover:bg-cyan-300/16"
-            >
-              View
-            </button>
-          </div>
-          <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-            Uploaded by the host so riders can check the estimate source.
-          </p>
-          {proof.fileName ? (
-            <p className="mt-3 truncate rounded-[14px] border border-cyan-200/20 bg-cyan-300/8 px-3 py-2 text-xs font-black text-cyan-100">
-              {proof.fileName}
-            </p>
-          ) : null}
-          {canEdit ? (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="mt-3 inline-flex min-h-10 items-center justify-center rounded-[14px] border border-cyan-200/35 bg-cyan-300/10 px-4 text-xs font-black text-cyan-100 transition hover:bg-cyan-300/15"
-            >
-              Edit proof
-            </button>
-          ) : null}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function SelfSettlePodSummaryHero({
   ride,
   seatsUsed,
@@ -3332,11 +3275,11 @@ function SelfSettlePodSummaryHero({
             </div>
           </div>
           <div className="flex min-w-0 flex-col items-center justify-center border-r border-white/12 pr-3">
-            {canUpdateEstimate ? (
+            {summaryUserIsHost ? (
               <button
                 type="button"
                 onClick={onEstimateClick}
-                disabled={hostCancellationActive}
+                disabled={!canUpdateEstimate || hostCancellationActive}
                 className="grid w-full justify-items-center rounded-[16px] border border-cyan-300/20 bg-cyan-300/8 px-3 py-2 text-center transition hover:border-cyan-200/40 hover:bg-cyan-300/12 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55"
               >
                 {estimateContent}
@@ -4830,12 +4773,6 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
                       ride={ride}
                       canRequestStop={canRequestRideAppStop}
                       onRequestStop={requestRideAppStopFromDetail}
-                    />
-                    <RideAppFareProofCard
-                      ride={ride}
-                      canEdit={canUpdateRideAppEstimate}
-                      onEdit={openRideAppEstimateModal}
-                      onView={() => setShowRideAppFareProofModal(true)}
                     />
                   </div>
                 ) : (
