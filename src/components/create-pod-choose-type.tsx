@@ -2050,7 +2050,7 @@ function RouteStopsStep({
             <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
               {isRoutePanel ? `Step 1 of ${routePanelCount}` : `Step 2 of ${routePanelCount}`}
             </p>
-            <p className="text-sm font-black text-[var(--rp-text)]">
+            <p className="w-full text-center text-sm font-black text-[var(--rp-text)]">
               {isRoutePanel ? "Pickup & dropoff" : isRideAppSelfSettle ? "Route requests" : "Extra stop requests"}
             </p>
           </div>
