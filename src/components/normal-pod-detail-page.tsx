@@ -780,6 +780,21 @@ function buildInitialSelfSettleJoinPatch(ride: HomeRide, detailVersion: number, 
   };
 }
 
+function buildRideAppStopRequestPatch(ride: HomeRide, stopLabel: string, requestedBy: string, now = new Date()): Partial<HomeRide> {
+  const requestedStop: RoutePlanStop = {
+    id: `stop-${now.getTime()}`,
+    label: stopLabel,
+    requestedBy,
+    stopType: "quick_stop",
+    reason: "Rider requested an extra stop.",
+    status: "pending_host_approval",
+  };
+
+  return {
+    proposedStops: [...(ride.proposedStops ?? []), requestedStop],
+  };
+}
+
 async function resolveSelfSettleMembershipTarget(ride: HomeRide, viewerUserId?: string | null) {
   if (isUuid(ride.id)) return { podId: ride.id, hostUserId: null as string | null };
 
@@ -1880,6 +1895,34 @@ export function PodStatusPanel({
     setShowRejoinModal(false);
   }
 
+  function requestRideAppStopFromStatus(stopLabel: string) {
+    const trimmedStopLabel = stopLabel.trim();
+    const routeLocked =
+      ride.bookingDetailsShared === true ||
+      ride.rideAppBookingDetailsConfirmed === true ||
+      ride.rideAppBookingDetailsFinalized === true;
+    const hasPendingStop = (ride.proposedStops ?? []).some((stop) => stop.status === "pending_host_approval");
+    if (!trimmedStopLabel || isHost || !currentUserHadRideAppSeat || currentUserSeatHoldExpired || hostCancelledPod || routeLocked || hasPendingStop) {
+      return;
+    }
+
+    const patch = buildRideAppStopRequestPatch(ride, trimmedStopLabel, podStatusActorName);
+    setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
+    saveStoredSelfSettleRidePatch(ride.id, patch);
+    updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+    notifyPodStatusAction({
+      type: "ride_app_action_required",
+      audiences: ["actor", "host"],
+      title: "New stop requested",
+      body: `${podStatusActorName} requested a new stop: ${trimmedStopLabel}.`,
+      selfTitle: "Stop request sent",
+      selfBody: `${trimmedStopLabel} is waiting for host approval.`,
+      action: "route_stop_requested",
+      relatedUrl: `/pods/${ride.id}/status?tab=route#route-requests`,
+      dedupe: false,
+    });
+  }
+
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(timer);
@@ -2239,7 +2282,11 @@ export function PodStatusPanel({
 
           {!currentUserSeatHoldExpired && activeTab === "route" ? (
             <div className="mt-3 grid gap-3">
-              <CompactRideAppRoutePanel ride={ride} />
+              <CompactRideAppRoutePanel
+                ride={ride}
+                canRequestStop={!isHost && currentUserHadRideAppSeat && !hostCancelledPod}
+                onRequestStop={requestRideAppStopFromStatus}
+              />
             </div>
           ) : null}
 
@@ -2888,11 +2935,31 @@ function PodStatusMetric({ value, label, tone = "cyan" }: { value: string | numb
   );
 }
 
-function CompactRideAppRoutePanel({ ride }: { ride: HomeRide }) {
+function CompactRideAppRoutePanel({
+  ride,
+  canRequestStop = false,
+  onRequestStop,
+}: {
+  ride: HomeRide;
+  canRequestStop?: boolean;
+  onRequestStop?: (stopLabel: string) => void;
+}) {
+  const [stopRequestDraft, setStopRequestDraft] = useState("");
   const pendingStop = ride.proposedStops?.find((stop) => stop.status === "pending_host_approval") ?? null;
   const approvedStops = ride.approvedStops ?? [];
   const declinedStop = ride.declinedStops?.find((stop) => stop.status === "declined") ?? null;
   const allowStopRequests = ride.stopRequestPolicy === "host_approved_before_quote" && ride.rideKind !== "recurring";
+  const routeLocked =
+    ride.bookingDetailsShared === true ||
+    ride.rideAppBookingDetailsConfirmed === true ||
+    ride.rideAppBookingDetailsFinalized === true;
+  const canShowStopRequestForm =
+    allowStopRequests &&
+    canRequestStop &&
+    Boolean(onRequestStop) &&
+    !routeLocked &&
+    !pendingStop &&
+    approvedStops.length === 0;
   const routeBadge = pendingStop ? "Pending stop" : allowStopRequests ? "Host-approved" : "Direct route";
   const routePolicyCopy = pendingStop
     ? `${pendingStop.requestedBy ?? "Rider"} requested ${pendingStop.label}.`
@@ -2915,8 +2982,11 @@ function CompactRideAppRoutePanel({ ride }: { ride: HomeRide }) {
       : approvedStops.length
         ? `${approvedStops[0].label} is included in the current route.`
         : allowStopRequests
-          ? "No rider has requested an extra stop yet."
+          ? canShowStopRequestForm
+            ? "Ask the host to approve one extra stop before booking details are shared."
+            : "No rider has requested an extra stop yet."
           : "This pod uses direct route only.";
+  const trimmedStopRequest = stopRequestDraft.trim();
   const gatherVenue = ride.pickupLabel ?? "Host will set gather point";
   const gatherArea = ride.pickupLabel ? ride.fromLabel : "Where riders meet before booking";
   const routeRows = [
@@ -2949,6 +3019,12 @@ function CompactRideAppRoutePanel({ ride }: { ride: HomeRide }) {
       helper: ride.dropoffLabel ? ride.toLabel : null,
     },
   ];
+
+  function submitStopRequest() {
+    if (!canShowStopRequestForm || !trimmedStopRequest) return;
+    onRequestStop?.(trimmedStopRequest);
+    setStopRequestDraft("");
+  }
 
   return (
     <div id="route-requests" className="scroll-mt-24 grid gap-2">
@@ -2996,6 +3072,34 @@ function CompactRideAppRoutePanel({ ride }: { ride: HomeRide }) {
           <div className="min-w-0">
             <h3 className="text-sm font-black text-white">{stopRequestTitle}</h3>
             <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{stopRequestBody}</p>
+            {canShowStopRequestForm ? (
+              <form
+                className="mt-3 grid gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  submitStopRequest();
+                }}
+              >
+                <label className="sr-only" htmlFor={`stop-request-${ride.id}`}>
+                  Stop location
+                </label>
+                <input
+                  id={`stop-request-${ride.id}`}
+                  value={stopRequestDraft}
+                  onChange={(event) => setStopRequestDraft(event.target.value)}
+                  placeholder="e.g. Admiralty Station Exit A"
+                  className="min-h-11 rounded-[14px] border border-cyan-300/22 bg-black/24 px-3 text-sm font-semibold text-white outline-none transition placeholder:text-[var(--rp-muted-strong)] focus:border-cyan-300/55 focus:bg-cyan-300/8"
+                />
+                <button
+                  type="submit"
+                  disabled={!trimmedStopRequest}
+                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-cyan-300/35 bg-cyan-300/10 px-3 text-sm font-black text-cyan-100 transition hover:bg-cyan-300/16 disabled:opacity-45"
+                >
+                  <MapPin className="h-4 w-4" />
+                  Request new stop
+                </button>
+              </form>
+            ) : null}
           </div>
         </div>
       </section>
@@ -4004,6 +4108,16 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
   const hostCancellationAllowsHostControls = hostCancellationStatus === "active";
   const canUpdateRideAppEstimate = selfSettlePod && showSelfSettleHost && hostCancellationAllowsHostControls;
+  const currentUserIsSelfSettleRider =
+    selfSettlePod &&
+    !showSelfSettleHost &&
+    (ride.currentUserJoined === true ||
+      ride.currentUserRole === "joined_rider" ||
+      ride.quoteStatus === "joined" ||
+      ride.currentUserJoinIntentStatus === "joined_interest" ||
+      ride.currentUserJoinIntentStatus === "confirmed" ||
+      ride.currentUserJoinIntentStatus === "needs_review");
+  const canRequestRideAppStop = currentUserIsSelfSettleRider && hostCancellationAllowsHostControls;
   const showHostCancellationModal = hostCancellationModalConfirmedCount !== null;
   const hostCancellationHasConfirmedRiders = (hostCancellationModalConfirmedCount ?? 0) > 0;
   const hostCancellationReasons = hostCancellationHasConfirmedRiders
@@ -4275,6 +4389,30 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     setRideActionPatch((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
     saveStoredSelfSettleRidePatch(ride.id, patch);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+  }
+
+  function requestRideAppStopFromDetail(stopLabel: string) {
+    const trimmedStopLabel = stopLabel.trim();
+    const routeLocked =
+      ride.bookingDetailsShared === true ||
+      ride.rideAppBookingDetailsConfirmed === true ||
+      ride.rideAppBookingDetailsFinalized === true;
+    const hasPendingStop = (ride.proposedStops ?? []).some((stop) => stop.status === "pending_host_approval");
+    if (!trimmedStopLabel || !canRequestRideAppStop || routeLocked || hasPendingStop) return;
+
+    const patch = buildRideAppStopRequestPatch(ride, trimmedStopLabel, detailActorName);
+    applyRideActionPatch(patch);
+    notifyRideDetailAction({
+      type: "ride_app_action_required",
+      audiences: ["actor", "host"],
+      title: "New stop requested",
+      body: `${detailActorName} requested a new stop: ${trimmedStopLabel}.`,
+      selfTitle: "Stop request sent",
+      selfBody: `${trimmedStopLabel} is waiting for host approval.`,
+      action: "route_stop_requested",
+      relatedUrl: `/pods/${ride.id}#route-requests`,
+      dedupe: false,
+    });
   }
 
   function openHostCancellationModal(confirmedRiderCount: number) {
@@ -4701,7 +4839,11 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
                         </div>
                       </div>
                     </section>
-                    <CompactRideAppRoutePanel ride={ride} />
+                    <CompactRideAppRoutePanel
+                      ride={ride}
+                      canRequestStop={canRequestRideAppStop}
+                      onRequestStop={requestRideAppStopFromDetail}
+                    />
                     <RideAppFareProofCard
                       ride={ride}
                       canEdit={canUpdateRideAppEstimate}
