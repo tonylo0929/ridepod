@@ -2960,14 +2960,6 @@ function CompactRideAppRoutePanel({
     !routeLocked &&
     !pendingStop &&
     approvedStops.length === 0;
-  const routeBadge = pendingStop ? "Pending stop" : allowStopRequests ? "Host-approved" : "Direct route";
-  const routePolicyCopy = pendingStop
-    ? `${pendingStop.requestedBy ?? "Rider"} requested ${pendingStop.label}.`
-    : allowStopRequests
-      ? ride.bookingDetailsShared
-        ? "Route changes are closed after booking details are shared."
-        : "Stops need host approval before details are shared."
-      : "No stop requests allowed";
   const stopRequestTitle = pendingStop
     ? "Stop request pending"
       : declinedStop
@@ -2976,7 +2968,7 @@ function CompactRideAppRoutePanel({
           ? "Approved stop included"
           : allowStopRequests
             ? "Request a stop"
-            : "No stop requests";
+            : "Direct Route";
   const stopRequestBody = pendingStop
     ? `${pendingStop.label} is waiting for host approval.`
     : declinedStop
@@ -2987,7 +2979,7 @@ function CompactRideAppRoutePanel({
           ? canShowStopRequestForm
             ? "Ask the host to approve one extra stop before booking details are shared."
             : "No rider has requested an extra stop yet."
-          : "This pod uses direct route only.";
+          : "Stop Request is not allowed.";
   const trimmedStopRequest = stopRequestDraft.trim();
   const gatherVenue = ride.pickupLabel ?? "Host will set gather point";
   const gatherArea = ride.pickupLabel ? ride.fromLabel : "Where riders meet before booking";
@@ -3031,38 +3023,29 @@ function CompactRideAppRoutePanel({
   return (
     <div id="route-requests" className="scroll-mt-24 grid gap-2">
       <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
-        <div className="grid gap-4 min-[390px]:grid-cols-[minmax(0,1fr)_132px]">
-          <ol className="grid gap-0">
-            {routeRows.map((row, index) => {
-              const last = index === routeRows.length - 1;
+        <ol className="grid gap-0">
+          {routeRows.map((row, index) => {
+            const last = index === routeRows.length - 1;
 
-              return (
-                <li key={row.id} className="grid grid-cols-[18px_minmax(0,1fr)] gap-3">
-                  <span className="grid justify-items-center">
-                    <span className={cn("mt-1.5 h-3 w-3 rounded-full", row.dotClass)} />
-                    {!last ? <span className="h-full min-h-10 border-l border-dashed border-white/24" /> : null}
-                  </span>
-                  <span className={cn("min-w-0", !last && "pb-3")}>
-                    <span className="block text-[10px] font-semibold leading-4 text-[var(--rp-muted-strong)]">{row.label}</span>
-                    <span className="block break-words text-sm font-black leading-5 text-white">{row.title}</span>
-                    {row.helper ? (
-                      <span className="mt-0.5 block break-words text-xs font-semibold leading-4 text-[var(--rp-muted-strong)]">
-                        {row.helper}
-                      </span>
-                    ) : null}
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-
-          <div className="border-t border-white/10 pt-3 min-[390px]:border-l min-[390px]:border-t-0 min-[390px]:pl-4 min-[390px]:pt-0">
-            <span className="inline-flex rounded-[10px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-primary)]">
-              {routeBadge}
-            </span>
-            <p className="mt-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{routePolicyCopy}</p>
-          </div>
-        </div>
+            return (
+              <li key={row.id} className="grid grid-cols-[18px_minmax(0,1fr)] gap-3">
+                <span className="grid justify-items-center">
+                  <span className={cn("mt-1.5 h-3 w-3 rounded-full", row.dotClass)} />
+                  {!last ? <span className="h-full min-h-10 border-l border-dashed border-white/24" /> : null}
+                </span>
+                <span className={cn("min-w-0", !last && "pb-3")}>
+                  <span className="block text-[10px] font-semibold leading-4 text-[var(--rp-muted-strong)]">{row.label}</span>
+                  <span className="block break-words text-sm font-black leading-5 text-white">{row.title}</span>
+                  {row.helper ? (
+                    <span className="mt-0.5 block break-words text-xs font-semibold leading-4 text-[var(--rp-muted-strong)]">
+                      {row.helper}
+                    </span>
+                  ) : null}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
       </section>
 
       <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
