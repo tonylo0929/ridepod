@@ -2970,11 +2970,13 @@ function CompactRideAppRoutePanel({
       : "No stop requests allowed";
   const stopRequestTitle = pendingStop
     ? "Stop request pending"
-    : declinedStop
-      ? "Stop request declined"
-      : approvedStops.length
-        ? "Approved stop included"
-        : "No stop requests";
+      : declinedStop
+        ? "Stop request declined"
+        : approvedStops.length
+          ? "Approved stop included"
+          : allowStopRequests
+            ? "Request a stop"
+            : "No stop requests";
   const stopRequestBody = pendingStop
     ? `${pendingStop.label} is waiting for host approval.`
     : declinedStop
@@ -3070,7 +3072,9 @@ function CompactRideAppRoutePanel({
             <MapPin className="h-4 w-4" />
           </span>
           <div className="min-w-0">
-            <h3 className="text-sm font-black text-white">{stopRequestTitle}</h3>
+            <h3 className={cn("text-sm font-black", canShowStopRequestForm ? "text-[var(--rp-primary)]" : "text-white")}>
+              {stopRequestTitle}
+            </h3>
             <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{stopRequestBody}</p>
             {canShowStopRequestForm ? (
               <form
