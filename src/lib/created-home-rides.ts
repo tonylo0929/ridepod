@@ -232,8 +232,14 @@ function mergeRiderConfirmations(existing: HomeRide, incoming: HomeRide) {
 }
 
 function hostPublishedRideUpdates(incoming: HomeRide): Partial<HomeRide> {
+  const hasIncomingFareEstimate =
+    Boolean(incoming.estimatedRideAppFare?.trim()) ||
+    typeof incoming.rideAppEstimatedFareTotal === "number" ||
+    incoming.rideAppFareEstimateStatus === "accepted";
+
+  if (!hasIncomingFareEstimate) return {};
+
   const updates: Partial<HomeRide> = {
-    bookingFareCapCents: incoming.bookingFareCapCents,
     estimatedRideAppFare: incoming.estimatedRideAppFare,
     rideAppEstimatedFareTotal: incoming.rideAppEstimatedFareTotal,
     rideAppEstimatedFarePerPerson: incoming.rideAppEstimatedFarePerPerson,
@@ -247,7 +253,6 @@ function hostPublishedRideUpdates(incoming: HomeRide): Partial<HomeRide> {
     fareEstimateScreenshot: incoming.fareEstimateScreenshot,
     rideAppChecklist: incoming.rideAppChecklist,
     rideAppBookingDetails: incoming.rideAppBookingDetails,
-    pricePerPerson: incoming.pricePerPerson,
   };
 
   for (const key of Object.keys(updates) as Array<keyof HomeRide>) {
