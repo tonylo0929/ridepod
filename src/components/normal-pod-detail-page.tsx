@@ -3541,22 +3541,28 @@ function ManagePodActionsModal({
               </section>
 
               <section className="grid gap-2">
-                {riders.map((rider) => (
-                  <div key={`${rider.name}-${rider.role}-${rider.status}`} className="flex min-w-0 items-center justify-between gap-3 rounded-[16px] border border-white/10 bg-white/[0.04] p-3">
-                    <span className="flex min-w-0 items-center gap-3">
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-sm font-black text-cyan-100">
-                        {getInitials(rider.name).slice(0, 1)}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-black text-white">{rider.name}</span>
-                        <span className="block text-xs font-semibold text-[var(--rp-muted-strong)]">
-                          {getPodStatusRiderHelper(rider, currentDetailVersion)}
+                {riders.map((rider) => {
+                  const hostEchoRider = isHostEchoRider(rider, getCurrentUserIsHost(ride));
+                  const displayName = hostEchoRider ? "Host" : rider.name;
+                  const helper = hostEchoRider ? "Host details shared" : getPodStatusRiderHelper(rider, currentDetailVersion);
+
+                  return (
+                    <div key={`${rider.name}-${rider.role}-${rider.status}`} className="flex min-w-0 items-center justify-between gap-3 rounded-[16px] border border-white/10 bg-white/[0.04] p-3">
+                      <span className="flex min-w-0 items-center gap-3">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-sm font-black text-cyan-100">
+                          {getInitials(displayName).slice(0, 1)}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-black text-white">{displayName}</span>
+                          <span className="block text-xs font-semibold text-[var(--rp-muted-strong)]">
+                            {helper}
+                          </span>
                         </span>
                       </span>
-                    </span>
-                    <ManagePodActionStatusChip rider={rider} />
-                  </div>
-                ))}
+                      <ManagePodActionStatusChip rider={rider} labelOverride={hostEchoRider ? "Host" : undefined} />
+                    </div>
+                  );
+                })}
               </section>
 
               <section className="grid gap-2">
@@ -3665,9 +3671,10 @@ function ManagePodActionsModal({
   );
 }
 
-function ManagePodActionStatusChip({ rider }: { rider: PodStatusRider }) {
+function ManagePodActionStatusChip({ rider, labelOverride }: { rider: PodStatusRider; labelOverride?: string }) {
   const label =
-    rider.role === "host"
+    labelOverride ??
+    (rider.role === "host"
       ? "Host"
       : rider.status === "confirmed"
         ? "Confirmed"
@@ -3677,7 +3684,9 @@ function ManagePodActionStatusChip({ rider }: { rider: PodStatusRider }) {
             ? getSeatHoldDisplayLabel(rider.status)
             : rider.status === "left_pod"
               ? "Left"
-              : "Pending";
+              : isOpenRiderSlot(rider)
+                ? "Waiting"
+                : "Pending");
   const tone =
     rider.role === "host"
       ? "border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]"
