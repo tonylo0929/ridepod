@@ -68,6 +68,10 @@ import { getRideWithStoredSelfSettleJoin, saveStoredSelfSettleRidePatch } from "
 import { markRideAppWaiverUsed, useRideAppWaiverState } from "@/lib/ride-app-waiver";
 import { saveViewerHomeRide, updateCreatedHomeRide } from "@/lib/created-home-rides";
 import {
+  listUserNotifications,
+  type RidePodNotificationType,
+} from "@/lib/notifications/ridepod-notifications";
+import {
   notifyPodAudience,
   type NotifyPodAudienceInput,
   type PodNotificationAudience,
@@ -86,6 +90,8 @@ import {
   useRidePodMembershipState,
 } from "@/lib/ridepod-membership";
 import { useAuth } from "@/providers/AuthProvider";
+
+type UserNotificationForStopRequest = Awaited<ReturnType<typeof listUserNotifications>>["notifications"][number];
 
 function getRideAppJoinLeaveActivitySummary(ride: HomeRide, nextJoinLeaveCount: number) {
   const riderName = getCurrentUserRiderName(ride);
@@ -793,6 +799,93 @@ function buildRideAppStopRequestPatch(ride: HomeRide, stopLabel: string, request
   return {
     proposedStops: [...(ride.proposedStops ?? []), requestedStop],
   };
+}
+
+function buildApproveRideAppStopPatch(ride: HomeRide, stop: RoutePlanStop): Partial<HomeRide> {
+  const nextDetailVersion = getRideAppCurrentDetailVersion(ride) + 1;
+  const approvedStop: RoutePlanStop = { ...stop, status: "approved" };
+
+  return {
+    proposedStops: (ride.proposedStops ?? []).filter((item) => item.id !== stop.id),
+    approvedStops: [...(ride.approvedStops ?? []), approvedStop],
+    bookingDetailsUpdated: true,
+    bookingDetailsLastMeaningfulUpdate: "stop_added",
+    lastBookingDetailsUpdateReason: "Host approved stop request.",
+    bookingDetailsVersion: nextDetailVersion,
+    rideAppCurrentDetailVersion: nextDetailVersion,
+    rideAppPodStatus: "needs_review",
+    confirmedRiderCount: 0,
+    rideAppConfirmedRiderCount: 0,
+    rideAppConfirmedRiderIds: [],
+    riderConfirmations: ride.riderConfirmations?.map((rider) =>
+      rider.role === "rider" && rider.status === "confirmed"
+        ? { ...rider, status: "needs_review" as const }
+        : rider,
+    ),
+  };
+}
+
+function buildDeclineRideAppStopPatch(ride: HomeRide, stop: RoutePlanStop): Partial<HomeRide> {
+  const declinedStop: RoutePlanStop = { ...stop, status: "declined" };
+
+  return {
+    proposedStops: (ride.proposedStops ?? []).filter((item) => item.id !== stop.id),
+    declinedStops: [...(ride.declinedStops ?? []), declinedStop],
+  };
+}
+
+function hasAnyRideAppStopRequestState(ride: HomeRide) {
+  return Boolean((ride.proposedStops?.length ?? 0) || (ride.approvedStops?.length ?? 0) || (ride.declinedStops?.length ?? 0));
+}
+
+function metadataValue(metadata: UserNotificationForStopRequest["metadata"], key: string) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const value = (metadata as Record<string, unknown>)[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function stopLabelFromNotification(notification: UserNotificationForStopRequest) {
+  const metadataLabel =
+    metadataValue(notification.metadata, "stopLabel") ||
+    metadataValue(notification.metadata, "stopLocation") ||
+    metadataValue(notification.metadata, "requestedStop");
+  if (metadataLabel) return metadataLabel;
+
+  const body = notification.body ?? "";
+  const match = body.match(/requested a new stop:\s*(.+?)\.?$/i);
+  return match?.[1]?.trim() || null;
+}
+
+function requestedByFromNotification(notification: UserNotificationForStopRequest) {
+  const metadataName = metadataValue(notification.metadata, "requestedBy") || metadataValue(notification.metadata, "actorDisplayName");
+  if (metadataName) return metadataName;
+
+  const body = notification.body ?? "";
+  const match = body.match(/^(.+?)\s+requested a new stop:/i);
+  return match?.[1]?.trim() || "Rider";
+}
+
+function pendingStopFromNotification(notification: UserNotificationForStopRequest): RoutePlanStop | null {
+  const action = metadataValue(notification.metadata, "action");
+  const stopLabel = stopLabelFromNotification(notification);
+  if (notification.type !== ("ride_app_action_required" satisfies RidePodNotificationType) || action !== "route_stop_requested" || !stopLabel) {
+    return null;
+  }
+
+  return {
+    id: `notification-stop-${notification.id}`,
+    label: stopLabel,
+    requestedBy: requestedByFromNotification(notification),
+    stopType: "quick_stop",
+    reason: "Rider requested an extra stop.",
+    status: "pending_host_approval",
+  };
+}
+
+async function getHostPendingStopRequestFromNotifications(userId: string, ride: HomeRide) {
+  const result = await listUserNotifications(userId);
+  const notification = result.notifications.find((item) => item.related_pod_id === ride.id && pendingStopFromNotification(item));
+  return notification ? pendingStopFromNotification(notification) : null;
 }
 
 async function resolveSelfSettleMembershipTarget(ride: HomeRide, viewerUserId?: string | null) {
@@ -1711,6 +1804,7 @@ export function PodStatusPanel({
     relatedUrl?: string;
     dedupe?: boolean;
     delivery?: NotifyPodAudienceInput["delivery"];
+    metadata?: Record<string, unknown>;
   }) {
     if (!user || !isRideAppSelfSettlePod(ride)) return;
 
@@ -1728,6 +1822,7 @@ export function PodStatusPanel({
       metadata: {
         action: input.action,
         route: podStatusRouteTitle,
+        ...(input.metadata ?? {}),
       },
       dedupe: input.dedupe,
       delivery: input.delivery,
@@ -1920,8 +2015,75 @@ export function PodStatusPanel({
       action: "route_stop_requested",
       relatedUrl: `/pods/${ride.id}/status?tab=route#route-requests`,
       dedupe: false,
+      metadata: {
+        stopLabel: trimmedStopLabel,
+        requestedBy: podStatusActorName,
+      },
     });
   }
+
+  function approveRouteStopFromStatus(stop: RoutePlanStop) {
+    const patch = buildApproveRideAppStopPatch(ride, stop);
+    setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
+    saveStoredSelfSettleRidePatch(ride.id, patch);
+    updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+    notifyPodStatusAction({
+      type: "ride_app_action_required",
+      title: "Route request approved",
+      body: `${podStatusActorName} approved ${stop.label}. Please review the latest ride details.`,
+      selfTitle: "You approved a route request",
+      selfBody: stop.label,
+      action: "route_request_approved",
+      metadata: {
+        stopLabel: stop.label,
+        requestedBy: stop.requestedBy ?? "Rider",
+      },
+    });
+  }
+
+  function declineRouteStopFromStatus(stop: RoutePlanStop) {
+    const patch = buildDeclineRideAppStopPatch(ride, stop);
+    setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
+    saveStoredSelfSettleRidePatch(ride.id, patch);
+    updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+    notifyPodStatusAction({
+      type: "ride_app_details_updated",
+      title: "Route request declined",
+      body: `${podStatusActorName} declined ${stop.label}.`,
+      selfTitle: "You declined a route request",
+      selfBody: stop.label,
+      action: "route_request_declined",
+      metadata: {
+        stopLabel: stop.label,
+        requestedBy: stop.requestedBy ?? "Rider",
+      },
+    });
+  }
+
+  useEffect(() => {
+    if (!user?.id || !isHost || !isRideAppSelfSettlePod(ride) || ride.stopRequestPolicy !== "host_approved_before_quote" || hasAnyRideAppStopRequestState(ride)) {
+      return;
+    }
+
+    let cancelled = false;
+    void getHostPendingStopRequestFromNotifications(user.id, ride)
+      .then((pendingStop) => {
+        if (cancelled || !pendingStop) return;
+        const patch: Partial<HomeRide> = { proposedStops: [pendingStop] };
+        setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
+        saveStoredSelfSettleRidePatch(ride.id, patch);
+        updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+      })
+      .catch((error) => {
+        console.warn("RidePod stop request hydration failed", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // Hydration is keyed to the persisted pod/stop state; the derived ride object itself is rebuilt during render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, ride.id, ride.stopRequestPolicy, ride.proposedStops?.length, ride.approvedStops?.length, ride.declinedStops?.length, user?.id]);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000);
@@ -2285,7 +2447,10 @@ export function PodStatusPanel({
               <CompactRideAppRoutePanel
                 ride={ride}
                 canRequestStop={!isHost && currentUserHadRideAppSeat && !hostCancelledPod}
+                canReviewStop={isHost}
                 onRequestStop={requestRideAppStopFromStatus}
+                onApproveStop={approveRouteStopFromStatus}
+                onDeclineStop={declineRouteStopFromStatus}
               />
             </div>
           ) : null}
@@ -2938,11 +3103,17 @@ function PodStatusMetric({ value, label, tone = "cyan" }: { value: string | numb
 function CompactRideAppRoutePanel({
   ride,
   canRequestStop = false,
+  canReviewStop = false,
   onRequestStop,
+  onApproveStop,
+  onDeclineStop,
 }: {
   ride: HomeRide;
   canRequestStop?: boolean;
+  canReviewStop?: boolean;
   onRequestStop?: (stopLabel: string) => void;
+  onApproveStop?: (stop: RoutePlanStop) => void;
+  onDeclineStop?: (stop: RoutePlanStop) => void;
 }) {
   const [stopRequestDraft, setStopRequestDraft] = useState("");
   const pendingStop = ride.proposedStops?.find((stop) => stop.status === "pending_host_approval") ?? null;
@@ -2960,15 +3131,18 @@ function CompactRideAppRoutePanel({
     !routeLocked &&
     !pendingStop &&
     approvedStops.length === 0;
+  const canShowHostReviewActions = Boolean(canReviewStop && pendingStop && !routeLocked && onApproveStop && onDeclineStop);
   const stopRequestTitle = pendingStop
     ? "Stop request pending"
       : declinedStop
         ? "Stop request declined"
         : approvedStops.length
           ? "Approved stop included"
-          : allowStopRequests
+          : canShowStopRequestForm
             ? "Request a stop"
-            : "Direct Route";
+            : allowStopRequests
+              ? "No stop requested"
+              : "Direct Route";
   const stopRequestBody = pendingStop
     ? `${pendingStop.label} is waiting for host approval.`
     : declinedStop
@@ -3059,6 +3233,24 @@ function CompactRideAppRoutePanel({
               {stopRequestTitle}
             </h3>
             <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{stopRequestBody}</p>
+            {canShowHostReviewActions && pendingStop ? (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => onDeclineStop?.(pendingStop)}
+                  className="min-h-10 rounded-[14px] border border-white/12 bg-white/8 px-3 text-xs font-black text-white transition hover:bg-white/12"
+                >
+                  Decline
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onApproveStop?.(pendingStop)}
+                  className="min-h-10 rounded-[14px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-3 text-xs font-black text-[#061019] shadow-[0_12px_24px_rgba(56,189,248,0.18)] transition hover:brightness-105"
+                >
+                  Approve stop
+                </button>
+              </div>
+            ) : null}
             {canShowStopRequestForm ? (
               <form
                 className="mt-3 grid gap-2"
@@ -4081,6 +4273,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     relatedUrl?: string;
     dedupe?: boolean;
     delivery?: NotifyPodAudienceInput["delivery"];
+    metadata?: Record<string, unknown>;
   }) {
     if (!user || !isRideAppSelfSettlePod(ride)) return;
 
@@ -4098,6 +4291,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
       metadata: {
         action: input.action,
         route: detailRouteTitle,
+        ...(input.metadata ?? {}),
       },
       dedupe: input.dedupe,
       delivery: input.delivery,
@@ -4342,8 +4536,37 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
       action: "route_stop_requested",
       relatedUrl: `/pods/${ride.id}#route-requests`,
       dedupe: false,
+      metadata: {
+        stopLabel: trimmedStopLabel,
+        requestedBy: detailActorName,
+      },
     });
   }
+
+  useEffect(() => {
+    if (!user?.id || !showSelfSettleHost || !isRideAppSelfSettlePod(ride) || ride.stopRequestPolicy !== "host_approved_before_quote" || hasAnyRideAppStopRequestState(ride)) {
+      return;
+    }
+
+    let cancelled = false;
+    void getHostPendingStopRequestFromNotifications(user.id, ride)
+      .then((pendingStop) => {
+        if (cancelled || !pendingStop) return;
+        const patch: Partial<HomeRide> = { proposedStops: [pendingStop] };
+        setRideActionPatch((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
+        saveStoredSelfSettleRidePatch(ride.id, patch);
+        updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
+      })
+      .catch((error) => {
+        console.warn("RidePod stop request hydration failed", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+    // Hydration is keyed to the persisted pod/stop state; the derived ride object itself is rebuilt during render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ride.id, ride.stopRequestPolicy, ride.proposedStops?.length, ride.approvedStops?.length, ride.declinedStops?.length, showSelfSettleHost, user?.id]);
 
   function openHostCancellationModal(confirmedRiderCount: number) {
     const reasons = confirmedRiderCount > 0 ? afterConfirmationCancellationReasons : beforeConfirmationCancellationReasons;
@@ -4403,26 +4626,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
   }
 
   function approveRouteStop(stop: RoutePlanStop) {
-    const nextDetailVersion = getRideAppCurrentDetailVersion(ride) + 1;
-    const approvedStop: RoutePlanStop = { ...stop, status: "approved" };
-    const patch: Partial<HomeRide> = {
-      proposedStops: (ride.proposedStops ?? []).filter((item) => item.id !== stop.id),
-      approvedStops: [...(ride.approvedStops ?? []), approvedStop],
-      bookingDetailsUpdated: true,
-      bookingDetailsLastMeaningfulUpdate: "stop_added",
-      lastBookingDetailsUpdateReason: "Host approved stop request.",
-      bookingDetailsVersion: nextDetailVersion,
-      rideAppCurrentDetailVersion: nextDetailVersion,
-      rideAppPodStatus: "needs_review",
-      confirmedRiderCount: 0,
-      rideAppConfirmedRiderCount: 0,
-      rideAppConfirmedRiderIds: [],
-      riderConfirmations: ride.riderConfirmations?.map((rider) =>
-        rider.role === "rider" && rider.status === "confirmed"
-          ? { ...rider, status: "needs_review" as const }
-          : rider,
-      ),
-    };
+    const patch = buildApproveRideAppStopPatch(ride, stop);
 
     applyRideActionPatch(patch);
     notifyRideDetailAction({
@@ -4432,15 +4636,15 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
       selfTitle: "You approved a route request",
       selfBody: stop.label,
       action: "route_request_approved",
+      metadata: {
+        stopLabel: stop.label,
+        requestedBy: stop.requestedBy ?? "Rider",
+      },
     });
   }
 
   function declineRouteStop(stop: RoutePlanStop) {
-    const declinedStop: RoutePlanStop = { ...stop, status: "declined" };
-    const patch: Partial<HomeRide> = {
-      proposedStops: (ride.proposedStops ?? []).filter((item) => item.id !== stop.id),
-      declinedStops: [...(ride.declinedStops ?? []), declinedStop],
-    };
+    const patch = buildDeclineRideAppStopPatch(ride, stop);
 
     applyRideActionPatch(patch);
     notifyRideDetailAction({
@@ -4450,6 +4654,10 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
       selfTitle: "You declined a route request",
       selfBody: stop.label,
       action: "route_request_declined",
+      metadata: {
+        stopLabel: stop.label,
+        requestedBy: stop.requestedBy ?? "Rider",
+      },
     });
   }
 
@@ -4772,7 +4980,10 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
                     <CompactRideAppRoutePanel
                       ride={ride}
                       canRequestStop={canRequestRideAppStop}
+                      canReviewStop={showSelfSettleHost}
                       onRequestStop={requestRideAppStopFromDetail}
+                      onApproveStop={approveRouteStop}
+                      onDeclineStop={declineRouteStop}
                     />
                   </div>
                 ) : (
