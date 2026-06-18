@@ -353,11 +353,13 @@ function getEstimatedShareRange(pricePerPerson: number) {
   return `HK$${low}-${high}`;
 }
 
-function formatRideAppEstimateRangeInput(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-  if (/^HK\$/i.test(trimmed)) return trimmed.replace(/^hk\$/i, "HK$");
-  return `HK$${trimmed}`;
+function getRideAppEstimateNumberInput(value: string) {
+  return value.match(/\d+/)?.[0] ?? "";
+}
+
+function formatRideAppEstimateInput(value: string) {
+  const amount = getRideAppEstimateNumberInput(value);
+  return amount ? `HK$${amount}` : "";
 }
 
 function estimateTotalFromRange(value: string) {
@@ -4169,7 +4171,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
   function openRideAppEstimateModal() {
     if (!canUpdateRideAppEstimate) return;
     const currentProof = getRideAppFareEstimateProof(ride);
-    setRideAppEstimateDraft(rideAppTotalEstimateOverride ?? getRideAppHostFareEstimate(ride) ?? "");
+    setRideAppEstimateDraft(getRideAppEstimateNumberInput(rideAppTotalEstimateOverride ?? getRideAppHostFareEstimate(ride) ?? ""));
     setRideAppEstimateScreenshotDraftName(currentProof?.fileName ?? null);
     setRideAppEstimateScreenshotDraftPreviewUrl(currentProof?.previewUrl ?? null);
     setRideAppEstimateError(null);
@@ -4177,7 +4179,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
   }
 
   function confirmRideAppEstimateUpdate() {
-    const formattedEstimate = formatRideAppEstimateRangeInput(rideAppEstimateDraft);
+    const formattedEstimate = formatRideAppEstimateInput(rideAppEstimateDraft);
     if (!formattedEstimate) {
       setRideAppEstimateError("Add the estimate from Ride App.");
       return;
@@ -4998,15 +5000,20 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
             </p>
             <label className="mt-5 block">
               <span className="text-sm font-black text-[var(--rp-text)]">Estimate from Ride App</span>
-              <input
-                value={rideAppEstimateDraft}
-                onChange={(event) => {
-                  setRideAppEstimateDraft(event.target.value);
-                  setRideAppEstimateError(null);
-                }}
-                placeholder="HK$140-180"
-                className="mt-2 h-13 w-full rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-4 text-base font-black text-[var(--rp-text)] outline-none transition placeholder:text-[var(--rp-muted)] focus:border-cyan-300"
-              />
+              <div className="mt-2 flex h-13 w-full items-center overflow-hidden rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] transition focus-within:border-cyan-300">
+                <span className="shrink-0 pl-4 pr-2 text-base font-black text-[var(--rp-muted-strong)]">HK$</span>
+                <input
+                  value={rideAppEstimateDraft}
+                  onChange={(event) => {
+                    setRideAppEstimateDraft(getRideAppEstimateNumberInput(event.target.value));
+                    setRideAppEstimateError(null);
+                  }}
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  placeholder="140"
+                  className="h-full min-w-0 flex-1 bg-transparent pr-4 text-base font-black text-[var(--rp-text)] outline-none placeholder:text-[var(--rp-muted)]"
+                />
+              </div>
             </label>
             <div className="mt-4 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-4">
               <div className="flex items-start gap-3">
