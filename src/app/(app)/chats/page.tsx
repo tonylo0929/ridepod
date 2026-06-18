@@ -253,7 +253,7 @@ function ChatRideModeSwitch({
                   "inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-4 text-sm font-black transition min-[420px]:text-base",
                   selected
                     ? option.id === "ride_app"
-                      ? "bg-cyan-300 text-[#06212a] shadow-[0_16px_32px_rgba(34,211,238,0.24)]"
+                      ? "bg-[#0f5fa8] text-white shadow-[0_16px_32px_rgba(15,95,168,0.28)]"
                       : "bg-[var(--rp-primary)] text-[#07111a] shadow-[0_16px_32px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
                     : option.id === "ride_app"
                       ? "text-sky-900 hover:bg-sky-100"
