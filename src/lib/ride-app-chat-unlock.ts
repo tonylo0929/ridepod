@@ -11,6 +11,7 @@ export type RideAppChatLockedReason =
   | "waiting_for_minimum_confirmed_riders"
   | "needs_review"
   | "host_replacement_needed"
+  | "seat_released"
   | "seat_hold_expired"
   | "cancelled"
   | "expired";
@@ -344,10 +345,6 @@ export function getRideAppConfirmationState(ride: HomeRide, currentUser?: unknow
     return confirmationState("expired", "Expired", "This self-settle pod has expired.", null, null);
   }
 
-  if (hostBooked) {
-    return confirmationState("ride_app_booked", "Ride app booked", "Use chat for pickup updates. Ride fare is paid outside RidePod.", "Open chat", null);
-  }
-
   if (!isHost && !joined) {
     return confirmationState("not_joined", "Join pod", "Join first as interest / seat hold. Ride-detail confirmation happens after host shares details.", "Join pod", null);
   }
@@ -373,6 +370,10 @@ export function getRideAppConfirmationState(ride: HomeRide, currentUser?: unknow
       rejoinPrimaryCta,
       rejoinPrimaryCta === "Request to rejoin" ? "Find another pod" : null,
     );
+  }
+
+  if (hostBooked) {
+    return confirmationState("ride_app_booked", "Ride app booked", "Use chat for pickup updates. Ride fare is paid outside RidePod.", "Open chat", null);
   }
 
   if (!bookingDetailsFinalized) {
@@ -516,7 +517,9 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
   const requiredConfirmations = getRideAppRequiredConfirmations(ride);
   const confirmedRiders = getRideAppConfirmedRiderCount(ride);
   const chatWasUnlocked = getRideAppChatWasUnlocked(ride);
+  const hostReplacementNeeded = ride.rideAppHostCancellationStatus === "host_replacement_needed";
   const isHost = ride.currentUserRole === "host";
+  const isCurrentBooker = isHost && !hostReplacementNeeded;
   const isJoinedRider = isRideAppCurrentUserJoined(ride);
   const bookingDetailsFinalized = getRideAppBookingDetailsFinalized(ride);
   const hasFareEstimate =
@@ -542,7 +545,67 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
       typeof getCurrentUserConfirmedBookingDetailsVersion(ride) === "number" &&
       getCurrentUserConfirmedBookingDetailsVersion(ride)! < getRideAppCurrentDetailVersion(ride));
 
-  if (ride.rideAppHostCancellationStatus === "host_replacement_needed") {
+  if (ride.status === "cancelled" || ride.rideAppPodStatus === "cancelled" || ride.rideAppHostCancellationStatus === "cancelled" || ride.rideAppHostCancellationStatus === "host_cancelled") {
+    return locked("cancelled", "Cancelled", "Pod cancelled", "Chat locked", "This self-settle pod was cancelled.", requiredConfirmations, confirmedRiders);
+  }
+
+  if (ride.status === "expired" || ride.rideAppPodStatus === "expired") {
+    return locked("expired", "Expired", "Find another pod", "Chat unavailable", "This self-settle pod is no longer active.", requiredConfirmations, confirmedRiders);
+  }
+
+  if (isRideAppCurrentUserSeatReleased(ride)) {
+    return locked(
+      "seat_released",
+      "Seat released",
+      "View pod status",
+      "Chat unavailable",
+      "Your seat was released because you did not confirm before the confirm-by time.",
+      requiredConfirmations,
+      confirmedRiders,
+    );
+  }
+
+  if (!isCurrentBooker && !isJoinedRider) {
+    return locked("not_joined", "Members only", "Join pod", "Chat locked", "Join this pod before chat can open.", requiredConfirmations, confirmedRiders);
+  }
+
+  if (!isCurrentBooker && currentDetailsNeedReview) {
+    return locked(
+      "waiting_for_rider_confirmation",
+      "Review updated details",
+      "Review updated details",
+      "Chat locked",
+      "Review updated details before chat can open.",
+      requiredConfirmations,
+      confirmedRiders,
+    );
+  }
+
+  if (!isCurrentBooker && !currentUserConfirmed) {
+    return locked(
+      "waiting_for_rider_confirmation",
+      "Confirm ride details",
+      "Confirm ride details",
+      "Chat locked",
+      "Confirm ride details before chat can open.",
+      requiredConfirmations,
+      confirmedRiders,
+    );
+  }
+
+  if (!isCurrentBooker && !platformFeeSettled) {
+    return locked(
+      "waiting_for_platform_fee",
+      "Awaiting platform fee",
+      "Confirm fee",
+      "Chat locked",
+      "RidePod fee must be demo-confirmed or waived before chat can unlock.",
+      requiredConfirmations,
+      confirmedRiders,
+    );
+  }
+
+  if (hostReplacementNeeded) {
     if (chatWasUnlocked) {
       return {
         canAccess: true,
@@ -568,34 +631,14 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
     );
   }
 
-  if (ride.status === "cancelled" || ride.rideAppPodStatus === "cancelled" || ride.rideAppHostCancellationStatus === "cancelled" || ride.rideAppHostCancellationStatus === "host_cancelled") {
-    return locked("cancelled", "Cancelled", "Pod cancelled", "Chat locked", "This self-settle pod was cancelled.", requiredConfirmations, confirmedRiders);
-  }
-
-  if (ride.status === "expired" || ride.rideAppPodStatus === "expired" || isRideAppSeatHoldExpired(ride)) {
-    return locked(
-      isRideAppSeatHoldExplicitlyExpired(ride) ? "seat_hold_expired" : "expired",
-      "Seat released",
-      "Find another pod",
-      "Chat unavailable",
-      "You did not confirm before the confirm-by time, so your seat was released for other riders.",
-      requiredConfirmations,
-      confirmedRiders,
-    );
-  }
-
-  if (!isHost && !isJoinedRider) {
-    return locked("not_joined", "Open", "Join pod", "Chat locked", "Chat opens after booking details are confirmed.", requiredConfirmations, confirmedRiders);
-  }
-
   if (!bookingDetailsFinalized) {
     const hostName = ride.hostName?.trim() || "the host";
     return locked(
       "waiting_for_booking_details",
       "Waiting for host details",
-      isHost ? "Share booking details" : "Waiting for host details",
+      isCurrentBooker ? "Share booking details" : "Waiting for host details",
       "Chat locked",
-      isHost ? "Host needs to accept the route and share booking details." : `Riders can confirm after ${hostName} shares the required details.`,
+      isCurrentBooker ? "Host needs to accept the route and share booking details." : `Riders can confirm after ${hostName} shares the required details.`,
       requiredConfirmations,
       confirmedRiders,
     );
@@ -605,9 +648,9 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
     return locked(
       "waiting_for_fare_update",
       "Waiting for host details",
-      isHost ? "Update fare" : "Waiting for host details",
+      isCurrentBooker ? "Update fare" : "Waiting for host details",
       "Chat locked",
-      isHost ? "Host needs to add or accept the ride app fare estimate before chat unlocks." : "Riders can confirm after the host shares the required details.",
+      isCurrentBooker ? "Host needs to add or accept the ride app fare estimate before chat unlocks." : "Riders can confirm after the host shares the required details.",
       requiredConfirmations,
       confirmedRiders,
     );
@@ -617,9 +660,9 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
     return locked(
       "waiting_for_gather_point",
       "Waiting for host details",
-      isHost ? "Set gather point" : "Waiting for host details",
+      isCurrentBooker ? "Set gather point" : "Waiting for host details",
       "Chat locked",
-      isHost ? "Host must set the gather point before riders can confirm." : "Riders can confirm after the host shares the required details.",
+      isCurrentBooker ? "Host must set the gather point before riders can confirm." : "Riders can confirm after the host shares the required details.",
       requiredConfirmations,
       confirmedRiders,
     );
@@ -629,9 +672,9 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
     return locked(
       "waiting_for_booking_details",
       "Waiting for host details",
-      isHost ? "Set confirm-by time" : "Waiting for host details",
+      isCurrentBooker ? "Set confirm-by time" : "Waiting for host details",
       "Chat locked",
-      isHost ? "Host must set the confirm-by time before riders can confirm." : "Riders can confirm after the host shares the required details.",
+      isCurrentBooker ? "Host must set the confirm-by time before riders can confirm." : "Riders can confirm after the host shares the required details.",
       requiredConfirmations,
       confirmedRiders,
     );
@@ -641,35 +684,9 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
     return locked(
       "waiting_for_host_acceptance",
       "Waiting for host details",
-      isHost ? "Confirm details" : "Waiting for host details",
+      isCurrentBooker ? "Confirm details" : "Waiting for host details",
       "Chat locked",
-      isHost ? "Host needs to confirm the split method and accepted payment method." : "Riders can confirm after the host shares the required details.",
-      requiredConfirmations,
-      confirmedRiders,
-    );
-  }
-
-  if (!isHost && !currentUserConfirmed) {
-    return locked(
-      currentDetailsNeedReview ? "needs_review" : "waiting_for_rider_confirmation",
-      currentDetailsNeedReview ? "Review updated details" : "Confirm ride details",
-      currentDetailsNeedReview ? "Review updated details" : "Confirm ride details",
-      "Chat locked",
-      currentDetailsNeedReview
-        ? "Host updated the details. Please review again."
-        : "Review the details and confirm before the deadline.",
-      requiredConfirmations,
-      confirmedRiders,
-    );
-  }
-
-  if (!isHost && !platformFeeSettled) {
-    return locked(
-      "waiting_for_platform_fee",
-      "Awaiting platform fee",
-      "Confirm fee",
-      "Chat locked",
-      "RidePod fee must be demo-confirmed or waived before chat can unlock.",
+      isCurrentBooker ? "Host needs to confirm the split method and accepted payment method." : "Riders can confirm after the host shares the required details.",
       requiredConfirmations,
       confirmedRiders,
     );
@@ -693,7 +710,7 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
     return locked(
       "waiting_for_minimum_confirmed_riders",
       "Waiting for required riders",
-      isHost ? "Waiting for riders" : "Confirmed",
+      isCurrentBooker ? "Waiting for riders" : "Confirmed",
       "Chat locked",
       "Waiting for required riders to confirm.",
       requiredConfirmations,
@@ -708,7 +725,7 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
     statusLabel: "Chat unlocked",
     primaryLabel: "Open chat",
     secondaryLabel: "Ready to gather",
-    helper: isHost
+    helper: isCurrentBooker
       ? "Confirm everyone is ready before booking."
       : "Ready to gather. Chat is open for confirmed riders.",
     requiredConfirmations,
@@ -779,6 +796,21 @@ function isRideAppCurrentUserJoined(ride: HomeRide) {
     ride.currentUserJoinIntentStatus === "confirmed" ||
     ride.currentUserJoinIntentStatus === "needs_review"
   );
+}
+
+function isRideAppCurrentUserParticipant(ride: HomeRide) {
+  return (
+    isRideAppCurrentUserJoined(ride) ||
+    ride.currentUserJoinIntentStatus === "seat_hold_expired" ||
+    ride.currentUserJoinIntentStatus === "left"
+  );
+}
+
+function isRideAppCurrentUserSeatReleased(ride: HomeRide) {
+  if (ride.currentUserRole === "host") return false;
+  if (ride.currentUserJoinIntentStatus === "seat_hold_expired") return true;
+  if (ride.selfSettleConfirmationStatus === "expired") return true;
+  return isRideAppCurrentUserParticipant(ride) && isRideAppSeatHoldExpired(ride);
 }
 
 function confirmationState(

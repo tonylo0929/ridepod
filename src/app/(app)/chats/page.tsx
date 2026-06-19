@@ -208,8 +208,8 @@ function getChatAccess(chat: PodChatPreview, ride = getHomeRide(chat.podId)) {
       helper:
         access.reason === "host_replacement_needed"
           ? "Host replacement needed. A confirmed rider can become the new booker."
-          : access.reason === "seat_hold_expired"
-            ? "Seat hold expired."
+          : access.reason === "seat_released" || access.reason === "seat_hold_expired"
+            ? "Seat released."
             : access.helper,
       access,
     };
