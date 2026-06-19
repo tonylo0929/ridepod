@@ -1546,8 +1546,7 @@ export default function HomePage() {
     setTaxiDriverFilter("all");
     setTaxiTypeFilter("all");
     setAirportDirectionFilter("all");
-    setRideModeFilter(initialRideModeFilter);
-    setSettlementFilter(initialSettlementFilter);
+    setSettlementFilter(rideModeFilter === "ride_app" ? "self_settle" : "protected");
     setFareEstimateFilter("any");
     setDeadlineFilter("any");
     setSeatFilter("any");
@@ -1605,6 +1604,8 @@ export default function HomePage() {
           : seatFilter === "minimum_not_reached"
             ? "Minimum not reached"
             : "";
+  const baselineSettlementFilter =
+    rideModeFilter === "taxi" ? "protected" : rideModeFilter === "ride_app" ? "self_settle" : initialSettlementFilter;
   const hasActiveFilters =
     fromDistrict !== initialFromDistrict ||
     toDistrict !== initialToDistrict ||
@@ -1612,8 +1613,7 @@ export default function HomePage() {
     taxiDriverFilter !== "all" ||
     taxiTypeFilter !== "all" ||
     airportDirectionFilter !== "all" ||
-    rideModeFilter !== initialRideModeFilter ||
-    settlementFilter !== initialSettlementFilter ||
+    settlementFilter !== baselineSettlementFilter ||
     fareEstimateFilter !== "any" ||
     deadlineFilter !== "any" ||
     seatFilter !== "any" ||
