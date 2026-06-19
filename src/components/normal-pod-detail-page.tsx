@@ -3390,24 +3390,29 @@ function SelfSettlePodSummaryHero({
     <section className="grid gap-4">
       <div className="relative overflow-hidden rounded-[24px] border border-cyan-100/20 bg-[radial-gradient(circle_at_top_left,rgba(103,232,249,0.1),transparent_34%),linear-gradient(145deg,rgba(13,24,39,0.96),rgba(3,10,18,0.98))] p-4 shadow-[0_20px_56px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.06)]">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent_38%)]" />
-        <div className="relative grid grid-cols-[64px_minmax(0,1fr)] gap-4">
-          <span
-            className="grid h-16 w-16 place-items-center overflow-hidden rounded-full border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/8 bg-cover bg-center text-2xl font-black text-[var(--rp-primary)] shadow-[0_14px_32px_rgba(0,0,0,0.28)]"
-            style={!hostAvatarPreference && hostProfileImageUrl ? { backgroundImage: `url(${hostProfileImageUrl})` } : undefined}
-            aria-label={`${hostAvatarDisplayName} profile`}
-          >
-            {hostAvatarPreference ? (
-              <RidePodAvatar
-                avatarUrl={hostProfileImageUrl}
-                avatarPreference={hostAvatarPreference}
-                initials={getInitials(hostAvatarDisplayName) || hostAvatarLabel}
-                displayName={hostAvatarDisplayName}
-                className="h-full w-full rounded-full text-xl"
-              />
-            ) : hostProfileImageUrl ? null : (
-              hostAvatarLabel
-            )}
-          </span>
+        <div className="relative grid grid-cols-[72px_minmax(0,1fr)] gap-3">
+          <div className="grid justify-items-center gap-1">
+            <span
+              className="grid h-16 w-16 place-items-center overflow-hidden rounded-full border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/8 bg-cover bg-center text-2xl font-black text-[var(--rp-primary)] shadow-[0_14px_32px_rgba(0,0,0,0.28)]"
+              style={!hostAvatarPreference && hostProfileImageUrl ? { backgroundImage: `url(${hostProfileImageUrl})` } : undefined}
+              aria-label={`${hostAvatarDisplayName} profile`}
+            >
+              {hostAvatarPreference ? (
+                <RidePodAvatar
+                  avatarUrl={hostProfileImageUrl}
+                  avatarPreference={hostAvatarPreference}
+                  initials={getInitials(hostAvatarDisplayName) || hostAvatarLabel}
+                  displayName={hostAvatarDisplayName}
+                  className="h-full w-full rounded-full text-xl"
+                />
+              ) : hostProfileImageUrl ? null : (
+                hostAvatarLabel
+              )}
+            </span>
+            <p className="w-full text-center text-[9px] font-black uppercase leading-3 tracking-[0.08em] text-[var(--rp-muted)]">
+              Created by <span className="block truncate">{hostAvatarDisplayName}</span>
+            </p>
+          </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               {canLeaveRideFromHero ? (
@@ -3427,9 +3432,6 @@ function SelfSettlePodSummaryHero({
             <h2 className="mt-3 text-lg font-semibold leading-tight text-[var(--rp-muted-strong)]">
               {ride.fromLabel} {"->"} {ride.toLabel}
             </h2>
-            <p className="mt-1 truncate text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">
-              Created by {hostAvatarDisplayName}
-            </p>
             <p className="mt-1 text-lg font-black text-cyan-200">
               {ride.dateLabel} · {ride.timeLabel}
             </p>
