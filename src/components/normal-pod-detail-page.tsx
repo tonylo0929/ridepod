@@ -3492,16 +3492,21 @@ function SelfSettlePodSummaryHero({
           </div>
         </div>
 
-        <div className="relative mt-4 grid gap-3 min-[520px]:grid-cols-[1.1fr_1fr]">
+        <div
+          className={cn(
+            "relative mt-4 grid gap-3",
+            canUpdateEstimate ? "grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)] max-[360px]:grid-cols-1" : "grid-cols-1",
+          )}
+        >
           {summaryUserIsHost ? (
             <button
               type="button"
               onClick={onEstimateClick}
               disabled={!canUpdateEstimate || hostCancellationActive}
-              className="grid min-h-[126px] justify-items-center rounded-[16px] border border-cyan-300/24 bg-cyan-300/8 px-4 py-4 text-center transition hover:border-cyan-200/40 hover:bg-cyan-300/12 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55"
+              className="grid min-h-[124px] justify-items-center rounded-[16px] border border-cyan-300/24 bg-cyan-300/8 px-3 py-4 text-center transition hover:border-cyan-200/40 hover:bg-cyan-300/12 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55"
             >
               {estimateContent}
-              <span className="mx-auto mt-3 inline-flex min-h-8 max-w-full items-center justify-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-4 text-[11px] font-black uppercase tracking-[0.08em] text-cyan-100">
+              <span className="mx-auto mt-3 inline-flex min-h-8 max-w-full items-center justify-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 text-[11px] font-black uppercase tracking-[0.08em] text-cyan-100">
                 <WalletCards className="h-3.5 w-3.5 shrink-0" />
                 <span className="min-w-0 truncate">{estimateActionLabel}</span>
               </span>
@@ -3528,10 +3533,10 @@ function SelfSettlePodSummaryHero({
               <button
                 type="button"
                 onClick={onManageActionsClick}
-                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/10 px-3 text-sm font-black text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(242,193,91,0.1)] transition hover:bg-[var(--rp-primary)]/15"
+                className="inline-flex min-h-14 min-w-0 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/10 px-2.5 text-[13px] font-black text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(242,193,91,0.1)] transition hover:bg-[var(--rp-primary)]/15 min-[390px]:text-sm"
               >
                 <CheckSquare className="h-4 w-4" />
-                <span className="whitespace-nowrap">Manage pod actions</span>
+                <span className="min-w-0 truncate whitespace-nowrap">Manage pod actions</span>
                 {manageActionsPendingCount > 0 ? (
                   <span className={noticeBadgeClass}>{manageActionsPendingCount}</span>
                 ) : null}
