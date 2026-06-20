@@ -3497,7 +3497,7 @@ function SelfSettlePodSummaryHero({
         <div
           className={cn(
             "relative mt-4 grid gap-3",
-            canUpdateEstimate ? "grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)] max-[360px]:grid-cols-1" : "grid-cols-1",
+            canUpdateEstimate ? "grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] max-[360px]:grid-cols-1" : "grid-cols-1",
           )}
         >
           {summaryUserIsHost ? (
@@ -3535,10 +3535,10 @@ function SelfSettlePodSummaryHero({
               <button
                 type="button"
                 onClick={onManageActionsClick}
-                className="inline-flex min-h-14 min-w-0 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/10 px-2.5 text-[13px] font-black text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(242,193,91,0.1)] transition hover:bg-[var(--rp-primary)]/15 min-[390px]:text-sm"
+                className="inline-flex min-h-14 min-w-0 items-center justify-center gap-1.5 rounded-[14px] border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/10 px-2 text-xs font-black text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(242,193,91,0.1)] transition hover:bg-[var(--rp-primary)]/15 min-[390px]:gap-2 min-[390px]:text-[13px]"
               >
                 <CheckSquare className="h-4 w-4" />
-                <span className="min-w-0 truncate whitespace-nowrap">Manage pod actions</span>
+                <span className="whitespace-nowrap">Manage pod actions</span>
                 {manageActionsPendingCount > 0 ? (
                   <span className={noticeBadgeClass}>{manageActionsPendingCount}</span>
                 ) : null}
