@@ -11,6 +11,7 @@ import {
   BarChart3,
   BriefcaseBusiness,
   CalendarDays,
+  Car,
   CheckCircle2,
   CheckSquare,
   Clock3,
@@ -3368,12 +3369,6 @@ function SelfSettlePodSummaryHero({
   const minimumRidersToGoLabel = getRideAppMinimumRidersToGoLabel(ride);
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
   const hostCancellationActive = hostCancellationStatus !== "active";
-  const hostControlTitle = hostCancellationActive ? statusTitle : hostEstimateUpdated ? "Estimate updated" : statusTitle;
-  const hostControlSubtitle = hostCancellationActive
-    ? statusSubtitle
-    : hostEstimateUpdated
-      ? `Updated to ${estimateValue}. Tap your estimate above if the ride app estimate changes.`
-      : statusSubtitle;
   const estimateActionLabel = "Edit";
   const manageActionsPendingCount = getManagePodActionsPendingCount(ride);
   const noticeBadgeClass =
@@ -3428,7 +3423,7 @@ function SelfSettlePodSummaryHero({
               </span>
             </div>
             <h2 className="mt-3 text-xl font-black leading-tight text-white">
-              {ride.fromLabel} {"->"} {ride.toLabel}
+              {ride.fromLabel} {"→"} {ride.toLabel}
             </h2>
             <p className="mt-1 text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-muted-strong)]">
               Created by {hostAvatarDisplayName}
@@ -3470,105 +3465,90 @@ function SelfSettlePodSummaryHero({
           </div>
         ) : null}
 
-        <div className="relative mt-4 grid grid-cols-[1.05fr_1.08fr_0.82fr] gap-3 border-t border-white/12 pt-4 text-center">
-          <div className="flex min-w-0 flex-col items-center justify-center border-r border-white/12 pr-3">
-            <p className="whitespace-nowrap text-[12px] font-semibold text-[var(--rp-muted-strong)]">Seats filled</p>
-            <p className="mt-1 text-2xl font-black text-cyan-200">{seatsUsed} / {ride.seatsTotal}</p>
-            <p className="mt-1 whitespace-nowrap text-[10px] font-black leading-tight text-[var(--rp-primary)] min-[390px]:text-[11px]">{minimumRidersToGoLabel}</p>
-            <div className="mt-2 h-2 w-full max-w-28 overflow-hidden rounded-full bg-white/14">
-              <div className="h-full rounded-full bg-cyan-300" style={{ width: `${progress}%` }} />
-            </div>
+        <div className="relative mt-4 grid grid-cols-3 overflow-hidden rounded-[16px] border border-cyan-100/14 bg-white/[0.035] text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+          <div className="grid min-w-0 grid-cols-[22px_minmax(0,1fr)] items-center gap-2 border-r border-white/10 px-3 py-3">
+            <CalendarDays className="h-5 w-5 shrink-0 text-[var(--rp-muted-strong)]" />
+            <span className="min-w-0">
+              <span className="block truncate text-[13px] font-semibold leading-5 text-white">{ride.dateLabel}</span>
+              <span className="block truncate text-[13px] font-black leading-5 text-cyan-200">{ride.timeLabel}</span>
+            </span>
           </div>
-          <div className="flex min-w-0 flex-col items-center justify-center border-r border-white/12 pr-3">
-            {summaryUserIsHost ? (
+          <div className="grid min-w-0 grid-cols-[22px_minmax(0,1fr)] items-center gap-2 border-r border-white/10 px-3 py-3">
+            <UserRound className="h-5 w-5 shrink-0 text-[var(--rp-muted-strong)]" />
+            <span className="min-w-0">
+              <span className="block whitespace-nowrap text-lg font-black leading-5 text-cyan-100">{seatsUsed} / {ride.seatsTotal}</span>
+              <span className="block truncate text-[10px] font-black leading-4 text-[var(--rp-primary)] min-[390px]:text-[11px]">{minimumRidersToGoLabel}</span>
+              <span className="mt-1.5 block h-1.5 w-full max-w-24 overflow-hidden rounded-full bg-white/14">
+                <span className="block h-full rounded-full bg-cyan-300" style={{ width: `${progress}%` }} />
+              </span>
+            </span>
+          </div>
+          <div className="grid min-w-0 grid-cols-[22px_minmax(0,1fr)] items-center gap-2 px-3 py-3">
+            <Car className="h-5 w-5 shrink-0 text-[var(--rp-muted-strong)]" />
+            <span className="min-w-0">
+              <span className="block truncate text-base font-black leading-5 text-white">{getPodStatusVehicleLabel(ride)}</span>
+              <span className="block text-[11px] font-semibold leading-4 text-[var(--rp-muted-strong)]">Ride type</span>
+            </span>
+          </div>
+        </div>
+
+        <div className="relative mt-4 grid gap-3 min-[520px]:grid-cols-[1.1fr_1fr]">
+          {summaryUserIsHost ? (
+            <button
+              type="button"
+              onClick={onEstimateClick}
+              disabled={!canUpdateEstimate || hostCancellationActive}
+              className="grid min-h-[126px] justify-items-center rounded-[16px] border border-cyan-300/24 bg-cyan-300/8 px-4 py-4 text-center transition hover:border-cyan-200/40 hover:bg-cyan-300/12 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55"
+            >
+              {estimateContent}
+              <span className="mx-auto mt-3 inline-flex min-h-8 max-w-full items-center justify-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-4 text-[11px] font-black uppercase tracking-[0.08em] text-cyan-100">
+                <WalletCards className="h-3.5 w-3.5 shrink-0" />
+                <span className="min-w-0 truncate">{estimateActionLabel}</span>
+              </span>
+            </button>
+          ) : hasFareProof ? (
+            <div className="grid min-h-[110px] justify-items-center rounded-[16px] border border-cyan-300/18 bg-cyan-300/6 px-4 py-4 text-center">
+              {estimateContent}
               <button
                 type="button"
-                onClick={onEstimateClick}
-                disabled={!canUpdateEstimate || hostCancellationActive}
-                className="grid w-full justify-items-center rounded-[16px] border border-cyan-300/20 bg-cyan-300/8 px-3 py-2 text-center transition hover:border-cyan-200/40 hover:bg-cyan-300/12 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55"
+                onClick={onViewFareProof}
+                className="mt-3 inline-flex min-h-8 w-fit items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 text-[11px] font-black text-cyan-100 transition hover:bg-cyan-300/16"
               >
-                {estimateContent}
-                <span className="mx-auto mt-2 inline-flex min-h-7 max-w-full items-center justify-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-cyan-100">
-                  <WalletCards className="h-3.5 w-3.5 shrink-0" />
-                  <span className="min-w-0 truncate">{estimateActionLabel}</span>
-                </span>
+                View
               </button>
-            ) : hasFareProof ? (
-              <div className="grid w-full justify-items-center gap-2">
-                {estimateContent}
-                <button
-                  type="button"
-                  onClick={onViewFareProof}
-                  className="inline-flex min-h-8 w-fit items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 text-[11px] font-black text-cyan-100 transition hover:bg-cyan-300/16"
-                >
-                  View
-                </button>
-              </div>
-            ) : (
-              <a href="#fare-split" className="grid w-full justify-items-center text-center transition hover:brightness-110">
-                {estimateContent}
-              </a>
-            )}
-          </div>
-          <div className="flex min-w-0 flex-col items-center justify-center">
-            <div className="mb-2 flex items-center justify-center gap-1.5">
+            </div>
+          ) : (
+            <a href="#fare-split" className="grid min-h-[110px] justify-items-center rounded-[16px] border border-cyan-300/18 bg-cyan-300/6 px-4 py-4 text-center transition hover:brightness-110">
+              {estimateContent}
+            </a>
+          )}
+
+          {canUpdateEstimate ? (
+            <div className="grid gap-3">
+              <button
+                type="button"
+                onClick={onManageActionsClick}
+                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/10 px-3 text-sm font-black text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(242,193,91,0.1)] transition hover:bg-[var(--rp-primary)]/15"
+              >
+                <CheckSquare className="h-4 w-4" />
+                <span className="whitespace-nowrap">Manage pod actions</span>
+                {manageActionsPendingCount > 0 ? (
+                  <span className={noticeBadgeClass}>{manageActionsPendingCount}</span>
+                ) : null}
+              </button>
               <Link
-                href={`/pods/${ride.id}/chat`}
-                aria-label="Open pod chat"
-                className="grid h-9 w-9 place-items-center rounded-full border border-cyan-200/35 bg-cyan-300/8 text-cyan-100 shadow-[0_8px_18px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:bg-cyan-300/14"
+                href={`/pods/${ride.id}/status`}
+                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-[14px] border border-white/12 bg-white/8 px-3 text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-white/12 hover:text-white"
               >
-                <MessagesSquare className="h-[18px] w-[18px]" />
+                <BarChart3 className="h-4 w-4" />
+                View status
               </Link>
-              <button
-                type="button"
-                onClick={onSharePod}
-                aria-label="Share pod"
-                className="grid h-9 w-9 place-items-center rounded-full border border-cyan-200/35 bg-cyan-300/8 text-cyan-100 shadow-[0_8px_18px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:bg-cyan-300/14"
-              >
-                <Share2 className="h-[18px] w-[18px]" />
-              </button>
             </div>
-            <p className="text-sm font-semibold text-[var(--rp-muted-strong)]">Ride type</p>
-            <p className="mt-1 truncate text-xl font-black text-white">{getPodStatusVehicleLabel(ride)}</p>
-          </div>
+          ) : null}
         </div>
       </div>
 
-      {canUpdateEstimate ? (
-        <section className="rounded-[22px] border border-[var(--rp-primary)]/70 bg-[linear-gradient(135deg,rgba(242,193,91,0.18),rgba(8,47,73,0.22),rgba(3,10,18,0.94))] p-4 shadow-[0_16px_42px_rgba(0,0,0,0.28)]">
-          <div className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-4">
-            <span className="grid h-14 w-14 place-items-center rounded-full border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]">
-              <Crown className="h-7 w-7" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Host controls</span>
-              <span className="mt-1 block text-base font-black text-white">{hostControlTitle}</span>
-              <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">{hostControlSubtitle}</span>
-            </span>
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={onManageActionsClick}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/40 bg-[var(--rp-primary)]/10 px-3 text-sm font-black text-[var(--rp-primary)]"
-            >
-              <CheckSquare className="h-4 w-4" />
-              <span className="whitespace-nowrap">Manage pod actions</span>
-              {manageActionsPendingCount > 0 ? (
-                <span className={noticeBadgeClass}>{manageActionsPendingCount}</span>
-              ) : null}
-            </button>
-            <Link
-              href={`/pods/${ride.id}/status`}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-white/12 bg-white/8 px-3 text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-white/12 hover:text-white"
-            >
-              <BarChart3 className="h-4 w-4" />
-              View status
-            </Link>
-          </div>
-        </section>
-      ) : canJoinRide ? (
+      {canUpdateEstimate ? null : canJoinRide ? (
         <button
           type="button"
           onClick={onJoinRide}
