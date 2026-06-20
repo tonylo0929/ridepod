@@ -3473,14 +3473,16 @@ function SelfSettlePodSummaryHero({
               <span className="block truncate text-[13px] font-black leading-5 text-cyan-200">{ride.timeLabel}</span>
             </span>
           </div>
-          <div className="grid min-w-0 grid-cols-[22px_minmax(0,1fr)] items-center gap-2 border-r border-white/10 px-3 py-3">
-            <UserRound className="h-5 w-5 shrink-0 text-[var(--rp-muted-strong)]" />
-            <span className="min-w-0">
+          <div className="min-w-0 border-r border-white/10 px-2.5 py-3">
+            <span className="flex min-w-0 items-center gap-2">
+              <UserRound className="h-5 w-5 shrink-0 text-[var(--rp-muted-strong)]" />
               <span className="block whitespace-nowrap text-lg font-black leading-5 text-cyan-100">{seatsUsed} / {ride.seatsTotal}</span>
-              <span className="block truncate text-[10px] font-black leading-4 text-[var(--rp-primary)] min-[390px]:text-[11px]">{minimumRidersToGoLabel}</span>
-              <span className="mt-1.5 block h-1.5 w-full max-w-24 overflow-hidden rounded-full bg-white/14">
-                <span className="block h-full rounded-full bg-cyan-300" style={{ width: `${progress}%` }} />
-              </span>
+            </span>
+            <span className="mt-0.5 block whitespace-nowrap text-[9px] font-black leading-4 text-[var(--rp-primary)] min-[390px]:text-[10px]">
+              {minimumRidersToGoLabel}
+            </span>
+            <span className="mt-1.5 block h-1.5 w-full max-w-24 overflow-hidden rounded-full bg-white/14">
+              <span className="block h-full rounded-full bg-cyan-300" style={{ width: `${progress}%` }} />
             </span>
           </div>
           <div className="grid min-w-0 grid-cols-[22px_minmax(0,1fr)] items-center gap-2 px-3 py-3">
