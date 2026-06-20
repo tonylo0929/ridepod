@@ -344,7 +344,7 @@ function buildRideAppTimelineEvents({
         type: "stop_approved",
         kind: "system",
         actorName: hostName,
-        text: `${hostName} approved ${stop.requestedBy ? `${stop.requestedBy}'s ` : ""}stop request.`,
+        text: `${hostName} approved ${stop.requestedBy ? `${stop.requestedBy}'s ` : ""}stop request. Riders need to review updated details.`,
         sortTime: baseTime + 34 * 60 * 1000,
         visibility: "pod_members",
         metadata: { stopLocation: stop.label },
