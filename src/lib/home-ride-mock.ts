@@ -142,12 +142,14 @@ export type HomeRide = {
     | "fare_estimate"
     | "route"
     | "pickup"
+    | "gather_point"
     | "dropoff"
     | "pickup_time"
     | "ride_app"
     | "split_method"
     | "payment_method"
-    | "stop_added";
+    | "stop_added"
+    | "confirm_by_shortened";
   lastBookingDetailsUpdateReason?: string | null;
   currentUserConfirmedBookingDetailsVersion?: number | null;
   rideAppDetailVersion?: number;

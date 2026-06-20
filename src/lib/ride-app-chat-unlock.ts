@@ -58,6 +58,172 @@ export type RideAppHostMarkBookedGuard = {
   helper: string;
 };
 
+export type RideAppMeaningfulDetailUpdateType = NonNullable<HomeRide["bookingDetailsLastMeaningfulUpdate"]>;
+
+type RideAppDetailSnapshot = Partial<
+  Pick<
+    HomeRide,
+    | "estimatedRideAppFare"
+    | "rideAppEstimatedFareTotal"
+    | "rideAppEstimatedFarePerPerson"
+    | "rideAppBookingDetails"
+    | "pickupLabel"
+    | "dropoffLabel"
+    | "pickupTime"
+    | "timeLabel"
+    | "rideAppProviderName"
+    | "taxiType"
+    | "rideAppSplitMethod"
+    | "splitMethod"
+    | "rideAppAcceptedPaymentMethods"
+    | "paymentMethod"
+    | "approvedStops"
+    | "confirmationDeadlineAt"
+    | "rideAppConfirmBy"
+  >
+>;
+
+export type RideAppMeaningfulDetailUpdateResult = {
+  isMeaningful: boolean;
+  updateType: RideAppMeaningfulDetailUpdateType | null;
+};
+
+function normalizeDetailText(value?: string | null) {
+  return (value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function normalizeMoneyValue(value?: string | number | null) {
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "";
+  return normalizeDetailText(value).replace(/hk\$|hkd|\$|,/g, "");
+}
+
+function getRideAppFareEstimateComparable(details: RideAppDetailSnapshot) {
+  return (
+    normalizeMoneyValue(details.rideAppBookingDetails?.estimatedFare) ||
+    normalizeMoneyValue(details.estimatedRideAppFare) ||
+    normalizeMoneyValue(details.rideAppEstimatedFareTotal) ||
+    normalizeMoneyValue(details.rideAppEstimatedFarePerPerson)
+  );
+}
+
+function getAcceptedPaymentComparable(details: RideAppDetailSnapshot) {
+  return details.rideAppAcceptedPaymentMethods?.length
+    ? details.rideAppAcceptedPaymentMethods.map((item) => normalizeDetailText(item)).sort().join("|")
+    : normalizeDetailText(details.paymentMethod);
+}
+
+function getApprovedStopsComparable(details: RideAppDetailSnapshot) {
+  return (details.approvedStops ?? [])
+    .filter((stop) => stop.status === "approved")
+    .map((stop) => normalizeDetailText(stop.label))
+    .sort()
+    .join("|");
+}
+
+function parseOptionalDateMs(value?: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+}
+
+export function isMeaningfulRideAppDetailUpdate(
+  previousDetails: RideAppDetailSnapshot,
+  nextDetails: RideAppDetailSnapshot,
+): RideAppMeaningfulDetailUpdateResult {
+  if (getRideAppFareEstimateComparable(previousDetails) !== getRideAppFareEstimateComparable(nextDetails)) {
+    return { isMeaningful: true, updateType: "fare_estimate" };
+  }
+
+  if (normalizeDetailText(previousDetails.pickupLabel) !== normalizeDetailText(nextDetails.pickupLabel)) {
+    return { isMeaningful: true, updateType: "pickup" };
+  }
+
+  if (normalizeDetailText(previousDetails.dropoffLabel) !== normalizeDetailText(nextDetails.dropoffLabel)) {
+    return { isMeaningful: true, updateType: "dropoff" };
+  }
+
+  if (normalizeDetailText(previousDetails.pickupTime ?? previousDetails.timeLabel) !== normalizeDetailText(nextDetails.pickupTime ?? nextDetails.timeLabel)) {
+    return { isMeaningful: true, updateType: "pickup_time" };
+  }
+
+  if (normalizeDetailText(previousDetails.rideAppProviderName ?? previousDetails.taxiType) !== normalizeDetailText(nextDetails.rideAppProviderName ?? nextDetails.taxiType)) {
+    return { isMeaningful: true, updateType: "ride_app" };
+  }
+
+  if (normalizeDetailText(previousDetails.rideAppSplitMethod ?? previousDetails.splitMethod) !== normalizeDetailText(nextDetails.rideAppSplitMethod ?? nextDetails.splitMethod)) {
+    return { isMeaningful: true, updateType: "split_method" };
+  }
+
+  if (getAcceptedPaymentComparable(previousDetails) !== getAcceptedPaymentComparable(nextDetails)) {
+    return { isMeaningful: true, updateType: "payment_method" };
+  }
+
+  if (getApprovedStopsComparable(previousDetails) !== getApprovedStopsComparable(nextDetails)) {
+    return { isMeaningful: true, updateType: "stop_added" };
+  }
+
+  const previousConfirmBy = parseOptionalDateMs(previousDetails.confirmationDeadlineAt ?? previousDetails.rideAppConfirmBy);
+  const nextConfirmBy = parseOptionalDateMs(nextDetails.confirmationDeadlineAt ?? nextDetails.rideAppConfirmBy);
+  if (previousConfirmBy !== null && nextConfirmBy !== null && nextConfirmBy < previousConfirmBy) {
+    return { isMeaningful: true, updateType: "confirm_by_shortened" };
+  }
+
+  return { isMeaningful: false, updateType: null };
+}
+
+export function isRiderConfirmedForCurrentDetails(
+  rider: NonNullable<HomeRide["riderConfirmations"]>[number],
+  bookingDetailsVersion: number,
+) {
+  const confirmedVersion = rider.confirmedBookingDetailsVersion ?? rider.confirmedDetailVersion;
+  return rider.role === "rider" && rider.status === "confirmed" && (confirmedVersion ?? bookingDetailsVersion) >= bookingDetailsVersion;
+}
+
+export function getCurrentDetailsConfirmedCount(ride: HomeRide) {
+  return getRideAppConfirmedRiderCount(ride);
+}
+
+export function hasRidersNeedingCurrentDetailsReview(ride: HomeRide) {
+  return getRideAppRidersNeedingCurrentDetailsReview(ride) > 0;
+}
+
+export function applyRideAppMeaningfulDetailUpdate(
+  pod: HomeRide,
+  updateType: RideAppMeaningfulDetailUpdateType,
+): Partial<HomeRide> {
+  const previousDetailVersion = getRideAppCurrentDetailVersion(pod);
+  const nextDetailVersion = previousDetailVersion + 1;
+  const chatWasUnlocked = getRideAppChatWasUnlocked(pod);
+  const riderConfirmations = pod.riderConfirmations?.map((rider) => {
+    if (rider.role !== "rider" || rider.status !== "confirmed") return rider;
+    return { ...rider, status: "needs_review" as const };
+  });
+  const currentUserWasAffected =
+    pod.currentUserRole !== "host" &&
+    (pod.currentUserJoinIntentStatus === "confirmed" ||
+      pod.selfSettleConfirmationStatus === "confirmed" ||
+      pod.currentUserBookingDetailsConfirmed === true);
+
+  return {
+    bookingDetailsVersion: nextDetailVersion,
+    rideAppCurrentDetailVersion: nextDetailVersion,
+    bookingDetailsUpdated: true,
+    bookingDetailsLastMeaningfulUpdate: updateType,
+    rideAppPodStatus: chatWasUnlocked ? "chat_unlocked" : "needs_review",
+    confirmedRiderCount: 0,
+    rideAppConfirmedRiderCount: 0,
+    rideAppConfirmedRiderIds: [],
+    ...(riderConfirmations ? { riderConfirmations } : {}),
+    ...(currentUserWasAffected
+      ? {
+          currentUserJoinIntentStatus: "needs_review" as const,
+          currentUserBookingDetailsConfirmed: false,
+          selfSettleConfirmationStatus: "needs_review" as const,
+        }
+      : {}),
+  };
+}
+
 function formatRejoinCooldownTimeLeft(iso: string, now = new Date()) {
   const until = new Date(iso);
   if (Number.isNaN(until.getTime()) || until.getTime() <= now.getTime()) return null;
@@ -408,7 +574,7 @@ export function getRideAppConfirmationState(ride: HomeRide, currentUser?: unknow
   }
 
   if (chatAccess.reason === "needs_review" || currentUserNeedsReview) {
-    return confirmationState("needs_review", "Review updated details", "Host updated the details. Please review again.", "Review updated details", "View Pod Status");
+    return confirmationState("needs_review", "Review updated details", "Host updated the details. Please review again.", "Review updated details", "View status");
   }
 
   if (!isHost && !currentUserConfirmed) {
@@ -447,6 +613,14 @@ export function canHostMarkRideAppBooked(ride: HomeRide): RideAppHostMarkBookedG
     };
   }
 
+  if (ride.status === "expired" || ride.rideAppPodStatus === "expired") {
+    return {
+      canMarkBooked: false,
+      reason: "expired",
+      helper: "Expired pods cannot be marked booked.",
+    };
+  }
+
   if (ride.rideAppHostCancellationStatus === "host_replacement_needed") {
     return {
       canMarkBooked: false,
@@ -482,11 +656,17 @@ export function canHostMarkRideAppBooked(ride: HomeRide): RideAppHostMarkBookedG
   const requiredConfirmations = getRideAppRequiredConfirmations(ride);
   const confirmedRiders = getRideAppConfirmedRiderCount(ride);
   const ridersNeedingReview = getRideAppRidersNeedingCurrentDetailsReview(ride);
-  const fareEstimateNeedsReview =
-    ride.bookingDetailsUpdated === true &&
-    ridersNeedingReview > 0 &&
-    confirmedRiders < requiredConfirmations;
-  if (fareEstimateNeedsReview) {
+  const pendingRouteRequest = (ride.proposedStops ?? []).some((stop) => stop.status === "pending_host_approval");
+
+  if (pendingRouteRequest) {
+    return {
+      canMarkBooked: false,
+      reason: "pending_route_request",
+      helper: "Review pending route requests before the host books.",
+    };
+  }
+
+  if (ridersNeedingReview > 0) {
     return {
       canMarkBooked: false,
       reason: "needs_review",
@@ -535,15 +715,24 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
   const hasConfirmByTime = Boolean(ride.confirmationDeadlineAt || ride.rideAppConfirmBy || ride.confirmationDeadlineLabel?.trim());
   const currentUserConfirmed = getCurrentUserConfirmedRideAppDetails(ride);
   const platformFeeSettled = getCurrentUserRideAppPlatformFeeSettled(ride);
-  const currentDetailsNeedReview =
-    ride.rideAppPodStatus === "needs_review" ||
+  const currentUserConfirmedVersion = getCurrentUserConfirmedBookingDetailsVersion(ride);
+  const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
+  const currentUserHadConfirmedDetails =
+    ride.currentUserBookingDetailsConfirmed === true ||
+    ride.selfSettleConfirmationStatus === "confirmed" ||
     ride.selfSettleConfirmationStatus === "needs_review" ||
+    typeof currentUserConfirmedVersion === "number";
+  const currentDetailsNeedReview =
+    (!isHost &&
+      (ride.currentUserJoinIntentStatus === "needs_review" ||
+        ride.selfSettleConfirmationStatus === "needs_review")) ||
     (!isHost &&
       ride.bookingDetailsUpdated === true &&
-      ride.currentUserBookingDetailsConfirmed === true) ||
+      ride.currentUserBookingDetailsConfirmed === true &&
+      (typeof currentUserConfirmedVersion !== "number" || currentUserConfirmedVersion < currentDetailVersion)) ||
     (!isHost &&
-      typeof getCurrentUserConfirmedBookingDetailsVersion(ride) === "number" &&
-      getCurrentUserConfirmedBookingDetailsVersion(ride)! < getRideAppCurrentDetailVersion(ride));
+      typeof currentUserConfirmedVersion === "number" &&
+      currentUserConfirmedVersion < currentDetailVersion);
 
   if (ride.status === "cancelled" || ride.rideAppPodStatus === "cancelled" || ride.rideAppHostCancellationStatus === "cancelled" || ride.rideAppHostCancellationStatus === "host_cancelled") {
     return locked("cancelled", "Cancelled", "Pod cancelled", "Chat locked", "This self-settle pod was cancelled.", requiredConfirmations, confirmedRiders);
@@ -567,6 +756,20 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
 
   if (!isCurrentBooker && !isJoinedRider) {
     return locked("not_joined", "Members only", "Join pod", "Chat locked", "Join this pod before chat can open.", requiredConfirmations, confirmedRiders);
+  }
+
+  if (!isCurrentBooker && chatWasUnlocked && platformFeeSettled && currentUserHadConfirmedDetails && currentDetailsNeedReview) {
+    return {
+      canAccess: true,
+      reason: "unlocked",
+      label: "Chat open - review needed",
+      statusLabel: "Chat open - review needed",
+      primaryLabel: "Open chat",
+      secondaryLabel: "Review updated details",
+      helper: "Chat stays open, but the host should not book until required riders review the updated details.",
+      requiredConfirmations,
+      confirmedRiders,
+    };
   }
 
   if (!isCurrentBooker && currentDetailsNeedReview) {

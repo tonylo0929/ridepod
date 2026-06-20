@@ -20,7 +20,15 @@ import {
   getRideAppTrustSummary,
   submitRideAppRating,
 } from "@/lib/ride-app-trust";
-import { getRideAppChatAccessState, getRideAppConfirmByDate, getRideAppConfirmDeadlineState, getRideAppCurrentDetailVersion, isRideAppSeatHoldExpired } from "@/lib/ride-app-chat-unlock";
+import {
+  applyRideAppMeaningfulDetailUpdate,
+  getRideAppChatAccessState,
+  getRideAppConfirmByDate,
+  getRideAppConfirmDeadlineState,
+  getRideAppCurrentDetailVersion,
+  isMeaningfulRideAppDetailUpdate,
+  isRideAppSeatHoldExpired,
+} from "@/lib/ride-app-chat-unlock";
 import { getTaxiPartnerChatAccessState } from "@/lib/taxi-partner-chat-unlock";
 import { formatRideAppEstimatedFarePerPerson } from "@/lib/ride-app-fare-estimate";
 import { markRideAppWaiverUsed, useRideAppWaiverState } from "@/lib/ride-app-waiver";
@@ -2977,7 +2985,7 @@ function SelfSettleRiderBookingConfirmationModal({
   const title = detailsComplete ? (needsReview ? "Review updated details?" : "Confirm ride details?") : "Waiting for host details";
   const body = detailsComplete
     ? needsReview
-      ? "Host updated the details. Please review again."
+      ? "Host updated the booking details. Review the latest details before confirming again."
       : "Review the host's gather point, drop-off, fare estimate, split method, and payment method before confirming."
     : "Host must set the gather point before riders can confirm.";
   const confirmLabel = needsReview ? "Confirm updated details" : "Confirm ride details";
@@ -3921,7 +3929,8 @@ export function SelfSettleBookingDetailsCard({
       joinedRiderCount,
       countConfirmedSelfSettleRiders(nextRiderConfirmations, detailVersion),
     );
-    if (nextConfirmedRiderCount >= chatAccess.requiredConfirmations) {
+    const currentDetailsReviewCleared = nextConfirmedRiderCount >= chatAccess.requiredConfirmations;
+    if (currentDetailsReviewCleared) {
       setBookingDetailsUpdated(false);
       setBookingDetailsLastMeaningfulUpdate(null);
     }
@@ -3937,6 +3946,12 @@ export function SelfSettleBookingDetailsCard({
       riderConfirmations: nextRiderConfirmations,
       confirmedRiderCount: nextConfirmedRiderCount,
       rideAppConfirmedRiderCount: nextConfirmedRiderCount,
+      ...(currentDetailsReviewCleared
+        ? {
+            bookingDetailsUpdated: false,
+            bookingDetailsLastMeaningfulUpdate: null,
+          }
+        : {}),
     });
     closeRiderConfirmRidingModal();
     setRiderConfirmRidingMessage(currentUserNeedsReview ? "Updated ride details confirmed." : "Ride details confirmed.");
@@ -4070,12 +4085,49 @@ export function SelfSettleBookingDetailsCard({
 
     try {
       const previousFareEstimate = (fareEstimate ?? "").trim();
-      const meaningfulFareUpdate = previousFareEstimate.toLowerCase() !== nextFareEstimate.toLowerCase();
+      const nextFareSnapshot: Partial<HomeRide> = {
+        estimatedRideAppFare: nextFareEstimate,
+        rideAppBookingDetails: {
+          ...ride.rideAppBookingDetails,
+          estimatedFare: nextFareEstimate,
+        },
+      };
+      const meaningfulUpdate = isMeaningfulRideAppDetailUpdate(ride, {
+        ...ride,
+        ...nextFareSnapshot,
+      });
+      const meaningfulFareUpdate = Boolean(previousFareEstimate) && meaningfulUpdate.updateType === "fare_estimate";
       const screenshotChanged = (fareEstimateScreenshot?.fileName ?? "") !== initialFareEstimateScreenshotFileName;
       const nextUpdatedAt = new Date().toISOString();
       const note = fareEstimateNote.trim();
       const ridersAlreadyConfirmed = countConfirmedSelfSettleRiders(riderConfirmations, detailVersion) > 0;
       const nextDetailVersion = meaningfulFareUpdate ? detailVersion + 1 : detailVersion;
+      const reviewPatch = meaningfulFareUpdate
+        ? applyRideAppMeaningfulDetailUpdate({ ...ride, ...nextFareSnapshot }, "fare_estimate")
+        : {};
+      const nextRiderConfirmations =
+        reviewPatch.riderConfirmations ??
+        riderConfirmations;
+      const nextConfirmedRiderCount = Math.min(
+        countJoinedSelfSettleRiders(nextRiderConfirmations),
+        countConfirmedSelfSettleRiders(nextRiderConfirmations, nextDetailVersion),
+      );
+      const farePatch: Partial<HomeRide> = {
+        ...reviewPatch,
+        estimatedRideAppFare: nextFareEstimate,
+        rideAppBookingDetails: {
+          ...ride.rideAppBookingDetails,
+          estimatedFare: nextFareEstimate,
+        },
+        rideAppEstimatedFareUpdatedAt: nextUpdatedAt,
+        rideAppEstimatedFareNote: note || (fareEstimateScreenshot?.fileName ? `Screenshot uploaded: ${fareEstimateScreenshot.fileName}` : "Updated by host."),
+        rideAppFareEstimateScreenshotName: fareEstimateScreenshot?.fileName ?? null,
+        rideAppFareEstimateScreenshotAddedAt: fareEstimateScreenshot?.addedAt ?? null,
+        fareEstimateScreenshot,
+        lastBookingDetailsUpdateReason: note || null,
+        confirmedRiderCount: nextConfirmedRiderCount,
+        rideAppConfirmedRiderCount: nextConfirmedRiderCount,
+      };
 
       setFareEstimate(nextFareEstimate);
       setFareEstimateInput(nextFareEstimate);
@@ -4089,21 +4141,11 @@ export function SelfSettleBookingDetailsCard({
         setDetailVersion(nextDetailVersion);
         setBookingDetailsUpdated(true);
         setBookingDetailsLastMeaningfulUpdate("fare_estimate");
-        setRiderConfirmations((current) =>
-          current.map((item) =>
-            item.role === "rider" && item.status === "confirmed"
-              ? {
-                  ...item,
-                  status: "needs_review",
-                }
-              : item,
-          ),
-        );
-        setRideAppConfirmedRiderCount((currentCount) =>
-          Math.min(currentCount, countConfirmedSelfSettleRiders(riderConfirmations, nextDetailVersion)),
-        );
+        setRiderConfirmations(nextRiderConfirmations);
+        setRideAppConfirmedRiderCount(nextConfirmedRiderCount);
       }
 
+      saveStoredSelfSettleRidePatch(ride.id, farePatch);
       setShowFareEstimateModal(false);
       setFareEstimateMessage(
         meaningfulFareUpdate && ridersAlreadyConfirmed
@@ -5062,8 +5104,7 @@ export function SelfSettleHostBookingStatusCard({ ride }: { ride: HomeRide }) {
   function handleBookingDetailsSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!bookingDetailsValid) return;
-    const nextDetailVersion = rideAppBookingShared ? detailVersion + 1 : detailVersion;
-    setRideAppBookingDetails({
+    const nextBookingDetails = {
       rideAppUsed: bookingDetailsDraft.rideAppUsed,
       rideAppName: bookingDetailsDraft.rideAppUsed,
       pickupVenue: bookingDetailsDraft.pickupVenue.trim(),
@@ -5077,16 +5118,54 @@ export function SelfSettleHostBookingStatusCard({ ride }: { ride: HomeRide }) {
       vehicleIdentifier: bookingDetailsDraft.carIdentifier.trim(),
       driverName: bookingDetailsDraft.driverName.trim(),
       note: bookingDetailsDraft.bookingNote.trim(),
-    });
+    };
+    const nextRideSnapshot: Partial<HomeRide> = {
+      rideAppProviderName: nextBookingDetails.rideAppName,
+      pickupLabel: nextBookingDetails.pickupVenue,
+      pickupTime: nextBookingDetails.pickupEta,
+      estimatedRideAppFare: nextBookingDetails.estimatedFare,
+      rideAppBookingDetails: {
+        ...ride.rideAppBookingDetails,
+        estimatedFare: nextBookingDetails.estimatedFare,
+      },
+      splitMethod: nextBookingDetails.splitMethod,
+      paymentMethod: nextBookingDetails.paymentMethod,
+    };
+    const meaningfulUpdate = rideAppBookingShared
+      ? isMeaningfulRideAppDetailUpdate(ride, { ...ride, ...nextRideSnapshot })
+      : { isMeaningful: false, updateType: null };
+    const reviewPatch =
+      meaningfulUpdate.isMeaningful && meaningfulUpdate.updateType
+        ? applyRideAppMeaningfulDetailUpdate({ ...ride, ...nextRideSnapshot }, meaningfulUpdate.updateType)
+        : {};
+    const nextDetailVersion =
+      typeof reviewPatch.bookingDetailsVersion === "number" ? reviewPatch.bookingDetailsVersion : detailVersion;
+    const nextPatch: Partial<HomeRide> = {
+      ...reviewPatch,
+      bookingDetailsShared: true,
+      rideAppBookingDetailsConfirmed: true,
+      rideAppBookingDetailsFinalized: true,
+      rideAppProviderName: nextBookingDetails.rideAppName,
+      pickupLabel: nextBookingDetails.pickupVenue,
+      pickupTime: nextBookingDetails.pickupEta,
+      estimatedRideAppFare: nextBookingDetails.estimatedFare,
+      rideAppBookingDetails: nextRideSnapshot.rideAppBookingDetails,
+      splitMethod: nextBookingDetails.splitMethod,
+      paymentMethod: nextBookingDetails.paymentMethod,
+      rideAppFareEstimateScreenshotName: nextBookingDetails.fareScreenshotName || null,
+    };
+
+    setRideAppBookingDetails(nextBookingDetails);
     setDetailVersion(nextDetailVersion);
     setRideAppBookingShared(true);
     setPodStatus(rideAppBookingShared ? "booking_details_shared" : "booking_details_shared");
+    saveStoredSelfSettleRidePatch(ride.id, nextPatch);
     window.dispatchEvent(
       new CustomEvent("ridepod:self-settle-booking-shared", {
         detail: {
           podId: ride.id,
           detailVersion: nextDetailVersion,
-          status: rideAppBookingShared ? "needs_review" : "booking_details_shared",
+          status: meaningfulUpdate.isMeaningful ? "needs_review" : "booking_details_shared",
           confirmedAt: new Intl.DateTimeFormat("en", {
             hour: "numeric",
             minute: "2-digit",

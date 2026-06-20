@@ -57,11 +57,13 @@ import {
 import { createRideAppTrustEvent } from "@/lib/ride-app-trust";
 import { getRideAppHostFareEstimate, getRideAppHostFareEstimateDisplay } from "@/lib/ride-app-fare-estimate";
 import {
+  applyRideAppMeaningfulDetailUpdate,
   getRideAppChatAccessState,
   getRideAppConfirmByDate,
   getRideAppConfirmDeadlineState,
   getRideAppCurrentDetailVersion,
   getRideAppRequiredConfirmations,
+  isMeaningfulRideAppDetailUpdate,
   isRideAppSeatHoldExpired,
 } from "@/lib/ride-app-chat-unlock";
 import { getRideWithStoredSelfSettleJoin, saveStoredSelfSettleRidePatch } from "@/lib/ride-app-local-join";
@@ -802,26 +804,23 @@ function buildRideAppStopRequestPatch(ride: HomeRide, stopLabel: string, request
 }
 
 function buildApproveRideAppStopPatch(ride: HomeRide, stop: RoutePlanStop): Partial<HomeRide> {
-  const nextDetailVersion = getRideAppCurrentDetailVersion(ride) + 1;
   const approvedStop: RoutePlanStop = { ...stop, status: "approved" };
-
-  return {
+  const nextRoutePatch = {
     proposedStops: (ride.proposedStops ?? []).filter((item) => item.id !== stop.id),
     approvedStops: [...(ride.approvedStops ?? []), approvedStop],
-    bookingDetailsUpdated: true,
-    bookingDetailsLastMeaningfulUpdate: "stop_added",
+  };
+  const reviewPatch = applyRideAppMeaningfulDetailUpdate(
+    {
+      ...ride,
+      ...nextRoutePatch,
+    },
+    "stop_added",
+  );
+
+  return {
+    ...nextRoutePatch,
+    ...reviewPatch,
     lastBookingDetailsUpdateReason: "Host approved stop request.",
-    bookingDetailsVersion: nextDetailVersion,
-    rideAppCurrentDetailVersion: nextDetailVersion,
-    rideAppPodStatus: "needs_review",
-    confirmedRiderCount: 0,
-    rideAppConfirmedRiderCount: 0,
-    rideAppConfirmedRiderIds: [],
-    riderConfirmations: ride.riderConfirmations?.map((rider) =>
-      rider.role === "rider" && rider.status === "confirmed"
-        ? { ...rider, status: "needs_review" as const }
-        : rider,
-    ),
   };
 }
 
@@ -1027,6 +1026,7 @@ function getPodStatusUpdateTitle(ride: HomeRide) {
   switch (ride.bookingDetailsLastMeaningfulUpdate) {
     case "fare_estimate":
       return "Fare estimate updated";
+    case "gather_point":
     case "pickup":
       return "Gather point updated";
     case "route":
@@ -1044,6 +1044,7 @@ function getPodStatusUpdateSubtitle(ride: HomeRide) {
   switch (ride.bookingDetailsLastMeaningfulUpdate) {
     case "fare_estimate":
       return "Riders need to review the updated fare estimate.";
+    case "gather_point":
     case "pickup":
       return "Riders need to review the updated gather point.";
     case "route":
@@ -1067,7 +1068,7 @@ function getPodStatusRiderHelper(rider: PodStatusRider, bookingDetailsVersion: n
   if (rider.role === "host") return "Host";
   if (rider.status === "confirmed") {
     return isPodStatusRiderConfirmedForCurrentDetails(rider, bookingDetailsVersion)
-      ? "Current details confirmed"
+      ? "Confirmed current details"
       : "Confirmed older details";
   }
   if (rider.status === "needs_review" || rider.status === "review_needed") return "Confirmed older details";
@@ -1160,16 +1161,26 @@ function getRideAppHostCancellationActivity(ride: HomeRide) {
 }
 
 function getManagePodActionsPendingCount(ride: HomeRide) {
+  const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
   const pendingConfirmationCount =
     ride.riderConfirmations?.filter(
-      (item) =>
-        item.role === "rider" &&
-        (item.status === "pending" ||
+      (item) => {
+        if (item.role !== "rider") return false;
+        const confirmedVersion = item.confirmedBookingDetailsVersion ?? item.confirmedDetailVersion;
+        const confirmedOlderDetails =
+          item.status === "confirmed" &&
+          typeof confirmedVersion === "number" &&
+          confirmedVersion < currentDetailVersion;
+        return (
+          item.status === "pending" ||
           item.status === "joined_interest" ||
-          item.status === "needs_review"),
+          item.status === "needs_review" ||
+          confirmedOlderDetails
+        );
+      },
     ).length ?? 0;
 
-  return pendingConfirmationCount + getPendingRouteRequestCount(ride);
+  return pendingConfirmationCount + getPendingRouteRequestCount(ride) + getExpiredSeatHoldCount(ride);
 }
 
 type PodStatusContext = {
@@ -1870,7 +1881,10 @@ export function PodStatusPanel({
 
     const previousGatherPoint = ride.pickupLabel?.trim() ?? "";
     const gatherPointChanged = previousGatherPoint !== nextGatherPoint;
-    const nextDetailVersion = gatherPointChanged && detailsReady ? getRideAppCurrentDetailVersion(ride) + 1 : getRideAppCurrentDetailVersion(ride);
+    const reviewPatch =
+      gatherPointChanged && detailsReady
+        ? applyRideAppMeaningfulDetailUpdate({ ...ride, pickupLabel: nextGatherPoint }, "pickup")
+        : {};
     const patch: Partial<HomeRide> = {
       pickupLabel: nextGatherPoint,
       rideAppChecklist: {
@@ -1886,20 +1900,7 @@ export function PodStatusPanel({
         updatedAt: new Date().toISOString(),
         updatedBy: ride.hostName || "Host",
       },
-      ...(gatherPointChanged && detailsReady
-        ? {
-            bookingDetailsUpdated: true,
-            bookingDetailsLastMeaningfulUpdate: "pickup",
-            bookingDetailsVersion: nextDetailVersion,
-            rideAppCurrentDetailVersion: nextDetailVersion,
-            rideAppPodStatus: "needs_review",
-            riderConfirmations: ride.riderConfirmations?.map((rider) =>
-              rider.role === "rider" && rider.status === "confirmed"
-                ? { ...rider, status: "needs_review" as const }
-                : rider,
-            ),
-          }
-        : {}),
+      ...reviewPatch,
     };
 
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
@@ -3379,8 +3380,8 @@ function SelfSettlePodSummaryHero({
     "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-rose-300/35 bg-rose-400/12 px-1.5 text-[11px] font-black leading-none text-rose-200";
   const estimateContent = (
     <>
-      <p className="w-full text-center text-[11px] font-semibold text-[var(--rp-muted-strong)]">{displayEstimateLabel}</p>
-      <p className={cn("mt-1 w-full whitespace-nowrap text-center font-black leading-tight text-[var(--rp-primary)]", estimateUpdated ? "text-base" : "text-xs")}>
+      <p className="w-full text-center text-[12px] font-semibold text-[var(--rp-muted-strong)]">{displayEstimateLabel}</p>
+      <p className={cn("mt-1 w-full whitespace-nowrap text-center font-black leading-tight text-[var(--rp-primary)]", estimateUpdated ? "text-2xl" : "text-sm")}>
         {estimateValue}
       </p>
     </>
@@ -3390,8 +3391,8 @@ function SelfSettlePodSummaryHero({
     <section className="grid gap-4">
       <div className="relative overflow-hidden rounded-[24px] border border-cyan-100/20 bg-[radial-gradient(circle_at_top_left,rgba(103,232,249,0.1),transparent_34%),linear-gradient(145deg,rgba(13,24,39,0.96),rgba(3,10,18,0.98))] p-4 shadow-[0_20px_56px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.06)]">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent_38%)]" />
-        <div className="relative grid grid-cols-[72px_minmax(0,1fr)] gap-3">
-          <div className="grid justify-items-center gap-1">
+        <div className="relative grid grid-cols-[64px_minmax(0,1fr)_auto] gap-3">
+          <div className="grid justify-items-center">
             <span
               className="grid h-16 w-16 place-items-center overflow-hidden rounded-full border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/8 bg-cover bg-center text-2xl font-black text-[var(--rp-primary)] shadow-[0_14px_32px_rgba(0,0,0,0.28)]"
               style={!hostAvatarPreference && hostProfileImageUrl ? { backgroundImage: `url(${hostProfileImageUrl})` } : undefined}
@@ -3409,9 +3410,6 @@ function SelfSettlePodSummaryHero({
                 hostAvatarLabel
               )}
             </span>
-            <p className="w-full text-center text-[9px] font-black uppercase leading-3 tracking-[0.08em] text-[var(--rp-muted)]">
-              Created by <span className="block truncate">{hostAvatarDisplayName}</span>
-            </p>
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -3429,21 +3427,34 @@ function SelfSettlePodSummaryHero({
                 Self-settle
               </span>
             </div>
-            <h2 className="mt-3 text-lg font-semibold leading-tight text-[var(--rp-muted-strong)]">
+            <h2 className="mt-3 text-xl font-black leading-tight text-white">
               {ride.fromLabel} {"->"} {ride.toLabel}
             </h2>
-            <p className="mt-1 text-lg font-black text-cyan-200">
-              {ride.dateLabel} · {ride.timeLabel}
+            <p className="mt-1 text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-muted-strong)]">
+              Created by {hostAvatarDisplayName}
             </p>
           </div>
+          <span className="flex shrink-0 items-start justify-end gap-2">
+            <Link
+              href={`/pods/${ride.id}/chat`}
+              aria-label="Open pod chat"
+              className="grid h-10 w-10 place-items-center rounded-full border border-cyan-200/35 bg-cyan-300/8 text-cyan-100 shadow-[0_8px_18px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:bg-cyan-300/14"
+            >
+              <MessagesSquare className="h-[18px] w-[18px]" />
+            </Link>
+            <button
+              type="button"
+              onClick={onSharePod}
+              aria-label="Share pod"
+              className="grid h-10 w-10 place-items-center rounded-full border border-cyan-200/35 bg-cyan-300/8 text-cyan-100 shadow-[0_8px_18px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:bg-cyan-300/14"
+            >
+              <Share2 className="h-[18px] w-[18px]" />
+            </button>
+          </span>
         </div>
 
-        <div className="relative mt-4 flex items-center justify-between gap-3 text-sm font-semibold text-[var(--rp-muted-strong)]">
-          <span className="inline-flex min-w-0 items-center gap-2">
-            <span className="truncate">Pod ID: {ride.id.slice(0, 8).toUpperCase()}</span>
-            <Copy className="h-4 w-4 shrink-0" />
-          </span>
-          {canLeaveRideFromHero ? (
+        {canLeaveRideFromHero ? (
+          <div className="relative mt-4 flex justify-end">
             <button
               type="button"
               onPointerUp={(event) => {
@@ -3456,8 +3467,8 @@ function SelfSettlePodSummaryHero({
             >
               Leave Ride
             </button>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
         <div className="relative mt-4 grid grid-cols-[1.05fr_1.08fr_0.82fr] gap-3 border-t border-white/12 pt-4 text-center">
           <div className="flex min-w-0 flex-col items-center justify-center border-r border-white/12 pr-3">
@@ -4438,6 +4449,24 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     const estimatePerPerson =
       totalEstimate === null ? null : Math.ceil(totalEstimate / Math.max(1, ride.seatsUsed));
     const updatedBy = ride.currentUserRole === "host" ? "You" : ride.currentUserName ?? "You";
+    const previousFareEstimate = getRideAppHostFareEstimate(ride);
+    const nextEstimateSnapshot: Partial<HomeRide> = {
+      estimatedRideAppFare: formattedEstimate,
+      rideAppBookingDetails: {
+        ...ride.rideAppBookingDetails,
+        estimatedFare: formattedEstimate,
+      },
+      rideAppEstimatedFarePerPerson: estimatePerPerson,
+      rideAppEstimatedFareTotal: totalEstimate,
+    };
+    const meaningfulUpdate = isMeaningfulRideAppDetailUpdate(ride, {
+      ...ride,
+      ...nextEstimateSnapshot,
+    });
+    const fareEstimateChangedMeaningfully = Boolean(previousFareEstimate?.trim()) && meaningfulUpdate.updateType === "fare_estimate";
+    const reviewPatch = fareEstimateChangedMeaningfully
+      ? applyRideAppMeaningfulDetailUpdate({ ...ride, ...nextEstimateSnapshot }, "fare_estimate")
+      : {};
     const updatedChecklist = {
       ...ride.rideAppChecklist,
       pickupPoint: ride.rideAppChecklist?.pickupPoint ?? Boolean(ride.pickupLabel),
@@ -4453,6 +4482,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
       updatedBy,
     };
     const updatedRidePatch: Partial<HomeRide> = {
+      ...reviewPatch,
       bookingDetailsShared: true,
       rideAppBookingDetailsConfirmed: true,
       rideAppBookingDetailsConfirmedAt: ride.rideAppBookingDetailsConfirmedAt ?? updatedAt,
@@ -4486,6 +4516,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
         : null,
       rideAppChecklist: updatedChecklist,
     };
+    setRideActionPatch((current) => mergeRidePatch(current ?? {}, updatedRidePatch) as Partial<HomeRide>);
     saveStoredSelfSettleRidePatch(ride.id, updatedRidePatch);
     updateCreatedHomeRide(ride.id, (storedRide) => ({
       ...storedRide,
@@ -4499,12 +4530,17 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
         ...updatedRidePatch.rideAppChecklist,
       } as HomeRide["rideAppChecklist"],
     }));
+    const screenshotOnlyUpdate = !fareEstimateChangedMeaningfully && Boolean(rideAppEstimateScreenshotDraftName || rideAppEstimateScreenshotDraftPreviewUrl);
     notifyRideDetailAction({
-      type: "ride_app_details_updated",
+      type: fareEstimateChangedMeaningfully ? "ride_app_action_required" : "ride_app_details_updated",
       audiences: ["riders"],
-      title: "Ride estimate updated",
-      body: `New ride estimate: ${formattedEstimate}. Please review the pod details.`,
-      action: "estimate_updated",
+      title: fareEstimateChangedMeaningfully ? "Fare estimate updated" : screenshotOnlyUpdate ? "Fare estimate screenshot added" : "Fare estimate updated",
+      body: fareEstimateChangedMeaningfully
+        ? `${detailActorName} updated the fare estimate to ${formattedEstimate}. Riders need to review.`
+        : screenshotOnlyUpdate
+          ? `${detailActorName} added a fare estimate screenshot.`
+          : `${detailActorName} updated the fare estimate to ${formattedEstimate}.`,
+      action: fareEstimateChangedMeaningfully ? "fare_estimate_needs_review" : screenshotOnlyUpdate ? "fare_screenshot_added" : "estimate_updated",
       dedupe: false,
     });
     setRideAppEstimateError(null);
