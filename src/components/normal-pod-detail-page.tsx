@@ -3456,23 +3456,6 @@ function SelfSettlePodSummaryHero({
           </span>
         </div>
 
-        {canLeaveRideFromHero ? (
-          <div className="relative mt-4 flex justify-end">
-            <button
-              type="button"
-              onPointerUp={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                onLeaveRide();
-              }}
-              onClick={onLeaveRide}
-              className="relative z-10 min-h-9 shrink-0 rounded-full border border-rose-200/75 bg-rose-500/24 px-3.5 py-1.5 text-xs font-black text-rose-50 shadow-[0_0_18px_rgba(251,113,133,0.22)] transition hover:bg-rose-500/34"
-            >
-              Leave Ride
-            </button>
-          </div>
-        ) : null}
-
         <div className="relative mt-4 grid grid-cols-[1.18fr_1.05fr_0.85fr] overflow-hidden rounded-[16px] border border-cyan-100/14 bg-white/[0.035] text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] min-[390px]:grid-cols-3">
           <div className="grid min-w-0 grid-cols-[18px_minmax(0,1fr)] items-center gap-1 border-r border-white/10 px-2 py-3 min-[390px]:grid-cols-[22px_minmax(0,1fr)] min-[390px]:gap-2 min-[390px]:px-3">
             <CalendarDays className="h-[18px] w-[18px] shrink-0 text-[var(--rp-muted-strong)] min-[390px]:h-5 min-[390px]:w-5" />
@@ -3505,7 +3488,7 @@ function SelfSettlePodSummaryHero({
         <div
           className={cn(
             "relative mt-4 grid gap-3",
-            canUpdateEstimate ? "grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] max-[360px]:grid-cols-1" : "grid-cols-1",
+            canUpdateEstimate || canLeaveRideFromHero ? "grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] max-[360px]:grid-cols-1" : "grid-cols-1",
           )}
         >
           {summaryUserIsHost ? (
@@ -3522,7 +3505,7 @@ function SelfSettlePodSummaryHero({
               </span>
             </button>
           ) : hasFareProof ? (
-            <div className="grid min-h-[110px] justify-items-center rounded-[16px] border border-cyan-300/18 bg-cyan-300/6 px-4 py-4 text-center">
+            <div className="grid min-h-[124px] justify-items-center rounded-[16px] border border-cyan-300/18 bg-cyan-300/6 px-4 py-4 text-center">
               {estimateContent}
               <button
                 type="button"
@@ -3533,7 +3516,7 @@ function SelfSettlePodSummaryHero({
               </button>
             </div>
           ) : (
-            <a href="#fare-split" className="grid min-h-[110px] justify-items-center rounded-[16px] border border-cyan-300/18 bg-cyan-300/6 px-4 py-4 text-center transition hover:brightness-110">
+            <a href="#fare-split" className="grid min-h-[124px] justify-items-center rounded-[16px] border border-cyan-300/18 bg-cyan-300/6 px-4 py-4 text-center transition hover:brightness-110">
               {estimateContent}
             </a>
           )}
@@ -3567,11 +3550,34 @@ function SelfSettlePodSummaryHero({
                 Cancel pod
               </button>
             </div>
+          ) : canLeaveRideFromHero ? (
+            <div className="grid gap-3">
+              <Link
+                href={`/pods/${ride.id}/status`}
+                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-[14px] border border-white/12 bg-white/8 px-3 text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-white/12 hover:text-white"
+              >
+                <BarChart3 className="h-4 w-4" />
+                View status
+              </Link>
+              <button
+                type="button"
+                onPointerUp={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onLeaveRide();
+                }}
+                onClick={onLeaveRide}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] border border-rose-300/35 bg-rose-500/10 px-3 text-sm font-black text-rose-100 transition hover:bg-rose-500/16"
+              >
+                <X className="h-4 w-4" />
+                Leave Pod
+              </button>
+            </div>
           ) : null}
         </div>
       </div>
 
-      {canUpdateEstimate ? null : canJoinRide ? (
+      {canUpdateEstimate || canLeaveRideFromHero ? null : canJoinRide ? (
         <button
           type="button"
           onClick={onJoinRide}
