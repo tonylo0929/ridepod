@@ -396,7 +396,7 @@ function getRideAppMinimumRidersToGoLabel(ride: HomeRide) {
     Math.min(maxJoinedRiders, ride.rideAppMinimumConfirmedRiders ?? ride.rideAppRequiredConfirmations ?? Math.min(2, maxJoinedRiders)),
   );
 
-  return `Need at least ${minimum} rider${minimum === 1 ? "" : "s"}`;
+  return `Need ${minimum} rider${minimum === 1 ? "" : "s"}`;
 }
 
 function getRideAppAcceptedPaymentDisplay(ride: HomeRide) {
@@ -3473,12 +3473,12 @@ function SelfSettlePodSummaryHero({
           </div>
         ) : null}
 
-        <div className="relative mt-4 grid grid-cols-[1.18fr_1fr_0.9fr] overflow-hidden rounded-[16px] border border-cyan-100/14 bg-white/[0.035] text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] min-[390px]:grid-cols-3">
-          <div className="grid min-w-0 grid-cols-[20px_minmax(0,1fr)] items-center gap-1.5 border-r border-white/10 px-2.5 py-3 min-[390px]:grid-cols-[22px_minmax(0,1fr)] min-[390px]:gap-2 min-[390px]:px-3">
-            <CalendarDays className="h-5 w-5 shrink-0 text-[var(--rp-muted-strong)]" />
+        <div className="relative mt-4 grid grid-cols-[1.18fr_1.05fr_0.85fr] overflow-hidden rounded-[16px] border border-cyan-100/14 bg-white/[0.035] text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] min-[390px]:grid-cols-3">
+          <div className="grid min-w-0 grid-cols-[18px_minmax(0,1fr)] items-center gap-1 border-r border-white/10 px-2 py-3 min-[390px]:grid-cols-[22px_minmax(0,1fr)] min-[390px]:gap-2 min-[390px]:px-3">
+            <CalendarDays className="h-[18px] w-[18px] shrink-0 text-[var(--rp-muted-strong)] min-[390px]:h-5 min-[390px]:w-5" />
             <span className="min-w-0">
-              <span className="block text-[12px] font-semibold leading-4 text-white min-[390px]:text-[13px]">{ride.dateLabel}</span>
-              <span className="block text-[12px] font-black leading-4 text-cyan-200 min-[390px]:text-[13px]">{ride.timeLabel}</span>
+              <span className="block whitespace-nowrap text-[11px] font-semibold leading-[13px] text-white min-[390px]:text-[13px] min-[390px]:leading-4">{ride.dateLabel}</span>
+              <span className="block whitespace-nowrap text-[11px] font-black leading-[13px] text-cyan-200 min-[390px]:text-[13px] min-[390px]:leading-4">{ride.timeLabel}</span>
             </span>
           </div>
           <div className="min-w-0 border-r border-white/10 px-2.5 py-3">
