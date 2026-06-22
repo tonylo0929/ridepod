@@ -3372,7 +3372,6 @@ function SelfSettlePodSummaryHero({
   const hostAvatarPreference = ride.hostAvatarPreference ?? null;
   const hostAvatarDisplayName = ride.hostDisplayName?.trim() || ride.hostName || "Host";
   const hostAvatarLabel = canUpdateEstimate ? "You" : getInitials(ride.hostName || "Host").slice(0, 1);
-  const hostBadgeLabel = canUpdateEstimate ? "You are hosting" : ride.hostName || "New host";
   const canJoinRide = getCurrentUserCanJoinSelfSettlePod(ride, "quote_pending");
   const rejoinRestriction = getRideAppRejoinRestrictionCopy(ride, ride.seatsUsed < ride.seatsTotal);
   const hostEstimateUpdated = canUpdateEstimate && estimateUpdated;
@@ -3419,23 +3418,8 @@ function SelfSettlePodSummaryHero({
               )}
             </span>
           </div>
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              {canLeaveRideFromHero ? (
-                <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-cyan-300/45 bg-cyan-300/10 px-2.5 py-1 text-[10px] font-black uppercase text-cyan-100">
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                  Joined by you
-                </span>
-              ) : null}
-              <span className="inline-flex min-w-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-primary)]">
-                <Crown className="h-3.5 w-3.5 shrink-0" />
-                {hostBadgeLabel}
-              </span>
-              <span className="shrink-0 rounded-full border border-cyan-300/45 bg-cyan-300/10 px-2.5 py-1 text-[10px] font-black uppercase text-cyan-200">
-                Self-settle
-              </span>
-            </div>
-            <h2 className="mt-3 text-xl font-black leading-tight text-white">
+          <div className="min-w-0 self-center">
+            <h2 className="text-xl font-black leading-tight text-white">
               {ride.fromLabel} {"→"} {ride.toLabel}
             </h2>
             <p className="mt-1 text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-muted-strong)]">

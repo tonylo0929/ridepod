@@ -203,7 +203,6 @@ function RideCard({ ride, currentUserId }: { ride: CalendarRide; currentUserId?:
           </span>
           <span className="mt-2 flex flex-wrap gap-1.5">
             <RideBadge tone={badgeToneForRide(ride)}>{rideTypeLabel(ride)}</RideBadge>
-            {isRideApp ? <RideBadge tone="purple">Self-settle</RideBadge> : null}
             {ride.airportDirection ? (
               <RideBadge tone="cyan">{ride.airportDirection === "from_airport" ? "From airport" : "To airport"}</RideBadge>
             ) : null}

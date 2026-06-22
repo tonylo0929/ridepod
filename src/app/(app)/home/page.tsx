@@ -16,7 +16,6 @@ import {
   SlidersHorizontal,
   Smartphone,
   Star,
-  UserRound,
   UsersRound,
   X,
 } from "lucide-react";
@@ -714,12 +713,7 @@ function getHomeRideTrustBadge(summary: RideAppTrustSummary) {
     };
   }
 
-  if (summary.trustLevel === "New") {
-    return {
-      tone: "new_host" as const,
-      label: "New host",
-    };
-  }
+  if (summary.trustLevel === "New") return null;
 
   if (summary.trustLevel === "Recent issues") {
     return {
@@ -899,17 +893,13 @@ function RideMetaTags({
             "inline-flex min-h-7 min-w-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-black min-[390px]:gap-1.5 min-[390px]:px-2.5 min-[390px]:text-[11px]",
             trustBadge.tone === "rating"
               ? "border-amber-300/30 bg-amber-300/12 text-amber-100"
-              : trustBadge.tone === "new_host"
-                ? "border-sky-300/35 bg-sky-400/12 text-sky-100"
-                : trustBadge.tone === "warning"
-                  ? "border-rose-300/30 bg-rose-400/12 text-rose-100"
-                  : "border-sky-300/25 bg-sky-400/10 text-sky-100",
+              : trustBadge.tone === "warning"
+                ? "border-rose-300/30 bg-rose-400/12 text-rose-100"
+                : "border-sky-300/25 bg-sky-400/10 text-sky-100",
           )}
         >
           {trustBadge.tone === "rating" ? (
             <Star className="h-3.5 w-3.5 shrink-0 fill-amber-300 text-amber-300" />
-          ) : trustBadge.tone === "new_host" ? (
-            <UserRound className="h-3.5 w-3.5 shrink-0 text-sky-200" />
           ) : trustBadge.tone === "warning" ? (
             <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-rose-100" />
           ) : (
