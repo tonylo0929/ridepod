@@ -599,6 +599,10 @@ function formatRidePickupLabel(date: Date) {
   }).format(date);
 }
 
+function getCompactPodSummaryDateLabel(dateLabel: string) {
+  return dateLabel.replace(/^[A-Za-z]{3,9},\s*/i, "").trim() || dateLabel;
+}
+
 function getRidePickupDate(ride: HomeRide) {
   const cleanedDate = ride.dateLabel.replace(/^[A-Za-z]{3,9},\s*/i, "").trim();
   const dateText = /\d{4}/.test(cleanedDate)
@@ -3378,6 +3382,7 @@ function SelfSettlePodSummaryHero({
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
   const hostCancellationActive = hostCancellationStatus !== "active";
   const estimateActionLabel = "Edit";
+  const compactSummaryDateLabel = getCompactPodSummaryDateLabel(ride.dateLabel);
   const manageActionsPendingCount = getManagePodActionsPendingCount(ride);
   const noticeBadgeClass =
     "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-rose-300/35 bg-rose-400/12 px-1.5 text-[11px] font-black leading-none text-rose-200";
@@ -3459,8 +3464,8 @@ function SelfSettlePodSummaryHero({
         <div className="relative mt-4 grid grid-cols-[1.18fr_1.05fr_0.85fr] overflow-hidden rounded-[16px] border border-cyan-100/14 bg-white/[0.035] text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] min-[390px]:grid-cols-3">
           <div className="grid min-w-0 grid-cols-[18px_minmax(0,1fr)] items-center gap-1 border-r border-white/10 px-2 py-3 min-[390px]:grid-cols-[22px_minmax(0,1fr)] min-[390px]:gap-2 min-[390px]:px-3">
             <CalendarDays className="h-[18px] w-[18px] shrink-0 text-[var(--rp-muted-strong)] min-[390px]:h-5 min-[390px]:w-5" />
-            <span className="min-w-0">
-              <span className="block whitespace-nowrap text-[11px] font-semibold leading-[13px] text-white min-[390px]:text-[13px] min-[390px]:leading-4">{ride.dateLabel}</span>
+            <span className="min-w-0" title={`${ride.dateLabel} ${ride.timeLabel}`}>
+              <span className="block whitespace-nowrap text-[11px] font-semibold leading-[13px] text-white min-[390px]:text-[13px] min-[390px]:leading-4">{compactSummaryDateLabel}</span>
               <span className="block whitespace-nowrap text-[11px] font-black leading-[13px] text-cyan-200 min-[390px]:text-[13px] min-[390px]:leading-4">{ride.timeLabel}</span>
             </span>
           </div>
