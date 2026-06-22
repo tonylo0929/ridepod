@@ -3303,6 +3303,7 @@ function SelfSettlePodSummaryHero({
   onSharePod,
   onJoinRide,
   onLeaveRide,
+  onCancelPodClick,
 }: {
   ride: HomeRide;
   seatsUsed: number;
@@ -3318,6 +3319,7 @@ function SelfSettlePodSummaryHero({
   onSharePod: () => void;
   onJoinRide: () => void;
   onLeaveRide: () => void;
+  onCancelPodClick: () => void;
 }) {
   const chatAccess = getRideAppChatAccessState(ride);
   const summaryRiders = buildPodStatusRiders(ride);
@@ -3550,6 +3552,14 @@ function SelfSettlePodSummaryHero({
                 <BarChart3 className="h-4 w-4" />
                 View status
               </Link>
+              <button
+                type="button"
+                onClick={onCancelPodClick}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] border border-rose-300/35 bg-rose-500/10 px-3 text-sm font-black text-rose-100 transition hover:bg-rose-500/16"
+              >
+                <X className="h-4 w-4" />
+                Cancel pod
+              </button>
             </div>
           ) : null}
         </div>
@@ -4230,6 +4240,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
   const hostCancellationAllowsHostControls = hostCancellationStatus === "active";
   const canUpdateRideAppEstimate = selfSettlePod && showSelfSettleHost && hostCancellationAllowsHostControls;
+  const rideAppConfirmedRiderCount = getRideAppConfirmedReplacementRiders(ride).length;
   const currentUserIsSelfSettleRider =
     selfSettlePod &&
     !showSelfSettleHost &&
@@ -4757,6 +4768,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
               onSharePod={sharePod}
               onJoinRide={joinSelfSettleFromSummary}
               onLeaveRide={() => setShowLeaveSelfSettleModal(true)}
+              onCancelPodClick={() => openHostCancellationModal(rideAppConfirmedRiderCount)}
             />
           ) : (
           <section className="relative -mx-4 -mt-2 overflow-hidden rounded-b-[28px] border-b border-[var(--rp-border)] bg-[var(--rp-shell)] shadow-[var(--rp-shadow-soft)]">
@@ -5179,10 +5191,10 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
               </span>
               <div className="min-w-0">
                 <h2 id="host-cancellation-title" className="text-xl font-black leading-tight text-white">
-                  Can you still host?
+                  Confirm host action
                 </h2>
                 <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                  Choose what should happen to this self-settle pod.
+                  Confirm what should happen to this self-settle pod. Riders will be notified after you confirm.
                 </p>
               </div>
             </div>
@@ -5277,7 +5289,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
                 onClick={confirmHostCancellation}
                 className="min-h-12 rounded-[16px] border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/14 px-4 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/20"
               >
-                Continue
+                Confirm
               </button>
             </div>
           </section>
