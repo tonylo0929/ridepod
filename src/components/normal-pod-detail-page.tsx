@@ -5267,9 +5267,14 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
         >
           <section className="max-h-[calc(100dvh-2rem)] w-full max-w-[390px] overflow-y-auto rounded-[26px] border border-[var(--rp-primary)]/35 bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.48)]">
             <div className="flex items-start gap-3">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]">
+              <button
+                type="button"
+                onClick={closeHostCancellationModal}
+                aria-label="Close host action confirmation"
+                className="grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/18"
+              >
                 <X className="h-6 w-6" />
-              </span>
+              </button>
               <div className="min-w-0">
                 <h2 id="host-cancellation-title" className="text-xl font-black leading-tight text-white">
                   Confirm host action
