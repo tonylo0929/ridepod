@@ -1665,13 +1665,10 @@ export function PodStatusPanel({
   const [selectedRiderProfile, setSelectedRiderProfile] = useState<PodStatusRider | null>(null);
   const [showConfirmByModal, setShowConfirmByModal] = useState(false);
   const [showGatherPointModal, setShowGatherPointModal] = useState(false);
-  const [showNudgeModal, setShowNudgeModal] = useState(false);
   const [showBecomeBookerModal, setShowBecomeBookerModal] = useState(false);
   const [showRejoinModal, setShowRejoinModal] = useState(false);
   const [rejoinMessage, setRejoinMessage] = useState<string | null>(null);
   const [becomeBookerUnderstood, setBecomeBookerUnderstood] = useState(false);
-  const [nudgeSent, setNudgeSent] = useState(false);
-  const [lastNudgeAt, setLastNudgeAt] = useState<string | null>(null);
   const [gatherPointDraft, setGatherPointDraft] = useState(() => baseRide.pickupLabel ?? "");
   const [confirmByAmount, setConfirmByAmount] = useState(6);
   const [confirmByUnit, setConfirmByUnit] = useState<ConfirmByUnit>("hours");
@@ -1685,10 +1682,13 @@ export function PodStatusPanel({
   const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
   const requiredConfirmationsFromRide = getRideAppRequiredConfirmations(ride);
   const confirmedCurrentRiderCount = riders.filter((item) => isPodStatusRiderConfirmedForCurrentDetails(item, currentDetailVersion)).length;
-  const pendingNudgeRiders = riders.filter(
-    (item) => item.role === "rider" && (item.status === "pending" || item.status === "needs_review" || item.status === "review_needed"),
+  const pendingConfirmationRiders = riders.filter(
+    (item) => item.role === "rider" && (item.status === "pending" || item.status === "joined_interest"),
   );
-  const pendingNudgeCount = pendingNudgeRiders.length;
+  const needsReviewRiders = riders.filter(
+    (item) => item.role === "rider" && (item.status === "needs_review" || item.status === "review_needed"),
+  );
+  const pendingConfirmationActionCount = pendingConfirmationRiders.length + needsReviewRiders.length;
   const isHost = getCurrentUserIsHost(ride);
   const currentUserHadRideAppSeat =
     !isHost &&
@@ -1758,8 +1758,6 @@ export function PodStatusPanel({
   const rejoinRestriction = getRideAppRejoinRestrictionCopy(ride, rejoinOpenSeatCount > 0);
   const canRequestRejoin = currentUserSeatHoldExpired && podStillAcceptsRejoin && rejoinOpenSeatCount > 0 && !rejoinRestriction;
   const rejoinUnavailableHelper = rejoinRestriction?.helper ?? (podStillAcceptsRejoin ? "Your released seat is no longer available." : "This pod is no longer accepting riders.");
-  const canNudgePendingRiders = isHost && detailsComplete && pendingNudgeCount > 0;
-  const nudgeSentRecently = Boolean(lastNudgeAt);
   const currentDashboardStep = ride.rideAppPodStatus === "ride_booked" || ride.rideAppPodStatus === "completed" ? 5 : chatAccess.canAccess ? 3 : detailsComplete ? 2 : 1;
   const detailChecklistRows = [
     {
@@ -1960,22 +1958,6 @@ export function PodStatusPanel({
       action: gatherPointChanged ? "gather_point_updated" : "gather_point_set",
     });
     setShowGatherPointModal(false);
-  }
-
-  function sendNudgeToPendingRiders() {
-    if (!canNudgePendingRiders) return;
-
-    setLastNudgeAt(new Date().toISOString());
-    setNudgeSent(true);
-    setShowNudgeModal(false);
-    notifyPodStatusAction({
-      type: "ride_app_action_required",
-      audiences: ["members"],
-      title: "Please confirm ride details",
-      body: `${podStatusActorName} asked pending riders to confirm before ${confirmByLabel}.`,
-      action: "confirmation_nudge_sent",
-      dedupe: false,
-    });
   }
 
   function confirmBecomeBooker() {
@@ -2356,6 +2338,39 @@ export function PodStatusPanel({
                 </div>
               </section>
 
+              {isHost && detailsComplete && pendingConfirmationActionCount > 0 ? (
+                <section className="rounded-[20px] border border-[var(--rp-primary)]/30 bg-[var(--rp-primary)]/10 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Confirm-by deadline</p>
+                  <h3 className="mt-2 text-lg font-black leading-tight text-white">Waiting for confirmations</h3>
+                  <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                    {pendingConfirmationActionCount > 0
+                      ? `${pendingConfirmationActionCount} ${pendingConfirmationActionCount === 1 ? "rider needs" : "riders need"} to confirm by ${confirmByLabel}.`
+                      : "Riders need to confirm before the confirm-by time."}
+                  </p>
+                  <p className="mt-2 text-xs font-bold leading-5 text-cyan-100">
+                    Unconfirmed seats may be released after the deadline.
+                  </p>
+                  <div className="mt-4 grid grid-cols-2 gap-2 max-[360px]:grid-cols-1">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("riders")}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-white/12 bg-white/8 px-3 text-xs font-black text-white transition hover:bg-white/12"
+                    >
+                      <UsersRound className="h-4 w-4" />
+                      View confirmations
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmByModal(true)}
+                      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/12 px-3 text-xs font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/18"
+                    >
+                      <Clock3 className="h-4 w-4" />
+                      Edit confirm-by time
+                    </button>
+                  </div>
+                </section>
+              ) : null}
+
               <section id="fare-split" className="scroll-mt-24 rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Key details</p>
@@ -2393,11 +2408,6 @@ export function PodStatusPanel({
                 </div>
               </section>
 
-              {nudgeSent ? (
-                <p className="rounded-[16px] border border-emerald-300/25 bg-emerald-400/10 px-4 py-3 text-sm font-black text-emerald-100">
-                  Nudge sent
-                </p>
-              ) : null}
             </div>
           ) : null}
 
@@ -2748,73 +2758,6 @@ export function PodStatusPanel({
                   className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105 disabled:opacity-45"
                 >
                   Save
-                </button>
-              </div>
-            </section>
-          </div>
-        ) : null}
-
-        {showNudgeModal ? (
-          <div className="fixed inset-0 z-[105] grid place-items-center bg-black/68 px-4 py-6 backdrop-blur-sm">
-            <section
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="nudge-riders-title"
-              className="w-full max-w-[380px] rounded-[26px] border border-cyan-200/25 bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.48)]"
-            >
-              <div className="flex items-start gap-3">
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border border-cyan-200/35 bg-cyan-300/12 text-cyan-100">
-                  <MessageCircle className="h-6 w-6" />
-                </span>
-                <div className="min-w-0">
-                  <h2 id="nudge-riders-title" className="text-xl font-black leading-tight text-white">Nudge pending riders?</h2>
-                  <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                    Send a reminder to riders who have not confirmed yet.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 rounded-[18px] border border-white/10 bg-white/[0.04] p-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Pending riders</p>
-                <div className="mt-3 grid gap-2">
-                  {pendingNudgeRiders.map((rider) => (
-                    <div key={`${rider.name}-${rider.status}`} className="flex items-center justify-between gap-3 rounded-[14px] bg-black/20 px-3 py-2">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-xs font-black text-cyan-100">
-                          {getInitials(rider.name).slice(0, 1)}
-                        </span>
-                        <span className="truncate text-sm font-black text-white">{rider.name}</span>
-                      </span>
-                      <span className="shrink-0 rounded-full border border-white/12 bg-white/8 px-2.5 py-1 text-[10px] font-black text-[var(--rp-muted-strong)]">
-                        {rider.status === "needs_review" || rider.status === "review_needed" ? "Needs review" : "Pending"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-4 rounded-[18px] border border-[var(--rp-primary)]/25 bg-[var(--rp-primary)]/10 p-4">
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Message preview</p>
-                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                  Please confirm ride details before {confirmByLabel} so the pod can move forward.
-                </p>
-              </div>
-
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowNudgeModal(false)}
-                  className="min-h-12 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={sendNudgeToPendingRiders}
-                  disabled={!canNudgePendingRiders}
-                  className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105 disabled:opacity-45"
-                >
-                  Send nudge
                 </button>
               </div>
             </section>
@@ -3441,7 +3384,7 @@ function SelfSettlePodSummaryHero({
     "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-rose-300/35 bg-rose-400/12 px-1.5 text-[11px] font-black leading-none text-rose-200";
   const estimateContent = (
     <>
-      <p className="w-full text-center text-[12px] font-semibold text-[var(--rp-muted-strong)]">{displayEstimateLabel}</p>
+      <p className="w-full whitespace-nowrap text-center text-[12px] font-semibold text-[var(--rp-muted-strong)]">{displayEstimateLabel}</p>
       <p className={cn("mt-1 w-full whitespace-nowrap text-center font-black leading-tight text-[var(--rp-primary)]", estimateUpdated ? "text-2xl" : "text-sm")}>
         {estimateValue}
       </p>
@@ -3712,11 +3655,11 @@ function ManagePodActionsModal({
   const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
   const confirmedRiderCount = riderRows.filter((item) => isPodStatusRiderConfirmedForCurrentDetails(item, currentDetailVersion)).length;
   const riderTotal = riderRows.length;
-  const pendingNudgeRiders = riderRows.filter((item) => item.status === "joined_interest" || item.status === "needs_review" || item.status === "review_needed");
-  const ridersNeedingReviewCount = riders.filter(
-    (item) => item.role === "rider" && (item.status === "needs_review" || item.status === "review_needed"),
-  ).length;
+  const pendingConfirmationRiders = riderRows.filter((item) => item.status === "pending" || item.status === "joined_interest");
+  const needsReviewRiders = riderRows.filter((item) => item.status === "needs_review" || item.status === "review_needed");
+  const ridersNeedingReviewCount = needsReviewRiders.length;
   const expiredSeatHoldCount = riders.filter((item) => item.role === "rider" && item.status === "seat_hold_expired").length;
+  const confirmByLabel = formatConfirmByLabel(getRideAppConfirmByDate(ride));
   const routeRequests = getNormalizedRouteRequests(ride);
   const pendingRequest = routeRequests.pending[0] ?? null;
   const approvedRequest = routeRequests.approved[0] ?? null;
@@ -3728,7 +3671,6 @@ function ManagePodActionsModal({
     ride.bookingDetailsShared === true ||
     ride.rideAppBookingDetailsConfirmed === true ||
     ride.rideAppBookingDetailsFinalized === true;
-  const pendingCount = getManagePodActionsPendingCount(ride);
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
   const canCancelAsHost = hostCancellationStatus === "active";
   const cancelActionLabel = confirmedRiderCount > 0 ? "Step down / cancel" : "Cancel pod";
@@ -3737,15 +3679,6 @@ function ManagePodActionsModal({
     ...(allowStopRequests ? [{ id: "route_requests" as const, label: "Route requests" }] : []),
     { id: "pod_settings", label: "Pod settings" },
   ];
-
-  function runNudgePlaceholder() {
-    if (!pendingNudgeRiders.length) {
-      setActionNote("All clear.");
-      return;
-    }
-
-    setActionNote("Reminder has been sent.");
-  }
 
   function approvePendingStop() {
     if (!pendingStop || routeLocked) return;
@@ -3838,7 +3771,7 @@ function ManagePodActionsModal({
                       {expiredSeatHoldCount} seat hold {expiredSeatHoldCount === 1 ? "expired" : "expired"}
                     </span>
                   ) : null}
-                  {pendingCount === 0 && pendingNudgeRiders.length === 0 ? (
+                  {pendingConfirmationRiders.length === 0 && needsReviewRiders.length === 0 && expiredSeatHoldCount === 0 ? (
                     <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-100">
                       All clear
                     </span>
@@ -3846,54 +3779,45 @@ function ManagePodActionsModal({
                 </div>
               </section>
 
-              <section className="grid gap-2">
-                {riders.map((rider) => {
-                  const hostEchoRider = isHostEchoRider(rider, getCurrentUserIsHost(ride));
-                  const displayName = hostEchoRider ? "Host" : rider.name;
-                  const helper = hostEchoRider ? "Host details shared" : getPodStatusRiderHelper(rider, currentDetailVersion);
+              {pendingConfirmationRiders.length ? (
+                <ManagePodRiderGroup
+                  title="Pending confirmation"
+                  riders={pendingConfirmationRiders}
+                  getHelper={() => `Confirm by ${confirmByLabel}`}
+                />
+              ) : null}
 
-                  return (
-                    <div key={`${rider.name}-${rider.role}-${rider.status}`} className="flex min-w-0 items-center justify-between gap-3 rounded-[16px] border border-white/10 bg-white/[0.04] p-3">
-                      <span className="flex min-w-0 items-center gap-3">
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-sm font-black text-cyan-100">
-                          {getInitials(displayName).slice(0, 1)}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-black text-white">{displayName}</span>
-                          <span className="block text-xs font-semibold text-[var(--rp-muted-strong)]">
-                            {helper}
-                          </span>
-                        </span>
-                      </span>
-                      <ManagePodActionStatusChip rider={rider} labelOverride={hostEchoRider ? "Host" : undefined} />
-                    </div>
-                  );
-                })}
-              </section>
+              {needsReviewRiders.length ? (
+                <ManagePodRiderGroup
+                  title="Needs review"
+                  riders={needsReviewRiders}
+                  getHelper={() => "Review updated details"}
+                />
+              ) : null}
+
+              {!pendingConfirmationRiders.length && !needsReviewRiders.length ? (
+                <section className="rounded-[18px] border border-emerald-300/24 bg-emerald-400/10 p-4">
+                  <h3 className="text-base font-black text-emerald-100">All required riders have confirmed.</h3>
+                  <p className="mt-1 text-sm font-semibold leading-6 text-emerald-100/85">
+                    Confirm-by deadline is active for any future detail changes.
+                  </p>
+                </section>
+              ) : null}
 
               <section className="grid gap-2">
-                <button
-                  type="button"
-                  onClick={runNudgePlaceholder}
-                  disabled={!pendingNudgeRiders.length}
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-cyan-300/35 bg-cyan-300/10 px-4 text-sm font-black text-cyan-100 transition hover:bg-cyan-300/15 disabled:opacity-45"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  Remind riders to confirm
-                </button>
                 <Link
                   href={`/pods/${ride.id}/status#fare-split`}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-4 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/15"
                 >
                   <Clock3 className="h-4 w-4" />
-                  Open confirm-by settings
+                  Edit confirm-by time
                 </Link>
                 <Link
                   href={`/pods/${ride.id}/status?tab=riders`}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
                 >
                   <BarChart3 className="h-4 w-4" />
-                  View status
+                  View confirmations
                 </Link>
               </section>
             </div>
@@ -4006,6 +3930,38 @@ function ManagePodActionStatusChip({ rider, labelOverride }: { rider: PodStatusR
     <span className={cn("shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black", tone)}>
       {label}
     </span>
+  );
+}
+
+function ManagePodRiderGroup({
+  title,
+  riders,
+  getHelper,
+}: {
+  title: string;
+  riders: PodStatusRider[];
+  getHelper: (rider: PodStatusRider) => string;
+}) {
+  return (
+    <section className="grid gap-2 rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
+      <h3 className="text-base font-black text-white">{title}</h3>
+      <div className="grid gap-2">
+        {riders.map((rider) => (
+          <div key={`${title}-${rider.name}-${rider.status}`} className="flex min-w-0 items-center justify-between gap-3 rounded-[16px] border border-white/10 bg-black/18 p-3">
+            <span className="flex min-w-0 items-center gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-sm font-black text-cyan-100">
+                {getInitials(rider.name).slice(0, 1)}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-black text-white">{rider.name}</span>
+                <span className="block text-xs font-semibold text-[var(--rp-muted-strong)]">{getHelper(rider)}</span>
+              </span>
+            </span>
+            <ManagePodActionStatusChip rider={rider} />
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -5267,14 +5223,9 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
         >
           <section className="max-h-[calc(100dvh-2rem)] w-full max-w-[390px] overflow-y-auto rounded-[26px] border border-[var(--rp-primary)]/35 bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.48)]">
             <div className="flex items-start gap-3">
-              <button
-                type="button"
-                onClick={closeHostCancellationModal}
-                aria-label="Close host action confirmation"
-                className="grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/18"
-              >
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]">
                 <X className="h-6 w-6" />
-              </button>
+              </span>
               <div className="min-w-0">
                 <h2 id="host-cancellation-title" className="text-xl font-black leading-tight text-white">
                   Confirm host action
@@ -5538,6 +5489,3 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
         </div>
       ) : null}
       {showJoinedModal ? <JoinedPodModal onConfirm={() => setShowJoinedModal(false)} /> : null}
-    </div>
-  );
-}

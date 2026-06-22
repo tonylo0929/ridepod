@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/components/ui";
 import { AnimalAvatar, getDemoAnimalAvatarId } from "@/components/animal-avatar";
-import { getHomeRide, getNormalizedRouteRequests } from "@/lib/home-ride-mock";
+import { getHomeRide, getNormalizedRouteRequests, type HomeRide } from "@/lib/home-ride-mock";
 import {
   filterPodChats,
   podChats,
@@ -59,6 +59,31 @@ function statusLabel(status: ChatStatus) {
   return "Forming";
 }
 
+function getRideAppChatConfirmByLabel(ride: HomeRide) {
+  if (ride.confirmationDeadlineLabel?.trim()) return ride.confirmationDeadlineLabel.trim();
+  const dateValue = ride.confirmationDeadlineAt ?? ride.rideAppConfirmBy;
+  if (dateValue) {
+    const date = new Date(dateValue);
+    if (!Number.isNaN(date.getTime())) {
+      return new Intl.DateTimeFormat("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+      }).format(date);
+    }
+  }
+  return "the confirm-by time";
+}
+
+function getRideAppPendingConfirmationCount(ride: HomeRide) {
+  return (
+    ride.riderConfirmations?.filter(
+      (rider) =>
+        rider.role === "rider" &&
+        (rider.status === "pending" || rider.status === "joined_interest" || rider.status === "needs_review"),
+    ).length ?? 0
+  );
+}
+
 function ChatCardIcon({ chat }: { chat: PodChatPreview }) {
   if (getChatAccess(chat).locked) return <LockKeyhole className="h-7 w-7" />;
   if (chat.status === "completed") return <CheckCircle2 className="h-7 w-7" />;
@@ -80,6 +105,10 @@ function badgeClass(kind: "role" | "status" | "ride", value: string) {
   if (value === "Quote ready") return "border-blue-300/25 bg-blue-400/12 text-blue-100";
   if (value === "Replacement needed") return "border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]";
   if (value === "Action needed") return "border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]";
+  if (value === "Waiting for confirmations") return "border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]";
+  if (value === "Review updated details") return "border-amber-300/35 bg-amber-400/10 text-amber-100";
+  if (value === "Seat released") return "border-rose-300/35 bg-rose-400/10 text-rose-100";
+  if (value.startsWith("Confirm by")) return "border-cyan-300/30 bg-cyan-400/10 text-cyan-100";
   if (value === "Completed") return "border-white/12 bg-white/8 text-[var(--rp-muted-strong)]";
   if (value === "Chat locked") return "border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted-strong)]";
   if (value === "Airport") return "border-violet-300/25 bg-violet-400/14 text-violet-100";
@@ -140,11 +169,19 @@ function ParticipantStack({ chat }: { chat: PodChatPreview }) {
 function ChatCard({ chat }: { chat: PodChatPreview }) {
   const ride = chat.rideMode === "ride_app" ? getHomeRide(chat.podId) : null;
   const chatAccess = getChatAccess(chat, ride);
+  const confirmByLabel = ride ? getRideAppChatConfirmByLabel(ride) : "the confirm-by time";
+  const pendingConfirmationCount = ride ? getRideAppPendingConfirmationCount(ride) : 0;
   const status =
     ride?.rideAppHostCancellationStatus === "host_replacement_needed"
       ? "Replacement needed"
       : ride && chat.role === "hosted" && getNormalizedRouteRequests(ride).pendingCount > 0
         ? "Action needed"
+      : ride && chat.role === "hosted" && !chatAccess.access?.canAccess && pendingConfirmationCount > 0
+        ? "Waiting for confirmations"
+      : ride && chat.role !== "hosted" && chatAccess.access?.reason === "needs_review"
+        ? "Review updated details"
+      : ride && chat.role !== "hosted" && chatAccess.access?.reason === "waiting_for_rider_confirmation"
+        ? `Confirm by ${confirmByLabel}`
       : chatAccess.locked
         ? "Chat locked"
         : chat.rideMode === "taxi"
@@ -181,7 +218,11 @@ function ChatCard({ chat }: { chat: PodChatPreview }) {
         <span className="mt-3 flex min-w-0 items-center gap-3">
           <ParticipantStack chat={chat} />
           <span className="min-w-0 truncate text-sm font-semibold text-[var(--rp-muted)]">
-            {chatAccess.locked ? chatAccess.helper : chat.latestMessage}
+            {chatAccess.locked && ride && chat.role === "hosted" && pendingConfirmationCount > 0
+              ? `${pendingConfirmationCount} ${pendingConfirmationCount === 1 ? "rider needs" : "riders need"} to confirm by ${confirmByLabel}.`
+              : chatAccess.locked
+                ? chatAccess.helper
+                : chat.latestMessage}
           </span>
         </span>
       </span>
