@@ -526,7 +526,7 @@ function RiderStack({ ride, seatsUsed }: { ride: HomeRide; seatsUsed: number }) 
 }
 
 type PodStatusTab = "summary" | "riders" | "route" | "chat";
-type ManagePodActionsTab = "confirmations" | "route_requests" | "pod_settings";
+type ManagePodActionsTab = "confirmations" | "route_requests";
 type ConfirmByUnit = "hours" | "days";
 type PodStatusRiderState =
   | "host"
@@ -3636,14 +3636,12 @@ function ManagePodActionsModal({
   onClose,
   onApproveStop,
   onDeclineStop,
-  onHostCancelRequest,
 }: {
   ride: HomeRide;
   initialTab?: ManagePodActionsTab;
   onClose: () => void;
   onApproveStop: (stop: RoutePlanStop) => void;
   onDeclineStop: (stop: RoutePlanStop) => void;
-  onHostCancelRequest: (confirmedRiderCount: number) => void;
 }) {
   const allowStopRequests = isHostApprovedStopPolicy(ride.stopRequestPolicy) && ride.rideKind !== "recurring";
   const [activeTab, setActiveTab] = useState<ManagePodActionsTab>(
@@ -3671,13 +3669,9 @@ function ManagePodActionsModal({
     ride.bookingDetailsShared === true ||
     ride.rideAppBookingDetailsConfirmed === true ||
     ride.rideAppBookingDetailsFinalized === true;
-  const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
-  const canCancelAsHost = hostCancellationStatus === "active";
-  const cancelActionLabel = confirmedRiderCount > 0 ? "Step down / cancel" : "Cancel pod";
   const tabs: Array<{ id: ManagePodActionsTab; label: string }> = [
     { id: "confirmations", label: "Confirmations" },
     ...(allowStopRequests ? [{ id: "route_requests" as const, label: "Route requests" }] : []),
-    { id: "pod_settings", label: "Pod settings" },
   ];
 
   function approvePendingStop() {
@@ -3833,52 +3827,7 @@ function ManagePodActionsModal({
                 onDecline={declinePendingStop}
               />
             </div>
-          ) : (
-            <div className="grid gap-4">
-              <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-5">
-                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">More actions</p>
-                <h3 className="mt-2 text-xl font-black text-white">Pod settings</h3>
-                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                  Manage host-side actions for this self-settle ride app pod.
-                </p>
-              </section>
-
-              {canCancelAsHost ? (
-                <section className="grid gap-3 rounded-[18px] border border-[var(--rp-primary)]/28 bg-[var(--rp-primary)]/10 p-5">
-                  <div>
-                    <p className="text-sm font-black text-white">{confirmedRiderCount > 0 ? "Some riders have confirmed" : "No riders confirmed yet"}</p>
-                    <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                      {confirmedRiderCount > 0
-                        ? "Step down to start host replacement mode so confirmed riders can choose whether to continue."
-                        : "Cancel the pod before any rider confirms."}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => onHostCancelRequest(confirmedRiderCount)}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-[var(--rp-primary)]/40 bg-[var(--rp-primary)]/14 px-4 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/20"
-                  >
-                    <X className="h-4 w-4" />
-                    {cancelActionLabel}
-                  </button>
-                </section>
-              ) : (
-                <section className="grid gap-3 rounded-[18px] border border-cyan-300/25 bg-cyan-300/8 p-5">
-                  <div>
-                    <p className="text-sm font-black text-cyan-100">{getPodStatusTitle(ride, getRideAppChatAccessState(ride))}</p>
-                    <p className="mt-1 text-xs font-semibold leading-5 text-cyan-100/85">{getPodStatusSubtitle(ride, getRideAppChatAccessState(ride))}</p>
-                  </div>
-                  <Link
-                    href={`/pods/${ride.id}/status`}
-                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
-                  >
-                    <BarChart3 className="h-4 w-4" />
-                    View status
-                  </Link>
-                </section>
-              )}
-            </div>
-          )}
+          ) : null}
 
         </div>
         {actionNote ? (
@@ -5208,7 +5157,6 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
           onClose={() => setShowManagePodActionsModal(false)}
           onApproveStop={approveRouteStop}
           onDeclineStop={declineRouteStop}
-          onHostCancelRequest={openHostCancellationModal}
         />
       ) : null}
       {showHostCancellationModal ? (
