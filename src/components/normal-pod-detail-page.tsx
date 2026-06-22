@@ -3298,7 +3298,6 @@ function CompactRideAppRoutePanel({
 function SelfSettlePodSummaryHero({
   ride,
   seatsUsed,
-  progress,
   estimateLabel,
   estimateValue,
   estimateUpdated,
@@ -3314,7 +3313,6 @@ function SelfSettlePodSummaryHero({
 }: {
   ride: HomeRide;
   seatsUsed: number;
-  progress: number;
   estimateLabel: string;
   estimateValue: string;
   estimateUpdated: boolean;
@@ -3333,6 +3331,7 @@ function SelfSettlePodSummaryHero({
   const summaryCurrentDetailVersion = getRideAppCurrentDetailVersion(ride);
   const summaryExpiredSeatHoldCount = summaryRiders.filter((item) => item.role === "rider" && item.status === "seat_hold_expired").length;
   const summaryEffectiveSeatsUsed = Math.max(0, Math.max(seatsUsed, ride.seatsUsed) - summaryExpiredSeatHoldCount);
+  const summaryProgress = Math.min((summaryEffectiveSeatsUsed / ride.seatsTotal) * 100, 100);
   const summaryUserIsHost = getCurrentUserIsHost(ride);
   const summaryUserHadRideAppSeat =
     !summaryUserIsHost &&
@@ -3485,13 +3484,13 @@ function SelfSettlePodSummaryHero({
           <div className="min-w-0 border-r border-white/10 px-2.5 py-3">
             <span className="flex min-w-0 items-center gap-2">
               <UserRound className="h-5 w-5 shrink-0 text-[var(--rp-muted-strong)]" />
-              <span className="block whitespace-nowrap text-lg font-black leading-5 text-cyan-100">{seatsUsed} / {ride.seatsTotal}</span>
+              <span className="block whitespace-nowrap text-lg font-black leading-5 text-cyan-100">{summaryEffectiveSeatsUsed} / {ride.seatsTotal}</span>
             </span>
             <span className="mt-0.5 block whitespace-nowrap text-[9px] font-black leading-4 text-[var(--rp-primary)] min-[390px]:text-[10px]">
               {minimumRidersToGoLabel}
             </span>
             <span className="mt-1.5 block h-1.5 w-full max-w-24 overflow-hidden rounded-full bg-white/14">
-              <span className="block h-full rounded-full bg-cyan-300" style={{ width: `${progress}%` }} />
+              <span className="block h-full rounded-full bg-cyan-300" style={{ width: `${summaryProgress}%` }} />
             </span>
           </div>
           <div className="grid min-w-0 grid-cols-[22px_minmax(0,1fr)] items-center gap-2 px-3 py-3">
@@ -4742,7 +4741,6 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
             <SelfSettlePodSummaryHero
               ride={ride}
               seatsUsed={seatsUsed}
-              progress={progress}
               estimateLabel={rideAppHeroEstimateLabel}
               estimateValue={rideAppHeroEstimateValue}
               estimateUpdated={rideAppHeroEstimateUpdated}
