@@ -5489,3 +5489,6 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
         </div>
       ) : null}
       {showJoinedModal ? <JoinedPodModal onConfirm={() => setShowJoinedModal(false)} /> : null}
+    </div>
+  );
+}
