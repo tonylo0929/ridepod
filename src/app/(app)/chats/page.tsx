@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/components/ui";
 import { AnimalAvatar, getDemoAnimalAvatarId } from "@/components/animal-avatar";
-import { getHomeRide } from "@/lib/home-ride-mock";
+import { getHomeRide, getNormalizedRouteRequests } from "@/lib/home-ride-mock";
 import {
   filterPodChats,
   podChats,
@@ -143,6 +143,8 @@ function ChatCard({ chat }: { chat: PodChatPreview }) {
   const status =
     ride?.rideAppHostCancellationStatus === "host_replacement_needed"
       ? "Replacement needed"
+      : ride && chat.role === "hosted" && getNormalizedRouteRequests(ride).pendingCount > 0
+        ? "Action needed"
       : chatAccess.locked
         ? "Chat locked"
         : chat.rideMode === "taxi"

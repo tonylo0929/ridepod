@@ -6,7 +6,16 @@ import { CalendarDays, CarFront, CheckCircle2, Clock3, Info, MapPin, Plane, Shie
 import { cn } from "@/components/ui";
 import { PodDetailFareReferenceRows } from "@/components/pod-detail-fare-reference-card";
 import { SelfSettleReportIssue } from "@/components/self-settle-report-issue";
-import type { HomeRide, QuoteStatus, RiderPickupStatus, RoutePlanStop } from "@/lib/home-ride-mock";
+import {
+  getNormalizedRouteRequests,
+  isDirectRoutePolicy,
+  isHostApprovedStopPolicy,
+  routeRequestToRoutePlanStop,
+  type HomeRide,
+  type QuoteStatus,
+  type RiderPickupStatus,
+  type RoutePlanStop,
+} from "@/lib/home-ride-mock";
 import { getTaxiPartnerQuoteMoneyDisplay } from "@/lib/taxi-partner-quote";
 import { Fragment, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { createPodLiveUpdate } from "@/lib/updates/ridepod-live-updates";
@@ -958,7 +967,6 @@ function getStopRequestCopy({
   proposedStops: RoutePlanStop[];
   approvedStops: RoutePlanStop[];
 }) {
-  const policy = ride.stopRequestPolicy ?? "direct_only";
   const selfSettle = isRideAppSelfSettlePod(ride);
   const currentUserName = getCurrentUserName(ride);
   const hasApprovedStops = approvedStops.length > 0;
@@ -966,7 +974,11 @@ function getStopRequestCopy({
   const currentUserPendingStop = proposedStops.some(
     (stop) => stop.status === "pending_host_approval" && namesMatch(stop.requestedBy, currentUserName),
   );
-  const routeLocked = quoteRequestHasStarted(ride, joinView);
+  const selfSettleRouteLocked =
+    ride.bookingDetailsShared === true ||
+    ride.rideAppBookingDetailsConfirmed === true ||
+    ride.rideAppBookingDetailsFinalized === true;
+  const routeLocked = selfSettle ? selfSettleRouteLocked : quoteRequestHasStarted(ride, joinView);
   const acceptedGuestCount = ride.acceptedGuestCount ?? (ride.currentUserQuoteAccepted ? 1 : 0);
   const requiredGuestCount = ride.requiredGuestCount ?? ride.seatsTotal;
   const allGuestsAccepted =
@@ -988,7 +1000,7 @@ function getStopRequestCopy({
     };
   }
 
-  if (policy !== "host_approved_before_quote") {
+  if (!isHostApprovedStopPolicy(ride.stopRequestPolicy)) {
     return {
       action: null,
       title: "Direct route only",
@@ -1000,9 +1012,9 @@ function getStopRequestCopy({
   if (routeLocked) {
     return {
       action: null,
-      title: selfSettle ? "Route set for ride details" : isHost ? "Route locked after quote request" : "Route locked",
+      title: selfSettle ? "Route locked" : isHost ? "Route locked after quote request" : "Route locked",
       helper: selfSettle
-        ? "Route changes should be handled by the host before riders confirm current details."
+        ? "Route changes are closed after booking details are confirmed."
         : isHost
           ? "Approve or decline stop requests before requesting a taxi partner quote."
           : ["quote_ready", "quote_deadline_soon", "late_confirmation", "quote_accepted", "all_accepted"].includes(joinView)
@@ -1095,40 +1107,56 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
   const [withdrawnStop, setWithdrawnStop] = useState<RoutePlanStop | null>(null);
   const [routeNotice, setRouteNotice] = useState<{ title: string; body: string } | null>(null);
   const hostRequestNoticeShown = useRef(false);
-  const quoteRequestStarted = quoteRequestHasStarted(ride, joinView);
-  const stopRows = getRoutePlanStopRows(quoteRequestStarted ? [] : proposedStops, approvedStops);
-  const pendingStop = proposedStops.find((stop) => stop.status === "pending_host_approval") ?? null;
-  const expiredPendingStop = quoteRequestStarted ? pendingStop : null;
+  const selfSettle = isRideAppSelfSettlePod(ride);
+  const selfSettleRouteLocked =
+    ride.bookingDetailsShared === true ||
+    ride.rideAppBookingDetailsConfirmed === true ||
+    ride.rideAppBookingDetailsFinalized === true;
+  const taxiRouteLocked = quoteRequestHasStarted(ride, joinView);
+  const routeLocked = selfSettle ? selfSettleRouteLocked : taxiRouteLocked;
+  const routeRequestRide = { ...ride, proposedStops, approvedStops, declinedStops };
+  const routeRequests = getNormalizedRouteRequests(routeRequestRide);
+  const pendingRouteRequest = routeRequests.pending[0] ?? null;
+  const pendingStop = pendingRouteRequest ? routeRequestToRoutePlanStop(pendingRouteRequest) : null;
+  const displayedApprovedStops = routeRequests.approved.map(routeRequestToRoutePlanStop);
+  const displayedDeclinedStops = routeRequests.declined.map(routeRequestToRoutePlanStop);
+  const stopRows = getRoutePlanStopRows(routeLocked || !pendingStop ? [] : [pendingStop], displayedApprovedStops);
+  const expiredPendingStop = routeLocked ? pendingStop : null;
   const isHost = getCurrentUserIsHost(ride);
   const currentUserName = getCurrentUserName(ride);
-  const stopCopy = getStopRequestCopy({ ride, joinView, isHost, proposedStops, approvedStops });
-  const hasApprovedStops = approvedStops.length > 0;
-  const approvedStop = approvedStops[0] ?? null;
-  const declinedStop = declinedStops[0] ?? null;
+  const stopCopy = getStopRequestCopy({
+    ride,
+    joinView,
+    isHost,
+    proposedStops: pendingStop ? [pendingStop] : [],
+    approvedStops: displayedApprovedStops,
+  });
+  const hasApprovedStops = displayedApprovedStops.length > 0;
+  const approvedStop = displayedApprovedStops[0] ?? null;
+  const declinedStop = displayedDeclinedStops[0] ?? null;
   const isAirport = ride.rideKind === "airport" || ride.airportDirection !== null;
   const isRecurring = ride.rideKind === "recurring";
-  const selfSettle = isRideAppSelfSettlePod(ride);
-  const canHostReviewStop = Boolean(!quoteRequestStarted && pendingStop && isHost && stopCopy.title === "Stop request pending");
-  const requestingPendingStop = !quoteRequestStarted && !isHost && pendingStop && namesMatch(pendingStop.requestedBy, currentUserName) ? pendingStop : null;
-  const otherRiderPendingStop = !quoteRequestStarted && !isHost && pendingStop && !namesMatch(pendingStop.requestedBy, currentUserName) ? pendingStop : null;
+  const canHostReviewStop = Boolean(!routeLocked && pendingStop && isHost && stopCopy.title === "Stop request pending");
+  const requestingPendingStop = !routeLocked && !isHost && pendingStop && namesMatch(pendingStop.requestedBy, currentUserName) ? pendingStop : null;
+  const otherRiderPendingStop = !routeLocked && !isHost && pendingStop && !namesMatch(pendingStop.requestedBy, currentUserName) ? pendingStop : null;
   const currentUserRequestedApprovedStop = namesMatch(approvedStop?.requestedBy, currentUserName);
   const currentUserRequestedDeclinedStop = namesMatch(declinedStop?.requestedBy, currentUserName);
   const pickupTime = ride.pickupTime ?? ride.timeLabel;
   const proposedStopTime = addMinutesToTimeLabel(pickupTime, 15) ?? "~7:45 PM";
   const dropoffTime = addMinutesToTimeLabel(pickupTime, 30) ?? "~8:00 PM";
   const routePlanNote = (() => {
-    if (selfSettle && quoteRequestStarted && hasApprovedStops) return "Ride app details use the approved route plan.";
-    if (selfSettle && quoteRequestStarted) {
+    if (selfSettle && routeLocked && hasApprovedStops) return "Ride app details use the approved route plan.";
+    if (selfSettle && routeLocked) {
       return isRecurring
         ? "Route set for this selected ride. Meaningful updates require rider review."
         : "Route set for ride details. Meaningful updates require rider review.";
     }
-    if (quoteRequestStarted && hasApprovedStops) return "Taxi partner quote uses the approved route plan.";
-    if (quoteRequestStarted && ["quote_ready", "quote_deadline_soon", "late_confirmation", "quote_accepted", "all_accepted"].includes(joinView)) {
+    if (taxiRouteLocked && hasApprovedStops) return "Taxi partner quote uses the approved route plan.";
+    if (taxiRouteLocked && ["quote_ready", "quote_deadline_soon", "late_confirmation", "quote_accepted", "all_accepted"].includes(joinView)) {
       return "Route locked. The taxi partner quote is based on this route.";
     }
-    if (quoteRequestStarted && isRecurring) return "Route locked. Stop requests are closed once the quote request starts for this ride.";
-    if (quoteRequestStarted) return "Route locked. Stop requests are closed because the taxi partner quote has started.";
+    if (taxiRouteLocked && isRecurring) return "Route locked. Stop requests are closed once the quote request starts for this ride.";
+    if (taxiRouteLocked) return "Route locked. Stop requests are closed because the taxi partner quote has started.";
     if (stopCopy.title === "Ride has started. Route changes are closed.") return "Ride has started. Route changes are closed.";
     if (stopCopy.title === "Taxi partner accepted. Route changes require manual coordination.") {
       return "Taxi partner accepted. Route changes require manual coordination.";
@@ -1136,7 +1164,11 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
     if (stopCopy.title === "Route changes are closed after guests accept the quote.") {
       return "Route changes are closed after guests accept the quote.";
     }
-    if (pendingStop) return "Host must approve before this affects the taxi quote.";
+    if (pendingStop) {
+      return selfSettle
+        ? "Host must approve before this affects the shared ride details."
+        : "Host must approve before this affects the taxi quote.";
+    }
     if (hasApprovedStops) return "The approved stop is included in the route plan.";
 
     return null;
@@ -1147,13 +1179,13 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
   }
 
   useEffect(() => {
-    if (!pendingStop || quoteRequestStarted || !isHost || hostRequestNoticeShown.current) return;
+    if (!pendingStop || routeLocked || !isHost || hostRequestNoticeShown.current) return;
     hostRequestNoticeShown.current = true;
     showRouteNotice(
       "New stop request",
       `${pendingStop.requestedBy ?? "A rider"} proposed an extra stop. Review it below.`,
     );
-  }, [isHost, pendingStop, quoteRequestStarted]);
+  }, [isHost, pendingStop, routeLocked]);
 
   useEffect(() => {
     if (!routeNotice) return;
@@ -1163,8 +1195,9 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
   }, [routeNotice]);
 
   function handleSubmitStop(location: string, reason: string, stopType: RoutePlanStop["stopType"]) {
+    const nextStopId = `stop-${ride.id}-${routeRequests.all.length + 1}`;
     const nextStop: RoutePlanStop = {
-      id: `stop-${Date.now()}`,
+      id: nextStopId,
       label: location,
       requestedBy: currentUserName,
       reason: reason || undefined,
@@ -1172,8 +1205,19 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
       status: "pending_host_approval",
     };
     const nextStops = [nextStop];
+    const nextRouteRequests = [
+      ...routeRequests.all.filter((request) => request.id !== nextStop.id && request.status !== "pending"),
+      {
+        id: nextStop.id,
+        requestedByName: currentUserName,
+        stopLocation: location,
+        reason: reason || undefined,
+        status: "pending" as const,
+        requestedAtLabel: "Just now",
+      },
+    ];
     setProposedStops(nextStops);
-    saveStoredSelfSettleRidePatch(ride.id, { proposedStops: nextStops });
+    saveStoredSelfSettleRidePatch(ride.id, { routeRequests: nextRouteRequests, proposedStops: nextStops });
     setProposalOpen(false);
     showRouteNotice("Stop request sent", "Host has been notified and must approve before the route changes.");
   }
@@ -1181,9 +1225,23 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
   function handleApproveStop(stop: RoutePlanStop) {
     const nextProposedStops = proposedStops.filter((item) => item.id !== stop.id);
     const nextApprovedStops = [{ ...stop, status: "approved" as const }];
+    const nextRouteRequests = routeRequests.all.map((request) =>
+      request.id === stop.id
+        ? {
+            ...request,
+            status: "approved" as const,
+            reviewedByName: ride.hostName || "Host",
+            reviewedAtLabel: "Just now",
+          }
+        : request,
+    );
     setProposedStops(nextProposedStops);
     setApprovedStops(nextApprovedStops);
-    saveStoredSelfSettleRidePatch(ride.id, { proposedStops: nextProposedStops, approvedStops: nextApprovedStops });
+    saveStoredSelfSettleRidePatch(ride.id, {
+      routeRequests: nextRouteRequests,
+      proposedStops: nextProposedStops,
+      approvedStops: nextApprovedStops,
+    });
     setApproveStop(null);
     showRouteNotice("Stop approved", `${stop.requestedBy ?? "The rider"} will see the approved route update.`);
   }
@@ -1191,17 +1249,40 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
   function handleDeclineStop(stop: RoutePlanStop) {
     const nextProposedStops = proposedStops.filter((item) => item.id !== stop.id);
     const nextDeclinedStops = [{ ...stop, status: "declined" as const }];
+    const nextRouteRequests = routeRequests.all.map((request) =>
+      request.id === stop.id
+        ? {
+            ...request,
+            status: "declined" as const,
+            reviewedByName: ride.hostName || "Host",
+            reviewedAtLabel: "Just now",
+          }
+        : request,
+    );
     setProposedStops(nextProposedStops);
     setDeclinedStops(nextDeclinedStops);
-    saveStoredSelfSettleRidePatch(ride.id, { proposedStops: nextProposedStops, declinedStops: nextDeclinedStops });
+    saveStoredSelfSettleRidePatch(ride.id, {
+      routeRequests: nextRouteRequests,
+      proposedStops: nextProposedStops,
+      declinedStops: nextDeclinedStops,
+    });
     setDeclineStop(null);
     showRouteNotice("Stop request declined", `${stop.requestedBy ?? "The rider"} will see that the route stays unchanged.`);
   }
 
   function handleWithdrawStop(stop: RoutePlanStop) {
     const nextProposedStops = proposedStops.filter((item) => item.id !== stop.id);
+    const nextRouteRequests = routeRequests.all.map((request) =>
+      request.id === stop.id
+        ? {
+            ...request,
+            status: "withdrawn" as const,
+            reviewedAtLabel: "Just now",
+          }
+        : request,
+    );
     setProposedStops(nextProposedStops);
-    saveStoredSelfSettleRidePatch(ride.id, { proposedStops: nextProposedStops });
+    saveStoredSelfSettleRidePatch(ride.id, { routeRequests: nextRouteRequests, proposedStops: nextProposedStops });
     setWithdrawnStop(stop);
     setWithdrawStop(null);
     showRouteNotice("Stop request withdrawn", "Route stays unchanged.");
@@ -1217,7 +1298,7 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
       icon: MapPin,
     },
     ...stopRows.map((stop) => {
-      const approvedIndex = approvedStops.findIndex((item) => item.id === stop.id);
+      const approvedIndex = displayedApprovedStops.findIndex((item) => item.id === stop.id);
       return {
         id: stop.id,
         label: stop.status === "pending_host_approval" ? "Proposed stop" : `Stop ${approvedIndex + 1}`,
@@ -1398,7 +1479,9 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
             ) : null}
           </dl>
           <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-primary)]">
-            Approve or decline stop requests before requesting a taxi partner quote.
+            {selfSettle
+              ? "Approve or decline stop requests before booking details are confirmed."
+              : "Approve or decline stop requests before requesting a taxi partner quote."}
           </p>
           {isAirport ? (
             <p className="mt-3 text-xs font-bold leading-5 text-cyan-100">
@@ -1482,7 +1565,9 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
             </div>
           </dl>
           <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            Host must approve before this affects the taxi quote.
+            {selfSettle
+              ? "Host must approve before this affects the shared ride details."
+              : "Host must approve before this affects the taxi quote."}
           </p>
           {isAirport ? (
             <p className="mt-2 text-xs font-bold leading-5 text-cyan-100">
@@ -1540,12 +1625,12 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
               <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
                 {stopCopy.helper}
               </p>
-              {isAirport && ride.stopRequestPolicy === "direct_only" ? (
+              {isAirport && isDirectRoutePolicy(ride.stopRequestPolicy) ? (
                 <p className="mt-2 text-xs font-bold leading-5 text-cyan-100">
                   Airport rides usually work best without extra stops.
                 </p>
               ) : null}
-              {isAirport && ride.stopRequestPolicy === "host_approved_before_quote" ? (
+              {isAirport && isHostApprovedStopPolicy(ride.stopRequestPolicy) ? (
                 <p className="mt-2 text-xs font-bold leading-5 text-cyan-100">
                   Airport stops may affect timing, luggage space, and the taxi partner quote.
                 </p>
@@ -2088,8 +2173,8 @@ export function LockSeatConfirmationModal({
   const totalLuggageCount = baseLuggageCount + luggage.bagsCount;
   const totalHasLargeLuggage = baseHasLargeLuggage || luggage.hasLargeLuggage;
   const exceedsCapacity = totalLuggageCount > getTaxiMaxBags(ride.taxiType);
-  const stopRequestsAllowed = ride.stopRequestPolicy === "host_approved_before_quote";
-  const existingStopRequest = Boolean(ride.proposedStops?.length || ride.approvedStops?.length);
+  const stopRequestsAllowed = isHostApprovedStopPolicy(ride.stopRequestPolicy);
+  const existingStopRequest = getNormalizedRouteRequests(ride).all.length > 0;
   const canAddStopRequest = stopRequestsAllowed && !existingStopRequest;
   const [stopRequestLocation, setStopRequestLocation] = useState("");
   const [stopRequestAdded, setStopRequestAdded] = useState(false);
@@ -3729,7 +3814,8 @@ export function SelfSettleBookingDetailsCard({
       : currentUserNeedsReview && platformFeeStatus === "waived"
         ? "RidePod fee already waived."
         : ridePodFeeHelper;
-  const approvedStop = ride.approvedStops?.find((stop) => stop.status === "approved");
+  const approvedRouteRequest = getNormalizedRouteRequests(ride).approved[0] ?? null;
+  const approvedStop = approvedRouteRequest ? routeRequestToRoutePlanStop(approvedRouteRequest) : null;
   const fareEstimateScreenshotFileName = fareEstimateScreenshot?.fileName ?? fareScreenshotName.trim();
   const initialFareEstimateScreenshotFileName = ride.fareEstimateScreenshot?.fileName ?? ride.rideAppFareEstimateScreenshotName ?? "";
   const fareEstimateWasMeaningfullyUpdated = bookingDetailsUpdated && bookingDetailsLastMeaningfulUpdate === "fare_estimate";

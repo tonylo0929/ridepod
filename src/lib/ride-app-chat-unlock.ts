@@ -1,4 +1,4 @@
-import type { HomeRide } from "@/lib/home-ride-mock";
+import { getNormalizedRouteRequests, type HomeRide } from "@/lib/home-ride-mock";
 
 export type RideAppChatLockedReason =
   | "not_joined"
@@ -656,7 +656,7 @@ export function canHostMarkRideAppBooked(ride: HomeRide): RideAppHostMarkBookedG
   const requiredConfirmations = getRideAppRequiredConfirmations(ride);
   const confirmedRiders = getRideAppConfirmedRiderCount(ride);
   const ridersNeedingReview = getRideAppRidersNeedingCurrentDetailsReview(ride);
-  const pendingRouteRequest = (ride.proposedStops ?? []).some((stop) => stop.status === "pending_host_approval");
+  const pendingRouteRequest = getNormalizedRouteRequests(ride).pendingCount > 0;
 
   if (pendingRouteRequest) {
     return {

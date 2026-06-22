@@ -34,7 +34,13 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/components/ui";
-import type { HomeRide, RoutePlanStop } from "@/lib/home-ride-mock";
+import {
+  getNormalizedRouteRequests,
+  isHostApprovedStopPolicy,
+  routeRequestToRoutePlanStop,
+  type HomeRide,
+  type RoutePlanStop,
+} from "@/lib/home-ride-mock";
 import {
   formatHkdCents,
   LockSeatConfirmationModal,
@@ -790,23 +796,49 @@ function buildInitialSelfSettleJoinPatch(ride: HomeRide, detailVersion: number, 
 }
 
 function buildRideAppStopRequestPatch(ride: HomeRide, stopLabel: string, requestedBy: string, now = new Date()): Partial<HomeRide> {
+  const requestId = `stop-${now.getTime()}`;
   const requestedStop: RoutePlanStop = {
-    id: `stop-${now.getTime()}`,
+    id: requestId,
     label: stopLabel,
     requestedBy,
     stopType: "quick_stop",
     reason: "Rider requested an extra stop.",
     status: "pending_host_approval",
   };
+  const routeRequests = getNormalizedRouteRequests(ride).all.filter((request) => request.status !== "pending");
 
   return {
+    // Future: persist route requests and deliver to host across clients.
+    routeRequests: [
+      ...routeRequests,
+      {
+        id: requestId,
+        requestedByName: requestedBy,
+        stopLocation: stopLabel,
+        reason: requestedStop.reason,
+        status: "pending" as const,
+        requestedAtLabel: "Just now",
+      },
+    ],
     proposedStops: [...(ride.proposedStops ?? []), requestedStop],
   };
 }
 
 function buildApproveRideAppStopPatch(ride: HomeRide, stop: RoutePlanStop): Partial<HomeRide> {
   const approvedStop: RoutePlanStop = { ...stop, status: "approved" };
+  const normalized = getNormalizedRouteRequests(ride);
+  const routeRequests = normalized.all.map((request) =>
+    request.id === stop.id
+      ? {
+          ...request,
+          status: "approved" as const,
+          reviewedByName: ride.hostName || "Host",
+          reviewedAtLabel: "Just now",
+        }
+      : request,
+  );
   const nextRoutePatch = {
+    routeRequests,
     proposedStops: (ride.proposedStops ?? []).filter((item) => item.id !== stop.id),
     approvedStops: [...(ride.approvedStops ?? []), approvedStop],
   };
@@ -827,15 +859,27 @@ function buildApproveRideAppStopPatch(ride: HomeRide, stop: RoutePlanStop): Part
 
 function buildDeclineRideAppStopPatch(ride: HomeRide, stop: RoutePlanStop): Partial<HomeRide> {
   const declinedStop: RoutePlanStop = { ...stop, status: "declined" };
+  const normalized = getNormalizedRouteRequests(ride);
+  const routeRequests = normalized.all.map((request) =>
+    request.id === stop.id
+      ? {
+          ...request,
+          status: "declined" as const,
+          reviewedByName: ride.hostName || "Host",
+          reviewedAtLabel: "Just now",
+        }
+      : request,
+  );
 
   return {
+    routeRequests,
     proposedStops: (ride.proposedStops ?? []).filter((item) => item.id !== stop.id),
     declinedStops: [...(ride.declinedStops ?? []), declinedStop],
   };
 }
 
 function hasAnyRideAppStopRequestState(ride: HomeRide) {
-  return Boolean((ride.proposedStops?.length ?? 0) || (ride.approvedStops?.length ?? 0) || (ride.declinedStops?.length ?? 0));
+  return getNormalizedRouteRequests(ride).all.length > 0;
 }
 
 function metadataValue(metadata: UserNotificationForStopRequest["metadata"], key: string) {
@@ -1086,7 +1130,7 @@ function getExpiredSeatHoldCount(ride: HomeRide) {
 }
 
 function getPendingRouteRequestCount(ride: HomeRide) {
-  return (ride.proposedStops ?? []).filter((stop) => stop.status === "pending_host_approval").length;
+  return getNormalizedRouteRequests(ride).pendingCount;
 }
 
 function getRideAppHostCancellationStatus(ride: HomeRide): RideAppHostCancellationStatus {
@@ -1998,7 +2042,7 @@ export function PodStatusPanel({
       ride.bookingDetailsShared === true ||
       ride.rideAppBookingDetailsConfirmed === true ||
       ride.rideAppBookingDetailsFinalized === true;
-    const hasPendingStop = (ride.proposedStops ?? []).some((stop) => stop.status === "pending_host_approval");
+    const hasPendingStop = getNormalizedRouteRequests(ride).pendingCount > 0;
     if (!trimmedStopLabel || isHost || !currentUserHadRideAppSeat || currentUserSeatHoldExpired || hostCancelledPod || routeLocked || hasPendingStop) {
       return;
     }
@@ -2063,7 +2107,7 @@ export function PodStatusPanel({
   }
 
   useEffect(() => {
-    if (!user?.id || !isHost || !isRideAppSelfSettlePod(ride) || ride.stopRequestPolicy !== "host_approved_before_quote" || hasAnyRideAppStopRequestState(ride)) {
+    if (!user?.id || !isHost || !isRideAppSelfSettlePod(ride) || !isHostApprovedStopPolicy(ride.stopRequestPolicy) || hasAnyRideAppStopRequestState(ride)) {
       return;
     }
 
@@ -2071,7 +2115,20 @@ export function PodStatusPanel({
     void getHostPendingStopRequestFromNotifications(user.id, ride)
       .then((pendingStop) => {
         if (cancelled || !pendingStop) return;
-        const patch: Partial<HomeRide> = { proposedStops: [pendingStop] };
+        const existingRequests = getNormalizedRouteRequests(ride).all.filter((request) => request.id !== pendingStop.id);
+        const patch: Partial<HomeRide> = {
+          routeRequests: [
+            ...existingRequests,
+            {
+              id: pendingStop.id,
+              requestedByName: pendingStop.requestedBy ?? "Rider",
+              stopLocation: pendingStop.label,
+              reason: pendingStop.reason,
+              status: "pending",
+            },
+          ],
+          proposedStops: [pendingStop],
+        };
         setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
         saveStoredSelfSettleRidePatch(ride.id, patch);
         updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
@@ -3118,10 +3175,13 @@ function CompactRideAppRoutePanel({
   onDeclineStop?: (stop: RoutePlanStop) => void;
 }) {
   const [stopRequestDraft, setStopRequestDraft] = useState("");
-  const pendingStop = ride.proposedStops?.find((stop) => stop.status === "pending_host_approval") ?? null;
-  const approvedStops = ride.approvedStops ?? [];
-  const declinedStop = ride.declinedStops?.find((stop) => stop.status === "declined") ?? null;
-  const allowStopRequests = ride.stopRequestPolicy === "host_approved_before_quote" && ride.rideKind !== "recurring";
+  const routeRequests = getNormalizedRouteRequests(ride);
+  const pendingRequest = routeRequests.pending[0] ?? null;
+  const pendingStop = pendingRequest ? routeRequestToRoutePlanStop(pendingRequest) : null;
+  const approvedStops = routeRequests.approved.map(routeRequestToRoutePlanStop);
+  const declinedRequest = routeRequests.declined[0] ?? null;
+  const declinedStop = declinedRequest ? routeRequestToRoutePlanStop(declinedRequest) : null;
+  const allowStopRequests = isHostApprovedStopPolicy(ride.stopRequestPolicy) && ride.rideKind !== "recurring";
   const routeLocked =
     ride.bookingDetailsShared === true ||
     ride.rideAppBookingDetailsConfirmed === true ||
@@ -3144,18 +3204,22 @@ function CompactRideAppRoutePanel({
             ? "Request a stop"
             : allowStopRequests
               ? "No stop requested"
-              : "Direct Route";
+              : routeLocked
+                ? "Route locked"
+                : "Direct route only";
   const stopRequestBody = pendingStop
     ? `${pendingStop.label} is waiting for host approval.`
     : declinedStop
       ? `${declinedStop.label} was declined. Route remains direct.`
       : approvedStops.length
         ? `${approvedStops[0].label} is included in the current route.`
+        : routeLocked
+          ? "Route changes are closed after booking details are confirmed."
         : allowStopRequests
           ? canShowStopRequestForm
             ? "Ask the host to approve one extra stop before booking details are shared."
             : "No rider has requested an extra stop yet."
-          : "Stop Request is not allowed.";
+          : "This pod does not allow extra stop requests.";
   const trimmedStopRequest = stopRequestDraft.trim();
   const gatherVenue = ride.pickupLabel ?? "Host will set gather point";
   const gatherArea = ride.pickupLabel ? ride.fromLabel : "Where riders meet before booking";
@@ -3277,7 +3341,7 @@ function CompactRideAppRoutePanel({
                   className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-cyan-300/35 bg-cyan-300/10 px-3 text-sm font-black text-cyan-100 transition hover:bg-cyan-300/16 disabled:opacity-45"
                 >
                   <MapPin className="h-4 w-4" />
-                  Request new stop
+                  Send request
                 </button>
               </form>
             ) : null}
@@ -3638,7 +3702,7 @@ function ManagePodActionsModal({
   onDeclineStop: (stop: RoutePlanStop) => void;
   onHostCancelRequest: (confirmedRiderCount: number) => void;
 }) {
-  const allowStopRequests = ride.stopRequestPolicy === "host_approved_before_quote" && ride.rideKind !== "recurring";
+  const allowStopRequests = isHostApprovedStopPolicy(ride.stopRequestPolicy) && ride.rideKind !== "recurring";
   const [activeTab, setActiveTab] = useState<ManagePodActionsTab>(
     !allowStopRequests && initialTab === "route_requests" ? "confirmations" : initialTab,
   );
@@ -3653,9 +3717,13 @@ function ManagePodActionsModal({
     (item) => item.role === "rider" && (item.status === "needs_review" || item.status === "review_needed"),
   ).length;
   const expiredSeatHoldCount = riders.filter((item) => item.role === "rider" && item.status === "seat_hold_expired").length;
-  const pendingStop = ride.proposedStops?.find((stop) => stop.status === "pending_host_approval") ?? null;
-  const approvedStop = ride.approvedStops?.find((stop) => stop.status === "approved") ?? null;
-  const declinedStop = ride.declinedStops?.find((stop) => stop.status === "declined") ?? null;
+  const routeRequests = getNormalizedRouteRequests(ride);
+  const pendingRequest = routeRequests.pending[0] ?? null;
+  const approvedRequest = routeRequests.approved[0] ?? null;
+  const declinedRequest = routeRequests.declined[0] ?? null;
+  const pendingStop = pendingRequest ? routeRequestToRoutePlanStop(pendingRequest) : null;
+  const approvedStop = approvedRequest ? routeRequestToRoutePlanStop(approvedRequest) : null;
+  const declinedStop = declinedRequest ? routeRequestToRoutePlanStop(declinedRequest) : null;
   const routeLocked =
     ride.bookingDetailsShared === true ||
     ride.rideAppBookingDetailsConfirmed === true ||
@@ -4557,7 +4625,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
       ride.bookingDetailsShared === true ||
       ride.rideAppBookingDetailsConfirmed === true ||
       ride.rideAppBookingDetailsFinalized === true;
-    const hasPendingStop = (ride.proposedStops ?? []).some((stop) => stop.status === "pending_host_approval");
+    const hasPendingStop = getNormalizedRouteRequests(ride).pendingCount > 0;
     if (!trimmedStopLabel || !canRequestRideAppStop || routeLocked || hasPendingStop) return;
 
     const patch = buildRideAppStopRequestPatch(ride, trimmedStopLabel, detailActorName);
@@ -4580,7 +4648,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
   }
 
   useEffect(() => {
-    if (!user?.id || !showSelfSettleHost || !isRideAppSelfSettlePod(ride) || ride.stopRequestPolicy !== "host_approved_before_quote" || hasAnyRideAppStopRequestState(ride)) {
+    if (!user?.id || !showSelfSettleHost || !isRideAppSelfSettlePod(ride) || !isHostApprovedStopPolicy(ride.stopRequestPolicy) || hasAnyRideAppStopRequestState(ride)) {
       return;
     }
 
@@ -4588,7 +4656,20 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     void getHostPendingStopRequestFromNotifications(user.id, ride)
       .then((pendingStop) => {
         if (cancelled || !pendingStop) return;
-        const patch: Partial<HomeRide> = { proposedStops: [pendingStop] };
+        const existingRequests = getNormalizedRouteRequests(ride).all.filter((request) => request.id !== pendingStop.id);
+        const patch: Partial<HomeRide> = {
+          routeRequests: [
+            ...existingRequests,
+            {
+              id: pendingStop.id,
+              requestedByName: pendingStop.requestedBy ?? "Rider",
+              stopLocation: pendingStop.label,
+              reason: pendingStop.reason,
+              status: "pending",
+            },
+          ],
+          proposedStops: [pendingStop],
+        };
         setRideActionPatch((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
         saveStoredSelfSettleRidePatch(ride.id, patch);
         updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, LockKeyhole, MessageCircle, Send, Smartphone, UserCheck } from "lucide-react";
 import { SelfSettleCompletionCard } from "@/components/self-settle-completion-card";
 import { SelfSettleReportIssue } from "@/components/self-settle-report-issue";
-import type { HomeRide, RideAppChecklist } from "@/lib/home-ride-mock";
+import { getNormalizedRouteRequests, type HomeRide, type RideAppChecklist } from "@/lib/home-ride-mock";
 import { notifyPodAudience } from "@/lib/notifications/pod-notification-fanout";
 import { getRideAppChatAccessState, type RideAppChatAccessState } from "@/lib/ride-app-chat-unlock";
 import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
@@ -86,6 +86,8 @@ type RideAppChatActivityType =
   | "stop_requested"
   | "stop_approved"
   | "stop_declined"
+  | "stop_withdrawn"
+  | "stop_expired"
   | "host_cancellation"
   | "chat_unlocked"
   | "ride_app_booked"
@@ -325,43 +327,73 @@ function buildRideAppTimelineEvents({
       });
     }
 
-    ride.proposedStops?.forEach((stop) => {
-      addTimelineEvent(events, {
-        id: `stop-requested-${stop.id}`,
-        type: "stop_requested",
-        kind: "system",
-        actorName: stop.requestedBy,
-        text: `${stop.requestedBy ?? "A rider"} requested a stop: ${stop.label}.`,
-        sortTime: baseTime + 31 * 60 * 1000,
-        visibility: "pod_members",
-        metadata: { stopLocation: stop.label },
-      });
-    });
+    getNormalizedRouteRequests(ride).all.forEach((request, index) => {
+      const requestedBy = request.requestedByName || "A rider";
+      const stopLocation = request.stopLocation;
+      const baseRouteRequestEvent = {
+        kind: "system" as const,
+        visibility: "pod_members" as const,
+        metadata: { stopLocation },
+      };
 
-    ride.approvedStops?.forEach((stop) => {
-      addTimelineEvent(events, {
-        id: `stop-approved-${stop.id}`,
-        type: "stop_approved",
-        kind: "system",
-        actorName: hostName,
-        text: `${hostName} approved ${stop.requestedBy ? `${stop.requestedBy}'s ` : ""}stop request. Riders need to review updated details.`,
-        sortTime: baseTime + 34 * 60 * 1000,
-        visibility: "pod_members",
-        metadata: { stopLocation: stop.label },
-      });
-    });
+      if (request.status === "pending") {
+        addTimelineEvent(events, {
+          ...baseRouteRequestEvent,
+          id: `stop-requested-${request.id}`,
+          type: "stop_requested",
+          actorName: requestedBy,
+          text: `${requestedBy} requested a stop: ${stopLocation}.`,
+          sortTime: baseTime + (31 + index) * 60 * 1000,
+        });
+        return;
+      }
 
-    ride.declinedStops?.forEach((stop) => {
-      addTimelineEvent(events, {
-        id: `stop-declined-${stop.id}`,
-        type: "stop_declined",
-        kind: "system",
-        actorName: hostName,
-        text: `${hostName} declined ${stop.requestedBy ? `${stop.requestedBy}'s ` : ""}stop request.`,
-        sortTime: baseTime + 34 * 60 * 1000,
-        visibility: "pod_members",
-        metadata: { stopLocation: stop.label },
-      });
+      if (request.status === "approved") {
+        addTimelineEvent(events, {
+          ...baseRouteRequestEvent,
+          id: `stop-approved-${request.id}`,
+          type: "stop_approved",
+          actorName: request.reviewedByName ?? hostName,
+          text: `${request.reviewedByName ?? hostName} approved ${requestedBy}'s stop request. Riders need to review updated details.`,
+          sortTime: baseTime + (34 + index) * 60 * 1000,
+        });
+        return;
+      }
+
+      if (request.status === "declined") {
+        addTimelineEvent(events, {
+          ...baseRouteRequestEvent,
+          id: `stop-declined-${request.id}`,
+          type: "stop_declined",
+          actorName: request.reviewedByName ?? hostName,
+          text: `${request.reviewedByName ?? hostName} declined ${requestedBy}'s stop request.`,
+          sortTime: baseTime + (34 + index) * 60 * 1000,
+        });
+        return;
+      }
+
+      if (request.status === "withdrawn") {
+        addTimelineEvent(events, {
+          ...baseRouteRequestEvent,
+          id: `stop-withdrawn-${request.id}`,
+          type: "stop_withdrawn",
+          actorName: requestedBy,
+          text: `${requestedBy} withdrew the stop request.`,
+          sortTime: baseTime + (33 + index) * 60 * 1000,
+        });
+        return;
+      }
+
+      if (request.status === "expired") {
+        addTimelineEvent(events, {
+          ...baseRouteRequestEvent,
+          id: `stop-expired-${request.id}`,
+          type: "stop_expired",
+          actorName: hostName,
+          text: `Stop request expired because the route is locked.`,
+          sortTime: baseTime + (33 + index) * 60 * 1000,
+        });
+      }
     });
 
     const hostCancellationActivity = ride.rideAppHostCancellationActivity?.length

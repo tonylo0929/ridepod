@@ -11,8 +11,9 @@ export type DriverAssignmentStatus = "PENDING" | "PARTNER_ACCEPTED";
 export type PickupStatus = "WAITING_FOR_PARTNER" | "READY_FOR_PICKUP" | "PARTNER_ARRIVED" | "RIDE_STARTED";
 export type RiderPickupStatus = "NOT_ARRIVED" | "ARRIVED_AT_PICKUP";
 export type RecurringTripPattern = "one_way" | "back_and_forth";
-export type StopRequestPolicy = "direct_only" | "host_approved_before_quote";
+export type StopRequestPolicy = "direct_only" | "host_approved_before_quote" | "host_approved_stops";
 export type RoutePlanStopStatus = "pending_host_approval" | "approved" | "declined";
+export type RouteRequestStatus = "pending" | "approved" | "declined" | "withdrawn" | "expired";
 
 export type RoutePlanStop = {
   id: string;
@@ -21,6 +22,28 @@ export type RoutePlanStop = {
   stopType?: "pickup_stop" | "dropoff_stop" | "quick_stop";
   reason?: string;
   status: RoutePlanStopStatus;
+};
+
+export type RouteRequest = {
+  id: string;
+  requestedByUserId?: string;
+  requestedByName: string;
+  stopLocation: string;
+  reason?: string;
+  status: RouteRequestStatus;
+  requestedAtLabel?: string;
+  reviewedAtLabel?: string;
+  reviewedByName?: string;
+};
+
+export type NormalizedRouteRequests = {
+  all: RouteRequest[];
+  pending: RouteRequest[];
+  approved: RouteRequest[];
+  declined: RouteRequest[];
+  currentUserRequest?: RouteRequest | null;
+  pendingCount: number;
+  hasPendingForHost: boolean;
 };
 
 export type RideAppChecklist = {
@@ -267,6 +290,7 @@ export type HomeRide = {
   pickupTime?: string;
   dropoffLabel?: string;
   stopRequestPolicy?: StopRequestPolicy;
+  routeRequests?: RouteRequest[];
   proposedStops?: RoutePlanStop[];
   approvedStops?: RoutePlanStop[];
   declinedStops?: RoutePlanStop[];
@@ -331,4 +355,105 @@ export function rideMatchesTab(tab: HomeTab, ride: HomeRide) {
 
 export function getHomeRide(id: string) {
   return homeRides.find((ride) => ride.id === id) ?? null;
+}
+
+export function isHostApprovedStopPolicy(routePolicy?: string | null) {
+  return routePolicy === "host_approved_before_quote" || routePolicy === "host_approved_stops";
+}
+
+export function isDirectRoutePolicy(routePolicy?: string | null) {
+  return !routePolicy || routePolicy === "direct_only" || routePolicy === "direct";
+}
+
+function normalizeRouteRequestName(value?: string | null) {
+  return value?.trim() || "Rider";
+}
+
+function currentUserRouteRequestNames(ride: HomeRide) {
+  return new Set(
+    ["You", ride.currentUserName]
+      .map((name) => name?.trim().toLowerCase())
+      .filter((name): name is string => Boolean(name)),
+  );
+}
+
+function routePlanStopToRouteRequest(stop: RoutePlanStop, status: RouteRequestStatus): RouteRequest {
+  return {
+    id: stop.id,
+    requestedByName: normalizeRouteRequestName(stop.requestedBy),
+    stopLocation: stop.label,
+    reason: stop.reason,
+    status,
+  };
+}
+
+function routeRequestKey(request: RouteRequest) {
+  return request.id || request.stopLocation;
+}
+
+export function routeRequestToRoutePlanStop(request: RouteRequest): RoutePlanStop {
+  return {
+    id: request.id,
+    label: request.stopLocation,
+    requestedBy: request.requestedByName,
+    stopType: "quick_stop",
+    reason: request.reason,
+    status:
+      request.status === "approved"
+        ? "approved"
+        : request.status === "declined"
+          ? "declined"
+          : "pending_host_approval",
+  };
+}
+
+export function getNormalizedRouteRequests(ride: HomeRide): NormalizedRouteRequests {
+  const byKey = new Map<string, RouteRequest>();
+
+  (ride.routeRequests ?? []).forEach((request) => {
+    byKey.set(routeRequestKey(request), {
+      ...request,
+      requestedByName: normalizeRouteRequestName(request.requestedByName),
+      stopLocation: request.stopLocation.trim(),
+    });
+  });
+
+  (ride.proposedStops ?? [])
+    .filter((stop) => stop.status === "pending_host_approval")
+    .forEach((stop) => {
+      const request = routePlanStopToRouteRequest(stop, "pending");
+      byKey.set(routeRequestKey(request), request);
+    });
+
+  (ride.approvedStops ?? [])
+    .filter((stop) => stop.status === "approved")
+    .forEach((stop) => {
+      const request = routePlanStopToRouteRequest(stop, "approved");
+      byKey.set(routeRequestKey(request), request);
+    });
+
+  (ride.declinedStops ?? [])
+    .filter((stop) => stop.status === "declined")
+    .forEach((stop) => {
+      const request = routePlanStopToRouteRequest(stop, "declined");
+      byKey.set(routeRequestKey(request), request);
+    });
+
+  const all = [...byKey.values()].filter((request) => request.stopLocation);
+  const pending = all.filter((request) => request.status === "pending");
+  const approved = all.filter((request) => request.status === "approved");
+  const declined = all.filter((request) => request.status === "declined");
+  const currentUserNames = currentUserRouteRequestNames(ride);
+  const currentUserRequest =
+    all.find((request) => currentUserNames.has(request.requestedByName.trim().toLowerCase())) ?? null;
+
+  return {
+    all,
+    pending,
+    approved,
+    declined,
+    currentUserRequest,
+    pendingCount: pending.length,
+    hasPendingForHost: pending.length > 0,
+  };
 }
