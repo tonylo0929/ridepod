@@ -80,6 +80,7 @@ import type { HomeRide } from "@/lib/home-ride-mock";
 type PodType = "scheduled" | "airport" | "recurring";
 type CreateStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type AirportDirection = "to_airport" | "from_airport";
+type AirportDetailsSlice = "direction" | "flight" | "luggage";
 type AirportLuggageState = {
   largeSuitcases: number;
   cabinBags: number;
@@ -2174,6 +2175,33 @@ function AirportLuggageStepper({
   );
 }
 
+const airportDetailsSliceOrder: AirportDetailsSlice[] = ["direction", "flight", "luggage"];
+
+const airportDetailsSliceCopy: Record<
+  AirportDetailsSlice,
+  {
+    label: string;
+    title: string;
+    body: string;
+  }
+> = {
+  direction: {
+    label: "To / From",
+    title: "To airport / From airport",
+    body: "Choose whether this pod is heading to the airport or leaving after landing.",
+  },
+  flight: {
+    label: "Flight",
+    title: "Flight details",
+    body: "Add the flight info riders need to match around a similar airport time.",
+  },
+  luggage: {
+    label: "Luggage",
+    title: "Luggage",
+    body: "Share bags and special items so everyone can check the ride fit.",
+  },
+};
+
 function AirportDetailsStep({
   airportDetails,
   stepLabels,
@@ -2189,10 +2217,23 @@ function AirportDetailsStep({
   onBack: () => void;
   onContinue: () => void;
 }) {
+  const [airportDetailsSlice, setAirportDetailsSlice] = useState<AirportDetailsSlice>("direction");
   const isToAirport = airportDetails.airportDirection === "to_airport";
   const terminalLabel = isToAirport ? "Departure terminal / hall" : "Arrival hall / meeting area";
   const terminalPlaceholder = isToAirport ? "e.g. Terminal 1, Departures" : "e.g. Arrival Hall A";
   const flightTimeLabel = isToAirport ? "Flight departure time" : "Flight arrival time";
+  const activeSliceIndex = Math.max(0, airportDetailsSliceOrder.indexOf(airportDetailsSlice));
+  const isLastAirportDetailsSlice = activeSliceIndex === airportDetailsSliceOrder.length - 1;
+  const nextAirportDetailsSlice =
+    airportDetailsSliceOrder[Math.min(airportDetailsSliceOrder.length - 1, activeSliceIndex + 1)] ?? "luggage";
+  const previousAirportDetailsSlice =
+    airportDetailsSliceOrder[Math.max(0, activeSliceIndex - 1)] ?? "direction";
+  const activeSliceCopy = airportDetailsSliceCopy[airportDetailsSlice];
+  const airportDetailsSliceSummary: Record<AirportDetailsSlice, string> = {
+    direction: getAirportDirectionLabel(airportDetails.airportDirection),
+    flight: airportDetails.flightNumber.trim() || "Add flight",
+    luggage: getAirportLuggageSummary(airportDetails),
+  };
 
   function updateAirportLuggage(patch: Partial<AirportLuggageState>) {
     onAirportDetailsChange({
@@ -2204,6 +2245,24 @@ function AirportDetailsStep({
     });
   }
 
+  function handleAirportDetailsBack() {
+    if (activeSliceIndex === 0) {
+      onBack();
+      return;
+    }
+
+    setAirportDetailsSlice(previousAirportDetailsSlice);
+  }
+
+  function handleAirportDetailsContinue() {
+    if (isLastAirportDetailsSlice) {
+      onContinue();
+      return;
+    }
+
+    setAirportDetailsSlice(nextAirportDetailsSlice);
+  }
+
   return (
     <>
       <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
@@ -2211,111 +2270,166 @@ function AirportDetailsStep({
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#020912] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-7 text-[#f8fafc]">
         <section className="text-center">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Airport ride</p>
-          <h1 className="mt-2 text-[29px] font-black leading-tight text-[var(--rp-text)]">Airport direction</h1>
+          <h1 className="mt-2 text-[29px] font-black leading-tight text-[var(--rp-text)]">
+            {activeSliceCopy.title}
+          </h1>
           <p className="mx-auto mt-2 max-w-[300px] text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            Are you going to the airport or leaving the airport?
+            {activeSliceCopy.body}
           </p>
         </section>
 
-        <section className="mt-5 grid gap-3" role="radiogroup" aria-label="Airport direction">
-          {(["to_airport", "from_airport"] as AirportDirection[]).map((direction) => (
-            <AirportDirectionCard
-              key={direction}
-              direction={direction}
-              selected={airportDetails.airportDirection === direction}
-              onSelect={() => onAirportDetailsChange(syncAirportDirectionDefaults(airportDetails, direction))}
-            />
-          ))}
+        <section className="mt-5 grid grid-cols-3 gap-2" role="tablist" aria-label="Airport details sections">
+          {airportDetailsSliceOrder.map((slice, index) => {
+            const selected = airportDetailsSlice === slice;
+            const completed = index < activeSliceIndex;
+
+            return (
+              <button
+                key={slice}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                onClick={() => setAirportDetailsSlice(slice)}
+                className={cn(
+                  "grid min-h-[74px] justify-items-center gap-1 rounded-[18px] border px-2 py-3 text-center transition",
+                  selected
+                    ? "border-cyan-200 bg-cyan-300/14 text-cyan-50 shadow-[0_0_24px_rgba(34,211,238,0.12)]"
+                    : "border-cyan-300/16 bg-[rgba(15,27,39,0.62)] text-[var(--rp-muted-strong)] hover:border-cyan-300/40",
+                )}
+              >
+                <span
+                  className={cn(
+                    "grid h-6 w-6 place-items-center rounded-full border text-[11px] font-black",
+                    selected || completed
+                      ? "border-cyan-200 bg-cyan-300 text-[#06111d]"
+                      : "border-cyan-300/24 text-cyan-100",
+                  )}
+                >
+                  {completed ? <Check className="h-3.5 w-3.5" /> : index + 1}
+                </span>
+                <span className="text-[11px] font-black leading-4">{airportDetailsSliceCopy[slice].label}</span>
+                <span className="line-clamp-1 max-w-full text-[10px] font-bold leading-4 opacity-80">
+                  {airportDetailsSliceSummary[slice]}
+                </span>
+              </button>
+            );
+          })}
         </section>
 
-        <section className="mt-5 rounded-[24px] border border-cyan-300/24 bg-[linear-gradient(135deg,rgba(14,165,233,0.11),rgba(124,58,237,0.11),rgba(15,23,42,0.86))] p-4 shadow-[var(--rp-shadow-soft)]">
-          <h2 className="text-xl font-black text-cyan-100">Flight details</h2>
-          <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            Flight details help riders find people arriving or departing around the same time.
-          </p>
+        {airportDetailsSlice === "direction" ? (
+          <section className="mt-5 grid gap-3" role="radiogroup" aria-label="Airport direction">
+            {(["to_airport", "from_airport"] as AirportDirection[]).map((direction) => (
+              <AirportDirectionCard
+                key={direction}
+                direction={direction}
+                selected={airportDetails.airportDirection === direction}
+                onSelect={() => onAirportDetailsChange(syncAirportDirectionDefaults(airportDetails, direction))}
+              />
+            ))}
+          </section>
+        ) : null}
 
-          <div className="mt-4 grid gap-4">
-            <SelfSettleTextField
-              label="Flight number"
-              value={airportDetails.flightNumber}
-              placeholder="e.g. CX400, BR871, UO123"
-              helper="Optional but recommended. RidePod does not verify flight status in this version."
-              onChange={(flightNumber) => onAirportDetailsChange({ ...airportDetails, flightNumber })}
-            />
-            <div className="grid gap-3 min-[390px]:grid-cols-2">
+        {airportDetailsSlice === "flight" ? (
+          <section className="mt-5 rounded-[24px] border border-cyan-300/24 bg-[linear-gradient(135deg,rgba(14,165,233,0.11),rgba(124,58,237,0.11),rgba(15,23,42,0.86))] p-4 shadow-[var(--rp-shadow-soft)]">
+            <h2 className="text-xl font-black text-cyan-100">Flight details</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              Flight details help riders find people arriving or departing around the same time.
+            </p>
+
+            <div className="mt-4 grid gap-4">
               <SelfSettleTextField
-                label="Flying from"
-                value={airportDetails.flightFrom}
-                placeholder={isToAirport ? "Hong Kong (HKG)" : "Taipei (TPE)"}
-                onChange={(flightFrom) => onAirportDetailsChange({ ...airportDetails, flightFrom })}
+                label="Flight number"
+                value={airportDetails.flightNumber}
+                placeholder="e.g. CX400, BR871, UO123"
+                helper="Optional but recommended. RidePod does not verify flight status in this version."
+                onChange={(flightNumber) => onAirportDetailsChange({ ...airportDetails, flightNumber })}
+              />
+              <div className="grid gap-3 min-[390px]:grid-cols-2">
+                <SelfSettleTextField
+                  label="Flying from"
+                  value={airportDetails.flightFrom}
+                  placeholder={isToAirport ? "Hong Kong (HKG)" : "Taipei (TPE)"}
+                  onChange={(flightFrom) => onAirportDetailsChange({ ...airportDetails, flightFrom })}
+                />
+                <SelfSettleTextField
+                  label="Flying to"
+                  value={airportDetails.flightTo}
+                  placeholder={isToAirport ? "Taipei (TPE)" : "Hong Kong (HKG)"}
+                  onChange={(flightTo) => onAirportDetailsChange({ ...airportDetails, flightTo })}
+                />
+              </div>
+              <SelfSettleTextField
+                label={flightTimeLabel}
+                value={airportDetails.flightTimeLabel}
+                placeholder={isToAirport ? "e.g. 10:45 AM" : "e.g. 7:20 PM"}
+                onChange={(flightTimeLabelValue) => onAirportDetailsChange({ ...airportDetails, flightTimeLabel: flightTimeLabelValue })}
               />
               <SelfSettleTextField
-                label="Flying to"
-                value={airportDetails.flightTo}
-                placeholder={isToAirport ? "Taipei (TPE)" : "Hong Kong (HKG)"}
-                onChange={(flightTo) => onAirportDetailsChange({ ...airportDetails, flightTo })}
+                label={terminalLabel}
+                value={isToAirport ? airportDetails.airportTerminal : airportDetails.airportHall}
+                placeholder={terminalPlaceholder}
+                onChange={(value) =>
+                  onAirportDetailsChange(
+                    isToAirport
+                      ? { ...airportDetails, airportTerminal: value }
+                      : { ...airportDetails, airportHall: value },
+                  )
+                }
               />
             </div>
-            <SelfSettleTextField
-              label={flightTimeLabel}
-              value={airportDetails.flightTimeLabel}
-              placeholder={isToAirport ? "e.g. 10:45 AM" : "e.g. 7:20 PM"}
-              onChange={(flightTimeLabelValue) => onAirportDetailsChange({ ...airportDetails, flightTimeLabel: flightTimeLabelValue })}
-            />
-            <SelfSettleTextField
-              label={terminalLabel}
-              value={isToAirport ? airportDetails.airportTerminal : airportDetails.airportHall}
-              placeholder={terminalPlaceholder}
-              onChange={(value) =>
-                onAirportDetailsChange(
-                  isToAirport
-                    ? { ...airportDetails, airportTerminal: value }
-                    : { ...airportDetails, airportHall: value },
-                )
-              }
-            />
-          </div>
-        </section>
+          </section>
+        ) : null}
 
-        <section className="mt-5 rounded-[24px] border border-cyan-300/20 bg-[rgba(15,27,39,0.82)] p-4 shadow-[var(--rp-shadow-soft)]">
-          <h2 className="text-xl font-black text-cyan-100">Luggage</h2>
-          <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            Airport rides may need more luggage space.
-          </p>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            <AirportLuggageStepper
-              label="Large suitcases"
-              value={airportDetails.airportLuggage.largeSuitcases}
-              onChange={(largeSuitcases) => updateAirportLuggage({ largeSuitcases })}
-            />
-            <AirportLuggageStepper
-              label="Cabin bags"
-              value={airportDetails.airportLuggage.cabinBags}
-              onChange={(cabinBags) => updateAirportLuggage({ cabinBags })}
-            />
-          </div>
-          <div className="mt-4 grid gap-4">
-            <SelfSettleTextField
-              label="Special items"
-              value={airportDetails.airportLuggage.specialItems}
-              placeholder="stroller, golf bag, sports gear, none"
-              helper="Optional."
-              onChange={(specialItems) => updateAirportLuggage({ specialItems })}
-            />
-            <SelfSettleTextField
-              label="Luggage note"
-              value={airportDetails.airportLuggage.note}
-              placeholder="Optional note for riders"
-              onChange={(note) => updateAirportLuggage({ note })}
-            />
-          </div>
-          <p className="mt-4 rounded-[16px] border border-cyan-300/18 bg-cyan-300/8 p-3 text-xs font-bold leading-5 text-cyan-100">
-            Large luggage may reduce usable seats. Confirm luggage fit before the ride.
-          </p>
-        </section>
+        {airportDetailsSlice === "luggage" ? (
+          <section className="mt-5 rounded-[24px] border border-cyan-300/20 bg-[rgba(15,27,39,0.82)] p-4 shadow-[var(--rp-shadow-soft)]">
+            <h2 className="text-xl font-black text-cyan-100">Luggage</h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              Airport rides may need more luggage space.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <AirportLuggageStepper
+                label="Large suitcases"
+                value={airportDetails.airportLuggage.largeSuitcases}
+                onChange={(largeSuitcases) => updateAirportLuggage({ largeSuitcases })}
+              />
+              <AirportLuggageStepper
+                label="Cabin bags"
+                value={airportDetails.airportLuggage.cabinBags}
+                onChange={(cabinBags) => updateAirportLuggage({ cabinBags })}
+              />
+            </div>
+            <div className="mt-4 grid gap-4">
+              <SelfSettleTextField
+                label="Special items"
+                value={airportDetails.airportLuggage.specialItems}
+                placeholder="stroller, golf bag, sports gear, none"
+                helper="Optional."
+                onChange={(specialItems) => updateAirportLuggage({ specialItems })}
+              />
+              <SelfSettleTextField
+                label="Luggage note"
+                value={airportDetails.airportLuggage.note}
+                placeholder="Optional note for riders"
+                onChange={(note) => updateAirportLuggage({ note })}
+              />
+            </div>
+            <p className="mt-4 rounded-[16px] border border-cyan-300/18 bg-cyan-300/8 p-3 text-xs font-bold leading-5 text-cyan-100">
+              Large luggage may reduce usable seats. Confirm luggage fit before the ride.
+            </p>
+          </section>
+        ) : null}
 
-        <div className="mt-6">
-          <CreatePodStepActions onBack={onBack} onContinue={onContinue} />
+        <div className="mt-auto pt-6">
+          <CreatePodStepActions
+            onBack={handleAirportDetailsBack}
+            onContinue={handleAirportDetailsContinue}
+            continueLabel={
+              isLastAirportDetailsSlice
+                ? "Continue"
+                : airportDetailsSliceCopy[nextAirportDetailsSlice].title
+            }
+            continueIcon={!isLastAirportDetailsSlice ? <ArrowRight className="h-5 w-5" /> : undefined}
+          />
         </div>
       </main>
     </>
