@@ -6064,8 +6064,7 @@ function AirportReviewSummaryCard({
           <Plane className="-rotate-12 h-5 w-5" />
         </span>
         <div className="min-w-0">
-          <h2 className="text-lg font-black text-cyan-100">Airport</h2>
-          <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+          <p className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
             Flight details are user-entered and not verified by RidePod in this version.
           </p>
         </div>
@@ -7199,7 +7198,7 @@ function ReviewPodStep({
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-7">
         {reviewPanel === previewPanelIndex ? null : (
           <section className="text-center">
-            <ScheduleTypeEyebrow podType={podType} />
+            {airportDetails ? null : <ScheduleTypeEyebrow podType={podType} />}
             <h1 className="text-[26px] font-black leading-tight text-[var(--rp-text)]">
               Final check
             </h1>
