@@ -1591,6 +1591,7 @@ export default function HomePage() {
     deadlineFilter !== "any" ||
     seatFilter !== "any" ||
     ownershipFilter !== "all";
+  const showCommunitySections = activeTab === "all";
   const showRideRecommendations = activeTab !== "all";
   return (
     <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-1.25rem)] overflow-hidden pb-2 sm:-mx-6 lg:-mx-10 lg:-mt-8">
@@ -1680,8 +1681,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      <CommunitiesSection />
-      <CommunityRideCallsSection />
+      {showCommunitySections ? (
+        <>
+          <CommunitiesSection />
+          <CommunityRideCallsSection />
+        </>
+      ) : null}
 
       {showRideRecommendations ? (
         <section className="relative mt-5 px-4 sm:px-6 lg:px-10">
