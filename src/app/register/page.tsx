@@ -629,7 +629,7 @@ export default function RegisterPage() {
 
   return (
     <AuthPageShell>
-      <section className="mx-auto grid w-full max-w-2xl gap-4 rounded-[28px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
+      <section className="relative mx-auto grid w-full max-w-2xl gap-4 rounded-[28px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
         {step === "form" ? (
           <button
             type="button"
@@ -641,8 +641,8 @@ export default function RegisterPage() {
           </button>
         ) : null}
 
-        <div className="grid gap-2">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+        <div className="grid gap-2 pr-14">
+          <span className="absolute right-5 top-5 grid h-12 w-12 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
             {accountType === "taxi_partner" ? <CarFront className="h-5 w-5" /> : <UserRound className="h-5 w-5" />}
           </span>
           <h1 className="text-3xl font-black text-[var(--rp-primary)]">
