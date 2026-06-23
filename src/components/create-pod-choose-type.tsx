@@ -1967,7 +1967,7 @@ function SelfSettleTextField({
   const fieldId = useId();
 
   return (
-    <label htmlFor={fieldId} className="grid gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-left">
+    <label htmlFor={fieldId} className="grid min-w-0 gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-left">
       <span className="text-xs font-black uppercase tracking-[0.13em] text-[var(--rp-primary)]">{label}</span>
       <input
         id={fieldId}
@@ -1975,7 +1975,7 @@ function SelfSettleTextField({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
-        className="min-h-11 rounded-xl border border-[var(--rp-border)] bg-[rgba(5,12,20,0.48)] px-3 text-base font-black text-[var(--rp-text)] outline-none placeholder:text-[var(--rp-muted)] focus:border-[var(--rp-primary)]"
+        className="min-h-11 w-full min-w-0 rounded-xl border border-[var(--rp-border)] bg-[rgba(5,12,20,0.48)] px-3 text-base font-black text-[var(--rp-text)] outline-none placeholder:text-[var(--rp-muted)] focus:border-[var(--rp-primary)]"
       />
       {helper ? <span className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{helper}</span> : null}
     </label>
@@ -2333,7 +2333,7 @@ function AirportDetailsStep({
                 helper="Optional but recommended. RidePod does not verify flight status in this version."
                 onChange={(flightNumber) => onAirportDetailsChange({ ...airportDetails, flightNumber })}
               />
-              <div className="grid gap-3 min-[390px]:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <SelfSettleTextField
                   label="Flying from"
                   value={airportDetails.flightFrom}
