@@ -770,12 +770,12 @@ export function PodChatClient({
           podId={podId}
           routeLabel={routeLabel}
           timeLabel={tripTimeLabel}
-          title={isTaxiPartnerChat ? "Taxi partner chat" : "Pod chat"}
+          title={isTaxiPartnerChat ? "Taxi partner chat" : "Ride Chat"}
           statusLabel={null}
         />
         <section className="rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 text-center">
           <LockKeyhole className="mx-auto h-8 w-8 text-[var(--rp-primary)]" />
-          <h2 className="mt-3 text-2xl font-black text-[var(--rp-text)]">Log in to open pod chat.</h2>
+          <h2 className="mt-3 text-2xl font-black text-[var(--rp-text)]">Log in to open Ride Chat.</h2>
           <Link
             href={`/login?next=/pods/${encodeURIComponent(podId)}/chat`}
             className="mt-4 inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--rp-primary)] px-5 text-sm font-black text-[var(--rp-primary-text)]"
@@ -793,7 +793,7 @@ export function PodChatClient({
         podId={podId}
         routeLabel={routeLabel}
         timeLabel={tripTimeLabel}
-        title={isTaxiPartnerChat ? "Taxi partner chat" : "Pod chat"}
+        title={isTaxiPartnerChat ? "Taxi partner chat" : "Ride Chat"}
         statusLabel={chatHeaderStatusLabel}
       />
 
@@ -1103,7 +1103,7 @@ export function PodChatClient({
           <button
             type="button"
             disabled
-            className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/[0.075] px-4 text-sm font-black text-[var(--rp-muted-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+            className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[var(--rp-primary)]/28 bg-[var(--rp-primary)]/10 px-4 text-sm font-black text-[var(--rp-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
           >
             <LockKeyhole className="h-4 w-4" />
             Chat unlocks after required riders confirm.
@@ -1201,7 +1201,7 @@ function ChatHeader({
   podId,
   routeLabel,
   timeLabel,
-  title = "Pod chat",
+  title = "Ride Chat",
   statusLabel = null,
 }: {
   podId: string;
@@ -1226,7 +1226,7 @@ function ChatHeader({
           </span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-3xl font-black text-[var(--rp-text)]">{title}</h1>
+              <h1 className="text-3xl font-black text-[var(--rp-primary)]">{title}</h1>
               {statusLabel ? (
                 <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase text-cyan-100">
                   {statusLabel}
