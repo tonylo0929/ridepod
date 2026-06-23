@@ -651,7 +651,7 @@ function RideCallCard({ rideCall }: { rideCall: (typeof communityRideCalls)[numb
 
 function CommunitiesSection() {
   return (
-    <section className="relative mt-4 px-4 sm:px-6 lg:px-10">
+    <section id="communities" className="relative mt-4 scroll-mt-24 px-4 sm:px-6 lg:px-10">
       <HomeSectionHeader title="Communities" />
       <div className="grid grid-cols-4 gap-2">
         {communityCards.map((community) => (
