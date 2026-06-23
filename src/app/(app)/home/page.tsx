@@ -1539,6 +1539,13 @@ const initialSettlementFilter: SettlementFilter = startsWithRideAppOnly ? "self_
 const initialFromDistrict = "All districts";
 const initialToDistrict = "All districts";
 
+function getTimeOfDayGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
 export default function HomePage() {
   const { user, profile } = useAuth();
   const isAuthenticated = Boolean(user);
@@ -1590,6 +1597,7 @@ export default function HomePage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const today = useMemo(() => new Date(), []);
   const activeHeroBackgroundMode = rideModeFilter === "ride_app" ? "ride_app" : "taxi";
+  const heroGreeting = useMemo(() => getTimeOfDayGreeting(), []);
 
   useEffect(() => {
     const preloadedImages = heroBackgroundModes.map((mode) => {
@@ -1846,11 +1854,11 @@ export default function HomePage() {
 
         <div className="relative z-10">
           <div className="pt-2 min-[720px]:pt-8">
-            <p className="text-[31px] font-serif leading-tight text-[var(--rp-text)] min-[720px]:text-[42px]">
-              Your ride, together.
+            <p className="text-[28px] font-serif leading-tight text-[var(--rp-text)] min-[720px]:text-[42px]">
+              {isAuthenticated ? `${heroGreeting}, ${displayName}` : "Your ride, together."}
             </p>
-            <p className="mt-2 text-base font-semibold text-[var(--rp-muted-strong)] min-[720px]:text-lg">
-              First Local Shared Ride in Hong Kong
+            <p className="mt-1.5 text-sm font-semibold text-[var(--rp-muted-strong)] min-[720px]:mt-2 min-[720px]:text-lg">
+              {isAuthenticated ? "Your ride, together." : "First Local Shared Ride in Hong Kong"}
             </p>
           </div>
 
