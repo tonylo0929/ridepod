@@ -5301,7 +5301,7 @@ function SelfSettleReviewSummaryCard({
   onEditDetails: () => void;
 }) {
   const rows: Array<{ icon: ReactNode; label: string; value: string }> = [
-    { icon: <Smartphone className="h-4 w-4" />, label: "Ride type", value: "Ride app - Self-settle" },
+    { icon: <Smartphone className="h-4 w-4" />, label: "Ride type", value: "Ride App" },
     { icon: <MapPin className="h-4 w-4" />, label: "Route", value: `${routePointSummary(pickupAddress, "None")} -> ${routePointSummary(dropoffAddress, "None")}` },
     { icon: <LocateFixed className="h-4 w-4" />, label: "Gather point", value: peopleVehicle.pickupVenue || "None" },
     { icon: <CarFront className="h-4 w-4" />, label: "Ride app", value: getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther) },
@@ -5318,7 +5318,7 @@ function SelfSettleReviewSummaryCard({
             <Smartphone className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <h2 className="text-lg font-black text-[var(--rp-primary)]">Ride app · Self-settle</h2>
+            <h2 className="text-lg font-black text-[var(--rp-primary)]">Ride App</h2>
           </div>
           </div>
           <button
