@@ -557,7 +557,7 @@ function CategoryCard({
       type="button"
       onClick={() => onClick(id)}
       className={cn(
-        "grid min-h-[82px] w-full place-items-center overflow-hidden rounded-[16px] border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_60%,transparent),color-mix(in_srgb,var(--rp-card-soft)_46%,transparent))] px-1.5 py-2 text-center shadow-[0_16px_38px_rgba(0,0,0,0.2)] backdrop-blur-[6px] transition min-[390px]:min-h-[88px] min-[390px]:px-2",
+        "grid min-h-[88px] w-full content-center justify-items-center overflow-hidden rounded-[16px] border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_60%,transparent),color-mix(in_srgb,var(--rp-card-soft)_46%,transparent))] px-1.5 py-2 text-center shadow-[0_16px_38px_rgba(0,0,0,0.2)] backdrop-blur-[6px] transition min-[390px]:min-h-[92px] min-[390px]:px-2",
         selected
           ? "border-[var(--rp-primary)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-primary)_18%,transparent),color-mix(in_srgb,var(--rp-card)_48%,transparent))] shadow-[0_0_32px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
           : "border-white/12 hover:border-[var(--rp-border-strong)] hover:bg-[color-mix(in_srgb,var(--rp-card)_58%,transparent)]",
@@ -573,10 +573,10 @@ function CategoryCard({
       >
         <Icon className="h-5 w-5 min-[390px]:h-6 min-[390px]:w-6" />
       </span>
-      <span className="mt-1.5 flex min-h-4 w-full items-center justify-center whitespace-nowrap text-center text-[9px] font-black leading-[1.05] text-[var(--rp-text)] min-[390px]:text-[10px]">
+      <span className="mt-1.5 flex min-h-4 w-full items-center justify-center whitespace-normal text-center text-[9px] font-black leading-[1.05] text-[var(--rp-text)] min-[390px]:text-[10px]">
         {label}
       </span>
-      <span className="mt-0.5 block w-full truncate text-center text-[9px] font-semibold leading-3 text-[var(--rp-muted-strong)] min-[390px]:text-[10px]">
+      <span className="mt-0.5 flex min-h-[20px] w-full items-start justify-center whitespace-normal text-center text-[8px] font-semibold leading-[1.1] text-[var(--rp-muted-strong)] min-[390px]:text-[9px]">
         {subtitle}
       </span>
     </button>
