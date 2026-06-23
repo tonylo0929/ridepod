@@ -90,7 +90,7 @@ function NavLink({
         active
           ? "bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
           : "text-[var(--rp-muted)] hover:bg-[var(--rp-card-muted)] hover:text-[var(--rp-text)]",
-        compact && "flex-1 flex-col gap-1 rounded-none px-1 py-2 text-[11px]",
+        compact && "flex-1 flex-col gap-1 rounded-none px-1 py-2 text-center text-[11px] leading-tight",
       )}
     >
       <span className="relative">
