@@ -62,7 +62,7 @@ type CurrentUserAvatar = {
 };
 
 const categoryCards: Array<{ id: HomeTab; label: string; icon: typeof LayoutGrid; fallbackCount: number }> = [
-  { id: "all", label: "All", icon: LayoutGrid, fallbackCount: 128 },
+  { id: "all", label: "Community", icon: LayoutGrid, fallbackCount: 128 },
   { id: "airport", label: "Airport", icon: Plane, fallbackCount: 42 },
   { id: "one_off", label: "One-off", icon: CarFront, fallbackCount: 63 },
   { id: "recurring", label: "Recurring", icon: RefreshCcw, fallbackCount: 23 },
