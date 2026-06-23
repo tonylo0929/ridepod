@@ -2324,9 +2324,6 @@ function AirportDetailsStep({
         {airportDetailsSlice === "flight" ? (
           <section className="mt-5 rounded-[24px] border border-cyan-300/24 bg-[linear-gradient(135deg,rgba(14,165,233,0.11),rgba(124,58,237,0.11),rgba(15,23,42,0.86))] p-4 shadow-[var(--rp-shadow-soft)]">
             <h2 className="text-xl font-black text-cyan-100">Flight details</h2>
-            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              Flight details help riders find people arriving or departing around the same time.
-            </p>
 
             <div className="mt-4 grid gap-4">
               <SelfSettleTextField
