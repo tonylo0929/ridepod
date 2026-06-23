@@ -258,14 +258,14 @@ const podTypes: Array<{
 }> = [
   {
     id: "scheduled",
-    title: "Scheduled one-time trip",
+    title: "Scheduled",
     sublabel: "",
     description: "For a single trip on a specific date and time.",
     icon: "calendar",
   },
   {
     id: "airport",
-    title: "Airport ride",
+    title: "Airport",
     sublabel: "",
     description: "Match around airport trips, flights, and luggage.",
     icon: "airport",
@@ -273,7 +273,7 @@ const podTypes: Array<{
   },
   {
     id: "recurring",
-    title: "Recurring pod",
+    title: "Recurring",
     sublabel: "Repeat on specific days or a schedule.",
     description: "",
     icon: "repeat",
@@ -333,7 +333,7 @@ const rideOptions: Array<{
 }> = [
   {
     id: "ride_app_fixed_quote",
-    title: "Ride app / Self-settle",
+    title: "Ride App Self-Settle",
     description: `${defaultRideAppCreateFeeSentence} Fee applies only when riders confirm ride details.`,
     helper: "Coordination-only. RidePod does not collect or protect the ride fare.",
     recurringHelper: "Create pod is free. RidePod fee applies only when someone joins an eligible pod.",
@@ -349,7 +349,7 @@ const rideOptions: Array<{
   },
   {
     id: "taxi_partner_quote",
-    title: "Taxi partner quote",
+    title: "Taxi Partner Quote",
     description: "Licensed taxi partner quotes one price for the shared pod.",
     helper: "Demo mode. No real taxi dispatch or payout yet.",
     recurringHelper: "Demo mode. No real taxi dispatch or payout yet.",
@@ -414,7 +414,7 @@ function getRideProofCopy(rideOption: RideOptionId) {
       bookingProofHelper: "Guests accept the taxi partner quote before the ride can proceed.",
       reviewRows: [
         { label: "Main ride type", value: "Taxi" },
-        { label: "Taxi quote mode", value: "Taxi partner quote" },
+        { label: "Taxi quote mode", value: "Taxi Partner Quote" },
         {
           label: "Booking rule",
           value: "Guests accept quote before the ride can proceed.",
@@ -452,7 +452,7 @@ function getRideProofCopy(rideOption: RideOptionId) {
         bookingProofStatus: "Optional fare estimate screenshot",
         bookingProofHelper: "RidePod does not verify ride app screenshots.",
         reviewRows: [
-          { label: "Ride type", value: "Ride app / Self-settle" },
+          { label: "Ride type", value: "Ride App Self-Settle" },
           { label: "Payment rule", value: `${defaultRideAppCreateFeeSentence} Riders demo-confirm or waive the ${defaultRideAppJoinFeeLabel} RidePod join fee when they confirm ride details. ${ridePodPricingCopy.rideAppJoinFeeHelper}` },
           { label: "Screenshot", value: "Optional, local/mock only, not verified by RidePod." },
           { label: "Protection", value: "No fare protection is provided." },
@@ -869,9 +869,9 @@ function getScheduleTypeLabel(dateTime: DateTimeState) {
 }
 
 function getPodTypeTitle(podType: PodType) {
-  if (podType === "recurring") return "Recurring pod";
-  if (podType === "airport") return "Airport ride";
-  return "Scheduled one-time trip";
+  if (podType === "recurring") return "Recurring";
+  if (podType === "airport") return "Airport";
+  return "Scheduled";
 }
 
 function ScheduleTypeEyebrow({ podType }: { podType: PodType }) {
@@ -3365,7 +3365,7 @@ const rideCategories: Array<{
 }> = [
   {
     id: "taxi",
-    title: "Taxi",
+    title: "Taxi Partner Quote",
     modeLabel: "Protected",
     statusLabel: "Quote pending",
     priceLabel: "HK$68",
@@ -3379,7 +3379,7 @@ const rideCategories: Array<{
   },
   {
     id: "ride_app",
-    title: "Ride App",
+    title: "Ride App Self-Settle",
     modeLabel: "Self-settle",
     statusLabel: "Self-settle",
     priceLabel: defaultRideAppCreateFeeLabel,
@@ -3677,8 +3677,8 @@ function RideOptionSelector({
 
   return (
     <section className="mt-9">
-      <h2 className="text-[19px] font-black leading-6 text-[var(--rp-text)]">Ride mode</h2>
-      <div className="mt-5 grid gap-4" role="radiogroup" aria-label="Ride mode">
+      <h2 className="text-[19px] font-black leading-6 text-[var(--rp-text)]">Ride Mode</h2>
+      <div className="mt-5 grid gap-4" role="radiogroup" aria-label="Ride Mode">
         {rideCategories.map((category) => (
           <RideCategoryCard
             key={category.id}
@@ -4955,7 +4955,7 @@ function PeopleVehicleStep({
                   : isRideAppProviderPage
                     ? "Which ride app?"
                   : isSelfSettleDetailsPage
-                    ? "Ride app self-settle"
+                    ? "Ride App Self-Settle"
                   : isTaxiFlow && taxiDetailsPage === "partner"
                     ? "Taxi partner preference"
                   : "Choose Taxi Type"}
@@ -5934,7 +5934,7 @@ function AirportReviewSummaryCard({
   const flightNumber = airportDetails.flightNumber.trim();
   const flyingFrom = airportDetails.flightFrom.trim() || (isToAirport ? "Hong Kong (HKG)" : "Not provided");
   const flyingTo = airportDetails.flightTo.trim() || (isToAirport ? "Not provided" : "Hong Kong (HKG)");
-  const rideMode = isRideAppSelfSettle ? "Ride app self-settle" : "Taxi Partner Quote";
+  const rideMode = isRideAppSelfSettle ? "Ride App Self-Settle" : "Taxi Partner Quote";
   const routeRows = isToAirport
     ? [
         ["Pickup point", pickupAddress || "None"],
@@ -5954,7 +5954,7 @@ function AirportReviewSummaryCard({
     ["Terminal / hall", getAirportTerminalHallValue(airportDetails)],
     ["Luggage", getAirportLuggageSummary(airportDetails)],
     ...routeRows,
-    ["Ride mode", rideMode],
+    ["Ride Mode", rideMode],
   ];
 
   return (
@@ -5964,7 +5964,7 @@ function AirportReviewSummaryCard({
           <Plane className="-rotate-12 h-5 w-5" />
         </span>
         <div className="min-w-0">
-          <h2 className="text-lg font-black text-cyan-100">Airport ride</h2>
+          <h2 className="text-lg font-black text-cyan-100">Airport</h2>
           <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
             Flight details are user-entered and not verified by RidePod in this version.
           </p>
@@ -7643,14 +7643,14 @@ export function CreatePodChooseType() {
             <section className="flex min-w-0 flex-1 flex-col justify-center">
               <div className="text-center">
                 <h1 className="mx-auto max-w-none whitespace-nowrap text-center text-[28px] font-black leading-[1.08] text-[var(--rp-text)] min-[390px]:text-[30px]">
-                  Choose your pod type
+                  Trip Type
                 </h1>
                 <p className="mx-auto mt-3 max-w-[260px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]">
                   You&apos;ll be the host and book the ride.
                 </p>
               </div>
 
-              <div className="mt-6 grid gap-4" role="radiogroup" aria-label="Pod type">
+              <div className="mt-6 grid gap-4" role="radiogroup" aria-label="Trip Type">
                 {podTypes.map((item) => (
                   <PodTypeCard
                     key={item.id}
