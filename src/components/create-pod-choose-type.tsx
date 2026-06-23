@@ -6624,7 +6624,7 @@ function ReviewPodStep({
   );
 }
 
-function SuccessHero({ selfSettle }: { selfSettle: boolean }) {
+function SuccessHero() {
   return (
     <section className="text-center">
       <div className="relative mx-auto h-48 overflow-hidden rounded-[26px]">
@@ -6640,161 +6640,19 @@ function SuccessHero({ selfSettle }: { selfSettle: boolean }) {
       <h1 className="mt-5 text-[40px] font-black leading-none text-[var(--rp-text)]">
         All set!
       </h1>
-      <p className="mt-3 text-base font-medium text-[var(--rp-muted-strong)]">
-        {selfSettle
-          ? "Added to My Ride. Track status in My Ride."
-          : "Your pod is created and ready to fill."}
-      </p>
-    </section>
-  );
-}
-
-function StatusBadge({ label }: { label: string }) {
-  return (
-    <span className="rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] px-3 py-1 text-xs font-black text-[var(--rp-primary)]">
-      {label}
-    </span>
-  );
-}
-
-function SuccessSummaryRow({
-  icon,
-  label,
-  value,
-  aside,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  aside?: ReactNode;
-}) {
-  return (
-    <div className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3 border-b border-[var(--rp-border)] py-3 first:pt-0 last:border-b-0 last:pb-0">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <dt className="text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted)]">
-          {label}
-        </dt>
-        <dd className="mt-1 break-words text-base font-black leading-5 text-[var(--rp-text)]">{value}</dd>
-      </div>
-      {aside ? <div className="shrink-0">{aside}</div> : null}
-    </div>
-  );
-}
-
-function SuccessSummaryCard({
-  pickupAddress,
-  dropoffAddress,
-  dateTime,
-  peopleVehicle,
-  stops,
-  stopRequestPolicy,
-}: {
-  pickupAddress: string;
-  dropoffAddress: string;
-  dateTime: DateTimeState;
-  peopleVehicle: PeopleVehicleState;
-  stops: RouteStop[];
-  stopRequestPolicy: StopRequestPolicy;
-}) {
-  const isRideAppSelfSettle = normalizeRideOptionId(peopleVehicle.rideOption) === "ride_app_fixed_quote";
-  const routeLabel = isRideAppSelfSettle
-    ? `${routePointSummary(pickupAddress, "Pickup")} \u2192 ${routePointSummary(dropoffAddress, "Dropoff")}`
-    : getRoutePlanSummary(pickupAddress, dropoffAddress, stops);
-  const rows = isRideAppSelfSettle
-    ? [
-        {
-          icon: <MapPin className="h-5 w-5" />,
-          label: "Route",
-          value: routeLabel,
-          aside: <StatusBadge label="Forming" />,
-        },
-        {
-          icon: <LocateFixed className="h-5 w-5" />,
-          label: "Gather point",
-          value: peopleVehicle.pickupVenue || "None",
-        },
-        {
-          icon: <Smartphone className="h-5 w-5" />,
-          label: "Ride app",
-          value: getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther),
-        },
-        {
-          icon: <CalendarDays className="h-5 w-5" />,
-          label: "Date & time",
-          value: `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}`,
-        },
-        {
-          icon: <UsersRound className="h-5 w-5" />,
-          label: "Seats",
-          value: `${peopleVehicle.seatsAvailable} seats total`,
-        },
-      ]
-    : [
-        {
-          icon: <MapPin className="h-5 w-5" />,
-          label: "Route",
-          value: routeLabel,
-          aside: <StatusBadge label="Forming" />,
-        },
-        {
-          icon: <ShieldCheck className="h-5 w-5" />,
-          label: "Stop requests",
-          value: getStopRequestPolicyLabel(stopRequestPolicy),
-        },
-        {
-          icon: <CalendarDays className="h-5 w-5" />,
-          label: "Date & time",
-          value: `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}`,
-        },
-        {
-          icon: <UsersRound className="h-5 w-5" />,
-          label: "Seats",
-          value: `${peopleVehicle.seatsAvailable} seats total`,
-        },
-        {
-          icon: <CarFront className="h-5 w-5" />,
-          label: normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote" ? "Taxi type" : "Ride option",
-          value:
-            normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote"
-              ? getTaxiTypeLabel(peopleVehicle.taxiType)
-              : peopleVehicle.vehicleType,
-        },
-      ];
-
-  return (
-    <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-      <h2 className="sr-only">Pod summary</h2>
-      <dl>
-        {rows.map((row) => (
-          <SuccessSummaryRow key={row.label} {...row} />
-        ))}
-      </dl>
     </section>
   );
 }
 
 function SuccessStep({
   podType,
-  pickupAddress,
-  dropoffAddress,
-  dateTime,
   peopleVehicle,
-  stops,
-  stopRequestPolicy,
   podDetailHref,
   currentStep = 5,
   stepLabels = baseCreateSteps,
 }: {
   podType: PodType;
-  pickupAddress: string;
-  dropoffAddress: string;
-  dateTime: DateTimeState;
   peopleVehicle: PeopleVehicleState;
-  stops: RouteStop[];
-  stopRequestPolicy: StopRequestPolicy;
   podDetailHref?: string | null;
   currentStep?: CreateStep;
   stepLabels?: string[];
@@ -6809,20 +6667,9 @@ function SuccessStep({
         <div className="text-center">
           <ScheduleTypeEyebrow podType={podType} />
         </div>
-        <SuccessHero selfSettle={isRideAppSelfSettle} />
+        <SuccessHero />
 
-        <div className="mt-7">
-          <SuccessSummaryCard
-            pickupAddress={pickupAddress}
-            dropoffAddress={dropoffAddress}
-            dateTime={dateTime}
-            peopleVehicle={peopleVehicle}
-            stops={stops}
-            stopRequestPolicy={stopRequestPolicy}
-          />
-        </div>
-
-        <div className="mt-5 grid gap-3">
+        <div className="mt-7 grid gap-3">
           <Link
             href={detailHref}
             className="flex h-14 w-full items-center justify-center gap-3 rounded-[12px] border border-[var(--rp-border-strong)] text-base font-black shadow-[0_18px_34px_color-mix(in_srgb,var(--rp-primary)_34%,transparent)] transition hover:brightness-105"
@@ -6848,11 +6695,6 @@ function SuccessStep({
               <UserPlus className="h-5 w-5" />
             </SecondaryButton>
           )}
-          {isRideAppSelfSettle ? (
-            <p className="text-center text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-              You can track this pod in My Ride. Its calendar color updates as the status changes.
-            </p>
-          ) : null}
         </div>
       </main>
     </>
@@ -7038,12 +6880,7 @@ export function CreatePodChooseType() {
       {step === 6 || (!isRideAppSelfSettle && step === 5) ? (
         <SuccessStep
           podType={podType}
-          pickupAddress={pickupAddress}
-          dropoffAddress={dropoffAddress}
-          dateTime={dateTime}
           peopleVehicle={peopleVehicle}
-          stops={stops}
-          stopRequestPolicy={displayedStopRequestPolicy}
           podDetailHref={createdPodDetailHref}
           currentStep={isRideAppSelfSettle ? 6 : 5}
           stepLabels={activeStepLabels}
