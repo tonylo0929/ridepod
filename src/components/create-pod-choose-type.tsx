@@ -5698,6 +5698,7 @@ function CreatePodConfirmationDialog({
   onCreate: () => void;
 }) {
   const normalizedRideOption = normalizeRideOptionId(rideOption);
+  const isSelfSettleRideApp = normalizedRideOption === "ride_app_fixed_quote";
   const copy =
     normalizedRideOption === "taxi_partner_quote"
       ? {
@@ -5723,10 +5724,11 @@ function CreatePodConfirmationDialog({
         : {
             title: "Create self-settle pod?",
             body: [
-              "Riders can join and chat after this pod is created.",
-              "Host or group members will book the ride app outside RidePod.",
-              `${defaultRideAppCreateFeeSentence} Riders demo-confirm or waive the ${defaultRideAppJoinFeeLabel} RidePod join fee when they confirm ride details in demo/test state.`,
-              ridePodPricingCopy.rideAppJoinFeeHelper,
+              "This pod uses self-settle ride app coordination. RidePod helps the host and riders organise the ride details, confirmations, and chat status only.",
+              "The host or agreed group member will book the external ride app outside RidePod. RidePod does not book the ride, provide a driver, dispatch transport, verify the final fare, or guarantee pickup, route, arrival time, safety, refund, or cancellation outcome.",
+              "Riders should review the fare estimate, split method, payment method, gather point, route, and confirm-by time before confirming. The ride fare is paid outside RidePod directly between the group members and/or the external ride app.",
+              "Free to create. Riders confirm or waive the HK$5 RidePod join fee only when they confirm ride details.",
+              "By creating this pod, I understand that this is a self-settle coordination pod and that the external ride app booking and ride fare are handled outside RidePod.",
             ],
             checkbox: "I understand this pod uses self-settle ride app coordination.",
             submitLabel: "Create",
@@ -5739,55 +5741,60 @@ function CreatePodConfirmationDialog({
       aria-modal="true"
       aria-labelledby="create-pod-confirm-title"
     >
-      <section className="w-full max-w-[390px] rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
-        <div className="flex items-start gap-4">
+      <section className="flex max-h-[86dvh] w-full max-w-[390px] flex-col overflow-hidden rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
+        <header className="flex shrink-0 items-start gap-4 p-5 pb-3">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
             <Info className="h-5 w-5" />
           </span>
-          <div>
-            <h2 id="create-pod-confirm-title" className="text-2xl font-black leading-tight">
+          <div className="min-w-0">
+            <h2 id="create-pod-confirm-title" className={cn("text-2xl font-black leading-tight", isSelfSettleRideApp && "text-[var(--rp-primary)]")}>
               {copy.title}
             </h2>
-            <div className="mt-4 grid gap-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              {copy.body.map((paragraph) => (
-                <p key={paragraph} className="text-left">{paragraph}</p>
-              ))}
-            </div>
+          </div>
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-2">
+          <div className="grid gap-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+            {copy.body.map((paragraph) => (
+              <p key={paragraph} className="text-left">{paragraph}</p>
+            ))}
           </div>
         </div>
 
-        <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-sm font-black leading-6 text-[var(--rp-muted-strong)]">
-          <input
-            type="checkbox"
-            checked={checked}
-            onChange={(event) => onCheckedChange(event.target.checked)}
-            className="mt-1 h-4 w-4 accent-[var(--rp-primary)]"
-          />
-          <span>{copy.checkbox}</span>
-        </label>
+        <footer className="shrink-0 border-t border-[var(--rp-border)] bg-[var(--rp-shell)] p-5 shadow-[0_-14px_30px_rgba(0,0,0,0.22)]">
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-sm font-black leading-6 text-[var(--rp-muted-strong)]">
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={(event) => onCheckedChange(event.target.checked)}
+              className="mt-1 h-4 w-4 accent-[var(--rp-primary)]"
+            />
+            <span>{copy.checkbox}</span>
+          </label>
 
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={!checked}
-            onClick={onCreate}
-            className={cn(
-              "min-h-12 rounded-2xl border text-sm font-black transition hover:brightness-105 disabled:cursor-not-allowed",
-              checked
-                ? "border-[#f6c453] bg-[#f6c453] text-[#071326] shadow-[0_16px_34px_rgba(246,196,83,0.28)]"
-                : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
-            )}
-          >
-            {copy.submitLabel}
-          </button>
-        </div>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={!checked}
+              onClick={onCreate}
+              className={cn(
+                "min-h-12 rounded-2xl border text-sm font-black transition hover:brightness-105 disabled:cursor-not-allowed",
+                checked
+                  ? "border-[#f6c453] bg-[#f6c453] text-[#071326] shadow-[0_16px_34px_rgba(246,196,83,0.28)]"
+                  : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]",
+              )}
+            >
+              {copy.submitLabel}
+            </button>
+          </div>
+        </footer>
       </section>
     </div>
   );
