@@ -5861,12 +5861,12 @@ function CreatePodConfirmationDialog({
       aria-labelledby="create-pod-confirm-title"
     >
       <section className="flex max-h-[86dvh] w-full max-w-[390px] flex-col overflow-hidden rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
-        <header className="flex shrink-0 items-start gap-4 p-5 pb-3">
-          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+        <header className="flex shrink-0 items-start gap-3 p-5 pb-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
             <Info className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <h2 id="create-pod-confirm-title" className={cn("text-2xl font-black leading-tight", isSelfSettleRideApp && "text-[var(--rp-primary)]")}>
+            <h2 id="create-pod-confirm-title" className={cn("whitespace-nowrap text-[21px] font-black leading-tight", isSelfSettleRideApp && "text-[var(--rp-primary)]")}>
               {copy.title}
             </h2>
           </div>
