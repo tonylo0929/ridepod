@@ -3452,6 +3452,12 @@ function SelfSettlePodSummaryHero({
   const hostEstimateUpdated = canUpdateEstimate && estimateUpdated;
   const canLeaveRideFromHero = summaryUserHadRideAppSeat && !summaryUserIsHost;
   const showInlineJoinRide = !summaryUserIsHost && !canLeaveRideFromHero && canJoinRide;
+  const summaryUserCanOpenChat =
+    summaryUserIsHost ||
+    (summaryUserHadRideAppSeat &&
+      ride.currentUserJoinIntentStatus !== "seat_hold_expired" &&
+      ride.currentUserConfirmationExpired !== true &&
+      !isRideAppSeatHoldExpired(ride));
   const displayEstimateLabel = hostEstimateUpdated ? "Updated estimate" : canUpdateEstimate ? "Your estimate" : estimateLabel;
   const minimumRidersToGoLabel = getRideAppMinimumRidersToGoLabel(ride);
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
@@ -3503,13 +3509,15 @@ function SelfSettlePodSummaryHero({
             </p>
           </div>
           <span className="flex shrink-0 items-start justify-end gap-2">
-            <Link
-              href={`/pods/${ride.id}/chat`}
-              aria-label="Open pod chat"
-              className="grid h-10 w-10 place-items-center rounded-full border border-cyan-200/35 bg-cyan-300/8 text-cyan-100 shadow-[0_8px_18px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:bg-cyan-300/14"
-            >
-              <MessagesSquare className="h-[18px] w-[18px]" />
-            </Link>
+            {summaryUserCanOpenChat ? (
+              <Link
+                href={`/pods/${ride.id}/chat`}
+                aria-label="Open ride chat"
+                className="grid h-10 w-10 place-items-center rounded-full border border-cyan-200/35 bg-cyan-300/8 text-cyan-100 shadow-[0_8px_18px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:bg-cyan-300/14"
+              >
+                <MessagesSquare className="h-[18px] w-[18px]" />
+              </Link>
+            ) : null}
             <button
               type="button"
               onClick={onSharePod}

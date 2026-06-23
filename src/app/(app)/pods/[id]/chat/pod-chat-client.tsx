@@ -522,6 +522,20 @@ function rideAppChatDividerLabel(access: RideAppChatAccessState | null, canUseCh
   return "Chat is read-only until riders confirm";
 }
 
+function hasRideAppChatMembership(ride: HomeRide | null, currentUserRole: HomeRide["currentUserRole"] | null) {
+  if (currentUserRole === "host" || ride?.currentUserRole === "host") return true;
+  if (!ride) return currentUserRole === "joined_rider";
+
+  return (
+    ride.currentUserJoined === true ||
+    ride.currentUserRole === "joined_rider" ||
+    ride.quoteStatus === "joined" ||
+    ride.currentUserJoinIntentStatus === "joined_interest" ||
+    ride.currentUserJoinIntentStatus === "confirmed" ||
+    ride.currentUserJoinIntentStatus === "needs_review"
+  );
+}
+
 export function PodChatClient({
   podId,
   routeLabel,
@@ -577,7 +591,8 @@ export function PodChatClient({
   const rideAppChecklistComplete = rideAppChecklistItems.every((item) => rideAppChecklist[item.key] === true);
   const strictRideAppChatUnlocked = !isRideAppSelfSettle || effectiveRideAppChatAccess?.canAccess === true;
   const strictTaxiPartnerChatUnlocked = !isTaxiPartnerChat || taxiPartnerChatAccess?.canAccess === true;
-  const effectiveAccessAllowed = accessAllowed || Boolean(isRideAppSelfSettle && effectiveCurrentUserRole);
+  const rideAppChatMembership = isRideAppSelfSettle && hasRideAppChatMembership(effectiveRide, effectiveCurrentUserRole);
+  const effectiveAccessAllowed = accessAllowed || rideAppChatMembership;
   const canUseChat = effectiveAccessAllowed && strictRideAppChatUnlocked && strictTaxiPartnerChatUnlocked;
   const chatHeaderStatusLabel = isRideAppSelfSettle
     ? canUseChat
