@@ -27,6 +27,7 @@ import {
   Mail,
   MapPin,
   Minus,
+  Pencil,
   Plus,
   RefreshCcw,
   Search,
@@ -5172,56 +5173,55 @@ function SelfSettleReviewSummaryCard({
   pickupAddress,
   dropoffAddress,
   dateTime,
-  genderMode,
-  accessMode,
+  onEditDetails,
 }: {
   peopleVehicle: PeopleVehicleState;
   pickupAddress: string;
   dropoffAddress: string;
   dateTime: DateTimeState;
-  genderMode: GenderMode;
-  accessMode: AccessMode;
+  onEditDetails: () => void;
 }) {
-  const rows: Array<[string, string]> = [
-    ["Ride type", "Ride app · Self-settle"],
-    ["Route", `${routePointSummary(pickupAddress, "None")} \u2192 ${routePointSummary(dropoffAddress, "None")}`],
-    ["Gather point", peopleVehicle.pickupVenue || "None"],
-    ["Ride app", getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther)],
-    ["Date/time", `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}`],
-    ["Seats", `${peopleVehicle.seatsAvailable} seats total`],
-    ["Estimated ride app fare", "Ride app estimate after booking"],
-    ["Host books when", getRideAppBookingTriggerLabel(peopleVehicle)],
-    ...(peopleVehicle.rideAppBookingTrigger === "minimum_riders_confirmed"
-      ? ([["Minimum riders to go", formatMinimumRidersToGo(peopleVehicle.rideAppMinimumConfirmedRiders)]] as Array<[string, string]>)
-      : []),
-    ["Payment timing", "After ride completion"],
-    ["Accepted payment", getRideAppAcceptedPaymentMethodsLabel(peopleVehicle.rideAppAcceptedPaymentMethods)],
-    ["RidePod join fee", "Demo-confirmed or waived at Confirm ride details"],
-    ["Fare estimate screenshot", "Optional, not verified by RidePod"],
-    ["Ride fare", "Paid after ride directly to booker"],
-    ["Split method", getSelfSettleSplitMethodLabel(peopleVehicle.splitMethod)],
-    ["Payment method after ride", getSelfSettlePaymentMethodLabel(peopleVehicle.paymentMethod)],
-    ["Payment recipient", "Person who booked the ride"],
-    ["Who can join", getWhoCanJoinLabel(genderMode, accessMode)],
+  const rows: Array<{ icon: ReactNode; label: string; value: string }> = [
+    { icon: <Smartphone className="h-4 w-4" />, label: "Ride type", value: "Ride app - Self-settle" },
+    { icon: <MapPin className="h-4 w-4" />, label: "Route", value: `${routePointSummary(pickupAddress, "None")} -> ${routePointSummary(dropoffAddress, "None")}` },
+    { icon: <LocateFixed className="h-4 w-4" />, label: "Gather point", value: peopleVehicle.pickupVenue || "None" },
+    { icon: <CarFront className="h-4 w-4" />, label: "Ride app", value: getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther) },
+    { icon: <CalendarDays className="h-4 w-4" />, label: "Date/time", value: `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}` },
+    { icon: <UsersRound className="h-4 w-4" />, label: "Seats", value: `${peopleVehicle.seatsAvailable} seats total` },
   ];
 
   return (
     <section className="grid gap-3">
       <section className="rounded-[22px] border border-[var(--rp-border-strong)] bg-[linear-gradient(135deg,rgba(246,196,83,0.08),rgba(15,23,42,0.18)),var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-        <div className="flex items-start gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] text-[var(--rp-primary)]">
             <Smartphone className="h-5 w-5" />
           </span>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-lg font-black text-[var(--rp-primary)]">Ride app · Self-settle</h2>
-            <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              {defaultRideAppCreateFeeSentence} Riders demo-confirm or waive the {defaultRideAppJoinFeeLabel} RidePod join fee when they confirm ride details. {ridePodPricingCopy.rideAppJoinFeeHelper}
-            </p>
           </div>
+          </div>
+          <button
+            type="button"
+            onClick={onEditDetails}
+            className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/10 px-3 text-xs font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </button>
         </div>
-        <dl className="mt-4 grid gap-2">
-          {rows.map(([label, value]) => (
-            <SummaryLine key={label} label={label} value={value} />
+        <dl className="mt-4 grid gap-3">
+          {rows.map((row) => (
+            <div key={row.label} className="grid grid-cols-[36px_minmax(0,1fr)] gap-3 rounded-[16px] border border-[var(--rp-border)] bg-black/12 p-3">
+              <span className="grid h-9 w-9 place-items-center rounded-[12px] border border-white/10 bg-white/7 text-[var(--rp-primary)]">
+                {row.icon}
+              </span>
+              <span className="min-w-0">
+                <dt className="text-[11px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">{row.label}</dt>
+                <dd className="mt-1 break-words text-sm font-black leading-5 text-[var(--rp-text)]">{row.value}</dd>
+              </span>
+            </div>
           ))}
         </dl>
       </section>
@@ -6249,6 +6249,7 @@ function ReviewPodStep({
   stepLabels = baseCreateSteps,
   onGenderModeChange,
   onAccessModeChange,
+  onEditDetails,
   onBack,
   onCreate,
 }: {
@@ -6267,6 +6268,7 @@ function ReviewPodStep({
   stepLabels?: string[];
   onGenderModeChange: (genderMode: GenderMode) => void;
   onAccessModeChange: (accessMode: AccessMode) => void;
+  onEditDetails: () => void;
   onBack: () => void;
   onCreate: () => void;
 }) {
@@ -6350,11 +6352,6 @@ function ReviewPodStep({
               continueLabel="Create recurring pod"
             />
           </div>
-          <div className="mt-3 grid gap-3">
-            <p className="text-center text-sm font-medium text-[var(--rp-muted)]">
-              You can move back to edit details before publishing.
-            </p>
-          </div>
         </main>
 
         {showCreateConfirm ? (
@@ -6410,8 +6407,7 @@ function ReviewPodStep({
                 pickupAddress={pickupAddress}
                 dropoffAddress={dropoffAddress}
                 dateTime={dateTime}
-                genderMode={genderMode}
-                accessMode={accessMode}
+                onEditDetails={onEditDetails}
               />
             ) : (
               <PricingSummaryCard money={moneyProtection} rideOption={peopleVehicle.rideOption} />
@@ -6491,9 +6487,6 @@ function ReviewPodStep({
           />
         )}
 
-        <p className="mt-3 text-center text-sm font-medium text-[var(--rp-muted)]">
-          You can move back to edit details before publishing.
-        </p>
       </main>
 
       {showCreateConfirm ? (
@@ -7021,6 +7014,7 @@ export function CreatePodChooseType() {
           stepLabels={activeStepLabels}
           onGenderModeChange={setGenderMode}
           onAccessModeChange={setAccessMode}
+          onEditDetails={() => setStep(2)}
           onBack={() => setStep(isRideAppSelfSettle ? 4 : 3)}
           onCreate={completeCreate}
         />
