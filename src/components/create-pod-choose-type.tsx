@@ -19,7 +19,6 @@ import {
   ChevronUp,
   Check,
   Clock3,
-  DollarSign,
   Info,
   Loader2,
   LocateFixed,
@@ -4931,16 +4930,6 @@ function getRideAppBookingTriggerLabel(peopleVehicle: PeopleVehicleState) {
   return formatMinimumRidersToGo(peopleVehicle.rideAppMinimumConfirmedRiders);
 }
 
-function getRideAppBookingTriggerSummary(peopleVehicle: PeopleVehicleState) {
-  return formatMinimumRidersToGo(peopleVehicle.rideAppMinimumConfirmedRiders);
-}
-
-function getRideAppAcceptedPaymentMethodsLabel(paymentMethods: SelfSettlePaymentMethod[], otherPaymentMethod = "") {
-  if (paymentMethods.length === 0) return "To be agreed in chat";
-
-  return paymentMethods.map((paymentMethod) => getSelfSettlePaymentMethodLabel(paymentMethod, otherPaymentMethod)).join(", ");
-}
-
 function getStopRequestPolicyLabel(policy: StopRequestPolicy) {
   return policy === "host_approved_before_quote" ? "Host-approved before quote" : "Direct route only";
 }
@@ -6668,180 +6657,121 @@ function StatusBadge({ label }: { label: string }) {
   );
 }
 
-function PodCreatedSummaryCard({
-  routeFrom,
-  routeTo,
+function SuccessSummaryRow({
+  icon,
+  label,
+  value,
+  aside,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  aside?: ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3 border-b border-[var(--rp-border)] py-3 first:pt-0 last:border-b-0 last:pb-0">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <dt className="text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted)]">
+          {label}
+        </dt>
+        <dd className="mt-1 break-words text-base font-black leading-5 text-[var(--rp-text)]">{value}</dd>
+      </div>
+      {aside ? <div className="shrink-0">{aside}</div> : null}
+    </div>
+  );
+}
+
+function SuccessSummaryCard({
+  pickupAddress,
+  dropoffAddress,
   dateTime,
   peopleVehicle,
-  pricing,
   stops,
   stopRequestPolicy,
 }: {
-  routeFrom: string;
-  routeTo: string;
+  pickupAddress: string;
+  dropoffAddress: string;
   dateTime: DateTimeState;
   peopleVehicle: PeopleVehicleState;
-  pricing: PricingState;
   stops: RouteStop[];
   stopRequestPolicy: StopRequestPolicy;
 }) {
   const isRideAppSelfSettle = normalizeRideOptionId(peopleVehicle.rideOption) === "ride_app_fixed_quote";
-  const rows = isRideAppSelfSettle ? [
-    {
-      icon: MapPin,
-      label: "Route",
-      value: `${routeFrom} \u2192 ${routeTo}`,
-      aside: <StatusBadge label="Forming" />,
-    },
-    {
-      icon: Smartphone,
-      label: "Ride type",
-      value: "Ride app \u00b7 Self-settle",
-    },
-    {
-      icon: MapPin,
-      label: "Gather point",
-      value: peopleVehicle.pickupVenue || "None",
-    },
-    {
-      icon: Smartphone,
-      label: "Ride app",
-      value: getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther),
-    },
-    {
-      icon: CalendarDays,
-      label: "Date & time",
-      value: `${getScheduleDateSummary(dateTime)} \u2022 ${getScheduleTimeSummary(dateTime)}`,
-    },
-    {
-      icon: UsersRound,
-      label: "Seats",
-      value: `${peopleVehicle.seatsAvailable} seats total`,
-    },
-    {
-      icon: DollarSign,
-      label: "Estimated ride app fare",
-      value: "Ride app estimate after booking",
-    },
-    {
-      icon: Clock3,
-      label: "Host books when",
-      value: getRideAppBookingTriggerSummary(peopleVehicle),
-    },
-    ...(peopleVehicle.rideAppBookingTrigger === "minimum_riders_confirmed"
-      ? [
-          {
-            icon: UsersRound,
-            label: "Minimum riders to go",
-            value: formatMinimumRidersToGo(peopleVehicle.rideAppMinimumConfirmedRiders),
-          },
-        ]
-      : []),
-    {
-      icon: Clock3,
-      label: "Payment timing",
-      value: "After ride completion",
-    },
-    {
-      icon: DollarSign,
-      label: "Accepted payment",
-      value: getRideAppAcceptedPaymentMethodsLabel(peopleVehicle.rideAppAcceptedPaymentMethods, peopleVehicle.rideAppPaymentMethodOther),
-    },
-    {
-      icon: DollarSign,
-      label: "RidePod join fee",
-      value: "May apply to joined riders",
-    },
-    {
-      icon: DollarSign,
-      label: "Ride fare",
-      value: "Paid after ride directly to booker",
-    },
-    {
-      icon: UsersRound,
-      label: "Split method",
-      value: getSelfSettleSplitMethodLabel(peopleVehicle.splitMethod),
-    },
-    {
-      icon: DollarSign,
-      label: "Payment method after ride",
-      value: getSelfSettlePaymentMethodLabel(peopleVehicle.paymentMethod, peopleVehicle.rideAppPaymentMethodOther),
-    },
-  ] : [
-    {
-      icon: MapPin,
-      label: "Route",
-      value: stops.length ? `${routeFrom} \u2192 Stop 1 \u2192 ${routeTo}` : `${routeFrom} \u2192 ${routeTo}`,
-      aside: <StatusBadge label="Forming" />,
-    },
-    {
-      icon: ShieldCheck,
-      label: "Stop requests",
-      value: getStopRequestPolicyLabel(stopRequestPolicy),
-    },
-    {
-      icon: CalendarDays,
-      label: "Date & time",
-      value: `${getScheduleDateSummary(dateTime)} \u2022 ${getScheduleTimeSummary(dateTime)}`,
-    },
-    {
-      icon: UsersRound,
-      label: "Seats filled",
-      value: `3 / ${peopleVehicle.seatsAvailable} seats filled`,
-      aside: (
-        <div className="flex gap-1 text-[var(--rp-primary)]" aria-hidden="true">
-          {Array.from({ length: peopleVehicle.seatsAvailable }).map((_, index) => (
-            <UsersRound
-              key={index}
-              className={cn("h-4 w-4", index >= 3 && "text-[var(--rp-muted)] opacity-45")}
-            />
-          ))}
-        </div>
-      ),
-    },
-    {
-      icon: DollarSign,
-      label: "Estimated share",
-      value: `${formatMoney(pricing.estimatedShare)} / person`,
-    },
-    {
-      icon: CarFront,
-      label: normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote" ? "Taxi type" : "Ride option",
-      value:
-        normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote"
-          ? getTaxiTypeLabel(peopleVehicle.taxiType)
-          : peopleVehicle.vehicleType,
-    },
-  ];
+  const routeLabel = isRideAppSelfSettle
+    ? `${routePointSummary(pickupAddress, "Pickup")} \u2192 ${routePointSummary(dropoffAddress, "Dropoff")}`
+    : getRoutePlanSummary(pickupAddress, dropoffAddress, stops);
+  const rows = isRideAppSelfSettle
+    ? [
+        {
+          icon: <MapPin className="h-5 w-5" />,
+          label: "Route",
+          value: routeLabel,
+          aside: <StatusBadge label="Forming" />,
+        },
+        {
+          icon: <LocateFixed className="h-5 w-5" />,
+          label: "Gather point",
+          value: peopleVehicle.pickupVenue || "None",
+        },
+        {
+          icon: <Smartphone className="h-5 w-5" />,
+          label: "Ride app",
+          value: getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther),
+        },
+        {
+          icon: <CalendarDays className="h-5 w-5" />,
+          label: "Date & time",
+          value: `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}`,
+        },
+        {
+          icon: <UsersRound className="h-5 w-5" />,
+          label: "Seats",
+          value: `${peopleVehicle.seatsAvailable} seats total`,
+        },
+      ]
+    : [
+        {
+          icon: <MapPin className="h-5 w-5" />,
+          label: "Route",
+          value: routeLabel,
+          aside: <StatusBadge label="Forming" />,
+        },
+        {
+          icon: <ShieldCheck className="h-5 w-5" />,
+          label: "Stop requests",
+          value: getStopRequestPolicyLabel(stopRequestPolicy),
+        },
+        {
+          icon: <CalendarDays className="h-5 w-5" />,
+          label: "Date & time",
+          value: `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}`,
+        },
+        {
+          icon: <UsersRound className="h-5 w-5" />,
+          label: "Seats",
+          value: `${peopleVehicle.seatsAvailable} seats total`,
+        },
+        {
+          icon: <CarFront className="h-5 w-5" />,
+          label: normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote" ? "Taxi type" : "Ride option",
+          value:
+            normalizeRideOptionId(peopleVehicle.rideOption) === "taxi_partner_quote"
+              ? getTaxiTypeLabel(peopleVehicle.taxiType)
+              : peopleVehicle.vehicleType,
+        },
+      ];
 
   return (
-    <section className="grid gap-3">
-      <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
-        <h2 className="sr-only">Pod summary</h2>
-        <dl>
-          {rows.map((row) => {
-            const Icon = row.icon;
-
-            return (
-              <div
-                key={row.label}
-                className="grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-[var(--rp-border)] py-3 first:pt-0 last:border-b-0 last:pb-0"
-              >
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <div>
-                  <dt className="text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted)]">
-                    {row.label}
-                  </dt>
-                  <dd className="mt-1 text-base font-black text-[var(--rp-text)]">{row.value}</dd>
-                </div>
-                {row.aside ? <div className="shrink-0">{row.aside}</div> : null}
-              </div>
-            );
-          })}
-        </dl>
-      </section>
+    <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
+      <h2 className="sr-only">Pod summary</h2>
+      <dl>
+        {rows.map((row) => (
+          <SuccessSummaryRow key={row.label} {...row} />
+        ))}
+      </dl>
     </section>
   );
 }
@@ -6852,7 +6782,6 @@ function SuccessStep({
   dropoffAddress,
   dateTime,
   peopleVehicle,
-  pricing,
   stops,
   stopRequestPolicy,
   podDetailHref,
@@ -6864,15 +6793,12 @@ function SuccessStep({
   dropoffAddress: string;
   dateTime: DateTimeState;
   peopleVehicle: PeopleVehicleState;
-  pricing: PricingState;
   stops: RouteStop[];
   stopRequestPolicy: StopRequestPolicy;
   podDetailHref?: string | null;
   currentStep?: CreateStep;
   stepLabels?: string[];
 }) {
-  const routeFrom = routeCode(pickupAddress, "USC");
-  const routeTo = routeCode(dropoffAddress, "LAX");
   const isRideAppSelfSettle = normalizeRideOptionId(peopleVehicle.rideOption) === "ride_app_fixed_quote";
   const detailHref = podDetailHref ?? "/pods";
 
@@ -6886,12 +6812,11 @@ function SuccessStep({
         <SuccessHero selfSettle={isRideAppSelfSettle} />
 
         <div className="mt-7">
-          <PodCreatedSummaryCard
-            routeFrom={routeFrom}
-            routeTo={routeTo}
+          <SuccessSummaryCard
+            pickupAddress={pickupAddress}
+            dropoffAddress={dropoffAddress}
             dateTime={dateTime}
             peopleVehicle={peopleVehicle}
-            pricing={pricing}
             stops={stops}
             stopRequestPolicy={stopRequestPolicy}
           />
@@ -7117,7 +7042,6 @@ export function CreatePodChooseType() {
           dropoffAddress={dropoffAddress}
           dateTime={dateTime}
           peopleVehicle={peopleVehicle}
-          pricing={pricing}
           stops={stops}
           stopRequestPolicy={displayedStopRequestPolicy}
           podDetailHref={createdPodDetailHref}
