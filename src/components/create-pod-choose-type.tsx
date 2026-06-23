@@ -2224,6 +2224,7 @@ function AirportDetailsStep({
     airportDetailsSliceOrder[Math.min(airportDetailsSliceOrder.length - 1, activeSliceIndex + 1)] ?? "luggage";
   const previousAirportDetailsSlice =
     airportDetailsSliceOrder[Math.max(0, activeSliceIndex - 1)] ?? "direction";
+  const airportDetailsContinueLabel = isLastAirportDetailsSlice ? "Continue" : "Next";
   const airportDetailsSliceSummary: Record<AirportDetailsSlice, string> = {
     direction: getAirportDirectionLabel(airportDetails.airportDirection),
     flight: airportDetails.flightNumber.trim() || "Add flight",
@@ -2412,11 +2413,7 @@ function AirportDetailsStep({
           <CreatePodStepActions
             onBack={handleAirportDetailsBack}
             onContinue={handleAirportDetailsContinue}
-            continueLabel={
-              isLastAirportDetailsSlice
-                ? "Continue"
-                : "Next"
-            }
+            continueLabel={airportDetailsContinueLabel}
             continueIcon={!isLastAirportDetailsSlice ? <ArrowRight className="h-5 w-5" /> : undefined}
           />
         </div>
