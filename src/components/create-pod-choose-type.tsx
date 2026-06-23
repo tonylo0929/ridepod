@@ -2124,7 +2124,7 @@ function AirportDirectionCard({
         </span>
       </span>
       <span>
-        <span className="block text-lg font-black leading-6 text-[var(--rp-text)]">
+        <span className="block text-lg font-black leading-6 text-[var(--rp-primary)]">
           {isToAirport ? "To airport" : "From airport"}
         </span>
         <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
