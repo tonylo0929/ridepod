@@ -17,7 +17,7 @@ import { cn } from "@/components/ui";
 import { useAuth } from "@/providers/AuthProvider";
 
 type AccountType = "rider" | "taxi_partner";
-type RegistrationStep = "account_type" | "form";
+type RegistrationStep = "account_type" | "form" | "avatar";
 
 const accountTypeCards: Array<{
   id: AccountType;
@@ -356,21 +356,25 @@ function RegisterAvatarField({
   displayName,
   onChooseSticker,
   onUseInitials,
+  showIntro = true,
 }: {
   avatarPreference: RidePodAvatarPreference;
   displayName: string;
   onChooseSticker: () => void;
   onUseInitials: () => void;
+  showIntro?: boolean;
 }) {
   const initials = initialsFor(displayName);
   const selectedLabel = avatarPreference.avatarType === "animal" ? "Sticker avatar selected" : "Initials selected";
 
   return (
     <div className="grid gap-2">
-      <FieldLabel
-        label="Choose your profile avatar"
-        helper="Pick a sticker avatar for your RidePod profile. You can change it later. A real profile photo is not required."
-      />
+      {showIntro ? (
+        <FieldLabel
+          label="Choose your profile avatar"
+          helper="Pick a sticker avatar for your RidePod profile. You can change it later. A real profile photo is not required."
+        />
+      ) : null}
       <div className="flex items-center gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
         <RidePodAvatar
           avatarPreference={avatarPreference}
@@ -494,9 +498,37 @@ export default function RegisterPage() {
   const helperText =
     step === "account_type"
       ? "Choose how you’ll use RidePod."
+      : step === "avatar"
+        ? "Pick a sticker avatar for your RidePod profile. You can change it later."
       : accountType === "taxi_partner"
         ? "Tell us what taxi services you can support. Partner verification is manual during beta."
         : null;
+
+  function getRiderDetailsValidationError() {
+    const accountNameError = getAccountNameValidationError(accountName);
+    if (accountNameError) return accountNameError;
+    if (!email.trim()) return "Add your email.";
+    const phoneError = getPhoneValidationError(phone);
+    if (phoneError) return phoneError;
+    const passwordError = getPasswordValidationError(password);
+    if (passwordError) return passwordError;
+    if (password !== confirmPassword) return "Passwords do not match.";
+    return null;
+  }
+
+  function onContinueRiderDetails(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setStatus(null);
+    setError(null);
+
+    const detailsError = getRiderDetailsValidationError();
+    if (detailsError) {
+      setError(detailsError);
+      return;
+    }
+
+    setStep("avatar");
+  }
 
   async function onSubmitRider(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -504,30 +536,11 @@ export default function RegisterPage() {
     setStatus(null);
     setError(null);
 
-    const accountNameError = getAccountNameValidationError(accountName);
-    if (accountNameError) {
+    const detailsError = getRiderDetailsValidationError();
+    if (detailsError) {
       setSubmitting(false);
-      setError(accountNameError);
-      return;
-    }
-
-    const phoneError = getPhoneValidationError(phone);
-    if (phoneError) {
-      setSubmitting(false);
-      setError(phoneError);
-      return;
-    }
-
-    const passwordError = getPasswordValidationError(password);
-    if (passwordError) {
-      setSubmitting(false);
-      setError(passwordError);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setSubmitting(false);
-      setError("Passwords do not match.");
+      setError(detailsError);
+      setStep("form");
       return;
     }
 
@@ -630,10 +643,10 @@ export default function RegisterPage() {
   return (
     <AuthPageShell>
       <section className="relative mx-auto grid w-full max-w-2xl gap-4 rounded-[28px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
-        {step === "form" ? (
+        {step === "form" || step === "avatar" ? (
           <button
             type="button"
-            onClick={() => setStep("account_type")}
+            onClick={() => setStep(step === "avatar" ? "form" : "account_type")}
             className="inline-flex min-h-11 w-fit items-center gap-2 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-[var(--rp-border-strong)] hover:bg-[var(--rp-card-muted)]"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -648,6 +661,8 @@ export default function RegisterPage() {
           <h1 className="text-3xl font-black text-[var(--rp-primary)]">
             {step === "account_type"
               ? "Create your RidePod account"
+              : step === "avatar"
+                ? "Choose your profile avatar"
               : accountType === "taxi_partner"
                 ? "Taxi Partner application"
                 : "Create your RidePod account"}
@@ -710,7 +725,7 @@ export default function RegisterPage() {
         ) : null}
 
         {step === "form" && accountType === "rider" ? (
-          <form className="grid gap-4" onSubmit={onSubmitRider}>
+          <form className="grid gap-4" onSubmit={onContinueRiderDetails}>
             <TextField
               label="Account name"
               helper="Use this to log in with your password."
@@ -777,11 +792,23 @@ export default function RegisterPage() {
               shown publicly.
             </p>
 
+            <button
+              type="submit"
+              className="min-h-12 rounded-2xl bg-[var(--rp-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)]"
+            >
+              Next
+            </button>
+          </form>
+        ) : null}
+
+        {step === "avatar" && accountType === "rider" ? (
+          <form className="grid gap-4" onSubmit={onSubmitRider}>
             <RegisterAvatarField
               avatarPreference={avatarPreference}
               displayName={displayName.trim() || accountName || "RidePod user"}
               onChooseSticker={() => setAvatarPickerOpen(true)}
               onUseInitials={() => setAvatarPreference({ avatarType: "initials", animalAvatarId: null })}
+              showIntro={false}
             />
 
             <button
