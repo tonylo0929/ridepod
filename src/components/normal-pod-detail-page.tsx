@@ -5296,19 +5296,19 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
                 <X className="h-6 w-6" />
               </span>
               <div className="min-w-0">
-                <h2 id="host-cancellation-title" className="text-xl font-black leading-tight text-white">
+                <h2 id="host-cancellation-title" className="text-xl font-black leading-tight text-[var(--rp-primary)]">
                   Confirm host action
                 </h2>
-                <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                  {hostCancellationDeletesEmptyPod
-                    ? "No riders have joined yet, so this pod can be removed from your created rides."
-                    : "Confirm what should happen to this self-settle pod. Riders will be notified after you confirm."}
-                </p>
+                {hostCancellationDeletesEmptyPod ? null : (
+                  <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                    Confirm what should happen to this self-settle pod. Riders will be notified after you confirm.
+                  </p>
+                )}
               </div>
             </div>
 
-            <div className="mt-4 grid gap-3">
-              {hostCancellationHasConfirmedRiders ? (
+            {hostCancellationHasConfirmedRiders ? (
+              <div className="mt-4 grid gap-3">
                 <>
                   <button
                     type="button"
@@ -5341,19 +5341,8 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
                     </p>
                   </button>
                 </>
-              ) : (
-                <div className="rounded-[16px] border border-cyan-300/28 bg-cyan-300/8 p-3">
-                  <p className="text-sm font-black text-white">
-                    {hostCancellationDeletesEmptyPod ? "Delete pod" : "Cancel pod"}
-                  </p>
-                  <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                    {hostCancellationDeletesEmptyPod
-                      ? "No riders have joined yet. This pod will be removed instead of staying as cancelled."
-                      : "Riders have joined, so the pod will close and they will be notified."}
-                  </p>
-                </div>
-              )}
-            </div>
+              </div>
+            ) : null}
 
             {hostCancellationHasConfirmedRiders ? (
               <fieldset className="mt-4 grid gap-2">
