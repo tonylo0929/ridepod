@@ -2843,15 +2843,15 @@ function DateTimeStep({
                 : "Set ride times"
               : "When are you leaving?"}
           </h1>
-          <p className="mt-3 text-base font-medium text-[var(--rp-muted)]">
-            {activeScheduleType === "RECURRING"
-              ? recurringScheduleSubstep === "weekdays"
+          {activeScheduleType === "RECURRING" ? (
+            <p className="mt-3 text-base font-medium text-[var(--rp-muted)]">
+              {recurringScheduleSubstep === "weekdays"
                 ? "Choose the weekdays for this recurring taxi pod."
                 : dateTime.recurringPattern === "BACK_AND_FORTH"
                   ? "Set outbound and return times for selected weekdays."
-                  : "Set the departure time for selected weekdays."
-              : "Select your date and departure time."}
-          </p>
+                  : "Set the departure time for selected weekdays."}
+            </p>
+          ) : null}
         </section>
 
         {activeScheduleType === "ONE_TIME" ? (
