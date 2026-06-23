@@ -135,6 +135,47 @@ const ownershipFilters: Array<{ id: OwnershipFilter; label: string }> = [
   { id: "joined", label: "Joined" },
 ];
 
+const heroBackgroundModes = ["taxi", "ride_app"] as const;
+const homeHeroBackgrounds: Record<
+  (typeof heroBackgroundModes)[number],
+  {
+    image: string;
+    mobilePosition: string;
+    mobileSize: string;
+    mobileBackdropPosition: string;
+    mobileBackdropSize: string;
+    mobileBackdropOpacity: number;
+    desktopPosition: string;
+    desktopSize: string;
+    overlay: string;
+  }
+> = {
+  ride_app: {
+    image: "/images/ridepod/home-ride-app-blue.png",
+    mobilePosition: "58% top",
+    mobileSize: "auto 270px",
+    mobileBackdropPosition: "58% top",
+    mobileBackdropSize: "auto 270px",
+    mobileBackdropOpacity: 0,
+    desktopPosition: "center top",
+    desktopSize: "100% auto",
+    overlay:
+      "linear-gradient(90deg,rgba(5,11,18,0.9) 0%,rgba(5,11,18,0.54) 34%,rgba(5,11,18,0.1) 72%),linear-gradient(180deg,rgba(5,11,18,0.02) 0%,rgba(5,11,18,0.1) 42%,rgba(5,11,18,0.62) 80%,var(--rp-bg) 100%)",
+  },
+  taxi: {
+    image: "/images/ridepod/home-taxi-harbor-night.png",
+    mobilePosition: "72% -252px",
+    mobileSize: "auto 540px",
+    mobileBackdropPosition: "58% top",
+    mobileBackdropSize: "auto 100%",
+    mobileBackdropOpacity: 1,
+    desktopPosition: "center top",
+    desktopSize: "100% auto",
+    overlay:
+      "linear-gradient(90deg,rgba(5,11,18,0.88) 0%,rgba(5,11,18,0.5) 34%,rgba(5,11,18,0.08) 72%),linear-gradient(180deg,rgba(5,11,18,0.12) 0%,rgba(5,11,18,0.12) 42%,rgba(5,11,18,0.66) 80%,var(--rp-bg) 100%)",
+  },
+};
+
 function getEmptyTitle(tab: HomeTab, rideModeFilter: RideModeFilter) {
   if (rideModeFilter === "taxi") return "No taxi pods found";
   if (rideModeFilter === "ride_app") return "No ride app pods found";
@@ -1413,6 +1454,24 @@ export default function HomePage() {
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const today = useMemo(() => new Date(), []);
+  const activeHeroBackgroundMode = rideModeFilter === "ride_app" ? "ride_app" : "taxi";
+
+  useEffect(() => {
+    const preloadedImages = heroBackgroundModes.map((mode) => {
+      const image = new window.Image();
+      image.decoding = "async";
+      image.src = homeHeroBackgrounds[mode].image;
+      return image;
+    });
+
+    return () => {
+      preloadedImages.forEach((image) => {
+        image.onload = null;
+        image.onerror = null;
+      });
+    };
+  }, []);
+
   const allHomeRides = useMemo(() => {
     const demoHomeRides = homeRides.map((ride) => applyRideAppDemoPersona(ride, { profile, user }));
     const rides = [
@@ -1608,33 +1667,6 @@ export default function HomePage() {
     deadlineFilter !== "any" ||
     seatFilter !== "any" ||
     ownershipFilter !== "all";
-  const heroBackground =
-    rideModeFilter === "ride_app"
-      ? {
-          image: "/images/ridepod/home-ride-app-blue.png",
-          mobilePosition: "58% top",
-          mobileSize: "auto 270px",
-          mobileBackdropPosition: "58% top",
-          mobileBackdropSize: "auto 270px",
-          mobileBackdropOpacity: 0,
-          desktopPosition: "center top",
-          desktopSize: "100% auto",
-          overlay:
-            "linear-gradient(90deg,rgba(5,11,18,0.9) 0%,rgba(5,11,18,0.54) 34%,rgba(5,11,18,0.1) 72%),linear-gradient(180deg,rgba(5,11,18,0.02) 0%,rgba(5,11,18,0.1) 42%,rgba(5,11,18,0.62) 80%,var(--rp-bg) 100%)",
-        }
-      : {
-          image: "/images/ridepod/home-taxi-harbor-night.png",
-          mobilePosition: "72% -252px",
-          mobileSize: "auto 540px",
-          mobileBackdropPosition: "58% top",
-          mobileBackdropSize: "auto 100%",
-          mobileBackdropOpacity: 1,
-          desktopPosition: "center top",
-          desktopSize: "100% auto",
-          overlay:
-            "linear-gradient(90deg,rgba(5,11,18,0.88) 0%,rgba(5,11,18,0.5) 34%,rgba(5,11,18,0.08) 72%),linear-gradient(180deg,rgba(5,11,18,0.12) 0%,rgba(5,11,18,0.12) 42%,rgba(5,11,18,0.66) 80%,var(--rp-bg) 100%)",
-        };
-
   return (
     <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-1.25rem)] overflow-hidden pb-2 sm:-mx-6 lg:-mx-10 lg:-mt-8">
       <section className="relative overflow-hidden px-4 pb-7 pt-7 sm:px-6 lg:px-10">
@@ -1642,44 +1674,53 @@ export default function HomePage() {
           aria-hidden="true"
           className="absolute inset-0 bg-[#04101a]"
         />
-        <div
-          key={`${heroBackground.image}-mobile-backdrop`}
-          aria-hidden="true"
-          className="absolute inset-0 bg-no-repeat transition-[background-image] duration-500 min-[720px]:hidden"
-          style={{
-            backgroundImage: `url('${heroBackground.image}')`,
-            backgroundPosition: heroBackground.mobileBackdropPosition,
-            backgroundSize: heroBackground.mobileBackdropSize,
-            opacity: heroBackground.mobileBackdropOpacity,
-          }}
-        />
-        <div
-          key={`${heroBackground.image}-mobile-focus`}
-          aria-hidden="true"
-          className="absolute inset-0 bg-no-repeat transition-[background-image] duration-500 min-[720px]:hidden"
-          style={{
-            backgroundImage: `url('${heroBackground.image}')`,
-            backgroundPosition: heroBackground.mobilePosition,
-            backgroundSize: heroBackground.mobileSize,
-          }}
-        />
-        <div
-          key={`${heroBackground.image}-desktop`}
-          aria-hidden="true"
-          className="absolute inset-0 hidden bg-no-repeat transition-[background-image] duration-500 min-[720px]:block"
-          style={{
-            backgroundImage: `url('${heroBackground.image}')`,
-            backgroundPosition: heroBackground.desktopPosition,
-            backgroundSize: heroBackground.desktopSize,
-          }}
-        />
-        <div
-          aria-hidden="true"
-          className="absolute inset-0"
-          style={{
-            backgroundImage: heroBackground.overlay,
-          }}
-        />
+        {heroBackgroundModes.map((mode) => {
+          const background = homeHeroBackgrounds[mode];
+          const active = activeHeroBackgroundMode === mode;
+
+          return (
+            <div key={mode} aria-hidden="true" className="absolute inset-0">
+              <div
+                className="absolute inset-0 bg-no-repeat transition-opacity duration-300 ease-out min-[720px]:hidden"
+                style={{
+                  backgroundImage: `url('${background.image}')`,
+                  backgroundPosition: background.mobileBackdropPosition,
+                  backgroundSize: background.mobileBackdropSize,
+                  opacity: active ? background.mobileBackdropOpacity : 0,
+                  willChange: "opacity",
+                }}
+              />
+              <div
+                className="absolute inset-0 bg-no-repeat transition-opacity duration-300 ease-out min-[720px]:hidden"
+                style={{
+                  backgroundImage: `url('${background.image}')`,
+                  backgroundPosition: background.mobilePosition,
+                  backgroundSize: background.mobileSize,
+                  opacity: active ? 1 : 0,
+                  willChange: "opacity",
+                }}
+              />
+              <div
+                className="absolute inset-0 hidden bg-no-repeat transition-opacity duration-300 ease-out min-[720px]:block"
+                style={{
+                  backgroundImage: `url('${background.image}')`,
+                  backgroundPosition: background.desktopPosition,
+                  backgroundSize: background.desktopSize,
+                  opacity: active ? 1 : 0,
+                  willChange: "opacity",
+                }}
+              />
+              <div
+                className="absolute inset-0 transition-opacity duration-300 ease-out"
+                style={{
+                  backgroundImage: background.overlay,
+                  opacity: active ? 1 : 0,
+                  willChange: "opacity",
+                }}
+              />
+            </div>
+          );
+        })}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,transparent,var(--rp-bg))]" />
 
         <div className="relative z-10">
