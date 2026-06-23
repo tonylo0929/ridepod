@@ -7082,7 +7082,7 @@ export function CreatePodChooseType() {
           <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-5 pt-6">
             <section className="flex min-w-0 flex-1 flex-col justify-center">
               <div className="text-center">
-                <h1 className="mx-auto max-w-[260px] text-center text-[30px] font-black leading-[1.08] text-[var(--rp-text)]">
+                <h1 className="mx-auto max-w-none whitespace-nowrap text-center text-[28px] font-black leading-[1.08] text-[var(--rp-text)] min-[390px]:text-[30px]">
                   Choose your pod type
                 </h1>
                 <p className="mx-auto mt-3 max-w-[260px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]">
