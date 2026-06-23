@@ -8,7 +8,9 @@ import { AirportPodDetailPage } from "@/components/airport-pod-detail-page";
 import { HomePodDetailPage } from "@/components/home-pod-detail-page";
 import { NormalPodDetailPage, PodStatusPanel } from "@/components/normal-pod-detail-page";
 import { RecurringPodDetailPage } from "@/components/recurring-pod-detail-page";
+import { DraftRidePodDetailPage } from "@/components/ride-groups/ride-groups-flow";
 import { createdHomeRideViewerIdentityFromAuth, useCreatedHomeRides } from "@/lib/created-home-rides";
+import { getDraftRidePodById, useRideGroupsState } from "@/lib/ride-groups";
 import { getRideAppChatAccessState } from "@/lib/ride-app-chat-unlock";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -57,8 +59,12 @@ export function CreatedPodDetailRouteClient({ id }: { id: string }) {
   const { user, profile, isLoading } = useRequireLoginForCreatedPod();
   const viewerIdentity = useMemo(() => createdHomeRideViewerIdentityFromAuth({ profile, user }), [profile, user]);
   const ride = useCreatedHomeRides(user?.id ?? null, true, viewerIdentity).find((item) => item.id === id);
+  const { state: rideGroupsState } = useRideGroupsState();
+  const draftPod = getDraftRidePodById(rideGroupsState, id);
 
   if (isLoading || !user) return <CreatedPodLoginRedirectState />;
+
+  if (!ride && draftPod) return <DraftRidePodDetailPage id={id} />;
 
   if (!ride) return <CreatedPodMissingState />;
 

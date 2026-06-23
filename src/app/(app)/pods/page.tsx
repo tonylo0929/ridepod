@@ -19,6 +19,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/components/ui";
+import { CountdownTimer } from "@/components/ride-groups/ride-groups-flow";
 import { createdHomeRideViewerIdentityFromAuth, useCreatedCalendarRides } from "@/lib/created-home-rides";
 import { useAuth } from "@/providers/AuthProvider";
 import {
@@ -34,6 +35,7 @@ import {
   type CalendarRide,
   type MyRideCalendarStatus,
 } from "@/lib/my-ride-calendar-mock";
+import { getDraftPodInvitationCards, useRideGroupsState } from "@/lib/ride-groups";
 
 type MyRideFilter = "all" | "taxi" | "ride_app" | "airport" | "recurring" | "action" | "upcoming" | "completed" | "cancelled";
 type StatusTone = "action" | "upcoming" | "completed" | "cancelled";
@@ -389,10 +391,48 @@ function MyRideDayPodCard({ ride, currentUserId }: { ride: CalendarRide; current
   );
 }
 
+function DraftRidePodInvitationCard({
+  invitation,
+}: {
+  invitation: ReturnType<typeof getDraftPodInvitationCards>[number];
+}) {
+  const locked = invitation.rider.status === "locked";
+  const waitingFor = Math.max(0, invitation.pod.targetSeats - invitation.lockedCount);
+  const actionLabel = locked ? "View RidePod" : "Confirm your seat";
+  const href = locked ? `/pods/${invitation.pod.id}` : invitation.href;
+
+  return (
+    <Link
+      href={href}
+      className="grid gap-3 rounded-[20px] border border-[color-mix(in_srgb,var(--rp-primary)_42%,transparent)] bg-[linear-gradient(135deg,color-mix(in_srgb,var(--rp-primary)_14%,transparent),rgba(255,255,255,0.045))] p-4 shadow-[var(--rp-shadow-soft)] transition hover:border-[var(--rp-primary)]"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-black text-[var(--rp-primary)]">Action needed</p>
+          <h2 className="mt-1 truncate text-lg font-black text-[var(--rp-text)]">{actionLabel}</h2>
+          <p className="mt-1 text-left text-xs font-bold text-[var(--rp-muted-strong)]">
+            {`${invitation.group?.name ?? "Draft RidePod"} -> ${invitation.pod.toLabel}`}
+          </p>
+        </div>
+        <AlertCircle className="h-5 w-5 shrink-0 text-[var(--rp-primary)]" />
+      </div>
+      <div className="grid gap-1.5 text-xs font-bold text-[var(--rp-muted-strong)]">
+        <p className="text-left">
+          Invite expires in <CountdownTimer deadlineAt={invitation.rider.confirmationExpiresAt} />
+        </p>
+        <p className="text-left">
+          {locked ? `Waiting for ${waitingFor} more locked riders` : "Payment needed before seat locks"}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
 export default function MyRidePage() {
   const { user, profile, isLoading } = useAuth();
   const viewerIdentity = useMemo(() => createdHomeRideViewerIdentityFromAuth({ profile, user }), [profile, user]);
   const createdCalendarRides = useCreatedCalendarRides(user?.id ?? null, viewerIdentity);
+  const { state: rideGroupsState } = useRideGroupsState();
   const today = useMemo(() => new Date(), []);
   const todayKey = dateKey(today);
   const [activeFilter, setActiveFilter] = useState<MyRideFilter>("all");
@@ -432,6 +472,10 @@ export default function MyRidePage() {
       sortAscending ? first.time.localeCompare(second.time) : second.time.localeCompare(first.time),
     );
   }, [effectiveSelectedDate, ridesByDate, sortAscending]);
+  const draftInvitations = useMemo(
+    () => getDraftPodInvitationCards(rideGroupsState, user?.id),
+    [rideGroupsState, user?.id],
+  );
 
   function changeMonth(delta: number) {
     setCurrentMonth((month) => new Date(month.getFullYear(), month.getMonth() + delta, 1));
@@ -471,6 +515,22 @@ export default function MyRidePage() {
         </section>
       ) : (
         <>
+          {draftInvitations.length ? (
+            <section className="grid gap-3 rounded-[24px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-4 shadow-[var(--rp-shadow-soft)]">
+              <div>
+                <h2 className="text-xl font-black text-[var(--rp-text)]">Action needed</h2>
+                <p className="mt-1 text-left text-xs font-semibold text-[var(--rp-muted-strong)]">
+                  Draft RidePods need confirmation before a seat is locked.
+                </p>
+              </div>
+              <div className="grid gap-3">
+                {draftInvitations.map((invitation) => (
+                  <DraftRidePodInvitationCard key={invitation.rider.id} invitation={invitation} />
+                ))}
+              </div>
+            </section>
+          ) : null}
+
           <section className="min-w-0 overflow-hidden rounded-[24px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.065),rgba(255,255,255,0.025))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),var(--rp-shadow-soft)] min-[390px]:p-3">
             <div className="grid min-w-0 grid-cols-5 gap-1.5 min-[390px]:gap-2">
               {primaryFilters.map((filter) => (

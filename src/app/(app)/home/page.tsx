@@ -76,11 +76,12 @@ const communityCards: Array<{
   members: string;
   icon: LucideIcon;
   tone: "gold" | "blue" | "violet" | "green";
+  href: string;
 }> = [
-  { name: "HKU", members: "1.2K members", icon: GraduationCap, tone: "gold" },
-  { name: "Airport", members: "2.5K members", icon: Plane, tone: "blue" },
-  { name: "Concert", members: "834 members", icon: Music2, tone: "violet" },
-  { name: "TKO", members: "642 members", icon: MapPin, tone: "green" },
+  { name: "HKU", members: "1.2K members", icon: GraduationCap, tone: "gold", href: "/ride-groups/coldplay-concert" },
+  { name: "Airport", members: "2.5K members", icon: Plane, tone: "blue", href: "/ride-groups/coldplay-concert" },
+  { name: "Concert", members: "834 members", icon: Music2, tone: "violet", href: "/ride-groups/coldplay-concert" },
+  { name: "TKO", members: "642 members", icon: MapPin, tone: "green", href: "/ride-groups/coldplay-concert" },
 ];
 
 const communityRideCalls: Array<{
@@ -90,6 +91,7 @@ const communityRideCalls: Array<{
   interested: string;
   icon: LucideIcon;
   tone: "blue" | "violet" | "green";
+  href: string;
 }> = [
   {
     title: "To Tuen Mun after concert",
@@ -98,6 +100,7 @@ const communityRideCalls: Array<{
     interested: "6 interested",
     icon: Music2,
     tone: "violet",
+    href: "/ride-calls/call-coldplay-tuen-mun",
   },
   {
     title: "Airport run this Friday",
@@ -106,6 +109,7 @@ const communityRideCalls: Array<{
     interested: "8 interested",
     icon: Plane,
     tone: "blue",
+    href: "/ride-groups/coldplay-concert",
   },
   {
     title: "TKO to Cityplaza",
@@ -114,6 +118,7 @@ const communityRideCalls: Array<{
     interested: "5 interested",
     icon: MapPin,
     tone: "green",
+    href: "/ride-groups/coldplay-concert",
   },
 ];
 
@@ -609,8 +614,8 @@ function CommunityCard({ community }: { community: (typeof communityCards)[numbe
   const Icon = community.icon;
 
   return (
-    <button
-      type="button"
+    <Link
+      href={community.href}
       className="relative min-w-0 rounded-[16px] border border-white/12 bg-[linear-gradient(180deg,rgba(18,32,48,0.86),rgba(10,20,31,0.86))] p-2.5 text-left shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition hover:border-[var(--rp-border-strong)]"
     >
       <span className={cn("grid h-10 w-10 place-items-center rounded-full border", communityToneClass(community.tone))}>
@@ -619,7 +624,7 @@ function CommunityCard({ community }: { community: (typeof communityCards)[numbe
       <span className="mt-2 block truncate text-xs font-black leading-4 text-[var(--rp-text)]">{community.name}</span>
       <span className="mt-0.5 block truncate text-[10px] font-semibold leading-3 text-[var(--rp-muted-strong)]">{community.members}</span>
       <span className="absolute bottom-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.7)]" />
-    </button>
+    </Link>
   );
 }
 
@@ -627,7 +632,7 @@ function RideCallCard({ rideCall }: { rideCall: (typeof communityRideCalls)[numb
   const Icon = rideCall.icon;
 
   return (
-    <div className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/10 px-2 py-3 last:border-b-0">
+    <Link href={rideCall.href} className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/10 px-2 py-3 transition hover:bg-white/[0.035] last:border-b-0">
       <span className={cn("grid h-10 w-10 place-items-center rounded-full border", communityToneClass(rideCall.tone === "blue" ? "blue" : rideCall.tone === "violet" ? "violet" : "green"))}>
         <Icon className="h-5 w-5" />
       </span>
@@ -637,22 +642,19 @@ function RideCallCard({ rideCall }: { rideCall: (typeof communityRideCalls)[numb
         <span className="mt-0.5 block truncate text-[10px] font-bold leading-4 text-[var(--rp-muted)]">{rideCall.meta}</span>
       </span>
       <span className="grid justify-items-end gap-1">
-        <button
-          type="button"
-          className="min-h-8 rounded-full border border-[var(--rp-primary)]/60 bg-[var(--rp-primary)]/10 px-3 text-[10px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
-        >
+        <span className="inline-flex min-h-8 items-center rounded-full border border-[var(--rp-primary)]/60 bg-[var(--rp-primary)]/10 px-3 text-[10px] font-black text-[var(--rp-primary)]">
           I&apos;m interested
-        </button>
+        </span>
         <span className="text-[10px] font-semibold text-[var(--rp-muted-strong)]">{rideCall.interested}</span>
       </span>
-    </div>
+    </Link>
   );
 }
 
 function CommunitiesSection() {
   return (
     <section id="communities" className="relative mt-4 scroll-mt-24 px-4 sm:px-6 lg:px-10">
-      <HomeSectionHeader title="Communities" />
+      <HomeSectionHeader title="Ride Groups" />
       <div className="grid grid-cols-4 gap-2">
         {communityCards.map((community) => (
           <CommunityCard key={community.name} community={community} />
@@ -665,7 +667,7 @@ function CommunitiesSection() {
 function CommunityRideCallsSection() {
   return (
     <section className="relative mt-5 px-4 sm:px-6 lg:px-10">
-      <HomeSectionHeader title="Community ride calls" />
+      <HomeSectionHeader title="Ride Calls" />
       <div className="overflow-hidden rounded-[18px] border border-white/12 bg-[linear-gradient(180deg,rgba(18,32,48,0.88),rgba(10,20,31,0.9))] shadow-[0_18px_44px_rgba(0,0,0,0.24)]">
         {communityRideCalls.map((rideCall) => (
           <RideCallCard key={rideCall.title} rideCall={rideCall} />
