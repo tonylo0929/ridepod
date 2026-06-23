@@ -7553,6 +7553,17 @@ export function CreatePodChooseType() {
     setDropoffRoutePoint((current) => (current && current.label.trim() !== value.trim() ? null : current));
   }
 
+  function handleAirportDetailsChange(details: AirportDetailsState) {
+    const switchedToFromAirport = airportDetails.airportDirection !== "from_airport" && details.airportDirection === "from_airport";
+
+    setAirportDetails(details);
+
+    if (switchedToFromAirport) {
+      setDropoffAddress("");
+      setDropoffRoutePoint(null);
+    }
+  }
+
   function handlePickupPlaceSelect(point: RoutePointSelection | null) {
     setPickupRoutePoint(point);
     if (point) setPickupAddress(point.label);
@@ -7731,7 +7742,7 @@ export function CreatePodChooseType() {
           airportDetails={airportDetails}
           currentStep={2}
           stepLabels={activeStepLabels}
-          onAirportDetailsChange={setAirportDetails}
+          onAirportDetailsChange={handleAirportDetailsChange}
           onBack={() => setStep(1)}
           onContinue={continueFromAirportDetails}
         />
