@@ -65,10 +65,10 @@ type CurrentUserAvatar = {
 };
 
 const categoryCards: Array<{ id: HomeTab; label: string; subtitle: string; icon: LucideIcon }> = [
-  { id: "all", label: "Communities", subtitle: "Find your people", icon: UsersRound },
-  { id: "airport", label: "Airport", subtitle: "Fly together", icon: Plane },
   { id: "one_off", label: "One-off", subtitle: "Ride today", icon: CarFront },
   { id: "recurring", label: "Recurring", subtitle: "Ride regularly", icon: RefreshCcw },
+  { id: "airport", label: "Airport", subtitle: "Fly together", icon: Plane },
+  { id: "all", label: "Ride Group", subtitle: "Find your people", icon: UsersRound },
 ];
 
 const communityCards: Array<{
