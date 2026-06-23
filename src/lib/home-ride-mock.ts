@@ -4,6 +4,12 @@ import type { RidePodAvatarPreference } from "@/components/animal-avatar";
 
 export type HomeTab = "all" | "airport" | "one_off" | "recurring" | "quote_ready";
 export type AirportDirection = "to_airport" | "from_airport" | null;
+export type AirportLuggage = {
+  largeSuitcases: number;
+  cabinBags: number;
+  specialItems: string[];
+  note?: string;
+};
 export type QuoteStatus = "quote_pending" | "quote_ready" | "ready_for_pickup" | "full" | "joined";
 export type RideStatus = "forming" | "locked" | "available" | "cancelled" | "expired";
 export type QuoteAcceptanceStatus = "PENDING" | "ACCEPTED" | "DECLINED";
@@ -225,7 +231,15 @@ export type HomeRide = {
   rideAppSplitMethod?: string;
   rideAppFareEstimateStatus?: "pending" | "accepted";
   rideAppAcceptedPaymentMethods?: string[];
+  tripKind?: "normal" | "airport";
   airportDirection: AirportDirection;
+  flightNumber?: string | null;
+  flightFrom?: string | null;
+  flightTo?: string | null;
+  flightTimeLabel?: string | null;
+  airportTerminal?: string | null;
+  airportHall?: string | null;
+  airportLuggage?: AirportLuggage | null;
   status: RideStatus;
   quoteStatus: QuoteStatus;
   currentUserRole?: "host" | "rider" | "joined_rider" | "taxi_partner";

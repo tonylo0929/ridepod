@@ -10,6 +10,7 @@ import {
   CircleDollarSign,
   Gift,
   LayoutGrid,
+  Luggage,
   Plane,
   RefreshCcw,
   ShieldCheck,
@@ -859,7 +860,7 @@ function RideBadge({ ride, activeTab }: { ride: HomeRide; activeTab: HomeTab }) 
     return (
       <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/15 bg-cyan-400/12 px-3 py-1 text-xs font-black text-cyan-300">
         <Plane className="h-3.5 w-3.5" />
-        {ride.airportDirection === "to_airport" ? "To Airport" : "From Airport"}
+        {ride.airportDirection === "to_airport" ? "To airport" : "From airport"}
       </span>
     );
   }
@@ -959,6 +960,34 @@ function RideMetaTags({
   );
 }
 
+function getAirportRideCardTags(ride: HomeRide) {
+  if (ride.rideKind !== "airport" && !ride.airportDirection) return [];
+
+  const tags: Array<{ label: string; icon: typeof Plane; tone: "flight" | "luggage" }> = [];
+  const flightNumber = ride.flightNumber?.trim();
+  const hasFlightDetails = Boolean(
+    flightNumber ||
+    ride.flightFrom?.trim() ||
+    ride.flightTo?.trim() ||
+    ride.flightTimeLabel?.trim(),
+  );
+  const hasLargeLuggage =
+    (ride.airportLuggage?.largeSuitcases ?? 0) > 0 ||
+    /large|suitcase/i.test(ride.luggage);
+
+  if (flightNumber) {
+    tags.push({ label: `Flight ${flightNumber}`, icon: Plane, tone: "flight" });
+  } else if (hasFlightDetails) {
+    tags.push({ label: "Flight details", icon: Plane, tone: "flight" });
+  }
+
+  if (hasLargeLuggage) {
+    tags.push({ label: "Large luggage", icon: Luggage, tone: "luggage" });
+  }
+
+  return tags;
+}
+
 function HomeRideCard({
   ride,
   currentUserAvatar,
@@ -989,6 +1018,7 @@ function HomeRideCard({
   const displayHostName = ride.hostName?.trim();
   const showHostName = Boolean(displayHostName && displayHostName.toLowerCase() !== "new host");
   const rideAppTrustBadge = isRideApp ? getHomeRideTrustBadge(getRideAppTrustSummary(getHomeRideHostTrustUserId(ride))) : null;
+  const airportCardTags = getAirportRideCardTags(ride);
   const statusBadgeClass = isRideApp
     ? "border-sky-300/35 bg-sky-400/14 text-sky-200"
     : ride.quoteStatus === "quote_ready"
@@ -1053,6 +1083,28 @@ function HomeRideCard({
                 </p>
               ) : null}
               <RideMetaTags ride={ride} trustBadge={rideAppTrustBadge} />
+              {airportCardTags.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {airportCardTags.map((tag) => {
+                    const Icon = tag.icon;
+
+                    return (
+                      <span
+                        key={tag.label}
+                        className={cn(
+                          "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black",
+                          tag.tone === "luggage"
+                            ? "border-violet-300/30 bg-violet-400/12 text-violet-100"
+                            : "border-cyan-300/30 bg-cyan-400/12 text-cyan-100",
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {tag.label}
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : null}
             </div>
           </div>
 

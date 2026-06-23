@@ -38,8 +38,8 @@ function rideKindLabel(ride: HomeRide) {
 }
 
 function airportLabel(ride: HomeRide) {
-  if (ride.airportDirection === "to_airport") return "To Airport";
-  if (ride.airportDirection === "from_airport") return "From Airport";
+  if (ride.airportDirection === "to_airport") return "To airport";
+  if (ride.airportDirection === "from_airport") return "From airport";
   return null;
 }
 

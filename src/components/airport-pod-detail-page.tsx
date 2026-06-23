@@ -11,7 +11,9 @@ import {
   CarFront,
   CheckCircle2,
   ChevronDown,
+  Clock3,
   Forward,
+  MapPin,
   Plane,
   ReceiptText,
   UserPlus,
@@ -225,9 +227,39 @@ function AirportDetailItem({
 }
 
 function airportDirectionLabel(ride: HomeRide) {
-  if (ride.airportDirection === "to_airport") return "To Airport";
-  if (ride.airportDirection === "from_airport") return "From Airport";
+  if (ride.airportDirection === "to_airport") return "To airport";
+  if (ride.airportDirection === "from_airport") return "From airport";
   return "Airport";
+}
+
+function airportFlightNumberLabel(ride: HomeRide) {
+  return ride.flightNumber?.trim() || "Flight number not provided";
+}
+
+function airportFlightTimeLabel(ride: HomeRide) {
+  return ride.flightTimeLabel?.trim() || "Not provided";
+}
+
+function airportTerminalHallLabel(ride: HomeRide) {
+  if (ride.airportDirection === "from_airport") {
+    return ride.airportHall?.trim() || "Not provided";
+  }
+
+  return ride.airportTerminal?.trim() || "Not provided";
+}
+
+function airportLuggageLabel(ride: HomeRide, fallback: string) {
+  const luggage = ride.airportLuggage;
+  if (!luggage) return fallback;
+
+  const parts = [
+    `${luggage.largeSuitcases} large suitcase${luggage.largeSuitcases === 1 ? "" : "s"}`,
+    `${luggage.cabinBags} cabin bag${luggage.cabinBags === 1 ? "" : "s"}`,
+    ...luggage.specialItems,
+  ];
+  if (luggage.note?.trim()) parts.push(luggage.note.trim());
+
+  return parts.join(" / ");
 }
 
 function getEstimatedShareRange(pricePerPerson: number) {
@@ -389,8 +421,18 @@ export function AirportPodDetailPage({ ride }: { ride: HomeRide }) {
                 <div className="mt-3 flex flex-wrap gap-2">
                   <span className="inline-flex min-h-8 items-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-400/12 px-3 py-1 text-sm font-black text-cyan-100">
                     <Plane className="h-3.5 w-3.5" />
+                    Airport ride
+                  </span>
+                  <span className="inline-flex min-h-8 items-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-400/12 px-3 py-1 text-sm font-black text-cyan-100">
+                    <Plane className="h-3.5 w-3.5" />
                     {airportDirectionLabel(ride)}
                   </span>
+                  {ride.flightNumber?.trim() ? (
+                    <span className="inline-flex min-h-8 items-center gap-2 rounded-full border border-violet-300/28 bg-violet-400/12 px-3 py-1 text-sm font-black text-violet-100">
+                      <ReceiptText className="h-3.5 w-3.5" />
+                      Flight {ride.flightNumber.trim()}
+                    </span>
+                  ) : null}
                   <PodDetailSetupBadges ride={ride} />
                 </div>
                 <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full border border-white/14 bg-black/26 px-3 py-2 text-xs font-black text-white shadow-[0_8px_18px_rgba(0,0,0,0.18)] backdrop-blur-md">
@@ -492,7 +534,17 @@ export function AirportPodDetailPage({ ride }: { ride: HomeRide }) {
             <h2 className="text-xl font-black text-[var(--rp-text)]">Airport details</h2>
             <div className="mt-5 grid gap-4">
               <RoutePlanCard ride={ride} joinView={joinView} />
-              <AirportDetailItem icon={<BriefcaseBusiness className="h-7 w-7" />} label="Group luggage" value={groupLuggageLabel} />
+              <AirportDetailItem icon={<Plane className="h-7 w-7" />} label="Direction" value={airportDirectionLabel(ride)} />
+              <AirportDetailItem icon={<ReceiptText className="h-7 w-7" />} label="Flight number" value={airportFlightNumberLabel(ride)} />
+              <AirportDetailItem icon={<Plane className="h-7 w-7" />} label="Flying from" value={ride.flightFrom?.trim() || "Not provided"} />
+              <AirportDetailItem icon={<Plane className="h-7 w-7" />} label="Flying to" value={ride.flightTo?.trim() || "Not provided"} />
+              <AirportDetailItem
+                icon={<Clock3 className="h-7 w-7" />}
+                label={ride.airportDirection === "from_airport" ? "Arrival time" : "Departure time"}
+                value={airportFlightTimeLabel(ride)}
+              />
+              <AirportDetailItem icon={<MapPin className="h-7 w-7" />} label="Terminal / hall" value={airportTerminalHallLabel(ride)} />
+              <AirportDetailItem icon={<BriefcaseBusiness className="h-7 w-7" />} label="Luggage" value={airportLuggageLabel(ride, groupLuggageLabel)} />
               <AirportDetailItem icon={<CarFront className="h-7 w-7" />} label={selfSettlePod ? "Ride app" : "Taxi type"} value={ride.taxiType} />
             </div>
             {userLuggageLabel ? (
@@ -509,6 +561,9 @@ export function AirportPodDetailPage({ ride }: { ride: HomeRide }) {
             ) : null}
             <p className="mt-4 rounded-[16px] border border-blue-300/15 bg-blue-400/10 p-3 text-sm font-semibold leading-6 text-blue-100">
               {airportHelper}
+            </p>
+            <p className="mt-3 rounded-[16px] border border-cyan-300/18 bg-cyan-400/10 p-3 text-sm font-semibold leading-6 text-cyan-100">
+              Flight details are user-entered and not verified by RidePod.
             </p>
           </AirportCard>
 

@@ -27,6 +27,7 @@ import {
   MapPin,
   Minus,
   Pencil,
+  Plane,
   Plus,
   RefreshCcw,
   Search,
@@ -76,8 +77,25 @@ import { saveCreatedHomeRide } from "@/lib/created-home-rides";
 import { createUserNotificationOnce } from "@/lib/notifications/ridepod-notifications";
 import type { HomeRide } from "@/lib/home-ride-mock";
 
-type PodType = "scheduled" | "recurring";
-type CreateStep = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+type PodType = "scheduled" | "airport" | "recurring";
+type CreateStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+type AirportDirection = "to_airport" | "from_airport";
+type AirportLuggageState = {
+  largeSuitcases: number;
+  cabinBags: number;
+  specialItems: string;
+  note: string;
+};
+type AirportDetailsState = {
+  airportDirection: AirportDirection;
+  flightNumber: string;
+  flightFrom: string;
+  flightTo: string;
+  flightTimeLabel: string;
+  airportTerminal: string;
+  airportHall: string;
+  airportLuggage: AirportLuggageState;
+};
 type RecurringScheduleSubstep = "weekdays" | "times";
 type RouteStop = {
   id: number;
@@ -218,13 +236,25 @@ const rideAppCreateSteps = [
   "Review",
   "Success",
 ];
+const airportCreateSteps = ["People & Vehicle", "Choose Type", "Airport Details", "Route & Stops", "Date & Time", "Review", "Success"];
+const airportRideAppCreateSteps = [
+  "People & Vehicle",
+  "Choose Type",
+  "Airport Details",
+  "Route & Stops",
+  "Date & Time",
+  "Booking & Payment Rules",
+  "Review",
+  "Success",
+];
 
 const podTypes: Array<{
   id: PodType;
   title: string;
   sublabel: string;
   description: string;
-  icon: "calendar" | "repeat";
+  icon: "calendar" | "airport" | "repeat";
+  accent?: "airport";
 }> = [
   {
     id: "scheduled",
@@ -232,6 +262,14 @@ const podTypes: Array<{
     sublabel: "",
     description: "For a single trip on a specific date and time.",
     icon: "calendar",
+  },
+  {
+    id: "airport",
+    title: "Airport ride",
+    sublabel: "",
+    description: "Match around airport trips, flights, and luggage.",
+    icon: "airport",
+    accent: "airport",
   },
   {
     id: "recurring",
@@ -831,7 +869,9 @@ function getScheduleTypeLabel(dateTime: DateTimeState) {
 }
 
 function getPodTypeTitle(podType: PodType) {
-  return podType === "recurring" ? "Recurring pod" : "Scheduled one-time trip";
+  if (podType === "recurring") return "Recurring pod";
+  if (podType === "airport") return "Airport ride";
+  return "Scheduled one-time trip";
 }
 
 function ScheduleTypeEyebrow({ podType }: { podType: PodType }) {
@@ -864,6 +904,83 @@ function isAirportAddress(address: string) {
 
 function isAirportTaxiRoute(pickupAddress: string, dropoffAddress: string) {
   return isAirportAddress(pickupAddress) || isAirportAddress(dropoffAddress);
+}
+
+function createDefaultAirportDetails(): AirportDetailsState {
+  return {
+    airportDirection: "to_airport",
+    flightNumber: "",
+    flightFrom: "Hong Kong (HKG)",
+    flightTo: "",
+    flightTimeLabel: "",
+    airportTerminal: "HKIA Terminal 1 Departures",
+    airportHall: "",
+    airportLuggage: {
+      largeSuitcases: 1,
+      cabinBags: 1,
+      specialItems: "",
+      note: "",
+    },
+  };
+}
+
+function getAirportDirectionLabel(direction: AirportDirection) {
+  return direction === "to_airport" ? "To airport" : "From airport";
+}
+
+function syncAirportDirectionDefaults(details: AirportDetailsState, direction: AirportDirection): AirportDetailsState {
+  if (direction === "to_airport") {
+    return {
+      ...details,
+      airportDirection: direction,
+      flightFrom: details.flightFrom.trim() || "Hong Kong (HKG)",
+      flightTo: details.flightTo === "Hong Kong (HKG)" ? "" : details.flightTo,
+      airportTerminal: details.airportTerminal.trim() || "HKIA Terminal 1 Departures",
+      airportHall: details.airportHall === "HKIA Arrival Hall A" ? "" : details.airportHall,
+    };
+  }
+
+  return {
+    ...details,
+    airportDirection: direction,
+    flightFrom: details.flightFrom === "Hong Kong (HKG)" ? "" : details.flightFrom,
+    flightTo: details.flightTo.trim() || "Hong Kong (HKG)",
+    airportTerminal: details.airportTerminal === "HKIA Terminal 1 Departures" ? "" : details.airportTerminal,
+    airportHall: details.airportHall.trim() || "HKIA Arrival Hall A",
+  };
+}
+
+function getAirportFlightTimeLabel(details: AirportDetailsState) {
+  const value = details.flightTimeLabel.trim();
+  if (!value) return "Not provided";
+
+  return value;
+}
+
+function getAirportTerminalHallValue(details: AirportDetailsState) {
+  const value = details.airportDirection === "to_airport" ? details.airportTerminal : details.airportHall;
+  return value.trim() || "Not provided";
+}
+
+function getAirportLuggageSummary(details: AirportDetailsState) {
+  const { largeSuitcases, cabinBags, specialItems, note } = details.airportLuggage;
+  const parts = [
+    `${largeSuitcases} large ${pluralize(largeSuitcases, "suitcase")}`,
+    `${cabinBags} cabin ${pluralize(cabinBags, "bag")}`,
+  ];
+  const special = specialItems.trim();
+  if (special) parts.push(special);
+  const luggageNote = note.trim();
+  if (luggageNote) parts.push(luggageNote);
+
+  return parts.join(" / ");
+}
+
+function getAirportSpecialItems(details: AirportDetailsState) {
+  return details.airportLuggage.specialItems
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function CreatePodStepper({
@@ -975,7 +1092,7 @@ function CreatePodTopBar({
   );
 }
 
-function TypeIcon({ type }: { type: "calendar" | "repeat" }) {
+function TypeIcon({ type }: { type: "calendar" | "airport" | "repeat" }) {
   if (type === "calendar") {
     return (
       <div className="relative h-14 w-14 shrink-0 text-[var(--rp-primary)]">
@@ -986,6 +1103,14 @@ function TypeIcon({ type }: { type: "calendar" | "repeat" }) {
         <span className="absolute left-2 top-[25px] grid h-7 w-10 place-items-center text-[19px] font-black leading-none">
           17
         </span>
+      </div>
+    );
+  }
+
+  if (type === "airport") {
+    return (
+      <div className="relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-cyan-300/30 bg-[radial-gradient(circle_at_35%_30%,rgba(103,232,249,0.28),rgba(88,28,135,0.16),rgba(7,17,26,0.52))] text-cyan-200 shadow-[0_0_28px_rgba(34,211,238,0.16)]">
+        <Plane className="-rotate-12 h-9 w-9 stroke-[1.9]" />
       </div>
     );
   }
@@ -1006,6 +1131,8 @@ function PodTypeCard({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const isAirport = item.accent === "airport";
+
   return (
     <button
       type="button"
@@ -1016,8 +1143,12 @@ function PodTypeCard({
         "group flex w-full items-center gap-4 rounded-[20px] border bg-[var(--rp-card)] p-4 text-left shadow-[var(--rp-shadow-soft)] transition",
         "focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-focus)]",
         selected
-          ? "border-[var(--rp-primary)] ring-1 ring-[var(--rp-primary)]"
-          : "border-[var(--rp-border)] hover:border-[var(--rp-border-strong)]",
+          ? isAirport
+            ? "border-cyan-300/75 bg-[linear-gradient(135deg,rgba(34,211,238,0.14),rgba(124,58,237,0.12),var(--rp-card))] ring-1 ring-cyan-300/65 shadow-[0_0_34px_rgba(34,211,238,0.16)]"
+            : "border-[var(--rp-primary)] ring-1 ring-[var(--rp-primary)]"
+          : isAirport
+            ? "border-cyan-300/24 bg-[linear-gradient(135deg,rgba(14,165,233,0.08),rgba(124,58,237,0.08),var(--rp-card))] hover:border-cyan-300/55"
+            : "border-[var(--rp-border)] hover:border-[var(--rp-border-strong)]",
       )}
     >
       <TypeIcon type={item.icon} />
@@ -1027,7 +1158,7 @@ function PodTypeCard({
           <span
             className={cn(
               "mt-1 block text-sm font-bold",
-              selected ? "text-[var(--rp-primary)]" : "text-[var(--rp-muted)]",
+              selected ? (isAirport ? "text-cyan-200" : "text-[var(--rp-primary)]") : "text-[var(--rp-muted)]",
             )}
           >
             {item.sublabel}
@@ -1043,7 +1174,9 @@ function PodTypeCard({
         className={cn(
           "grid h-8 w-8 shrink-0 place-items-center rounded-full border transition",
           selected
-            ? "border-[var(--rp-primary)] bg-transparent"
+            ? isAirport
+              ? "border-cyan-200 bg-cyan-300/10"
+              : "border-[var(--rp-primary)] bg-transparent"
             : "border-[var(--rp-muted)] bg-transparent",
         )}
         aria-hidden="true"
@@ -1051,7 +1184,7 @@ function PodTypeCard({
         <span
           className={cn(
             "h-4 w-4 rounded-full transition",
-            selected ? "bg-[var(--rp-primary)]" : "bg-transparent",
+            selected ? (isAirport ? "bg-cyan-200 shadow-[0_0_14px_rgba(103,232,249,0.55)]" : "bg-[var(--rp-primary)]") : "bg-transparent",
           )}
         />
       </span>
@@ -1207,12 +1340,16 @@ function RouteJourneyPreview({
   pickupPoint,
   dropoffPoint,
   stops,
+  pickupLabel = "Pickup point",
+  dropoffLabel = "Dropoff point",
 }: {
   pickupAddress: string;
   dropoffAddress: string;
   pickupPoint: RoutePointSelection | null;
   dropoffPoint: RoutePointSelection | null;
   stops: RouteStop[];
+  pickupLabel?: string;
+  dropoffLabel?: string;
 }) {
   const mapboxToken = getMapboxAccessToken();
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
@@ -1237,7 +1374,7 @@ function RouteJourneyPreview({
   const points = [
     {
       id: "pickup",
-      label: "Pickup point",
+      label: pickupLabel,
       value: routePointSummary(pickupAddress, "None"),
       type: "pickup",
     },
@@ -1249,7 +1386,7 @@ function RouteJourneyPreview({
     })),
     {
       id: "dropoff",
-      label: stops.length > 0 ? "Final dropoff point" : "Dropoff point",
+      label: stops.length > 0 ? `Final ${dropoffLabel.toLowerCase()}` : dropoffLabel,
       value: routePointSummary(dropoffAddress, "None"),
       type: "dropoff",
     },
@@ -1948,6 +2085,243 @@ function CreatePodStepActions({
   );
 }
 
+function AirportDirectionCard({
+  direction,
+  selected,
+  onSelect,
+}: {
+  direction: AirportDirection;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const isToAirport = direction === "to_airport";
+
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={selected}
+      onClick={onSelect}
+      className={cn(
+        "grid min-h-[146px] gap-3 rounded-[20px] border p-4 text-left transition",
+        selected
+          ? "border-cyan-200 bg-[linear-gradient(135deg,rgba(34,211,238,0.16),rgba(124,58,237,0.13),rgba(8,17,29,0.86))] shadow-[0_0_30px_rgba(34,211,238,0.16)]"
+          : "border-cyan-300/18 bg-[rgba(15,27,39,0.74)] hover:border-cyan-300/45",
+      )}
+    >
+      <span className="flex items-start justify-between gap-3">
+        <span className="grid h-12 w-12 place-items-center rounded-[16px] border border-cyan-300/24 bg-cyan-300/10 text-cyan-100">
+          <Plane className={cn("h-7 w-7", isToAirport ? "-rotate-12" : "rotate-[18deg]")} />
+        </span>
+        <span
+          className={cn(
+            "grid h-7 w-7 shrink-0 place-items-center rounded-full border transition",
+            selected ? "border-cyan-200 bg-cyan-300 text-[#06111d]" : "border-[var(--rp-muted)]",
+          )}
+        >
+          {selected ? <Check className="h-4 w-4" /> : null}
+        </span>
+      </span>
+      <span>
+        <span className="block text-lg font-black leading-6 text-[var(--rp-text)]">
+          {isToAirport ? "To airport" : "From airport"}
+        </span>
+        <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
+          {isToAirport ? "Ride to the airport before your flight." : "Ride from the airport after landing."}
+        </span>
+      </span>
+      <span className="rounded-[14px] border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black text-cyan-100">
+        {isToAirport ? "Central -> Hong Kong Airport" : "Hong Kong Airport -> Mong Kok"}
+      </span>
+    </button>
+  );
+}
+
+function AirportLuggageStepper({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className="rounded-[18px] border border-cyan-300/18 bg-[rgba(5,12,20,0.42)] p-3">
+      <p className="text-xs font-black uppercase tracking-[0.12em] text-cyan-100">{label}</p>
+      <div className="mt-3 grid grid-cols-[40px_1fr_40px] items-center gap-2">
+        <button
+          type="button"
+          aria-label={`Decrease ${label}`}
+          disabled={value <= 0}
+          onClick={() => onChange(Math.max(0, value - 1))}
+          className="grid h-10 w-10 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/8 text-cyan-100 transition hover:bg-cyan-300/14 disabled:opacity-35"
+        >
+          <Minus className="h-4 w-4" />
+        </button>
+        <span className="text-center text-3xl font-black leading-none text-[var(--rp-text)]">{value}</span>
+        <button
+          type="button"
+          aria-label={`Increase ${label}`}
+          disabled={value >= 8}
+          onClick={() => onChange(Math.min(8, value + 1))}
+          className="grid h-10 w-10 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/8 text-cyan-100 transition hover:bg-cyan-300/14 disabled:opacity-35"
+        >
+          <Plus className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function AirportDetailsStep({
+  airportDetails,
+  stepLabels,
+  currentStep,
+  onAirportDetailsChange,
+  onBack,
+  onContinue,
+}: {
+  airportDetails: AirportDetailsState;
+  stepLabels: string[];
+  currentStep: CreateStep;
+  onAirportDetailsChange: (details: AirportDetailsState) => void;
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const isToAirport = airportDetails.airportDirection === "to_airport";
+  const terminalLabel = isToAirport ? "Departure terminal / hall" : "Arrival hall / meeting area";
+  const terminalPlaceholder = isToAirport ? "e.g. Terminal 1, Departures" : "e.g. Arrival Hall A";
+  const flightTimeLabel = isToAirport ? "Flight departure time" : "Flight arrival time";
+
+  function updateAirportLuggage(patch: Partial<AirportLuggageState>) {
+    onAirportDetailsChange({
+      ...airportDetails,
+      airportLuggage: {
+        ...airportDetails.airportLuggage,
+        ...patch,
+      },
+    });
+  }
+
+  return (
+    <>
+      <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
+
+      <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#020912] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-7 text-[#f8fafc]">
+        <section className="text-center">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Airport ride</p>
+          <h1 className="mt-2 text-[29px] font-black leading-tight text-[var(--rp-text)]">Airport direction</h1>
+          <p className="mx-auto mt-2 max-w-[300px] text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+            Are you going to the airport or leaving the airport?
+          </p>
+        </section>
+
+        <section className="mt-5 grid gap-3" role="radiogroup" aria-label="Airport direction">
+          {(["to_airport", "from_airport"] as AirportDirection[]).map((direction) => (
+            <AirportDirectionCard
+              key={direction}
+              direction={direction}
+              selected={airportDetails.airportDirection === direction}
+              onSelect={() => onAirportDetailsChange(syncAirportDirectionDefaults(airportDetails, direction))}
+            />
+          ))}
+        </section>
+
+        <section className="mt-5 rounded-[24px] border border-cyan-300/24 bg-[linear-gradient(135deg,rgba(14,165,233,0.11),rgba(124,58,237,0.11),rgba(15,23,42,0.86))] p-4 shadow-[var(--rp-shadow-soft)]">
+          <h2 className="text-xl font-black text-cyan-100">Flight details</h2>
+          <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+            Flight details help riders find people arriving or departing around the same time.
+          </p>
+
+          <div className="mt-4 grid gap-4">
+            <SelfSettleTextField
+              label="Flight number"
+              value={airportDetails.flightNumber}
+              placeholder="e.g. CX400, BR871, UO123"
+              helper="Optional but recommended. RidePod does not verify flight status in this version."
+              onChange={(flightNumber) => onAirportDetailsChange({ ...airportDetails, flightNumber })}
+            />
+            <div className="grid gap-3 min-[390px]:grid-cols-2">
+              <SelfSettleTextField
+                label="Flying from"
+                value={airportDetails.flightFrom}
+                placeholder={isToAirport ? "Hong Kong (HKG)" : "Taipei (TPE)"}
+                onChange={(flightFrom) => onAirportDetailsChange({ ...airportDetails, flightFrom })}
+              />
+              <SelfSettleTextField
+                label="Flying to"
+                value={airportDetails.flightTo}
+                placeholder={isToAirport ? "Taipei (TPE)" : "Hong Kong (HKG)"}
+                onChange={(flightTo) => onAirportDetailsChange({ ...airportDetails, flightTo })}
+              />
+            </div>
+            <SelfSettleTextField
+              label={flightTimeLabel}
+              value={airportDetails.flightTimeLabel}
+              placeholder={isToAirport ? "e.g. 10:45 AM" : "e.g. 7:20 PM"}
+              onChange={(flightTimeLabelValue) => onAirportDetailsChange({ ...airportDetails, flightTimeLabel: flightTimeLabelValue })}
+            />
+            <SelfSettleTextField
+              label={terminalLabel}
+              value={isToAirport ? airportDetails.airportTerminal : airportDetails.airportHall}
+              placeholder={terminalPlaceholder}
+              onChange={(value) =>
+                onAirportDetailsChange(
+                  isToAirport
+                    ? { ...airportDetails, airportTerminal: value }
+                    : { ...airportDetails, airportHall: value },
+                )
+              }
+            />
+          </div>
+        </section>
+
+        <section className="mt-5 rounded-[24px] border border-cyan-300/20 bg-[rgba(15,27,39,0.82)] p-4 shadow-[var(--rp-shadow-soft)]">
+          <h2 className="text-xl font-black text-cyan-100">Luggage</h2>
+          <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+            Airport rides may need more luggage space.
+          </p>
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <AirportLuggageStepper
+              label="Large suitcases"
+              value={airportDetails.airportLuggage.largeSuitcases}
+              onChange={(largeSuitcases) => updateAirportLuggage({ largeSuitcases })}
+            />
+            <AirportLuggageStepper
+              label="Cabin bags"
+              value={airportDetails.airportLuggage.cabinBags}
+              onChange={(cabinBags) => updateAirportLuggage({ cabinBags })}
+            />
+          </div>
+          <div className="mt-4 grid gap-4">
+            <SelfSettleTextField
+              label="Special items"
+              value={airportDetails.airportLuggage.specialItems}
+              placeholder="stroller, golf bag, sports gear, none"
+              helper="Optional."
+              onChange={(specialItems) => updateAirportLuggage({ specialItems })}
+            />
+            <SelfSettleTextField
+              label="Luggage note"
+              value={airportDetails.airportLuggage.note}
+              placeholder="Optional note for riders"
+              onChange={(note) => updateAirportLuggage({ note })}
+            />
+          </div>
+          <p className="mt-4 rounded-[16px] border border-cyan-300/18 bg-cyan-300/8 p-3 text-xs font-bold leading-5 text-cyan-100">
+            Large luggage may reduce usable seats. Confirm luggage fit before the ride.
+          </p>
+        </section>
+
+        <div className="mt-6">
+          <CreatePodStepActions onBack={onBack} onContinue={onContinue} />
+        </div>
+      </main>
+    </>
+  );
+}
+
 function RouteStopsStep({
   podType,
   pickupAddress,
@@ -1958,6 +2332,8 @@ function RouteStopsStep({
   stops,
   stopRequestPolicy,
   isRideAppSelfSettle,
+  airportDetails,
+  currentStep = 2,
   stepLabels = baseCreateSteps,
   onBack,
   onPickupChange,
@@ -1980,6 +2356,8 @@ function RouteStopsStep({
   stops: RouteStop[];
   stopRequestPolicy: StopRequestPolicy;
   isRideAppSelfSettle: boolean;
+  airportDetails?: AirportDetailsState | null;
+  currentStep?: CreateStep;
   stepLabels?: string[];
   onBack: () => void;
   onPickupChange: (value: string) => void;
@@ -1997,6 +2375,30 @@ function RouteStopsStep({
   const [routePanel, setRoutePanel] = useState<"route" | "requests">("route");
   const isRoutePanel = routePanel === "route";
   const routePanelCount = 2;
+  const isAirport = Boolean(airportDetails);
+  const isFromAirport = airportDetails?.airportDirection === "from_airport";
+  const pickupFieldLabel = isAirport
+    ? isFromAirport
+      ? isRideAppSelfSettle
+        ? "Gather point"
+        : "Airport pickup"
+      : "Pickup point"
+    : "Pickup point";
+  const dropoffFieldLabel = isAirport
+    ? isFromAirport
+      ? "Destination"
+      : "Airport drop-off"
+    : "Dropoff point";
+  const pickupPlaceholder = isAirport
+    ? isFromAirport
+      ? "HKIA Arrival Hall A"
+      : "Central"
+    : "None yet";
+  const dropoffPlaceholder = isAirport
+    ? isFromAirport
+      ? "Mong Kok"
+      : "HKIA Terminal 1 Departures"
+    : "None yet";
 
   function handleRouteBack() {
     if (!isRoutePanel) {
@@ -2019,19 +2421,23 @@ function RouteStopsStep({
 
   return (
     <>
-      <CreatePodTopBar currentStep={2} stepLabels={stepLabels} />
+      <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#020912] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-7 text-[#f8fafc]">
         <section className="text-center">
           <ScheduleTypeEyebrow podType={podType} />
           <h1 className="text-center text-[31px] font-black leading-tight text-[#f8fafc]">
-            Route &amp; stops
+            {isAirport ? "Airport route" : "Route & stops"}
           </h1>
           <p className="mx-auto mt-2 max-w-[260px] text-center text-base font-medium leading-6 text-[#cbd5e1]">
             {isRoutePanel
               ? isRideAppSelfSettle
-                ? "Add pickup, dropoff, and where riders should meet."
-                : "Add your pickup and dropoff."
+                ? isAirport
+                  ? "Add airport route and where riders should meet."
+                  : "Add pickup, dropoff, and where riders should meet."
+                : isAirport
+                  ? "Add airport pickup and drop-off details."
+                  : "Add your pickup and dropoff."
               : isRideAppSelfSettle
                 ? "Choose whether joined riders can ask for a route change."
                 : "Choose whether riders can request one extra stop."}
@@ -2052,7 +2458,7 @@ function RouteStopsStep({
               {isRoutePanel ? `Step 1 of ${routePanelCount}` : `Step 2 of ${routePanelCount}`}
             </p>
             <p className="w-full text-center text-sm font-black text-[var(--rp-text)]">
-              {isRoutePanel ? "Pickup & dropoff" : isRideAppSelfSettle ? "Route requests" : "Extra stop requests"}
+              {isRoutePanel ? (isAirport ? "Airport pickup & drop-off" : "Pickup & dropoff") : isRideAppSelfSettle ? "Route requests" : "Extra stop requests"}
             </p>
           </div>
           <button
@@ -2081,15 +2487,17 @@ function RouteStopsStep({
                 pickupPoint={pickupRoutePoint}
                 dropoffPoint={dropoffRoutePoint}
                 stops={stops}
+                pickupLabel={pickupFieldLabel}
+                dropoffLabel={dropoffFieldLabel}
               />
 
               <div className="grid gap-3">
                 <MapboxPlaceField
-                  label="Pickup point"
+                  label={pickupFieldLabel}
                   type="pickup"
                   value={pickupAddress}
                   selectedPoint={pickupRoutePoint}
-                  placeholder="None yet"
+                  placeholder={pickupPlaceholder}
                   allowCurrentLocation
                   onChange={onPickupChange}
                   onPlaceSelect={onPickupPlaceSelect}
@@ -2106,20 +2514,20 @@ function RouteStopsStep({
                   />
                 ))}
                 <MapboxPlaceField
-                  label="Dropoff point"
+                  label={dropoffFieldLabel}
                   type="dropoff"
                   value={dropoffAddress}
                   selectedPoint={dropoffRoutePoint}
-                  placeholder="None yet"
+                  placeholder={dropoffPlaceholder}
                   onChange={onDropoffChange}
                   onPlaceSelect={onDropoffPlaceSelect}
                 />
                 {isRideAppSelfSettle ? (
                   <SelfSettleTextField
-                    label="Gather point"
+                    label={isAirport ? "Gather point" : "Gather point"}
                     value={pickupVenue}
-                    placeholder="None yet"
-                    helper="Tell riders where to meet before the external ride app booking."
+                    placeholder={isAirport && isFromAirport ? "Arrival Hall A pillar 4" : "None yet"}
+                    helper={isAirport ? "Where riders meet before the host books." : "Tell riders where to meet before the external ride app booking."}
                     onChange={onPickupVenueChange}
                   />
                 ) : null}
@@ -2779,6 +3187,7 @@ function DateTimeStep({
   pickupAddress,
   dropoffAddress,
   dateTime,
+  currentStep = 3,
   stepLabels = baseCreateSteps,
   onDateTimeChange,
   onBack,
@@ -2788,6 +3197,7 @@ function DateTimeStep({
   pickupAddress: string;
   dropoffAddress: string;
   dateTime: DateTimeState;
+  currentStep?: CreateStep;
   stepLabels?: string[];
   onDateTimeChange: (dateTime: DateTimeState) => void;
   onBack: () => void;
@@ -2826,7 +3236,7 @@ function DateTimeStep({
 
   return (
     <>
-      <CreatePodTopBar currentStep={3} stepLabels={stepLabels} />
+      <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-8">
         <section className="text-center">
@@ -3894,11 +4304,15 @@ function RideAppProviderSelector({
 
 function RideAppBookingRulesStep({
   peopleVehicle,
+  currentStep = 4,
+  stepLabels = rideAppCreateSteps,
   onPeopleVehicleChange,
   onBack,
   onContinue,
 }: {
   peopleVehicle: PeopleVehicleState;
+  currentStep?: CreateStep;
+  stepLabels?: string[];
   onPeopleVehicleChange: (peopleVehicle: PeopleVehicleState) => void;
   onBack: () => void;
   onContinue: () => void;
@@ -4005,7 +4419,7 @@ function RideAppBookingRulesStep({
 
   return (
     <>
-      <CreatePodTopBar currentStep={4} stepLabels={rideAppCreateSteps} />
+      <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-7">
         <section className="text-center">
@@ -4958,6 +5372,40 @@ function getAccessLabel(peopleVehicle: PeopleVehicleState) {
   return needs.length ? needs.join(", ") : "No special access needs";
 }
 
+function getCreatedPodTypeLabel(genderMode: GenderMode, accessMode: AccessMode): HomeRide["podType"] {
+  if (genderMode === "women_only") return "Women-only";
+  if (accessMode === "verified_only") return "Verified-only";
+  if (accessMode === "invite_only") return "Invite-only";
+  return "Open pod";
+}
+
+function getAirportHomeRideFields(airportDetails?: AirportDetailsState | null): Partial<HomeRide> {
+  if (!airportDetails) {
+    return {
+      tripKind: "normal",
+      airportDirection: null,
+      airportLuggage: null,
+    };
+  }
+
+  return {
+    tripKind: "airport",
+    airportDirection: airportDetails.airportDirection,
+    flightNumber: airportDetails.flightNumber.trim() || null,
+    flightFrom: airportDetails.flightFrom.trim() || null,
+    flightTo: airportDetails.flightTo.trim() || null,
+    flightTimeLabel: airportDetails.flightTimeLabel.trim() || null,
+    airportTerminal: airportDetails.airportTerminal.trim() || null,
+    airportHall: airportDetails.airportHall.trim() || null,
+    airportLuggage: {
+      largeSuitcases: airportDetails.airportLuggage.largeSuitcases,
+      cabinBags: airportDetails.airportLuggage.cabinBags,
+      specialItems: getAirportSpecialItems(airportDetails),
+      note: airportDetails.airportLuggage.note.trim() || undefined,
+    },
+  };
+}
+
 function buildCreatedRideAppHomeRide({
   pickupAddress,
   dropoffAddress,
@@ -4965,6 +5413,7 @@ function buildCreatedRideAppHomeRide({
   peopleVehicle,
   accessMode,
   stopRequestPolicy,
+  airportDetails,
   hostAvatarPreference,
   hostAvatarUrl,
   hostDisplayName,
@@ -4975,17 +5424,21 @@ function buildCreatedRideAppHomeRide({
   peopleVehicle: PeopleVehicleState;
   accessMode: AccessMode;
   stopRequestPolicy: StopRequestPolicy;
+  airportDetails?: AirportDetailsState | null;
   hostAvatarPreference?: RidePodAvatarPreference;
   hostAvatarUrl?: string | null;
   hostDisplayName?: string | null;
 }): HomeRide {
   const id = crypto.randomUUID();
+  const airportFields = getAirportHomeRideFields(airportDetails);
+  const isAirportRide = airportFields.tripKind === "airport";
   const rideAppProviderName = getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther);
   const acceptedPaymentMethods = peopleVehicle.rideAppAcceptedPaymentMethods.map((paymentMethod) =>
     getSelfSettlePaymentMethodLabel(paymentMethod, peopleVehicle.rideAppPaymentMethodOther),
   );
   const splitMethod = getSelfSettleSplitMethodLabel(peopleVehicle.splitMethod);
   const estimatedFare = peopleVehicle.estimatedRideAppFare.trim();
+  const luggageLabel = airportDetails ? getAirportLuggageSummary(airportDetails) : getLuggageLabel(peopleVehicle);
 
   return {
     id,
@@ -4998,7 +5451,7 @@ function buildCreatedRideAppHomeRide({
     seatsUsed: 1,
     seatsTotal: peopleVehicle.seatsAvailable,
     pricePerPerson: 24,
-    rideKind: dateTime.scheduleType === "RECURRING" ? "recurring" : "one_off",
+    rideKind: isAirportRide ? "airport" : dateTime.scheduleType === "RECURRING" ? "recurring" : "one_off",
     rideService: "ride_app",
     rideCategory: "ride_app_self_settle",
     selfSettleRiskAccepted: true,
@@ -5035,7 +5488,8 @@ function buildCreatedRideAppHomeRide({
     rideAppSplitMethod: splitMethod,
     rideAppFareEstimateStatus: estimatedFare ? "accepted" : "pending",
     rideAppAcceptedPaymentMethods: acceptedPaymentMethods,
-    airportDirection: null,
+    ...airportFields,
+    airportDirection: airportFields.airportDirection ?? null,
     status: "available",
     quoteStatus: "quote_pending",
     currentUserRole: "host",
@@ -5054,7 +5508,7 @@ function buildCreatedRideAppHomeRide({
     estimatedRideAppFare: estimatedFare || undefined,
     splitMethod,
     paymentMethod: acceptedPaymentMethods.join(", "),
-    luggage: getLuggageLabel(peopleVehicle),
+    luggage: luggageLabel,
     accessibility: getAccessLabel(peopleVehicle),
     podType: accessMode === "verified_only" ? "Verified-only" : accessMode === "invite_only" ? "Invite-only" : "Open pod",
     hostName: "You",
@@ -5065,6 +5519,88 @@ function buildCreatedRideAppHomeRide({
     pickupLabel: peopleVehicle.pickupVenue || pickupAddress,
     pickupTime: getScheduleTimeSummary(dateTime),
     dropoffLabel: dropoffAddress,
+    stopRequestPolicy,
+    proposedStops: [],
+    approvedStops: [],
+    declinedStops: [],
+  };
+}
+
+function buildCreatedAirportTaxiHomeRide({
+  pickupAddress,
+  dropoffAddress,
+  dateTime,
+  peopleVehicle,
+  pricing,
+  genderMode,
+  accessMode,
+  stopRequestPolicy,
+  airportDetails,
+  hostAvatarPreference,
+  hostAvatarUrl,
+  hostDisplayName,
+}: {
+  pickupAddress: string;
+  dropoffAddress: string;
+  dateTime: DateTimeState;
+  peopleVehicle: PeopleVehicleState;
+  pricing: PricingState;
+  genderMode: GenderMode;
+  accessMode: AccessMode;
+  stopRequestPolicy: StopRequestPolicy;
+  airportDetails: AirportDetailsState;
+  hostAvatarPreference?: RidePodAvatarPreference;
+  hostAvatarUrl?: string | null;
+  hostDisplayName?: string | null;
+}): HomeRide {
+  const normalizedRideOption = normalizeRideOptionId(peopleVehicle.rideOption);
+  const airportFields = getAirportHomeRideFields(airportDetails);
+  const taxiType = normalizedRideOption === "taxi_partner_quote" ? getTaxiTypeLabel(peopleVehicle.taxiType) : "Taxi meter";
+
+  return {
+    id: crypto.randomUUID(),
+    fromDistrict: districtFromLabel(pickupAddress),
+    toDistrict: districtFromLabel(dropoffAddress),
+    fromLabel: pickupAddress || (airportDetails.airportDirection === "from_airport" ? getAirportTerminalHallValue(airportDetails) : "Pickup"),
+    toLabel: dropoffAddress || (airportDetails.airportDirection === "to_airport" ? getAirportTerminalHallValue(airportDetails) : "Destination"),
+    dateLabel: getScheduleDateSummary(dateTime),
+    timeLabel: getScheduleTimeSummary(dateTime),
+    seatsUsed: 1,
+    seatsTotal: peopleVehicle.seatsAvailable,
+    pricePerPerson: pricing.estimatedShare,
+    rideKind: "airport",
+    rideService: "taxi",
+    rideCategory: normalizedRideOption === "taxi_partner_quote" ? "taxi_partner_quote" : "taxi_meter",
+    currentUserQuoteAccepted: false,
+    acceptedGuestCount: 0,
+    requiredGuestCount: Math.max(1, peopleVehicle.seatsAvailable - 1),
+    ...airportFields,
+    airportDirection: airportFields.airportDirection ?? airportDetails.airportDirection,
+    status: "available",
+    quoteStatus: "quote_pending",
+    currentUserRole: "host",
+    currentUserName: "You",
+    currentUserJoined: false,
+    currentUserBookingDetailsConfirmed: false,
+    confirmedRiderCount: 0,
+    joinedRiderCount: 0,
+    rideAppConfirmedRiderCount: 0,
+    riderConfirmations: [
+      { name: "You", role: "host", status: "host", confirmedBookingDetailsVersion: 1 },
+    ],
+    taxiType,
+    platformFee: 5,
+    luggage: getAirportLuggageSummary(airportDetails),
+    accessibility: getAccessLabel(peopleVehicle),
+    podType: getCreatedPodTypeLabel(genderMode, accessMode),
+    hostName: "You",
+    hostAvatarPreference,
+    hostAvatarUrl,
+    hostDisplayName,
+    joinedRiders: [],
+    pickupLabel: pickupAddress || getAirportTerminalHallValue(airportDetails),
+    pickupTime: getScheduleTimeSummary(dateTime),
+    dropoffLabel: dropoffAddress || getAirportTerminalHallValue(airportDetails),
     stopRequestPolicy,
     proposedStops: [],
     approvedStops: [],
@@ -5379,6 +5915,72 @@ function SummaryLine({ label, value }: { label: string; value: string }) {
         {value}
       </dd>
     </div>
+  );
+}
+
+function AirportReviewSummaryCard({
+  airportDetails,
+  pickupAddress,
+  dropoffAddress,
+  peopleVehicle,
+}: {
+  airportDetails: AirportDetailsState;
+  pickupAddress: string;
+  dropoffAddress: string;
+  peopleVehicle: PeopleVehicleState;
+}) {
+  const isRideAppSelfSettle = normalizeRideOptionId(peopleVehicle.rideOption) === "ride_app_fixed_quote";
+  const isToAirport = airportDetails.airportDirection === "to_airport";
+  const flightNumber = airportDetails.flightNumber.trim();
+  const flyingFrom = airportDetails.flightFrom.trim() || (isToAirport ? "Hong Kong (HKG)" : "Not provided");
+  const flyingTo = airportDetails.flightTo.trim() || (isToAirport ? "Not provided" : "Hong Kong (HKG)");
+  const rideMode = isRideAppSelfSettle ? "Ride app self-settle" : "Taxi Partner Quote";
+  const routeRows = isToAirport
+    ? [
+        ["Pickup point", pickupAddress || "None"],
+        ["Airport drop-off", dropoffAddress || getAirportTerminalHallValue(airportDetails)],
+      ]
+    : [
+        [isRideAppSelfSettle ? "Gather point" : "Airport pickup", pickupAddress || getAirportTerminalHallValue(airportDetails)],
+        ["Destination", dropoffAddress || "None"],
+      ];
+
+  const rows = [
+    ["Direction", getAirportDirectionLabel(airportDetails.airportDirection)],
+    ["Flight number", flightNumber || "Flight number not provided"],
+    ["Flying from", flyingFrom],
+    ["Flying to", flyingTo],
+    [isToAirport ? "Departure time" : "Arrival time", getAirportFlightTimeLabel(airportDetails)],
+    ["Terminal / hall", getAirportTerminalHallValue(airportDetails)],
+    ["Luggage", getAirportLuggageSummary(airportDetails)],
+    ...routeRows,
+    ["Ride mode", rideMode],
+  ];
+
+  return (
+    <section className="rounded-[22px] border border-cyan-300/35 bg-[linear-gradient(135deg,rgba(34,211,238,0.12),rgba(124,58,237,0.11),var(--rp-card))] p-4 shadow-[0_0_34px_rgba(34,211,238,0.10)]">
+      <div className="flex items-start gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-cyan-300/30 bg-cyan-300/10 text-cyan-100">
+          <Plane className="-rotate-12 h-5 w-5" />
+        </span>
+        <div className="min-w-0">
+          <h2 className="text-lg font-black text-cyan-100">Airport ride</h2>
+          <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+            Flight details are user-entered and not verified by RidePod in this version.
+          </p>
+        </div>
+      </div>
+      <dl className="mt-4 grid gap-2">
+        {rows.map(([label, value]) => (
+          <SummaryLine key={label} label={label} value={value} />
+        ))}
+      </dl>
+      <p className="mt-3 rounded-[14px] border border-cyan-300/20 bg-cyan-400/10 p-3 text-xs font-bold leading-5 text-cyan-100">
+        {isRideAppSelfSettle
+          ? "Ride fare is paid outside RidePod."
+          : "Taxi partner quote is separate from RidePod fee."}
+      </p>
+    </section>
   );
 }
 
@@ -6354,6 +6956,7 @@ function ReviewPodStep({
   dropoffAddress,
   dateTime,
   peopleVehicle,
+  airportDetails,
   pricing,
   genderMode,
   accessMode,
@@ -6373,6 +6976,7 @@ function ReviewPodStep({
   dropoffAddress: string;
   dateTime: DateTimeState;
   peopleVehicle: PeopleVehicleState;
+  airportDetails?: AirportDetailsState | null;
   pricing: PricingState;
   genderMode: GenderMode;
   accessMode: AccessMode;
@@ -6387,8 +6991,8 @@ function ReviewPodStep({
   onBack: () => void;
   onCreate: () => void;
 }) {
-  const routeFrom = routeCode(pickupAddress, "USC");
-  const routeTo = routeCode(dropoffAddress, "LAX");
+  const routeFrom = airportDetails ? routePointSummary(pickupAddress, "Pickup") : routeCode(pickupAddress, "USC");
+  const routeTo = airportDetails ? routePointSummary(dropoffAddress, "Airport") : routeCode(dropoffAddress, "LAX");
   const [reviewPanel, setReviewPanel] = useState(0);
   const [showCreateConfirm, setShowCreateConfirm] = useState(false);
   const [createConfirmChecked, setCreateConfirmChecked] = useState(false);
@@ -6504,29 +7108,39 @@ function ReviewPodStep({
 
         <div className={cn("grid gap-4", reviewPanel === previewPanelIndex ? "mt-0" : "mt-5")}>
           {reviewPanel === 0 ? (
-            isTaxiPartnerQuoteReview ? (
-              <TaxiReviewSummaryCard
-                peopleVehicle={peopleVehicle}
-                pickupAddress={pickupAddress}
-                dropoffAddress={dropoffAddress}
-                dateTime={dateTime}
-                genderMode={genderMode}
-                accessMode={accessMode}
-                taxiPartnerPreference={taxiPartnerPreference}
-                stopRequestPolicy={stopRequestPolicy}
-                stops={stops}
-              />
-            ) : isRideAppSelfSettleReview ? (
-              <SelfSettleReviewSummaryCard
-                peopleVehicle={peopleVehicle}
-                pickupAddress={pickupAddress}
-                dropoffAddress={dropoffAddress}
-                dateTime={dateTime}
-                onEditDetails={onEditDetails}
-              />
-            ) : (
-              <PricingSummaryCard money={moneyProtection} rideOption={peopleVehicle.rideOption} />
-            )
+            <>
+              {airportDetails ? (
+                <AirportReviewSummaryCard
+                  airportDetails={airportDetails}
+                  pickupAddress={pickupAddress}
+                  dropoffAddress={dropoffAddress}
+                  peopleVehicle={peopleVehicle}
+                />
+              ) : null}
+              {isTaxiPartnerQuoteReview ? (
+                <TaxiReviewSummaryCard
+                  peopleVehicle={peopleVehicle}
+                  pickupAddress={pickupAddress}
+                  dropoffAddress={dropoffAddress}
+                  dateTime={dateTime}
+                  genderMode={genderMode}
+                  accessMode={accessMode}
+                  taxiPartnerPreference={taxiPartnerPreference}
+                  stopRequestPolicy={stopRequestPolicy}
+                  stops={stops}
+                />
+              ) : isRideAppSelfSettleReview ? (
+                <SelfSettleReviewSummaryCard
+                  peopleVehicle={peopleVehicle}
+                  pickupAddress={pickupAddress}
+                  dropoffAddress={dropoffAddress}
+                  dateTime={dateTime}
+                  onEditDetails={onEditDetails}
+                />
+              ) : (
+                <PricingSummaryCard money={moneyProtection} rideOption={peopleVehicle.rideOption} />
+              )}
+            </>
           ) : null}
 
           {!isTaxiPartnerQuoteReview && reviewPanel === 1 ? (
@@ -6716,6 +7330,7 @@ export function CreatePodChooseType() {
   const [dropoffRoutePoint, setDropoffRoutePoint] = useState<RoutePointSelection | null>(null);
   const [stops, setStops] = useState<RouteStop[]>([]);
   const [nextStopId, setNextStopId] = useState(1);
+  const [airportDetails, setAirportDetails] = useState<AirportDetailsState>(() => createDefaultAirportDetails());
   const [dateTime, setDateTime] = useState<DateTimeState>({
     scheduleType: "ONE_TIME",
     date: formatCalendarLabel(formatCalendarDayLabel(todayDate)),
@@ -6777,7 +7392,8 @@ export function CreatePodChooseType() {
   const rideAppAccessNotice = user
     ? getRideAppAccessNotice(getRideAppTrustSummary(user.id))
     : null;
-  const isAirportTrip = isAirportTaxiRoute(pickupAddress, dropoffAddress);
+  const isAirportPod = podType === "airport";
+  const isAirportTrip = isAirportPod || isAirportTaxiRoute(pickupAddress, dropoffAddress);
   const displayedTaxiPartnerPreference =
     taxiPartnerPreferenceTouched
       ? taxiPartnerPreference
@@ -6786,7 +7402,36 @@ export function CreatePodChooseType() {
         : "standard";
   const displayedStopRequestPolicy = stopRequestPolicyTouched ? stopRequestPolicy : "direct_only";
   const isRideAppSelfSettle = normalizeRideOptionId(peopleVehicle.rideOption) === "ride_app_fixed_quote";
-  const activeStepLabels = isRideAppSelfSettle ? rideAppCreateSteps : baseCreateSteps;
+  const activeStepLabels = isAirportPod
+    ? isRideAppSelfSettle
+      ? airportRideAppCreateSteps
+      : airportCreateSteps
+    : isRideAppSelfSettle
+      ? rideAppCreateSteps
+      : baseCreateSteps;
+  const routeStepIndex: CreateStep = isAirportPod ? 3 : 2;
+  const dateTimeStepIndex: CreateStep = isAirportPod ? 4 : 3;
+  const bookingRulesStepIndex: CreateStep = isAirportPod ? 5 : 4;
+  const reviewStepIndex: CreateStep = isRideAppSelfSettle ? (isAirportPod ? 6 : 5) : isAirportPod ? 5 : 4;
+  const successStepIndex: CreateStep = isRideAppSelfSettle ? (isAirportPod ? 7 : 6) : isAirportPod ? 6 : 5;
+
+  function continueFromAirportDetails() {
+    const terminalOrHall = getAirportTerminalHallValue(airportDetails);
+
+    if (airportDetails.airportDirection === "to_airport") {
+      if (!dropoffAddress.trim()) setDropoffAddress(terminalOrHall === "Not provided" ? "HKIA Terminal 1 Departures" : terminalOrHall);
+    } else {
+      if (!pickupAddress.trim()) setPickupAddress(terminalOrHall === "Not provided" ? "HKIA Arrival Hall A" : terminalOrHall);
+      if (isRideAppSelfSettle && !peopleVehicle.pickupVenue.trim()) {
+        setPeopleVehicle((current) => ({
+          ...current,
+          pickupVenue: airportDetails.airportHall.trim() || "HKIA Arrival Hall A",
+        }));
+      }
+    }
+
+    continueToStep(routeStepIndex);
+  }
 
   function handleTaxiPartnerPreferenceChange(preference: TaxiPartnerPreference) {
     setTaxiPartnerPreferenceTouched(true);
@@ -6843,6 +7488,7 @@ export function CreatePodChooseType() {
         peopleVehicle,
         accessMode,
         stopRequestPolicy: displayedStopRequestPolicy,
+        airportDetails: isAirportPod ? airportDetails : null,
         hostAvatarPreference: avatarPreference,
         hostAvatarUrl: profile?.avatar_url ?? null,
         hostDisplayName,
@@ -6868,63 +7514,84 @@ export function CreatePodChooseType() {
           },
         });
       }
+    } else if (isAirportPod) {
+      const createdRide = buildCreatedAirportTaxiHomeRide({
+        pickupAddress,
+        dropoffAddress,
+        dateTime,
+        peopleVehicle,
+        pricing,
+        genderMode,
+        accessMode,
+        stopRequestPolicy: displayedStopRequestPolicy,
+        airportDetails,
+        hostAvatarPreference: avatarPreference,
+        hostAvatarUrl: profile?.avatar_url ?? null,
+        hostDisplayName,
+      });
+      saveCreatedHomeRide(createdRide);
+      setCreatedPodDetailHref(`/pods/${createdRide.id}`);
     } else {
       setCreatedPodDetailHref(null);
     }
 
-    setStep(isRideAppSelfSettle ? 6 : 5);
+    setStep(successStepIndex);
   }
 
   return (
     <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[430px] flex-col overflow-hidden rounded-[34px] border border-[var(--rp-border)] bg-[var(--rp-bg)] shadow-[var(--rp-shadow-soft)] md:min-h-[760px]">
-      {step === 6 || (!isRideAppSelfSettle && step === 5) ? (
+      {step === successStepIndex ? (
         <SuccessStep
           podType={podType}
           peopleVehicle={peopleVehicle}
           podDetailHref={createdPodDetailHref}
-          currentStep={isRideAppSelfSettle ? 6 : 5}
+          currentStep={successStepIndex}
           stepLabels={activeStepLabels}
         />
-      ) : step === 5 || (!isRideAppSelfSettle && step === 4) ? (
+      ) : step === reviewStepIndex ? (
         <ReviewPodStep
           podType={podType}
           pickupAddress={pickupAddress}
           dropoffAddress={dropoffAddress}
           dateTime={dateTime}
           peopleVehicle={peopleVehicle}
+          airportDetails={isAirportPod ? airportDetails : null}
           pricing={pricing}
           genderMode={genderMode}
           accessMode={accessMode}
           taxiPartnerPreference={displayedTaxiPartnerPreference}
           stopRequestPolicy={displayedStopRequestPolicy}
           stops={stops}
-          currentStep={isRideAppSelfSettle ? 5 : 4}
+          currentStep={reviewStepIndex}
           stepLabels={activeStepLabels}
           onGenderModeChange={setGenderMode}
           onAccessModeChange={setAccessMode}
-          onEditDetails={() => setStep(2)}
-          onBack={() => setStep(isRideAppSelfSettle ? 4 : 3)}
+          onEditDetails={() => setStep(routeStepIndex)}
+          onBack={() => setStep(isRideAppSelfSettle ? bookingRulesStepIndex : dateTimeStepIndex)}
           onCreate={completeCreate}
         />
-      ) : step === 4 && isRideAppSelfSettle ? (
+      ) : step === bookingRulesStepIndex && isRideAppSelfSettle ? (
         <RideAppBookingRulesStep
           peopleVehicle={peopleVehicle}
+          currentStep={bookingRulesStepIndex}
+          stepLabels={activeStepLabels}
           onPeopleVehicleChange={setPeopleVehicle}
-          onBack={() => setStep(3)}
-          onContinue={() => continueToStep(5)}
+          onBack={() => setStep(dateTimeStepIndex)}
+          onContinue={() => continueToStep(reviewStepIndex)}
         />
-      ) : step === 3 ? (
+      ) : step === dateTimeStepIndex ? (
         <DateTimeStep
           podType={podType}
           pickupAddress={pickupAddress}
           dropoffAddress={dropoffAddress}
           dateTime={dateTime}
+          currentStep={dateTimeStepIndex}
           stepLabels={activeStepLabels}
           onDateTimeChange={setDateTime}
-          onBack={() => setStep(2)}
-          onContinue={() => continueToStep(4)}
+          onBack={() => setStep(routeStepIndex)}
+          onContinue={() => continueToStep(isRideAppSelfSettle ? bookingRulesStepIndex : reviewStepIndex)}
         />
-      ) : step === 2 ? (
+      ) : step === routeStepIndex ? (
         <RouteStopsStep
           podType={podType}
           pickupAddress={pickupAddress}
@@ -6935,8 +7602,10 @@ export function CreatePodChooseType() {
           stops={stops}
           stopRequestPolicy={displayedStopRequestPolicy}
           isRideAppSelfSettle={isRideAppSelfSettle}
+          airportDetails={isAirportPod ? airportDetails : null}
+          currentStep={routeStepIndex}
           stepLabels={activeStepLabels}
-          onBack={() => setStep(1)}
+          onBack={() => setStep(isAirportPod ? 2 : 1)}
           onPickupChange={handlePickupAddressChange}
           onDropoffChange={handleDropoffAddressChange}
           onPickupPlaceSelect={handlePickupPlaceSelect}
@@ -6955,7 +7624,16 @@ export function CreatePodChooseType() {
             setStops((currentStops) => currentStops.filter((stop) => stop.id !== id));
           }}
           onStopRequestPolicyChange={handleStopRequestPolicyChange}
-          onContinue={() => continueToStep(3)}
+          onContinue={() => continueToStep(dateTimeStepIndex)}
+        />
+      ) : step === 2 && isAirportPod ? (
+        <AirportDetailsStep
+          airportDetails={airportDetails}
+          currentStep={2}
+          stepLabels={activeStepLabels}
+          onAirportDetailsChange={setAirportDetails}
+          onBack={() => setStep(1)}
+          onContinue={continueFromAirportDetails}
         />
       ) : step === 1 ? (
         <>
@@ -6984,6 +7662,9 @@ export function CreatePodChooseType() {
                         ...current,
                         scheduleType: item.id === "recurring" ? "RECURRING" : "ONE_TIME",
                       }));
+                      if (item.id === "airport") {
+                        setAirportDetails((current) => syncAirportDirectionDefaults(current, current.airportDirection));
+                      }
                     }}
                   />
                 ))}

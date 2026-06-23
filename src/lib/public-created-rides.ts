@@ -238,6 +238,14 @@ export function publicCreatedPodToHomeRide(
   viewerIdentity?: PublicCreatedRideViewerIdentity | null,
 ): HomeRide {
   const { fromLabel, toLabel } = splitRouteLabel(pod.route_label);
+  const fromDistrict = districtFromRideLabel(fromLabel);
+  const toDistrict = districtFromRideLabel(toLabel);
+  const airportDirection =
+    fromDistrict === "Airport"
+      ? "from_airport"
+      : toDistrict === "Airport"
+        ? "to_airport"
+        : null;
   const isRideApp = pod.ride_option === "RIDE_APP_FIXED_QUOTE";
   const hostUserId = pod.host_user_id?.trim() ?? null;
   const isHost =
@@ -283,8 +291,8 @@ export function publicCreatedPodToHomeRide(
 
   return {
     id: pod.id,
-    fromDistrict: districtFromRideLabel(fromLabel),
-    toDistrict: districtFromRideLabel(toLabel),
+    fromDistrict,
+    toDistrict,
     fromLabel,
     toLabel,
     dateLabel,
@@ -292,7 +300,7 @@ export function publicCreatedPodToHomeRide(
     seatsUsed,
     seatsTotal,
     pricePerPerson: estimateTotal ? Math.round(estimateTotal / seatsTotal) : 0,
-    rideKind: pod.pod_type === "RECURRING" ? "recurring" : "one_off",
+    rideKind: pod.pod_type === "RECURRING" ? "recurring" : airportDirection ? "airport" : "one_off",
     rideService: isRideApp ? "ride_app" : "taxi",
     rideCategory: isRideApp ? "ride_app_self_settle" : "taxi_meter",
     selfSettleRiskAccepted: isRideApp,
@@ -331,7 +339,8 @@ export function publicCreatedPodToHomeRide(
     rideAppSplitMethod: isRideApp ? "Equal split" : undefined,
     rideAppFareEstimateStatus: isRideApp ? (estimateTotal ? "accepted" : "pending") : undefined,
     rideAppAcceptedPaymentMethods: isRideApp ? ["PayMe"] : undefined,
-    airportDirection: null,
+    tripKind: airportDirection ? "airport" : "normal",
+    airportDirection,
     status: "available",
     quoteStatus: viewerJoined ? "joined" : "quote_pending",
     currentUserRole: isHost ? "host" : viewerJoined ? "joined_rider" : "rider",

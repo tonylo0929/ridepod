@@ -2136,8 +2136,8 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 }
 
 function airportBadgeLabel(ride: HomeRide) {
-  if (ride.airportDirection === "to_airport") return "To Airport";
-  if (ride.airportDirection === "from_airport") return "From Airport";
+  if (ride.airportDirection === "to_airport") return "To airport";
+  if (ride.airportDirection === "from_airport") return "From airport";
   return null;
 }
 
@@ -5672,7 +5672,7 @@ export function PickupReadyCards({
           {ride.airportDirection ? (
             <SummaryRow
               label="Airport"
-              value={ride.airportDirection === "from_airport" ? "From Airport" : "To Airport"}
+              value={ride.airportDirection === "from_airport" ? "From airport" : "To airport"}
             />
           ) : null}
           <SummaryRow label="Pickup point" value={pickupPoint} />

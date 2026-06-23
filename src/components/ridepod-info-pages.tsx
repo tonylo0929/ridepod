@@ -70,7 +70,7 @@ const faqItems = [
   {
     question: "Is airport mode supported?",
     answer:
-      "Airport rides can include terminal, luggage, and pickup/dropoff details. Flight status sync is not live in this version.",
+      "Airport rides can include terminal, luggage, and pickup/dropoff details. Flight details are user-entered in this version.",
   },
   {
     question: "How do recurring rides work?",
