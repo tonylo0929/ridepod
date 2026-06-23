@@ -22,6 +22,7 @@ import {
   MapPin,
   MessageCircle,
   MessagesSquare,
+  Plus,
   ReceiptText,
   Share2,
   ShieldCheck,
@@ -3122,6 +3123,7 @@ function CompactRideAppRoutePanel({
   onDeclineStop?: (stop: RoutePlanStop) => void;
 }) {
   const [stopRequestDraft, setStopRequestDraft] = useState("");
+  const [requestScreenOpen, setRequestScreenOpen] = useState(false);
   const routeRequests = getNormalizedRouteRequests(ride);
   const pendingRequest = routeRequests.pending[0] ?? null;
   const pendingStop = pendingRequest ? routeRequestToRoutePlanStop(pendingRequest) : null;
@@ -3170,6 +3172,26 @@ function CompactRideAppRoutePanel({
   const trimmedStopRequest = stopRequestDraft.trim();
   const gatherVenue = ride.pickupLabel ?? "Host will set gather point";
   const gatherArea = ride.pickupLabel ? ride.fromLabel : "Where riders meet before booking";
+  const requestedRouteStops = [
+    ...(pendingStop
+      ? [
+          {
+            id: pendingStop.id,
+            dotClass: "bg-[var(--rp-primary)]",
+            label: "Request stop (Pending)",
+            title: pendingStop.label,
+            helper: pendingStop.requestedBy ? `Requested by ${pendingStop.requestedBy}` : "Waiting for host approval",
+          },
+        ]
+      : []),
+    ...approvedStops.map((stop) => ({
+      id: stop.id,
+      dotClass: "bg-[var(--rp-primary)]",
+      label: "Request stop (Approved)",
+      title: stop.label,
+      helper: stop.requestedBy ? `Requested by ${stop.requestedBy}` : "Approved by host",
+    })),
+  ];
   const routeRows = [
     {
       id: "gather",
@@ -3185,13 +3207,7 @@ function CompactRideAppRoutePanel({
       title: ride.fromLabel,
       helper: null,
     },
-    ...approvedStops.map((stop, index) => ({
-      id: stop.id,
-      dotClass: "bg-[var(--rp-primary)]",
-      label: `Stop ${index + 1}`,
-      title: stop.label,
-      helper: stop.requestedBy ? `Requested by ${stop.requestedBy}` : null,
-    })),
+    ...requestedRouteStops,
     {
       id: "dropoff",
       dotClass: "bg-rose-300",
@@ -3205,6 +3221,66 @@ function CompactRideAppRoutePanel({
     if (!canShowStopRequestForm || !trimmedStopRequest) return;
     onRequestStop?.(trimmedStopRequest);
     setStopRequestDraft("");
+    setRequestScreenOpen(false);
+  }
+
+  if (requestScreenOpen && canShowStopRequestForm) {
+    return (
+      <div id="route-requests" className="scroll-mt-24 grid gap-3">
+        <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
+          <button
+            type="button"
+            onClick={() => setRequestScreenOpen(false)}
+            className="inline-flex min-h-10 w-fit items-center gap-2 rounded-[14px] border border-white/12 bg-white/8 px-3 text-xs font-black text-[var(--rp-primary)] transition hover:bg-white/12"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </button>
+
+          <div className="mt-5 grid gap-4">
+            <span className="grid h-12 w-12 place-items-center rounded-[16px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]">
+              <MapPin className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Stop requests</p>
+              <h3 className="mt-1 text-2xl font-black leading-tight text-white">Request a stop</h3>
+              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                Type one extra stop location. The host needs to approve it before booking details are shared.
+              </p>
+            </div>
+
+            <form
+              className="grid gap-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                submitStopRequest();
+              }}
+            >
+              <label className="grid gap-2" htmlFor={`stop-request-${ride.id}`}>
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Stop location</span>
+                <input
+                  id={`stop-request-${ride.id}`}
+                  value={stopRequestDraft}
+                  onChange={(event) => setStopRequestDraft(event.target.value)}
+                  placeholder="e.g. Admiralty Station Exit A"
+                  autoFocus
+                  className="min-h-12 rounded-[14px] border border-cyan-300/22 bg-black/24 px-3 text-sm font-semibold text-white outline-none transition placeholder:text-[var(--rp-muted-strong)] focus:border-cyan-300/55 focus:bg-cyan-300/8"
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={!trimmedStopRequest}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] bg-[var(--rp-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                <MapPin className="h-4 w-4" />
+                Confirm request
+              </button>
+            </form>
+          </div>
+        </section>
+      </div>
+    );
   }
 
   return (
@@ -3265,32 +3341,14 @@ function CompactRideAppRoutePanel({
               </div>
             ) : null}
             {canShowStopRequestForm ? (
-              <form
-                className="mt-3 grid gap-2"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  submitStopRequest();
-                }}
+              <button
+                type="button"
+                onClick={() => setRequestScreenOpen(true)}
+                className="mt-3 flex min-h-14 w-full items-center justify-center gap-3 rounded-[18px] border border-dashed border-[var(--rp-primary)] bg-[var(--rp-primary)]/5 px-4 text-sm font-black text-[var(--rp-primary)] shadow-[0_12px_28px_rgba(0,0,0,0.18)] transition hover:bg-[var(--rp-primary)]/10"
               >
-                <label className="sr-only" htmlFor={`stop-request-${ride.id}`}>
-                  Stop location
-                </label>
-                <input
-                  id={`stop-request-${ride.id}`}
-                  value={stopRequestDraft}
-                  onChange={(event) => setStopRequestDraft(event.target.value)}
-                  placeholder="e.g. Admiralty Station Exit A"
-                  className="min-h-11 rounded-[14px] border border-cyan-300/22 bg-black/24 px-3 text-sm font-semibold text-white outline-none transition placeholder:text-[var(--rp-muted-strong)] focus:border-cyan-300/55 focus:bg-cyan-300/8"
-                />
-                <button
-                  type="submit"
-                  disabled={!trimmedStopRequest}
-                  className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-cyan-300/35 bg-cyan-300/10 px-3 text-sm font-black text-cyan-100 transition hover:bg-cyan-300/16 disabled:opacity-45"
-                >
-                  <MapPin className="h-4 w-4" />
-                  Send request
-                </button>
-              </form>
+                <Plus className="h-5 w-5" />
+                Request a stop
+              </button>
             ) : null}
           </div>
         </div>
