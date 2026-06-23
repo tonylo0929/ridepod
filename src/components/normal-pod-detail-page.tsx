@@ -3434,6 +3434,7 @@ function SelfSettlePodSummaryHero({
   const rejoinRestriction = getRideAppRejoinRestrictionCopy(ride, ride.seatsUsed < ride.seatsTotal);
   const hostEstimateUpdated = canUpdateEstimate && estimateUpdated;
   const canLeaveRideFromHero = summaryUserHadRideAppSeat && !summaryUserIsHost;
+  const showInlineJoinRide = !summaryUserIsHost && !canLeaveRideFromHero && canJoinRide;
   const displayEstimateLabel = hostEstimateUpdated ? "Updated estimate" : canUpdateEstimate ? "Your estimate" : estimateLabel;
   const minimumRidersToGoLabel = getRideAppMinimumRidersToGoLabel(ride);
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
@@ -3535,7 +3536,11 @@ function SelfSettlePodSummaryHero({
         <div
           className={cn(
             "relative mt-4 grid gap-3",
-            canUpdateEstimate || canLeaveRideFromHero ? "grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] max-[360px]:grid-cols-1" : "grid-cols-1",
+            canUpdateEstimate || canLeaveRideFromHero
+              ? "grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] max-[360px]:grid-cols-1"
+              : showInlineJoinRide
+                ? "grid-cols-[minmax(0,1fr)_minmax(124px,0.86fr)] max-[340px]:grid-cols-1"
+                : "grid-cols-1",
           )}
         >
           {summaryUserIsHost ? (
@@ -3620,11 +3625,25 @@ function SelfSettlePodSummaryHero({
                 Leave Pod
               </button>
             </div>
+          ) : showInlineJoinRide ? (
+            <button
+              type="button"
+              onClick={onJoinRide}
+              className="grid min-h-[124px] min-w-0 content-center justify-items-center rounded-[16px] border border-[var(--rp-primary)]/70 bg-[linear-gradient(180deg,rgba(242,193,91,0.17),rgba(242,193,91,0.07))] px-3 py-4 text-center shadow-[0_14px_32px_rgba(0,0,0,0.22)] transition hover:border-[var(--rp-primary)] hover:bg-[linear-gradient(180deg,rgba(242,193,91,0.22),rgba(242,193,91,0.09))]"
+            >
+              <span className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]">
+                <ArrowRight className="h-6 w-6 stroke-[3]" />
+              </span>
+              <span className="mt-3 block text-base font-black leading-5 text-white">Join Ride</span>
+              <span className="mt-1 block text-xs font-bold leading-4 text-[var(--rp-muted-strong)]">
+                Hold your seat
+              </span>
+            </button>
           ) : null}
         </div>
       </div>
 
-      {canUpdateEstimate || canLeaveRideFromHero ? null : canJoinRide ? (
+      {canUpdateEstimate || canLeaveRideFromHero || showInlineJoinRide ? null : canJoinRide ? (
         <button
           type="button"
           onClick={onJoinRide}
@@ -4248,7 +4267,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
   const estimatedShareRange = getEstimatedShareRange(ride.pricePerPerson);
   const rideAppEstimateDisplay = getRideAppHostFareEstimateDisplay(ride);
   const rideAppHeroEstimateUpdated = rideAppTotalEstimateOverride !== null || rideAppEstimateDisplay.updated;
-  const rideAppHeroEstimateLabel = rideAppHeroEstimateUpdated ? "Total estimate" : rideAppEstimateDisplay.label;
+  const rideAppHeroEstimateLabel = "Ride App Estimate";
   const rideAppHeroEstimateValue = rideAppTotalEstimateOverride ?? rideAppEstimateDisplay.value;
   const rideAppProviderDisplay = getRideAppProviderDisplay(ride);
   const rideAppAcceptedPaymentDisplay = getRideAppAcceptedPaymentDisplay(ride);
