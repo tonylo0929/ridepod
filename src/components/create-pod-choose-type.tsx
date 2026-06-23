@@ -2182,23 +2182,19 @@ const airportDetailsSliceCopy: Record<
   {
     label: string;
     title: string;
-    body: string;
   }
 > = {
   direction: {
     label: "To / From",
     title: "To airport / From airport",
-    body: "Choose whether this pod is heading to the airport or leaving after landing.",
   },
   flight: {
     label: "Flight",
     title: "Flight details",
-    body: "Add the flight info riders need to match around a similar airport time.",
   },
   luggage: {
     label: "Luggage",
     title: "Luggage",
-    body: "Share bags and special items so everyone can check the ride fit.",
   },
 };
 
@@ -2228,7 +2224,6 @@ function AirportDetailsStep({
     airportDetailsSliceOrder[Math.min(airportDetailsSliceOrder.length - 1, activeSliceIndex + 1)] ?? "luggage";
   const previousAirportDetailsSlice =
     airportDetailsSliceOrder[Math.max(0, activeSliceIndex - 1)] ?? "direction";
-  const activeSliceCopy = airportDetailsSliceCopy[airportDetailsSlice];
   const airportDetailsSliceSummary: Record<AirportDetailsSlice, string> = {
     direction: getAirportDirectionLabel(airportDetails.airportDirection),
     flight: airportDetails.flightNumber.trim() || "Add flight",
@@ -2268,17 +2263,7 @@ function AirportDetailsStep({
       <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#020912] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-7 text-[#f8fafc]">
-        <section className="text-center">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">Airport ride</p>
-          <h1 className="mt-2 text-[29px] font-black leading-tight text-[var(--rp-primary)]">
-            {activeSliceCopy.title}
-          </h1>
-          <p className="mx-auto mt-2 max-w-[300px] text-sm font-semibold leading-6 text-[var(--rp-primary-strong)]">
-            {activeSliceCopy.body}
-          </p>
-        </section>
-
-        <section className="mt-5 grid grid-cols-3 gap-2" role="tablist" aria-label="Airport details sections">
+        <section className="grid grid-cols-3 gap-2" role="tablist" aria-label="Airport details sections">
           {airportDetailsSliceOrder.map((slice, index) => {
             const selected = airportDetailsSlice === slice;
             const completed = index < activeSliceIndex;
