@@ -574,7 +574,7 @@ function CategoryCard({
       >
         <Icon className="h-5 w-5 min-[390px]:h-6 min-[390px]:w-6" />
       </span>
-      <span className="mt-1.5 flex min-h-4 w-full items-center justify-center text-center text-[10px] font-black leading-[1.05] text-[var(--rp-text)] [overflow-wrap:anywhere] min-[390px]:text-[11px]">
+      <span className="mt-1.5 flex min-h-4 w-full items-center justify-center whitespace-nowrap text-center text-[9px] font-black leading-[1.05] text-[var(--rp-text)] min-[390px]:text-[10px]">
         {label}
       </span>
       <span className="mt-0.5 block w-full truncate text-center text-[9px] font-semibold leading-3 text-[var(--rp-muted-strong)] min-[390px]:text-[10px]">
@@ -1855,6 +1855,7 @@ export default function HomePage() {
     deadlineFilter !== "any" ||
     seatFilter !== "any" ||
     ownershipFilter !== "all";
+  const showRideRecommendations = activeTab !== "all";
   return (
     <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-1.25rem)] overflow-hidden pb-2 sm:-mx-6 lg:-mx-10 lg:-mt-8">
       <section className="relative overflow-hidden px-4 pb-7 pt-7 sm:px-6 lg:px-10">
@@ -1946,58 +1947,60 @@ export default function HomePage() {
       <CommunitiesSection />
       <CommunityRideCallsSection />
 
-      <section className="relative mt-5 px-4 sm:px-6 lg:px-10">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h1 className="whitespace-nowrap text-base font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
-          <div className="flex shrink-0 items-center gap-2">
-            {hasActiveFilters ? (
+      {showRideRecommendations ? (
+        <section className="relative mt-5 px-4 sm:px-6 lg:px-10">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h1 className="whitespace-nowrap text-base font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
+            <div className="flex shrink-0 items-center gap-2">
+              {hasActiveFilters ? (
+                <button
+                  type="button"
+                  onClick={resetRouteFilters}
+                  className="inline-flex min-h-10 items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-4 text-xs font-black text-[var(--rp-primary)]"
+                >
+                  Clear
+                </button>
+              ) : null}
               <button
                 type="button"
-                onClick={resetRouteFilters}
-                className="inline-flex min-h-10 items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-4 text-xs font-black text-[var(--rp-primary)]"
+                onClick={() => setFiltersOpen(true)}
+                className={cn(
+                  "inline-flex min-h-10 items-center gap-2 rounded-full border px-4 text-xs font-black transition",
+                  hasActiveFilters
+                    ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_16%,transparent)] text-[var(--rp-primary)]"
+                    : "border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)]",
+                )}
               >
-                Clear
+                <SlidersHorizontal className="h-4 w-4" />
+                Filters
               </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setFiltersOpen(true)}
-              className={cn(
-                "inline-flex min-h-10 items-center gap-2 rounded-full border px-4 text-xs font-black transition",
-                hasActiveFilters
-                  ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_16%,transparent)] text-[var(--rp-primary)]"
-                  : "border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)]",
-              )}
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              Filters
-            </button>
+            </div>
           </div>
-        </div>
 
-        <RideModeSwitch
-          value={rideModeFilter === "ride_app" ? "ride_app" : "taxi"}
-          onChange={handleRideModeChange}
-        />
+          <RideModeSwitch
+            value={rideModeFilter === "ride_app" ? "ride_app" : "taxi"}
+            onChange={handleRideModeChange}
+          />
 
-        <RideAppCommunityPanel />
+          <RideAppCommunityPanel />
 
-        <div className="grid gap-3">
-          {visibleRides.length > 0 ? (
-            visibleRides.map((ride) => (
-              <HomeRideCard
-                key={ride.id}
-                ride={ride}
-                currentUserAvatar={currentUserAvatar}
-                isAuthenticated={isAuthenticated}
-              />
-            ))
-          ) : (
-            <EmptyRides tab={activeTab} rideModeFilter={rideModeFilter} hasAnyRides={filteredRides.length > 0} />
-          )}
-        </div>
-        <RideTypeInfoStrip />
-      </section>
+          <div className="grid gap-3">
+            {visibleRides.length > 0 ? (
+              visibleRides.map((ride) => (
+                <HomeRideCard
+                  key={ride.id}
+                  ride={ride}
+                  currentUserAvatar={currentUserAvatar}
+                  isAuthenticated={isAuthenticated}
+                />
+              ))
+            ) : (
+              <EmptyRides tab={activeTab} rideModeFilter={rideModeFilter} hasAnyRides={filteredRides.length > 0} />
+            )}
+          </div>
+          <RideTypeInfoStrip />
+        </section>
+      ) : null}
 
       <DistrictFilterSheet
         open={filtersOpen}
