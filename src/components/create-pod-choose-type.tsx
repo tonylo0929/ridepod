@@ -2269,11 +2269,11 @@ function AirportDetailsStep({
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#020912] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-7 text-[#f8fafc]">
         <section className="text-center">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-cyan-200">Airport ride</p>
-          <h1 className="mt-2 text-[29px] font-black leading-tight text-[var(--rp-text)]">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">Airport ride</p>
+          <h1 className="mt-2 text-[29px] font-black leading-tight text-[var(--rp-primary)]">
             {activeSliceCopy.title}
           </h1>
-          <p className="mx-auto mt-2 max-w-[300px] text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+          <p className="mx-auto mt-2 max-w-[300px] text-sm font-semibold leading-6 text-[var(--rp-primary-strong)]">
             {activeSliceCopy.body}
           </p>
         </section>
@@ -2307,7 +2307,14 @@ function AirportDetailsStep({
                 >
                   {completed ? <Check className="h-3.5 w-3.5" /> : index + 1}
                 </span>
-                <span className="text-[11px] font-black leading-4">{airportDetailsSliceCopy[slice].label}</span>
+                <span
+                  className={cn(
+                    "text-[11px] font-black leading-4",
+                    selected && "text-[var(--rp-primary)]",
+                  )}
+                >
+                  {airportDetailsSliceCopy[slice].label}
+                </span>
                 <span className="line-clamp-1 max-w-full text-[10px] font-bold leading-4 opacity-80">
                   {airportDetailsSliceSummary[slice]}
                 </span>
