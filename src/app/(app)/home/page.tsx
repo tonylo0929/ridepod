@@ -11,7 +11,6 @@ import {
   CircleDollarSign,
   Gift,
   GraduationCap,
-  Luggage,
   MapPin,
   Music2,
   Plane,
@@ -770,10 +769,6 @@ function availableSeats(ride: HomeRide) {
   return Math.max(ride.seatsTotal - ride.seatsUsed, 0);
 }
 
-function formatMinimumRidersToGo(count: number) {
-  return `At least ${count} rider${count === 1 ? "" : "s"} to go`;
-}
-
 function getRideAppMinimumRidersToGo(ride: HomeRide) {
   if (!isRideAppSelfSettle(ride)) return null;
 
@@ -850,14 +845,6 @@ function matchesOwnershipFilter(ride: HomeRide, filter: OwnershipFilter) {
   if (filter === "mine") return ride.currentUserRole === "host";
   if (filter === "joined") return ride.currentUserJoined === true || ride.currentUserRole === "joined_rider";
   return true;
-}
-
-function getTaxiQuoteStatus(ride: HomeRide) {
-  if (ride.quoteStatus === "quote_ready") return "QUOTE READY";
-  if (ride.quoteStatus === "ready_for_pickup") return "READY";
-  if (ride.quoteStatus === "full") return "FULL";
-  if (ride.quoteStatus === "joined") return "JOINED";
-  return "QUOTE PENDING";
 }
 
 function getCurrentUserRideRelationship(ride: HomeRide) {
@@ -948,7 +935,7 @@ function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; curren
     <div
       aria-label={`${ride.hostName || "Profile"} profile`}
       className={cn(
-        "relative grid h-12 w-12 shrink-0 place-items-center overflow-visible rounded-full border text-2xl font-black shadow-[0_14px_30px_rgba(0,0,0,0.28)] min-[560px]:h-16 min-[560px]:w-16 min-[560px]:text-3xl",
+        "relative grid h-11 w-11 shrink-0 place-items-center overflow-visible rounded-full border text-xl font-black shadow-[0_14px_30px_rgba(0,0,0,0.28)] min-[560px]:h-12 min-[560px]:w-12 min-[560px]:text-2xl",
         isRideApp
           ? "border-sky-300/50 bg-[radial-gradient(circle_at_35%_28%,rgba(56,189,248,0.2),var(--rp-card-muted)_74%)] text-sky-300"
           : "border-[color-mix(in_srgb,var(--rp-primary)_46%,var(--rp-border))] bg-[radial-gradient(circle_at_35%_28%,color-mix(in_srgb,var(--rp-primary)_20%,transparent),var(--rp-card-muted)_74%)] text-[var(--rp-primary)]",
@@ -960,7 +947,7 @@ function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; curren
           avatarPreference={currentUserAvatar.avatarPreference}
           initials={currentUserAvatar.initials}
           displayName={currentUserAvatar.displayName}
-          className="h-full w-full rounded-full text-xl min-[560px]:text-2xl"
+          className="h-full w-full rounded-full text-lg min-[560px]:text-xl"
         />
       ) : showHostAvatar && ride.hostAvatarPreference ? (
         <RidePodAvatar
@@ -968,7 +955,7 @@ function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; curren
           avatarPreference={ride.hostAvatarPreference}
           initials={getProfileInitials(hostDisplayName)}
           displayName={hostDisplayName}
-          className="h-full w-full rounded-full text-xl min-[560px]:text-2xl"
+          className="h-full w-full rounded-full text-lg min-[560px]:text-xl"
         />
       ) : (
         getProfileInitial(ride.hostName)
@@ -985,161 +972,6 @@ function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; curren
   );
 }
 
-function RideBadge({ ride, activeTab }: { ride: HomeRide; activeTab: HomeTab }) {
-  if (isRideAppSelfSettle(ride) && !ride.airportDirection && ride.rideKind !== "recurring") {
-    return null;
-  }
-
-  if (activeTab === "one_off" && ride.rideKind === "one_off") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--rp-border-strong)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 py-1 text-xs font-black text-[var(--rp-primary)]">
-        <CarFront className="h-3.5 w-3.5" />
-        One-off
-      </span>
-    );
-  }
-
-  if (rideMatchesTab("quote_ready", ride)) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-300/20 bg-emerald-300/12 px-3 py-1 text-xs font-black text-emerald-200">
-        <CircleDollarSign className="h-3.5 w-3.5" />
-        Quote ready
-      </span>
-    );
-  }
-
-  if (ride.airportDirection) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-cyan-300/15 bg-cyan-400/12 px-3 py-1 text-xs font-black text-cyan-300">
-        <Plane className="h-3.5 w-3.5" />
-        {ride.airportDirection === "to_airport" ? "To airport" : "From airport"}
-      </span>
-    );
-  }
-
-  if (ride.rideKind === "recurring") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--rp-border-strong)] bg-[color-mix(in_srgb,var(--rp-primary)_16%,transparent)] px-3 py-1 text-xs font-black text-[var(--rp-primary)]">
-        <RefreshCcw className="h-3.5 w-3.5" />
-        Recurring
-      </span>
-    );
-  }
-
-  if (ride.rideKind === "one_off") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-[var(--rp-border-strong)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 py-1 text-xs font-black text-[var(--rp-primary)]">
-        <CarFront className="h-3.5 w-3.5" />
-        One-off
-      </span>
-    );
-  }
-
-  return null;
-}
-
-function RideMetaTags({
-  ride,
-  trustBadge,
-}: {
-  ride: HomeRide;
-  trustBadge: ReturnType<typeof getHomeRideTrustBadge> | null;
-}) {
-  const isRideApp = isRideAppSelfSettle(ride);
-  const KindIcon = ride.rideKind === "recurring" ? RefreshCcw : ride.rideKind === "airport" ? Plane : CarFront;
-  const kindLabel = ride.rideKind === "recurring" ? "Recurring" : ride.rideKind === "airport" ? "Airport" : "One-off";
-
-  return (
-    <div className="mt-2 flex max-w-full flex-nowrap items-center gap-1.5 overflow-hidden">
-      <span
-        className={cn(
-          "inline-flex min-h-7 shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-black min-[390px]:gap-1.5 min-[390px]:px-2.5 min-[390px]:text-[11px]",
-          ride.podType === "Women-only"
-            ? "border-emerald-200 bg-emerald-300/14 text-emerald-100"
-            : "border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)]",
-        )}
-      >
-        {ride.podType === "Open pod" ? (
-          <UsersRound className="h-3.5 w-3.5" />
-        ) : (
-          <ShieldCheck className="h-3.5 w-3.5" />
-        )}
-        {ride.podType}
-      </span>
-      <span
-        className={cn(
-          "inline-flex min-h-7 shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-black min-[390px]:gap-1.5 min-[390px]:px-2.5 min-[390px]:text-[11px]",
-          ride.rideKind === "recurring"
-            ? "border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]"
-            : ride.rideKind === "airport"
-              ? "border-cyan-300/30 bg-cyan-400/12 text-cyan-200"
-              : isRideApp
-                ? "border-sky-300/30 bg-sky-400/12 text-sky-200"
-                : "border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)]",
-        )}
-      >
-        <KindIcon className="h-3.5 w-3.5" />
-        {kindLabel}
-      </span>
-      {trustBadge ? (
-        <span
-          className={cn(
-            "inline-flex min-h-7 min-w-0 items-center gap-1 rounded-full border px-2 py-1 text-[10px] font-black min-[390px]:gap-1.5 min-[390px]:px-2.5 min-[390px]:text-[11px]",
-            trustBadge.tone === "rating"
-              ? "border-amber-300/30 bg-amber-300/12 text-amber-100"
-              : trustBadge.tone === "warning"
-                ? "border-rose-300/30 bg-rose-400/12 text-rose-100"
-                : "border-sky-300/25 bg-sky-400/10 text-sky-100",
-          )}
-        >
-          {trustBadge.tone === "rating" ? (
-            <Star className="h-3.5 w-3.5 shrink-0 fill-amber-300 text-amber-300" />
-          ) : trustBadge.tone === "warning" ? (
-            <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-rose-100" />
-          ) : (
-            <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-sky-200" />
-          )}
-          <span className="truncate">{trustBadge.label}</span>
-        </span>
-      ) : null}
-      {!isRideApp ? (
-        <span className="inline-flex min-h-7 shrink-0 items-center gap-1 rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] px-2 py-1 text-[10px] font-black text-[var(--rp-muted-strong)] min-[390px]:gap-1.5 min-[390px]:px-2.5 min-[390px]:text-[11px]">
-          <CarFront className="h-3.5 w-3.5 text-[var(--rp-primary)]" />
-          {ride.taxiType}
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-function getAirportRideCardTags(ride: HomeRide) {
-  if (ride.rideKind !== "airport" && !ride.airportDirection) return [];
-
-  const tags: Array<{ label: string; icon: typeof Plane; tone: "flight" | "luggage" }> = [];
-  const flightNumber = ride.flightNumber?.trim();
-  const hasFlightDetails = Boolean(
-    flightNumber ||
-    ride.flightFrom?.trim() ||
-    ride.flightTo?.trim() ||
-    ride.flightTimeLabel?.trim(),
-  );
-  const hasLargeLuggage =
-    (ride.airportLuggage?.largeSuitcases ?? 0) > 0 ||
-    /large|suitcase/i.test(ride.luggage);
-
-  if (flightNumber) {
-    tags.push({ label: `Flight ${flightNumber}`, icon: Plane, tone: "flight" });
-  } else if (hasFlightDetails) {
-    tags.push({ label: "Flight details", icon: Plane, tone: "flight" });
-  }
-
-  if (hasLargeLuggage) {
-    tags.push({ label: "Large luggage", icon: Luggage, tone: "luggage" });
-  }
-
-  return tags;
-}
-
 function HomeRideCard({
   ride,
   currentUserAvatar,
@@ -1151,44 +983,42 @@ function HomeRideCard({
 }) {
   const isRideApp = isRideAppSelfSettle(ride);
   const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
-  const currentUserHasJoined = currentUserRelationship?.tone === "joined";
   const rideAppEstimateDisplay = getRideAppTotalEstimateDisplay(ride);
-  const currentUserIsHost = currentUserRelationship?.tone === "host";
   const podHref = `/pods/${ride.id}`;
   const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
-  const rideAppEstimateLabel = currentUserIsHost
-    ? rideAppEstimateDisplay.updated
-      ? "Updated estimate"
-      : "Your estimate"
-    : rideAppEstimateDisplay.label;
-  const rideAppEstimateHelper = currentUserIsHost
-    ? rideAppEstimateDisplay.updated
-      ? getRideAppProviderLabel(ride)
-      : "Tap to update"
-    : rideAppEstimateDisplay.helper;
-  const minimumRidersToGo = getRideAppMinimumRidersToGo(ride);
   const displayHostName = ride.hostName?.trim();
   const showHostName = Boolean(displayHostName && displayHostName.toLowerCase() !== "new host");
   const rideAppTrustBadge = isRideApp ? getHomeRideTrustBadge(getRideAppTrustSummary(getHomeRideHostTrustUserId(ride))) : null;
-  const airportCardTags = getAirportRideCardTags(ride);
-  const statusBadgeClass = isRideApp
-    ? "border-sky-300/35 bg-sky-400/14 text-sky-200"
+  const relationshipLabel = currentUserRelationship?.tone === "host" ? "You" : currentUserRelationship?.tone === "joined" ? "Joined" : displayHostName || "Host";
+  const ratingLabel =
+    rideAppTrustBadge?.tone === "rating"
+      ? rideAppTrustBadge.label.replace(/^Host\s+/i, "")
+      : rideAppTrustBadge?.tone === "warning"
+        ? null
+        : isRideApp
+          ? "4.9"
+          : null;
+  const compactStatusLabel = currentUserRelationship
+    ? currentUserRelationship.tone === "host"
+      ? "Your pod"
+      : "Joined"
     : ride.quoteStatus === "quote_ready"
-      ? "border-emerald-300/35 bg-emerald-300/14 text-emerald-100"
-      : "border-[var(--rp-border-strong)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] text-[var(--rp-primary)]";
-  const recurringTiming =
-    ride.rideKind === "recurring" && (ride.startLabel || ride.endLabel)
-      ? {
-          starts: ride.startLabel ?? "Next ride",
-          ends: ride.endLabel ?? "Ongoing",
-        }
-      : null;
+      ? "Verified"
+      : minimumReached(ride)
+        ? "Ready"
+        : "Forming";
+  const estimateText = isRideApp
+    ? rideAppEstimateDisplay.updated
+      ? `Est. ${rideAppEstimateDisplay.value}`
+      : "Estimate pending"
+    : `Est. share HK$${ride.pricePerPerson}`;
+  const secondaryRouteLabel = showHostName ? `Host: ${displayHostName}` : getRideAppProviderLabel(ride) ?? ride.taxiType;
 
   return (
     <Link
       href={cardHref}
       className={cn(
-        "block rounded-[26px] border bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-card)_96%,transparent),var(--rp-card-soft))] p-4 shadow-[var(--rp-shadow-soft)] transition min-[560px]:p-5",
+        "block overflow-hidden rounded-[18px] border bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-card)_96%,transparent),var(--rp-card-soft))] px-3 py-3 shadow-[var(--rp-shadow-soft)] transition min-[390px]:px-4 min-[560px]:rounded-[20px]",
         currentUserRelationship?.tone === "host"
           ? "border-[color-mix(in_srgb,var(--rp-primary)_78%,var(--rp-border))] shadow-[0_0_34px_color-mix(in_srgb,var(--rp-primary)_16%,transparent)] hover:border-[var(--rp-primary)]"
           : currentUserRelationship?.tone === "joined"
@@ -1198,157 +1028,63 @@ function HomeRideCard({
           : "border-[var(--rp-border-strong)] hover:border-[var(--rp-primary)] hover:shadow-[0_0_32px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]",
       )}
     >
-      {currentUserRelationship ? (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div
-            className={cn(
-              "inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2",
-              currentUserRelationship.tone === "host"
-                ? "border-[color-mix(in_srgb,var(--rp-primary)_58%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)]"
-                : "border-cyan-300/45 bg-cyan-400/14 text-[var(--rp-primary)]",
-            )}
-          >
-            {currentUserRelationship.tone === "host" ? (
-              <ShieldCheck className="h-4 w-4 shrink-0" />
-            ) : (
-              <CheckCircle2 className="h-4 w-4 shrink-0" />
-            )}
-            <span className="truncate text-[11px] font-black uppercase tracking-[0.12em] min-[560px]:text-xs">
-              {currentUserRelationship.label}
+      <div className="grid grid-cols-[72px_minmax(0,1fr)_62px] items-center gap-3 min-[390px]:grid-cols-[86px_minmax(0,1fr)_70px] min-[560px]:grid-cols-[116px_minmax(0,1fr)_88px] min-[560px]:gap-5">
+        <div className="grid min-w-0 grid-cols-[18px_minmax(0,1fr)] items-center gap-2 pr-2 min-[390px]:gap-2.5 min-[560px]:pr-4">
+          <CalendarDays className="h-4 w-4 text-[var(--rp-primary)] min-[560px]:h-5 min-[560px]:w-5" />
+          <div className="min-w-0">
+            <p className="line-clamp-2 text-[11px] font-black leading-4 text-[var(--rp-text)] min-[390px]:text-xs min-[560px]:text-sm">
+              {ride.dateLabel}
+            </p>
+            <p className="mt-1 text-[11px] font-black leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-xs min-[560px]:text-sm">
+              {ride.timeLabel}
+            </p>
+          </div>
+        </div>
+
+        <div className="min-w-0 border-l border-white/10 pl-3 min-[390px]:pl-4 min-[560px]:pl-5">
+          <h2 className="line-clamp-2 text-sm font-black leading-[1.15] text-[var(--rp-text)] min-[390px]:text-base min-[560px]:text-lg">
+            {ride.fromLabel} {"\u2192"} {ride.toLabel}
+          </h2>
+          <p className="mt-1 truncate text-[11px] font-black leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-xs min-[560px]:text-sm">
+            {secondaryRouteLabel}
+          </p>
+          <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-black leading-4 min-[390px]:text-xs min-[560px]:text-sm">
+            <span className="inline-flex items-center gap-1 text-[var(--rp-muted-strong)]">
+              <UsersRound className="h-3.5 w-3.5 shrink-0 text-[var(--rp-primary)]" />
+              {ride.seatsUsed} / {ride.seatsTotal}
+            </span>
+            <span className="h-3 w-px bg-white/12" aria-hidden="true" />
+            <span className={cn("truncate", isRideApp ? "text-sky-300" : "text-[var(--rp-primary)]")}>
+              {estimateText}
             </span>
           </div>
         </div>
-      ) : null}
 
-      <div className={cn("grid gap-3 min-[560px]:grid-cols-[minmax(0,1fr)_minmax(152px,184px)] min-[560px]:items-stretch", currentUserRelationship && "mt-4")}>
-        <div className="grid min-w-0 gap-3">
-          <div className="grid grid-cols-[auto_minmax(0,1fr)] gap-3">
-            <RideProfileAvatar ride={ride} currentUserAvatar={currentUserAvatar} />
-
-            <div className="min-w-0">
-              <h2 className="text-balance text-base font-black leading-tight text-[var(--rp-text)] min-[390px]:text-lg min-[760px]:text-xl">
-                {ride.fromLabel} {"\u2192"} {ride.toLabel}
-              </h2>
-              {showHostName ? (
-                <p className="mt-1 truncate text-xs font-black text-[var(--rp-muted-strong)]">
-                  Host: {displayHostName}
-                </p>
-              ) : null}
-              <RideMetaTags ride={ride} trustBadge={rideAppTrustBadge} />
-              {airportCardTags.length > 0 ? (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {airportCardTags.map((tag) => {
-                    const Icon = tag.icon;
-
-                    return (
-                      <span
-                        key={tag.label}
-                        className={cn(
-                          "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-black",
-                          tag.tone === "luggage"
-                            ? "border-violet-300/30 bg-violet-400/12 text-violet-100"
-                            : "border-cyan-300/30 bg-cyan-400/12 text-cyan-100",
-                        )}
-                      >
-                        <Icon className="h-3.5 w-3.5" />
-                        {tag.label}
-                      </span>
-                    );
-                  })}
-                </div>
-              ) : null}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <span className="rounded-[16px] border border-white/10 bg-white/[0.04] px-3 py-2">
-              <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">
-                <CalendarDays className="h-3.5 w-3.5 shrink-0 text-[var(--rp-primary)]" />
-                Time
-              </span>
-              <span className="mt-1 block text-xs font-black leading-5 text-[var(--rp-text)]">
-                {ride.dateLabel} {"\u00b7"} {ride.timeLabel}
-              </span>
-            </span>
-            <span
-              className={cn(
-                "rounded-[16px] border px-3 py-2",
-                currentUserHasJoined
-                  ? "border-cyan-300/35 bg-cyan-400/10"
-                  : "border-white/10 bg-white/[0.04]",
-              )}
-            >
-              <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted)]">
-                <UsersRound className="h-3.5 w-3.5 shrink-0 text-[var(--rp-primary)]" />
-                Seats
-              </span>
-              <span className="mt-1 flex flex-wrap items-center gap-1 text-xs font-black leading-5 text-[var(--rp-text)]">
-                <span>{ride.seatsUsed} / {ride.seatsTotal} seats</span>
-              </span>
-              {minimumRidersToGo ? (
-                <span className="mt-0.5 block text-[11px] font-black leading-4 text-[var(--rp-primary)]">
-                  {formatMinimumRidersToGo(minimumRidersToGo)}
-                </span>
-              ) : null}
-            </span>
-            {recurringTiming ? (
-              <span className="col-span-2 rounded-[16px] border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black leading-5 text-[var(--rp-muted-strong)]">
-                <span className="text-[var(--rp-primary)]">Starts</span> {recurringTiming.starts}
-                <span className="px-2 text-[var(--rp-primary)]" aria-hidden="true">{"\u00b7"}</span>
-                <span className="text-[var(--rp-primary)]">Ends</span> {recurringTiming.ends}
-              </span>
+        <div className="grid min-w-0 justify-items-center gap-1.5">
+          <RideProfileAvatar ride={ride} currentUserAvatar={currentUserAvatar} />
+          <div className="flex max-w-full items-center gap-1 text-[11px] font-black leading-4 text-[var(--rp-text)] min-[390px]:text-xs">
+            <span className="truncate">{relationshipLabel}</span>
+            {ratingLabel ? (
+              <>
+                <Star className="h-3 w-3 shrink-0 fill-[var(--rp-primary)] text-[var(--rp-primary)]" />
+                <span className="shrink-0">{ratingLabel}</span>
+              </>
             ) : null}
           </div>
+          <span
+            className={cn(
+              "inline-flex min-h-7 max-w-full items-center gap-1 rounded-full border px-2 text-[10px] font-black leading-none min-[390px]:px-2.5 min-[390px]:text-[11px]",
+              currentUserRelationship?.tone === "joined"
+                ? "border-cyan-300/40 bg-cyan-400/12 text-cyan-100"
+                : currentUserRelationship?.tone === "host"
+                  ? "border-[color-mix(in_srgb,var(--rp-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] text-[var(--rp-primary)]"
+                  : "border-sky-300/35 bg-sky-400/14 text-sky-200",
+            )}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{compactStatusLabel}</span>
+          </span>
         </div>
-        <div
-          className={cn(
-            "grid min-w-0 content-center justify-items-center gap-1.5 rounded-[18px] border px-4 py-4 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] min-[560px]:min-h-full",
-            isRideApp
-              ? "border-sky-300/30 bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),rgba(2,8,15,0.22))]"
-              : "border-[color-mix(in_srgb,var(--rp-primary)_35%,var(--rp-border))] bg-[radial-gradient(circle_at_top,color-mix(in_srgb,var(--rp-primary)_12%,transparent),rgba(2,8,15,0.2))]",
-          )}
-        >
-          {!isRideApp ? (
-            <div className="flex w-full flex-wrap items-center justify-center gap-1.5 min-[560px]:gap-2">
-              <span
-                className={cn(
-                  "inline-flex min-h-6 items-center rounded-full border px-1.5 py-1 text-[8px] font-black uppercase tracking-[0.06em] min-[390px]:px-2 min-[390px]:text-[9px] min-[560px]:min-h-7 min-[560px]:px-3 min-[560px]:text-[11px]",
-                  statusBadgeClass,
-                )}
-              >
-                {getTaxiQuoteStatus(ride)}
-              </span>
-            </div>
-          ) : null}
-          {isRideApp ? (
-            <>
-              <p className="text-center text-[8px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted-strong)] min-[390px]:text-[9px] min-[560px]:text-[10px] min-[560px]:tracking-[0.16em]">{rideAppEstimateLabel}</p>
-              <p
-                className={cn(
-                  "max-w-full text-center font-black leading-tight text-sky-300",
-                  rideAppEstimateDisplay.updated
-                    ? "text-lg min-[390px]:text-xl min-[560px]:text-[26px]"
-                    : "whitespace-nowrap text-[10px] min-[390px]:text-xs min-[560px]:text-sm",
-                )}
-              >
-                {rideAppEstimateDisplay.value}
-              </p>
-              {rideAppEstimateHelper ? (
-                <p className="text-center text-[10px] font-black text-sky-200 min-[390px]:text-xs min-[560px]:text-sm">
-                  {rideAppEstimateHelper}
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <p className="text-center text-[8px] font-black uppercase tracking-[0.1em] text-[var(--rp-muted-strong)] min-[390px]:text-[9px] min-[560px]:text-[10px] min-[560px]:tracking-[0.16em]">Est.</p>
-              <p className="text-center text-2xl font-black leading-none text-[var(--rp-primary)] min-[390px]:text-3xl min-[560px]:text-4xl">
-                HK${ride.pricePerPerson}
-              </p>
-              <p className="text-center text-[10px] font-black text-[var(--rp-muted-strong)] min-[390px]:text-xs min-[560px]:text-sm">includes RidePod fee</p>
-            </>
-          )}
-          </div>
       </div>
     </Link>
   );
