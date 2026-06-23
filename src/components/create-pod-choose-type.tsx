@@ -2148,9 +2148,9 @@ function AirportLuggageStepper({
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="rounded-[18px] border border-cyan-300/18 bg-[rgba(5,12,20,0.42)] p-3">
-      <p className="text-xs font-black uppercase tracking-[0.12em] text-cyan-100">{label}</p>
-      <div className="mt-3 grid grid-cols-[40px_1fr_40px] items-center gap-2">
+    <div className="min-w-0 rounded-[18px] border border-cyan-300/18 bg-[rgba(5,12,20,0.42)] p-3">
+      <p className="flex min-h-8 items-start text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">{label}</p>
+      <div className="mt-3 grid grid-cols-[40px_minmax(32px,1fr)_40px] items-center justify-items-center gap-2">
         <button
           type="button"
           aria-label={`Decrease ${label}`}
@@ -2160,7 +2160,7 @@ function AirportLuggageStepper({
         >
           <Minus className="h-4 w-4" />
         </button>
-        <span className="text-center text-3xl font-black leading-none text-[var(--rp-text)]">{value}</span>
+        <span className="min-w-8 text-center text-3xl font-black leading-none text-[var(--rp-text)] tabular-nums">{value}</span>
         <button
           type="button"
           aria-label={`Increase ${label}`}
@@ -2372,7 +2372,7 @@ function AirportDetailsStep({
 
         {airportDetailsSlice === "luggage" ? (
           <section className="mt-5 rounded-[24px] border border-cyan-300/20 bg-[rgba(15,27,39,0.82)] p-4 shadow-[var(--rp-shadow-soft)]">
-            <h2 className="text-xl font-black text-cyan-100">Luggage</h2>
+            <h2 className="text-xl font-black text-[var(--rp-primary)]">Luggage</h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
               Airport rides may need more luggage space.
             </p>
