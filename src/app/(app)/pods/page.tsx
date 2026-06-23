@@ -220,12 +220,12 @@ function FilterChip({
       aria-pressed={active}
       onClick={() => onClick(id)}
       className={cn(
-        "inline-flex min-h-[54px] min-w-0 flex-col items-center justify-center gap-1 rounded-[15px] border px-1 text-center text-[10px] font-black leading-none transition min-[390px]:text-[11px]",
+        "inline-flex min-h-[54px] min-w-0 overflow-hidden flex-col items-center justify-center gap-1 rounded-[15px] border px-1 text-center text-[10px] font-black leading-none transition min-[390px]:text-[11px]",
         filterChipClass(active, tone),
       )}
     >
       <Icon className="h-4 w-4 shrink-0" />
-      <span className="min-w-0 leading-[1.05]">{label}</span>
+      <span className="min-w-0 max-w-full break-words leading-[1.05]">{label}</span>
     </button>
   );
 }
@@ -245,7 +245,7 @@ function CalendarDayCell({
   currentUserId?: string | null;
   onSelect: (date: string) => void;
 }) {
-  if (!day) return <div className="min-h-[58px]" />;
+  if (!day) return <div className="min-h-[52px] min-[390px]:min-h-[58px]" />;
 
   const key = dateKey(day);
   const marker = dayMarkerTone(rides, currentUserId);
@@ -256,7 +256,7 @@ function CalendarDayCell({
       type="button"
       onClick={() => onSelect(key)}
       className={cn(
-        "grid min-h-[58px] w-full content-start justify-items-center rounded-[18px] border px-1.5 py-2 text-center transition",
+        "grid min-h-[52px] w-full content-start justify-items-center rounded-[16px] border px-1 py-1.5 text-center transition min-[390px]:min-h-[58px] min-[390px]:rounded-[18px] min-[390px]:px-1.5 min-[390px]:py-2",
         selected &&
           "border-cyan-300/80 bg-cyan-300/12 text-[var(--rp-text)] shadow-[0_0_26px_rgba(34,211,238,0.22)]",
         !selected && marker === "action" && "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_8%,transparent)] text-[var(--rp-text)]",
@@ -267,10 +267,10 @@ function CalendarDayCell({
       aria-current={selected ? "date" : undefined}
       aria-label={`${selectedDateLabel(key)}${rides.length ? `, ${rides.length} ride${rides.length === 1 ? "" : "s"}` : ", no rides"}`}
     >
-      <span className="text-lg font-black leading-6">{day.getDate()}</span>
+      <span className="text-base font-black leading-6 min-[390px]:text-lg">{day.getDate()}</span>
       {marker ? (
         showBadge ? (
-          <span className={cn("mt-1 grid h-6 min-w-6 place-items-center rounded-full border px-1 text-xs font-black", markerBadgeClass(marker))}>
+          <span className={cn("mt-0.5 grid h-6 min-w-6 place-items-center rounded-full border px-1 text-xs font-black min-[390px]:mt-1", markerBadgeClass(marker))}>
             {rides.length}
           </span>
         ) : (
@@ -443,9 +443,9 @@ export default function MyRidePage() {
   }
 
   return (
-    <div className="grid gap-4 pb-3">
+    <div className="grid min-w-0 gap-4 overflow-hidden pb-3">
       <header className="pt-1">
-        <h1 className="text-3xl font-black tracking-tight text-[var(--rp-text)] min-[390px]:text-[34px]">My Ride</h1>
+        <h1 className="text-3xl font-black tracking-tight text-[var(--rp-primary)] min-[390px]:text-[34px]">My Ride</h1>
         <p className="mt-2 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
           See your upcoming taxi and Ride app pods.
         </p>
@@ -471,8 +471,8 @@ export default function MyRidePage() {
         </section>
       ) : (
         <>
-          <section className="rounded-[24px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.065),rgba(255,255,255,0.025))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),var(--rp-shadow-soft)]">
-            <div className="grid grid-cols-5 gap-2">
+          <section className="min-w-0 overflow-hidden rounded-[24px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.065),rgba(255,255,255,0.025))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),var(--rp-shadow-soft)] min-[390px]:p-3">
+            <div className="grid min-w-0 grid-cols-5 gap-1.5 min-[390px]:gap-2">
               {primaryFilters.map((filter) => (
                 <FilterChip
                   key={filter.id}
@@ -485,7 +485,7 @@ export default function MyRidePage() {
                 />
               ))}
             </div>
-            <div className="mt-2 grid grid-cols-4 gap-2">
+            <div className="mt-2 grid min-w-0 grid-cols-4 gap-1.5 min-[390px]:gap-2">
               {statusFilters.map((filter) => (
                 <FilterChip
                   key={filter.id}
@@ -500,30 +500,30 @@ export default function MyRidePage() {
             </div>
           </section>
 
-          <section className="rounded-[26px] border border-[var(--rp-border)] bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_34%),linear-gradient(180deg,var(--rp-card),rgba(11,22,32,0.72))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),var(--rp-shadow-soft)]">
-            <div className="grid grid-cols-[52px_1fr_52px] items-center gap-3">
+          <section className="min-w-0 overflow-hidden rounded-[26px] border border-[var(--rp-border)] bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_34%),linear-gradient(180deg,var(--rp-card),rgba(11,22,32,0.72))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),var(--rp-shadow-soft)] min-[390px]:p-4">
+            <div className="grid min-w-0 grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2 min-[390px]:grid-cols-[52px_minmax(0,1fr)_52px] min-[390px]:gap-3">
               <button
                 type="button"
                 onClick={() => changeMonth(-1)}
                 aria-label="Previous month"
-                className="grid h-12 w-12 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-text)] shadow-[var(--rp-shadow-soft)] transition hover:bg-[var(--rp-card-soft)]"
+                className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-text)] shadow-[var(--rp-shadow-soft)] transition hover:bg-[var(--rp-card-soft)] min-[390px]:h-12 min-[390px]:w-12"
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              <h2 className="text-center text-2xl font-black text-[var(--rp-text)]">{monthLabel(currentMonth)}</h2>
+              <h2 className="min-w-0 text-center text-[22px] font-black text-[var(--rp-text)] min-[390px]:text-2xl">{monthLabel(currentMonth)}</h2>
               <button
                 type="button"
                 onClick={() => changeMonth(1)}
                 aria-label="Next month"
-                className="grid h-12 w-12 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-text)] shadow-[var(--rp-shadow-soft)] transition hover:bg-[var(--rp-card-soft)]"
+                className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-text)] shadow-[var(--rp-shadow-soft)] transition hover:bg-[var(--rp-card-soft)] min-[390px]:h-12 min-[390px]:w-12"
               >
                 <ChevronRight className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="mt-5 grid grid-cols-7 gap-1 text-center">
+            <div className="mt-4 grid min-w-0 grid-cols-7 gap-0.5 text-center min-[390px]:mt-5 min-[390px]:gap-1">
               {weekdays.map((weekday) => (
-                <div key={weekday} className="py-2 text-[10px] font-black uppercase tracking-[0.16em] text-[var(--rp-muted-strong)]">
+                <div key={weekday} className="py-2 text-[9px] font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)] min-[390px]:text-[10px] min-[390px]:tracking-[0.16em]">
                   {weekday}
                 </div>
               ))}
