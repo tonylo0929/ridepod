@@ -2208,30 +2208,28 @@ function CalendarPicker({
   }
 
   return (
-    <section aria-label="Calendar picker" className="mt-9">
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-[22px] font-black leading-none text-[var(--rp-text)]">
+    <section aria-label="Calendar picker" className="mt-8">
+      <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-3">
+        <button
+          type="button"
+          aria-label="Previous month"
+          disabled={!canShowPreviousMonth}
+          onClick={() => moveDisplayedMonth(-1)}
+          className="grid h-11 w-11 place-items-center justify-self-end rounded-full text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)] disabled:cursor-not-allowed disabled:opacity-35"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <h2 className="text-center text-[22px] font-black leading-none text-[var(--rp-text)]">
           {calendar.monthLabel}
         </h2>
-        <div className="flex items-center gap-2 text-[var(--rp-primary)]">
-          <button
-            type="button"
-            aria-label="Previous month"
-            disabled={!canShowPreviousMonth}
-            onClick={() => moveDisplayedMonth(-1)}
-            className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-[var(--rp-card-muted)] disabled:cursor-not-allowed disabled:opacity-35"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button
-            type="button"
-            aria-label="Next month"
-            onClick={() => moveDisplayedMonth(1)}
-            className="grid h-10 w-10 place-items-center rounded-full transition hover:bg-[var(--rp-card-muted)]"
-          >
-            <ChevronRight className="h-6 w-6" />
-          </button>
-        </div>
+        <button
+          type="button"
+          aria-label="Next month"
+          onClick={() => moveDisplayedMonth(1)}
+          className="grid h-11 w-11 place-items-center justify-self-start rounded-full text-[var(--rp-primary)] transition hover:bg-[var(--rp-card-muted)]"
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
       </div>
 
       <div className="mt-5 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-2 py-3 shadow-[var(--rp-shadow-soft)]">
@@ -2837,13 +2835,11 @@ function DateTimeStep({
           ) : (
             <ScheduleTypeEyebrow podType={podType} />
           )}
-          <h1 className="text-[28px] font-black leading-tight text-[var(--rp-text)]">
-            {activeScheduleType === "RECURRING"
-              ? recurringScheduleSubstep === "weekdays"
-                ? "Which days repeat?"
-                : "Set ride times"
-              : "When are you leaving?"}
-          </h1>
+          {activeScheduleType === "RECURRING" ? (
+            <h1 className="text-[28px] font-black leading-tight text-[var(--rp-text)]">
+              {recurringScheduleSubstep === "weekdays" ? "Which days repeat?" : "Set ride times"}
+            </h1>
+          ) : null}
           {activeScheduleType === "RECURRING" ? (
             <p className="mt-3 text-base font-medium text-[var(--rp-muted)]">
               {recurringScheduleSubstep === "weekdays"
