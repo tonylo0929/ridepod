@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  departureAtFromHomeRide,
   homeRideToPublicCreatedPodInsert,
   isUuid,
   publicCreatedRideLifecycleState,
@@ -66,6 +67,42 @@ async function getAuthenticatedUserId(request: NextRequest) {
   const result = await client.auth.getUser(token);
   if (result.error) return null;
   return result.data.user?.id ?? null;
+}
+
+async function findDeletionTargetPod({
+  ride,
+  rideId,
+  userId,
+}: {
+  ride?: HomeRide | null;
+  rideId?: string | null;
+  userId: string;
+}) {
+  const client = getSupabaseAdminClient();
+
+  if (rideId && isUuid(rideId)) {
+    const result = await client.from("pods").select("id,host_user_id").eq("id", rideId).maybeSingle();
+    if (result.error) throw result.error;
+    return result.data as Pick<PublicCreatedRidePod, "id" | "host_user_id"> | null;
+  }
+
+  if (!ride) return null;
+
+  const routeLabel = `${ride.fromLabel} -> ${ride.toLabel}`;
+  const departureAt = departureAtFromHomeRide(ride);
+  let query = client
+    .from("pods")
+    .select("id,host_user_id")
+    .eq("host_user_id", userId)
+    .eq("lifecycle_state", publicCreatedRideLifecycleState)
+    .eq("route_label", routeLabel)
+    .order("created_at", { ascending: false })
+    .limit(1);
+
+  query = departureAt ? query.eq("departure_at", departureAt) : query.is("departure_at", null);
+  const result = await query.maybeSingle();
+  if (result.error) throw result.error;
+  return result.data as Pick<PublicCreatedRidePod, "id" | "host_user_id"> | null;
 }
 
 export async function GET() {
@@ -170,5 +207,42 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.warn("RidePod public created ride publish failed", error);
     return noStoreJson({ error: "Public created ride publish failed." }, { status: 503 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const userId = await getAuthenticatedUserId(request);
+    if (!userId) return noStoreJson({ error: "Authentication required." }, { status: 401 });
+
+    const body = (await request.json().catch(() => null)) as { rideId?: unknown; ride?: unknown } | null;
+    const ride = isHomeRidePayload(body?.ride) ? body.ride : null;
+    const rideId = typeof body?.rideId === "string" ? body.rideId : ride?.id ?? null;
+    if (!rideId && !ride) return noStoreJson({ error: "Invalid ride payload." }, { status: 400 });
+
+    const client = getSupabaseAdminClient();
+    const targetPod = await findDeletionTargetPod({ ride, rideId, userId });
+    if (!targetPod) return noStoreJson({ deleted: false, podId: null }, { status: 404 });
+    if (targetPod.host_user_id !== userId) {
+      return noStoreJson({ error: "Only the host can delete this pod." }, { status: 403 });
+    }
+
+    const membersResult = await client.from("pod_members").select("user_id").eq("pod_id", targetPod.id).eq("status", "joined");
+    if (membersResult.error) throw membersResult.error;
+    const activeRiderCount = (membersResult.data ?? []).filter((member) => member.user_id && member.user_id !== userId).length;
+    if (activeRiderCount > 0) {
+      return noStoreJson({ error: "Cannot delete a pod after riders have joined." }, { status: 409 });
+    }
+
+    const memberDelete = await client.from("pod_members").delete().eq("pod_id", targetPod.id);
+    if (memberDelete.error) throw memberDelete.error;
+
+    const podDelete = await client.from("pods").delete().eq("id", targetPod.id);
+    if (podDelete.error) throw podDelete.error;
+
+    return noStoreJson({ deleted: true, podId: targetPod.id });
+  } catch (error) {
+    console.warn("RidePod public created ride delete failed", error);
+    return noStoreJson({ error: "Public created ride delete failed." }, { status: 503 });
   }
 }

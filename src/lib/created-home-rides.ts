@@ -15,11 +15,17 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 const createdHomeRidesStorageKey = "ridepod-created-home-rides";
 const createdHomeRidesCookieKey = "ridepod_created_home_rides";
 const publicCreatedHomeRidesStorageKey = "ridepod-public-created-home-rides";
+const deletedCreatedHomeRidesStorageKey = "ridepod-deleted-created-home-rides";
 const publicCreatedHomeRidesChannel = "ridepod-public-created-home-rides";
 type CachedPublicCreatedHomeRide = {
   ride: HomeRide;
   hostUserId: string | null;
   cachedAt: string;
+};
+type DeletedCreatedHomeRideMarker = {
+  id: string;
+  signature: string;
+  deletedAt: string;
 };
 type PublicCreatedHomeRideBroadcast = {
   version: 1;
@@ -94,6 +100,47 @@ function writeCreatedHomeRides(rides: HomeRide[]) {
   }
   document.cookie = `${createdHomeRidesCookieKey}=${encodeURIComponent(payload)}; path=/; max-age=2592000; samesite=lax`;
   window.dispatchEvent(new Event("ridepod-created-home-rides-updated"));
+}
+
+function readDeletedCreatedHomeRideMarkers() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(deletedCreatedHomeRidesStorageKey) ?? "[]");
+    return Array.isArray(parsed) ? (parsed as DeletedCreatedHomeRideMarker[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDeletedCreatedHomeRideMarkers(markers: DeletedCreatedHomeRideMarker[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(deletedCreatedHomeRidesStorageKey, JSON.stringify(markers.slice(0, 100)));
+}
+
+function markCreatedHomeRideDeleted(ride: HomeRide) {
+  const signature = publicCreatedRideSignature(ride);
+  const marker = {
+    id: ride.id,
+    signature,
+    deletedAt: new Date().toISOString(),
+  } satisfies DeletedCreatedHomeRideMarker;
+  const current = readDeletedCreatedHomeRideMarkers();
+  writeDeletedCreatedHomeRideMarkers([
+    marker,
+    ...current.filter((item) => item.id !== ride.id && item.signature !== signature),
+  ]);
+}
+
+function clearDeletedCreatedHomeRideMarker(ride: HomeRide) {
+  const signature = publicCreatedRideSignature(ride);
+  const next = readDeletedCreatedHomeRideMarkers().filter((item) => item.id !== ride.id && item.signature !== signature);
+  writeDeletedCreatedHomeRideMarkers(next);
+}
+
+function isDeletedCreatedHomeRide(ride: HomeRide) {
+  const signature = publicCreatedRideSignature(ride);
+  return readDeletedCreatedHomeRideMarkers().some((item) => item.id === ride.id || item.signature === signature);
 }
 
 function readCachedPublicCreatedHomeRides() {
@@ -183,12 +230,13 @@ function cachedPublicRidesForViewer(
   viewerUserId?: string | null,
   viewerIdentity?: CreatedHomeRideViewerIdentity | null,
 ) {
-  return readCachedPublicCreatedHomeRides().map((cached) =>
-    applyViewerRelationship(cached.ride, cached.hostUserId, viewerUserId, viewerIdentity),
-  );
+  return readCachedPublicCreatedHomeRides()
+    .filter((cached) => !isDeletedCreatedHomeRide(cached.ride))
+    .map((cached) => applyViewerRelationship(cached.ride, cached.hostUserId, viewerUserId, viewerIdentity));
 }
 
 function cachePublicCreatedHomeRide(ride: HomeRide, hostUserId: string | null) {
+  if (isDeletedCreatedHomeRide(ride)) return;
   const current = readCachedPublicCreatedHomeRides();
   const nextRide = {
     ride,
@@ -373,6 +421,27 @@ async function publishCreatedHomeRide(ride: HomeRide) {
   }
 }
 
+async function deletePublishedCreatedHomeRide(ride: HomeRide) {
+  const session = await getSupabaseSessionContext();
+  if (!session?.token) return;
+
+  try {
+    const response = await fetch("/api/public-created-rides", {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.token}`,
+      },
+      body: JSON.stringify({ rideId: ride.id, ride }),
+    });
+
+    if (!response.ok && response.status !== 404) throw new Error(`Delete failed with ${response.status}`);
+    window.dispatchEvent(new Event("ridepod-created-home-rides-updated"));
+  } catch (error) {
+    console.warn("RidePod public created ride delete failed", error);
+  }
+}
+
 async function broadcastCreatedHomeRide(ride: HomeRide) {
   const session = await getSupabaseSessionContext();
   if (!session?.client || !session.userId) return;
@@ -469,7 +538,9 @@ async function readPublicCreatedHomeRides(
     const response = await fetch("/api/public-created-rides", { cache: "no-store" });
     if (!response.ok) throw new Error(`List failed with ${response.status}`);
     const payload = (await response.json()) as { pods?: PublicCreatedRidePod[] };
-    return (payload.pods ?? []).map((pod) => publicCreatedPodToHomeRide(pod, viewerUserId, viewerIdentity));
+    return (payload.pods ?? [])
+      .map((pod) => publicCreatedPodToHomeRide(pod, viewerUserId, viewerIdentity))
+      .filter((ride) => !isDeletedCreatedHomeRide(ride));
   } catch (error) {
     console.warn("RidePod public created rides list failed", error);
     return [];
@@ -477,6 +548,7 @@ async function readPublicCreatedHomeRides(
 }
 
 export function saveCreatedHomeRide(ride: HomeRide) {
+  clearDeletedCreatedHomeRideMarker(ride);
   const current = readCreatedHomeRides();
   writeCreatedHomeRides([ride, ...current.filter((item) => item.id !== ride.id)]);
   void publishCreatedHomeRide(ride);
@@ -535,6 +607,25 @@ export function updateCreatedHomeRide(rideId: string, updater: (ride: HomeRide) 
     }
   }
   return updated;
+}
+
+export function deleteCreatedHomeRide(rideId: string) {
+  const current = readCreatedHomeRides();
+  const rideToDelete = current.find((ride) => ride.id === rideId);
+  if (rideToDelete) markCreatedHomeRideDeleted(rideToDelete);
+  const next = current.filter((item) => item.id !== rideId);
+  writeCreatedHomeRides(next);
+
+  if (rideToDelete) {
+    const cached = readCachedPublicCreatedHomeRides();
+    const deletedSignature = publicCreatedRideSignature(rideToDelete);
+    writeCachedPublicCreatedHomeRides(
+      cached.filter((item) => item.ride.id !== rideId && publicCreatedRideSignature(item.ride) !== deletedSignature),
+    );
+    void deletePublishedCreatedHomeRide(rideToDelete);
+  }
+
+  return Boolean(rideToDelete);
 }
 
 function isPublicCreatedHomeRideBroadcast(value: unknown): value is PublicCreatedHomeRideBroadcast {

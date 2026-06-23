@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { AnimalAvatar, RidePodAvatar, getDemoAnimalAvatarId } from "@/components/animal-avatar";
@@ -76,7 +77,7 @@ import {
 } from "@/lib/ride-app-chat-unlock";
 import { getRideWithStoredSelfSettleJoin, saveStoredSelfSettleRidePatch } from "@/lib/ride-app-local-join";
 import { markRideAppWaiverUsed, useRideAppWaiverState } from "@/lib/ride-app-waiver";
-import { saveViewerHomeRide, updateCreatedHomeRide } from "@/lib/created-home-rides";
+import { deleteCreatedHomeRide, saveViewerHomeRide, updateCreatedHomeRide } from "@/lib/created-home-rides";
 import {
   listUserNotifications,
   type RidePodNotificationType,
@@ -1158,6 +1159,22 @@ function isRideAppPodCancelledByHost(ride: HomeRide) {
 function getRideAppConfirmedReplacementRiders(ride: HomeRide) {
   const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
   return buildPodStatusRiders(ride).filter((rider) => isPodStatusRiderConfirmedForCurrentDetails(rider, currentDetailVersion));
+}
+
+function getRideAppJoinedRiderCount(ride: HomeRide) {
+  const activeConfirmationCount =
+    ride.riderConfirmations?.filter(
+      (item) =>
+        item.role === "rider" &&
+        item.status !== "pending" &&
+        item.status !== "left" &&
+        item.status !== "expired" &&
+        item.status !== "seat_hold_expired",
+    ).length ?? 0;
+  const joinedNameCount = (ride.joinedRiders ?? []).filter((name) => name.trim()).length;
+  const seatBasedRiderCount = Math.max(0, (ride.seatsUsed ?? 1) - 1);
+
+  return Math.max(ride.joinedRiderCount ?? 0, activeConfirmationCount, joinedNameCount, seatBasedRiderCount);
 }
 
 function getCurrentUserCanBecomeReplacementBooker(ride: HomeRide) {
@@ -4161,6 +4178,7 @@ function JoinedPodModal({ onConfirm }: { onConfirm: () => void }) {
 }
 
 export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
+  const router = useRouter();
   const { user, profile } = useAuth();
   const [selfSettleLeft, setSelfSettleLeft] = useState(false);
   const storedRide = getRideWithStoredSelfSettleJoin(
@@ -4177,7 +4195,10 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
   const [showRideAppEstimateModal, setShowRideAppEstimateModal] = useState(false);
   const [showRideAppFareProofModal, setShowRideAppFareProofModal] = useState(false);
   const [showManagePodActionsModal, setShowManagePodActionsModal] = useState(false);
-  const [hostCancellationModalConfirmedCount, setHostCancellationModalConfirmedCount] = useState<number | null>(null);
+  const [hostCancellationModalContext, setHostCancellationModalContext] = useState<{
+    confirmedRiderCount: number;
+    joinedRiderCount: number;
+  } | null>(null);
   const [hostCancellationChoice, setHostCancellationChoice] = useState<"step_down" | "cancel_everyone">("step_down");
   const [hostCancellationReason, setHostCancellationReason] = useState<string>(beforeConfirmationCancellationReasons[0]?.value ?? "Plans changed");
   const [rideActionPatch, setRideActionPatch] = useState<Partial<HomeRide> | null>(null);
@@ -4285,6 +4306,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
   const hostCancellationAllowsHostControls = hostCancellationStatus === "active";
   const canUpdateRideAppEstimate = selfSettlePod && showSelfSettleHost && hostCancellationAllowsHostControls;
   const rideAppConfirmedRiderCount = getRideAppConfirmedReplacementRiders(ride).length;
+  const rideAppJoinedRiderCount = getRideAppJoinedRiderCount(ride);
   const currentUserIsSelfSettleRider =
     selfSettlePod &&
     !showSelfSettleHost &&
@@ -4295,8 +4317,10 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
       ride.currentUserJoinIntentStatus === "confirmed" ||
       ride.currentUserJoinIntentStatus === "needs_review");
   const canRequestRideAppStop = currentUserIsSelfSettleRider && hostCancellationAllowsHostControls;
-  const showHostCancellationModal = hostCancellationModalConfirmedCount !== null;
-  const hostCancellationHasConfirmedRiders = (hostCancellationModalConfirmedCount ?? 0) > 0;
+  const showHostCancellationModal = hostCancellationModalContext !== null;
+  const hostCancellationHasJoinedRiders = (hostCancellationModalContext?.joinedRiderCount ?? 0) > 0;
+  const hostCancellationHasConfirmedRiders = (hostCancellationModalContext?.confirmedRiderCount ?? 0) > 0;
+  const hostCancellationDeletesEmptyPod = !hostCancellationHasJoinedRiders;
   const hostCancellationReasons = hostCancellationHasConfirmedRiders
     ? afterConfirmationCancellationReasons
     : beforeConfirmationCancellationReasons;
@@ -4661,21 +4685,35 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ride.id, ride.stopRequestPolicy, ride.proposedStops?.length, ride.approvedStops?.length, ride.declinedStops?.length, showSelfSettleHost, user?.id]);
 
-  function openHostCancellationModal(confirmedRiderCount: number) {
+  function openHostCancellationModal({
+    confirmedRiderCount,
+    joinedRiderCount,
+  }: {
+    confirmedRiderCount: number;
+    joinedRiderCount: number;
+  }) {
     const reasons = confirmedRiderCount > 0 ? afterConfirmationCancellationReasons : beforeConfirmationCancellationReasons;
     setHostCancellationChoice(confirmedRiderCount > 0 ? "step_down" : "cancel_everyone");
     setHostCancellationReason(reasons[0]?.value ?? "Plans changed");
-    setHostCancellationModalConfirmedCount(confirmedRiderCount);
+    setHostCancellationModalContext({ confirmedRiderCount, joinedRiderCount });
   }
 
   function closeHostCancellationModal() {
-    setHostCancellationModalConfirmedCount(null);
+    setHostCancellationModalContext(null);
     setHostCancellationChoice("step_down");
     setHostCancellationReason(beforeConfirmationCancellationReasons[0]?.value ?? "Plans changed");
   }
 
   function confirmHostCancellation() {
     if (!showHostCancellationModal) return;
+
+    if (hostCancellationDeletesEmptyPod) {
+      deleteCreatedHomeRide(ride.id);
+      closeHostCancellationModal();
+      setShowManagePodActionsModal(false);
+      router.replace("/home");
+      return;
+    }
 
     const replacementDeadlineLabel = ride.confirmationDeadlineLabel
       ? `Before ${ride.confirmationDeadlineLabel}`
@@ -4824,7 +4862,12 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
               onSharePod={sharePod}
               onJoinRide={joinSelfSettleFromSummary}
               onLeaveRide={() => setShowLeaveSelfSettleModal(true)}
-              onCancelPodClick={() => openHostCancellationModal(rideAppConfirmedRiderCount)}
+              onCancelPodClick={() =>
+                openHostCancellationModal({
+                  confirmedRiderCount: rideAppConfirmedRiderCount,
+                  joinedRiderCount: rideAppJoinedRiderCount,
+                })
+              }
             />
           ) : (
           <section className="relative -mx-4 -mt-2 overflow-hidden rounded-b-[28px] border-b border-[var(--rp-border)] bg-[var(--rp-shell)] shadow-[var(--rp-shadow-soft)]">
@@ -5249,7 +5292,9 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
                   Confirm host action
                 </h2>
                 <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                  Confirm what should happen to this self-settle pod. Riders will be notified after you confirm.
+                  {hostCancellationDeletesEmptyPod
+                    ? "No riders have joined yet, so this pod can be removed from your created rides."
+                    : "Confirm what should happen to this self-settle pod. Riders will be notified after you confirm."}
                 </p>
               </div>
             </div>
@@ -5290,9 +5335,13 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
                 </>
               ) : (
                 <div className="rounded-[16px] border border-cyan-300/28 bg-cyan-300/8 p-3">
-                  <p className="text-sm font-black text-white">Cancel pod</p>
+                  <p className="text-sm font-black text-white">
+                    {hostCancellationDeletesEmptyPod ? "Delete pod" : "Cancel pod"}
+                  </p>
                   <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                    No riders have confirmed yet. The pod will close and seat holds will be released.
+                    {hostCancellationDeletesEmptyPod
+                      ? "No riders have joined yet. This pod will be removed instead of staying as cancelled."
+                      : "Riders have joined, so the pod will close and they will be notified."}
                   </p>
                 </div>
               )}
@@ -5328,7 +5377,9 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
             <p className="mt-4 rounded-[16px] border border-cyan-300/25 bg-cyan-300/8 px-3 py-3 text-xs font-semibold leading-5 text-cyan-100">
               {hostCancellationHasConfirmedRiders
                 ? "RidePod fee/waiver stays with this pod while riders decide whether to continue."
-                : "No RidePod fee was confirmed. No live payment was charged in this version."}
+                : hostCancellationDeletesEmptyPod
+                  ? "This will remove the pod from your ride list and public listings."
+                  : "No RidePod fee was confirmed. No live payment was charged in this version."}
             </p>
 
             <div className="mt-5 grid grid-cols-2 gap-3">
@@ -5344,7 +5395,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
                 onClick={confirmHostCancellation}
                 className="min-h-12 rounded-[16px] border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/14 px-4 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/20"
               >
-                Confirm
+                {hostCancellationDeletesEmptyPod ? "Delete pod" : "Confirm"}
               </button>
             </div>
           </section>
