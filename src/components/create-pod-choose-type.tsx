@@ -2418,7 +2418,7 @@ function AirportDetailsStep({
             continueLabel={
               isLastAirportDetailsSlice
                 ? "Continue"
-                : airportDetailsSliceCopy[nextAirportDetailsSlice].title
+                : "Next"
             }
             continueIcon={!isLastAirportDetailsSlice ? <ArrowRight className="h-5 w-5" /> : undefined}
           />
