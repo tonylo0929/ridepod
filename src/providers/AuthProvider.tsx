@@ -82,6 +82,7 @@ type AuthContextValue = {
   register: (input: RegisterInput) => Promise<AuthResult>;
   recordTaxiPartnerInterest: (input: TaxiPartnerInterestInput) => Promise<AuthResult>;
   login: (email: string, password: string) => Promise<AuthResult>;
+  loginWithGoogle: (nextPath?: string | null) => Promise<AuthResult>;
   logout: () => Promise<void>;
   updateProfile: (patch: ProfilePatch) => Promise<AuthResult>;
   refreshProfile: () => Promise<void>;
@@ -591,6 +592,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [loadProfile]);
 
+  const loginWithGoogle = useCallback(async (nextPath?: string | null): Promise<AuthResult> => {
+    try {
+      const client = getSupabaseBrowserClient();
+      const callbackUrl = new URL("/auth/callback", window.location.origin);
+      if (nextPath?.startsWith("/")) {
+        callbackUrl.searchParams.set("next", nextPath);
+      }
+
+      const result = await withAuthTimeout(
+        client.auth.signInWithOAuth({
+          provider: "google",
+          options: {
+            redirectTo: callbackUrl.toString(),
+            queryParams: {
+              access_type: "offline",
+              prompt: "select_account",
+            },
+          },
+        }),
+        "Google login took too long.",
+      );
+
+      if (result.error) {
+        return {
+          ok: false,
+          error: result.error.message || "Couldn't start Google login. Check the OAuth redirect settings.",
+        };
+      }
+
+      return { ok: true };
+    } catch (error) {
+      if (isMissingSupabaseConfig(error)) {
+        return { ok: false, error: "Google login needs Supabase to be configured." };
+      }
+
+      return {
+        ok: false,
+        error: isAuthTimeoutError(error)
+          ? "Google login is taking too long. Check your connection and try again."
+          : "Couldn't start Google login. Check the OAuth redirect settings.",
+      };
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     if (source === "mock") {
       writeMockProfile(null);
@@ -656,11 +701,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register,
       recordTaxiPartnerInterest,
       login,
+      loginWithGoogle,
       logout,
       updateProfile,
       refreshProfile,
     }),
-    [fallbackNote, isLoading, login, logout, profile, recordTaxiPartnerInterest, refreshProfile, register, session, source, updateProfile, user],
+    [fallbackNote, isLoading, login, loginWithGoogle, logout, profile, recordTaxiPartnerInterest, refreshProfile, register, session, source, updateProfile, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

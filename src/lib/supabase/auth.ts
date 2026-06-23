@@ -1,5 +1,6 @@
 import type { User } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { ensureProfileForAuthenticatedUser } from "@/lib/supabase/profiles";
 import type { RidePodProfileRow } from "@/lib/supabase/types";
 
 export type RidePodGenderIdentity =
@@ -151,44 +152,12 @@ export async function getCurrentUser() {
   }
 }
 
-function metadataText(value: unknown) {
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function normalizeAccountName(value: string) {
-  const normalized = value.trim().toLowerCase();
-  return /^[a-z0-9._]{3,24}$/.test(normalized) ? normalized : "";
-}
-
 export async function ensureProfileForUser(
   user: Pick<User, "id" | "email"> & { user_metadata?: Record<string, unknown> | null },
   displayName?: string | null,
 ) {
   const client = getSupabaseBrowserClient();
-  const metadataDisplayName = metadataText(user.user_metadata?.display_name);
-  const metadataAccountName =
-    normalizeAccountName(metadataText(user.user_metadata?.account_name)) ||
-    normalizeAccountName(metadataDisplayName);
-  const profile: Partial<RidePodProfileRow> = {
-    id: user.id,
-    account_name: metadataAccountName || null,
-    email: user.email ?? null,
-    display_name: displayName?.trim() || metadataDisplayName || metadataAccountName || user.email?.split("@")[0] || "RidePod user",
-  };
-
-  const result = await client
-    .from("profiles")
-    .upsert(profile, { onConflict: "id" })
-    .select("*")
-    .maybeSingle();
-
-  if (result.error) {
-    const existing = await client.from("profiles").select("*").eq("id", user.id).maybeSingle();
-    if (!existing.error && existing.data) return existing.data;
-    throw new Error(result.error.message);
-  }
-
-  return result.data;
+  return ensureProfileForAuthenticatedUser(client, user, displayName);
 }
 
 export async function getCurrentProfile(): Promise<CurrentProfileResult> {

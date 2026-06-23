@@ -3,18 +3,33 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LockKeyhole, Mail } from "lucide-react";
+import { LockKeyhole, LogIn, Mail } from "lucide-react";
 import { AuthPageShell } from "@/components/auth-page-shell";
 import { useAuth } from "@/providers/AuthProvider";
 
+const oauthErrorMessages: Record<string, string> = {
+  oauth_denied: "Google login was cancelled.",
+  oauth_exchange_failed: "Couldn't finish Google login. Try again, or use email and password.",
+  redirect_mismatch: "Google login redirect is not configured for this RidePod URL.",
+  missing_code: "Google login did not return a valid code. Try again.",
+  profile_setup_failed: "Google login worked, but RidePod could not finish profile setup. Try again.",
+};
+
 export default function LoginPage() {
   const router = useRouter();
-  const { login, fallbackNote } = useAuth();
+  const { login, loginWithGoogle, fallbackNote } = useAuth();
   const [loginIdentifier, setLoginIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    const oauthError = new URLSearchParams(window.location.search).get("error");
+    return oauthError
+      ? oauthErrorMessages[oauthError] ?? "Google login failed. Try again, or use email and password."
+      : null;
+  });
   const [submitting, setSubmitting] = useState(false);
+  const [oauthSubmitting, setOauthSubmitting] = useState(false);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -37,6 +52,20 @@ export default function LoginPage() {
       setError("Couldn't log in. Try again later.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function onGoogleLogin() {
+    setOauthSubmitting(true);
+    setStatus(null);
+    setError(null);
+
+    const next = new URLSearchParams(window.location.search).get("next");
+    const result = await loginWithGoogle(next && next.startsWith("/") ? next : null);
+
+    if (!result.ok) {
+      setOauthSubmitting(false);
+      setError(result.error ?? "Couldn't start Google login. Try again later.");
     }
   }
 
@@ -83,13 +112,30 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || oauthSubmitting}
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--rp-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] disabled:opacity-60"
           >
             <Mail className="h-4 w-4" />
             {submitting ? "Logging in..." : "Log in"}
           </button>
         </form>
+
+        <div className="grid gap-3">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+            <span className="h-px bg-[var(--rp-border)]" />
+            <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">or</span>
+            <span className="h-px bg-[var(--rp-border)]" />
+          </div>
+          <button
+            type="button"
+            onClick={onGoogleLogin}
+            disabled={submitting || oauthSubmitting}
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-text)] transition hover:border-[var(--rp-border-strong)] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <LogIn className="h-4 w-4 text-[var(--rp-primary)]" />
+            {oauthSubmitting ? "Opening Google..." : "Continue with Google"}
+          </button>
+        </div>
 
         {status ? <p className="text-sm font-black text-[var(--rp-success)]">{status}</p> : null}
         {fallbackNote ? <p className="text-xs font-bold leading-5 text-[var(--rp-muted)]">{fallbackNote}</p> : null}
