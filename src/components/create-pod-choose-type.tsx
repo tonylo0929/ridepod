@@ -951,13 +951,6 @@ function syncAirportDirectionDefaults(details: AirportDetailsState, direction: A
   };
 }
 
-function getAirportFlightTimeLabel(details: AirportDetailsState) {
-  const value = details.flightTimeLabel.trim();
-  if (!value) return "Not provided";
-
-  return value;
-}
-
 function getAirportTerminalHallValue(details: AirportDetailsState) {
   const value = details.airportDirection === "to_airport" ? details.airportTerminal : details.airportHall;
   return value.trim() || "Not provided";
@@ -6018,71 +6011,6 @@ function SummaryLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function AirportReviewSummaryCard({
-  airportDetails,
-  pickupAddress,
-  dropoffAddress,
-  peopleVehicle,
-}: {
-  airportDetails: AirportDetailsState;
-  pickupAddress: string;
-  dropoffAddress: string;
-  peopleVehicle: PeopleVehicleState;
-}) {
-  const isRideAppSelfSettle = normalizeRideOptionId(peopleVehicle.rideOption) === "ride_app_fixed_quote";
-  const isToAirport = airportDetails.airportDirection === "to_airport";
-  const flightNumber = airportDetails.flightNumber.trim();
-  const flyingFrom = airportDetails.flightFrom.trim() || (isToAirport ? "Hong Kong (HKG)" : "Not provided");
-  const flyingTo = airportDetails.flightTo.trim() || (isToAirport ? "Not provided" : "Hong Kong (HKG)");
-  const rideMode = isRideAppSelfSettle ? "Ride App Self-Settle" : "Taxi Partner Quote";
-  const routeRows = isToAirport
-    ? [
-        ["Pickup point", pickupAddress || "None"],
-        ["Airport drop-off", dropoffAddress || getAirportTerminalHallValue(airportDetails)],
-      ]
-    : [
-        [isRideAppSelfSettle ? "Gather point" : "Airport pickup", pickupAddress || getAirportTerminalHallValue(airportDetails)],
-        ["Destination", dropoffAddress || "None"],
-      ];
-
-  const rows = [
-    ["Direction", getAirportDirectionLabel(airportDetails.airportDirection)],
-    ["Flight number", flightNumber || "Flight number not provided"],
-    ["Flying from", flyingFrom],
-    ["Flying to", flyingTo],
-    [isToAirport ? "Departure time" : "Arrival time", getAirportFlightTimeLabel(airportDetails)],
-    ["Terminal / hall", getAirportTerminalHallValue(airportDetails)],
-    ["Luggage", getAirportLuggageSummary(airportDetails)],
-    ...routeRows,
-    ["Ride Mode", rideMode],
-  ];
-
-  return (
-    <section className="rounded-[22px] border border-cyan-300/35 bg-[linear-gradient(135deg,rgba(34,211,238,0.12),rgba(124,58,237,0.11),var(--rp-card))] p-4 shadow-[0_0_34px_rgba(34,211,238,0.10)]">
-      <div className="flex items-start gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-cyan-300/30 bg-cyan-300/10 text-cyan-100">
-          <Plane className="-rotate-12 h-5 w-5" />
-        </span>
-        <div className="min-w-0">
-          <p className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-            Flight details are user-entered and not verified by RidePod in this version.
-          </p>
-        </div>
-      </div>
-      <dl className="mt-4 grid gap-2">
-        {rows.map(([label, value]) => (
-          <SummaryLine key={label} label={label} value={value} />
-        ))}
-      </dl>
-      <p className="mt-3 rounded-[14px] border border-cyan-300/20 bg-cyan-400/10 p-3 text-xs font-bold leading-5 text-cyan-100">
-        {isRideAppSelfSettle
-          ? "Ride fare is paid outside RidePod."
-          : "Taxi partner quote is separate from RidePod fee."}
-      </p>
-    </section>
-  );
-}
-
 type MoneyProtectionState = {
   estimatedTotalFare: number;
   approvedMaxTotalFare: number;
@@ -7208,14 +7136,6 @@ function ReviewPodStep({
         <div className={cn("grid gap-4", reviewPanel === previewPanelIndex ? "mt-0" : "mt-5")}>
           {reviewPanel === 0 ? (
             <>
-              {airportDetails ? (
-                <AirportReviewSummaryCard
-                  airportDetails={airportDetails}
-                  pickupAddress={pickupAddress}
-                  dropoffAddress={dropoffAddress}
-                  peopleVehicle={peopleVehicle}
-                />
-              ) : null}
               {isTaxiPartnerQuoteReview ? (
                 <TaxiReviewSummaryCard
                   peopleVehicle={peopleVehicle}
