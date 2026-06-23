@@ -181,6 +181,7 @@ type PeopleVehicleState = {
   rideAppMinimumConfirmedRiders: number;
   rideAppFarePaymentTiming: RideAppFarePaymentTiming;
   rideAppAcceptedPaymentMethods: SelfSettlePaymentMethod[];
+  rideAppPaymentMethodOther: string;
 };
 type PricingState = {
   estimatedFare: number;
@@ -3910,10 +3911,15 @@ function RideAppBookingRulesStep({
   );
   const selectedPaymentMethods = peopleVehicle.rideAppAcceptedPaymentMethods;
   const hasPaymentMethod = selectedPaymentMethods.length > 0;
+  const otherPaymentMethodSelected = selectedPaymentMethods.includes("other");
+  const otherPaymentMethodLabel = peopleVehicle.rideAppPaymentMethodOther.trim();
+  const otherPaymentMethodValid = !otherPaymentMethodSelected || otherPaymentMethodLabel.length > 0;
   const minRidersValid =
     selectedMinimumConfirmedRiders >= 1 && selectedMinimumConfirmedRiders <= maxMinimumRidersToGo;
-  const canContinue = hasPaymentMethod && minRidersValid;
+  const canContinue = hasPaymentMethod && otherPaymentMethodValid && minRidersValid;
   const [isPaymentTimingOpen, setIsPaymentTimingOpen] = useState(true);
+  const [isOtherPaymentDialogOpen, setIsOtherPaymentDialogOpen] = useState(false);
+  const [otherPaymentDraft, setOtherPaymentDraft] = useState(peopleVehicle.rideAppPaymentMethodOther);
   const paymentTimingPanelId = useId();
 
   function updateMinimumRidersToGo(value: number) {
@@ -3941,16 +3947,61 @@ function RideAppBookingRulesStep({
     });
   }, [onPeopleVehicleChange, peopleVehicle, selectedMinimumConfirmedRiders]);
 
-  function togglePaymentMethod(paymentMethod: SelfSettlePaymentMethod) {
+  function setPaymentMethodSelected(paymentMethod: SelfSettlePaymentMethod, selected: boolean) {
     const nextPaymentMethods = selectedPaymentMethods.includes(paymentMethod)
-      ? selectedPaymentMethods.filter((method) => method !== paymentMethod)
-      : [...selectedPaymentMethods, paymentMethod];
+      ? selected
+        ? selectedPaymentMethods
+        : selectedPaymentMethods.filter((method) => method !== paymentMethod)
+      : selected
+        ? [...selectedPaymentMethods, paymentMethod]
+        : selectedPaymentMethods;
 
     onPeopleVehicleChange({
       ...peopleVehicle,
       rideAppAcceptedPaymentMethods: nextPaymentMethods,
       paymentMethod: nextPaymentMethods[0] ?? peopleVehicle.paymentMethod,
     });
+  }
+
+  function handlePaymentMethodToggle(paymentMethod: SelfSettlePaymentMethod) {
+    if (paymentMethod === "other") {
+      setOtherPaymentDraft(peopleVehicle.rideAppPaymentMethodOther);
+      setIsOtherPaymentDialogOpen(true);
+      return;
+    }
+
+    setPaymentMethodSelected(paymentMethod, !selectedPaymentMethods.includes(paymentMethod));
+  }
+
+  function saveOtherPaymentMethod() {
+    const nextOtherPaymentMethod = otherPaymentDraft.trim();
+
+    if (!nextOtherPaymentMethod) return;
+
+    const nextPaymentMethods = selectedPaymentMethods.includes("other")
+      ? selectedPaymentMethods
+      : [...selectedPaymentMethods, "other" as SelfSettlePaymentMethod];
+
+    onPeopleVehicleChange({
+      ...peopleVehicle,
+      rideAppPaymentMethodOther: nextOtherPaymentMethod,
+      rideAppAcceptedPaymentMethods: nextPaymentMethods,
+      paymentMethod: nextPaymentMethods[0] ?? peopleVehicle.paymentMethod,
+    });
+    setIsOtherPaymentDialogOpen(false);
+  }
+
+  function removeOtherPaymentMethod() {
+    const nextPaymentMethods = selectedPaymentMethods.filter((method) => method !== "other");
+
+    onPeopleVehicleChange({
+      ...peopleVehicle,
+      rideAppPaymentMethodOther: "",
+      rideAppAcceptedPaymentMethods: nextPaymentMethods,
+      paymentMethod: nextPaymentMethods[0] ?? peopleVehicle.paymentMethod,
+    });
+    setOtherPaymentDraft("");
+    setIsOtherPaymentDialogOpen(false);
   }
 
   return (
@@ -4039,10 +4090,17 @@ function RideAppBookingRulesStep({
                   <input
                     type="checkbox"
                     checked={selected}
-                    onChange={() => togglePaymentMethod(method.id)}
+                    onChange={() => handlePaymentMethodToggle(method.id)}
                     className="h-4 w-4 accent-cyan-300"
                   />
-                  {method.title}
+                  <span className="min-w-0">
+                    <span className="block truncate">{method.title}</span>
+                    {method.id === "other" && selected && otherPaymentMethodLabel ? (
+                      <span className="mt-0.5 block truncate text-[11px] font-black text-cyan-100/80">
+                        {otherPaymentMethodLabel}
+                      </span>
+                    ) : null}
+                  </span>
                 </label>
               );
             })}
@@ -4050,12 +4108,74 @@ function RideAppBookingRulesStep({
           {!hasPaymentMethod ? (
             <p className="mt-2 text-xs font-black text-[var(--rp-danger)]">Choose at least one payment method.</p>
           ) : null}
+          {otherPaymentMethodSelected && !otherPaymentMethodValid ? (
+            <p className="mt-2 text-xs font-black text-[var(--rp-danger)]">Type the preferred payment method for Other.</p>
+          ) : null}
         </section>
 
         <div className="mt-5">
           <CreatePodStepActions onBack={onBack} onContinue={onContinue} disabled={!canContinue} />
         </div>
       </main>
+
+      {isOtherPaymentDialogOpen ? (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/65 px-5 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="other-payment-dialog-title"
+        >
+          <section className="w-full max-w-[360px] rounded-[26px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
+            <h2 id="other-payment-dialog-title" className="text-xl font-black text-[var(--rp-primary)]">
+              Preferred payment method
+            </h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              Tell riders which payment method you prefer.
+            </p>
+            <label className="mt-4 grid gap-2">
+              <span className="text-xs font-black uppercase tracking-[0.13em] text-[var(--rp-muted)]">
+                Payment method
+              </span>
+              <input
+                value={otherPaymentDraft}
+                onChange={(event) => setOtherPaymentDraft(event.target.value)}
+                placeholder="e.g. AlipayHK, bank transfer"
+                autoFocus
+                className="min-h-12 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-text)] outline-none placeholder:text-[var(--rp-muted)] focus:border-cyan-300"
+              />
+            </label>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setOtherPaymentDraft(peopleVehicle.rideAppPaymentMethodOther);
+                  setIsOtherPaymentDialogOpen(false);
+                }}
+                className="min-h-12 rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-text)]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveOtherPaymentMethod}
+                disabled={!otherPaymentDraft.trim()}
+                className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#ffe48a,#f6b63f)] text-sm font-black text-black shadow-[0_12px_28px_rgba(246,182,63,0.25)] disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Save
+              </button>
+            </div>
+            {otherPaymentMethodSelected ? (
+              <button
+                type="button"
+                onClick={removeOtherPaymentMethod}
+                className="mt-3 min-h-10 w-full rounded-[14px] border border-[var(--rp-danger)]/40 bg-[var(--rp-danger)]/10 text-xs font-black text-[var(--rp-danger)]"
+              >
+                Remove Other
+              </button>
+            ) : null}
+          </section>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -4798,7 +4918,8 @@ function getRideAppProviderLabel(provider: RideAppProvider, otherProvider = "") 
   return rideAppProviderOptions.find((option) => option.id === provider)?.title ?? "Uber";
 }
 
-function getSelfSettlePaymentMethodLabel(paymentMethod: SelfSettlePaymentMethod) {
+function getSelfSettlePaymentMethodLabel(paymentMethod: SelfSettlePaymentMethod, otherPaymentMethod = "") {
+  if (paymentMethod === "other") return otherPaymentMethod.trim() || "Other";
   return selfSettlePaymentMethodOptions.find((option) => option.id === paymentMethod)?.title ?? "PayMe";
 }
 
@@ -4814,10 +4935,10 @@ function getRideAppBookingTriggerSummary(peopleVehicle: PeopleVehicleState) {
   return formatMinimumRidersToGo(peopleVehicle.rideAppMinimumConfirmedRiders);
 }
 
-function getRideAppAcceptedPaymentMethodsLabel(paymentMethods: SelfSettlePaymentMethod[]) {
+function getRideAppAcceptedPaymentMethodsLabel(paymentMethods: SelfSettlePaymentMethod[], otherPaymentMethod = "") {
   if (paymentMethods.length === 0) return "To be agreed in chat";
 
-  return paymentMethods.map(getSelfSettlePaymentMethodLabel).join(", ");
+  return paymentMethods.map((paymentMethod) => getSelfSettlePaymentMethodLabel(paymentMethod, otherPaymentMethod)).join(", ");
 }
 
 function getStopRequestPolicyLabel(policy: StopRequestPolicy) {
@@ -4871,7 +4992,9 @@ function buildCreatedRideAppHomeRide({
 }): HomeRide {
   const id = crypto.randomUUID();
   const rideAppProviderName = getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther);
-  const acceptedPaymentMethods = peopleVehicle.rideAppAcceptedPaymentMethods.map(getSelfSettlePaymentMethodLabel);
+  const acceptedPaymentMethods = peopleVehicle.rideAppAcceptedPaymentMethods.map((paymentMethod) =>
+    getSelfSettlePaymentMethodLabel(paymentMethod, peopleVehicle.rideAppPaymentMethodOther),
+  );
   const splitMethod = getSelfSettleSplitMethodLabel(peopleVehicle.splitMethod);
   const estimatedFare = peopleVehicle.estimatedRideAppFare.trim();
 
@@ -6622,7 +6745,7 @@ function PodCreatedSummaryCard({
     {
       icon: DollarSign,
       label: "Accepted payment",
-      value: getRideAppAcceptedPaymentMethodsLabel(peopleVehicle.rideAppAcceptedPaymentMethods),
+      value: getRideAppAcceptedPaymentMethodsLabel(peopleVehicle.rideAppAcceptedPaymentMethods, peopleVehicle.rideAppPaymentMethodOther),
     },
     {
       icon: DollarSign,
@@ -6642,7 +6765,7 @@ function PodCreatedSummaryCard({
     {
       icon: DollarSign,
       label: "Payment method after ride",
-      value: getSelfSettlePaymentMethodLabel(peopleVehicle.paymentMethod),
+      value: getSelfSettlePaymentMethodLabel(peopleVehicle.paymentMethod, peopleVehicle.rideAppPaymentMethodOther),
     },
   ] : [
     {
@@ -6870,6 +6993,7 @@ export function CreatePodChooseType() {
     rideAppMinimumConfirmedRiders: 2,
     rideAppFarePaymentTiming: "after_ride",
     rideAppAcceptedPaymentMethods: [],
+    rideAppPaymentMethodOther: "",
   });
   const [genderMode, setGenderMode] = useState<GenderMode>("mixed");
   const [accessMode, setAccessMode] = useState<AccessMode>("open");
