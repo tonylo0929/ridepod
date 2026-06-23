@@ -991,11 +991,25 @@ function RideResultMetaItem({ icon, children }: { icon: ReactNode; children: Rea
   );
 }
 
+function getKnownRideHostDisplayName(ride: HomeRide) {
+  const displayName = ride.hostDisplayName?.trim();
+  if (displayName && displayName.toLowerCase() !== "new host") return displayName;
+
+  const hostName = ride.hostName?.trim();
+  if (hostName && hostName.toLowerCase() !== "new host") return hostName;
+
+  return null;
+}
+
+function getRideHostDisplayName(ride: HomeRide) {
+  return getKnownRideHostDisplayName(ride) ?? "Host";
+}
+
 function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; currentUserAvatar?: CurrentUserAvatar | null }) {
   const isRideApp = isRideAppSelfSettle(ride);
   const showCurrentUserAvatar = ride.currentUserRole === "host" && Boolean(currentUserAvatar);
   const showHostAvatar = !showCurrentUserAvatar && Boolean(ride.hostAvatarPreference);
-  const hostDisplayName = ride.hostDisplayName?.trim() || ride.hostName || "Host";
+  const hostDisplayName = getRideHostDisplayName(ride);
   const Icon = isRideApp
     ? Smartphone
     : rideMatchesTab("quote_ready", ride)
@@ -1008,7 +1022,7 @@ function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; curren
 
   return (
     <div
-      aria-label={`${ride.hostName || "Profile"} profile`}
+      aria-label={`${hostDisplayName} profile`}
       className={cn(
         "relative grid h-11 w-11 shrink-0 place-items-center overflow-visible rounded-full border text-xl font-black shadow-[0_14px_30px_rgba(0,0,0,0.28)] min-[560px]:h-12 min-[560px]:w-12 min-[560px]:text-2xl",
         isRideApp
@@ -1033,7 +1047,7 @@ function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; curren
           className="h-full w-full rounded-full text-lg min-[560px]:text-xl"
         />
       ) : (
-        getProfileInitial(ride.hostName)
+        getProfileInitial(hostDisplayName)
       )}
       <span
         className={cn(
@@ -1059,7 +1073,7 @@ function RecurringRideResultCard({
   const podHref = `/pods/${ride.id}`;
   const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
   const data = getRecurringRideResultData(ride);
-  const hostDisplayName = ride.hostDisplayName?.trim() || ride.hostName || "Host";
+  const hostDisplayName = getRideHostDisplayName(ride);
   const showCurrentUserAvatar = ride.currentUserRole === "host" && Boolean(currentUserAvatar);
   const avatarPreference = showCurrentUserAvatar ? currentUserAvatar.avatarPreference : ride.hostAvatarPreference;
   const avatarUrl = showCurrentUserAvatar ? currentUserAvatar.avatarUrl : ride.host_avatar_url ?? ride.hostAvatarUrl;
@@ -1144,10 +1158,9 @@ function HomeRideCard({
   const rideAppEstimateDisplay = getRideAppTotalEstimateDisplay(ride);
   const podHref = `/pods/${ride.id}`;
   const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
-  const displayHostName = ride.hostName?.trim();
-  const showHostName = Boolean(displayHostName && displayHostName.toLowerCase() !== "new host");
+  const displayHostName = getKnownRideHostDisplayName(ride);
   const rideAppTrustBadge = isRideApp ? getHomeRideTrustBadge(getRideAppTrustSummary(getHomeRideHostTrustUserId(ride))) : null;
-  const relationshipLabel = currentUserRelationship?.tone === "host" ? "You" : currentUserRelationship?.tone === "joined" ? "Joined" : displayHostName || "Host";
+  const relationshipLabel = currentUserRelationship?.tone === "host" ? "You" : displayHostName ?? "Host";
   const ratingLabel =
     rideAppTrustBadge?.tone === "rating"
       ? rideAppTrustBadge.label.replace(/^Host\s+/i, "")
@@ -1170,7 +1183,7 @@ function HomeRideCard({
       ? `Est. ${rideAppEstimateDisplay.value}`
       : "Estimate pending"
     : `Est. share HK$${ride.pricePerPerson}`;
-  const secondaryRouteLabel = showHostName ? `Host: ${displayHostName}` : getRideAppProviderLabel(ride) ?? ride.taxiType;
+  const secondaryRouteLabel = displayHostName ? `Host: ${displayHostName}` : getRideAppProviderLabel(ride) ?? ride.taxiType;
 
   return (
     <Link
