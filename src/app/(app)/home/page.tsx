@@ -6,11 +6,14 @@ import {
   CalendarDays,
   CarFront,
   ChevronDown,
+  ChevronRight,
   CheckCircle2,
   CircleDollarSign,
   Gift,
-  LayoutGrid,
+  GraduationCap,
   Luggage,
+  MapPin,
+  Music2,
   Plane,
   RefreshCcw,
   ShieldCheck,
@@ -19,6 +22,7 @@ import {
   Star,
   UsersRound,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useState } from "react";
 import { RidePodAvatar, useRidePodAvatarPreference, type RidePodAvatarPreference } from "@/components/animal-avatar";
@@ -61,12 +65,57 @@ type CurrentUserAvatar = {
   initials: string;
 };
 
-const categoryCards: Array<{ id: HomeTab; label: string; icon: typeof LayoutGrid; fallbackCount: number }> = [
-  { id: "all", label: "Community", icon: LayoutGrid, fallbackCount: 128 },
-  { id: "airport", label: "Airport", icon: Plane, fallbackCount: 42 },
-  { id: "one_off", label: "One-off", icon: CarFront, fallbackCount: 63 },
-  { id: "recurring", label: "Recurring", icon: RefreshCcw, fallbackCount: 23 },
-  { id: "quote_ready", label: "Quote ready", icon: CircleDollarSign, fallbackCount: 8 },
+const categoryCards: Array<{ id: HomeTab; label: string; subtitle: string; icon: LucideIcon }> = [
+  { id: "all", label: "Communities", subtitle: "Find your people", icon: UsersRound },
+  { id: "airport", label: "Airport", subtitle: "Fly together", icon: Plane },
+  { id: "one_off", label: "One-off", subtitle: "Ride today", icon: CarFront },
+  { id: "recurring", label: "Recurring", subtitle: "Ride regularly", icon: RefreshCcw },
+];
+
+const communityCards: Array<{
+  name: string;
+  members: string;
+  icon: LucideIcon;
+  tone: "gold" | "blue" | "violet" | "green";
+}> = [
+  { name: "HKU", members: "1.2K members", icon: GraduationCap, tone: "gold" },
+  { name: "Airport", members: "2.5K members", icon: Plane, tone: "blue" },
+  { name: "Concert", members: "834 members", icon: Music2, tone: "violet" },
+  { name: "TKO", members: "642 members", icon: MapPin, tone: "green" },
+];
+
+const communityRideCalls: Array<{
+  title: string;
+  route: string;
+  meta: string;
+  interested: string;
+  icon: LucideIcon;
+  tone: "blue" | "violet" | "green";
+}> = [
+  {
+    title: "To Tuen Mun after concert",
+    route: "AsiaWorld-Expo -> Tuen Mun",
+    meta: "Today, 11:15 PM  -  2 seats needed",
+    interested: "6 interested",
+    icon: Music2,
+    tone: "violet",
+  },
+  {
+    title: "Airport run this Friday",
+    route: "Central -> Hong Kong Int'l Airport",
+    meta: "May 23, 7:00 AM  -  3 seats needed",
+    interested: "8 interested",
+    icon: Plane,
+    tone: "blue",
+  },
+  {
+    title: "TKO to Cityplaza",
+    route: "TKO -> Cityplaza",
+    meta: "Tomorrow, 8:30 AM  -  2 seats needed",
+    interested: "5 interested",
+    icon: MapPin,
+    tone: "green",
+  },
 ];
 
 const airportDirectionFilters: Array<{ id: AirportDirectionFilter; label: string }> = [
@@ -490,37 +539,140 @@ function SegmentedFilter({
 function CategoryCard({
   id,
   label,
-  count,
+  subtitle,
   icon: Icon,
   selected,
   onClick,
 }: {
   id: HomeTab;
   label: string;
-  count: number;
-  icon: typeof LayoutGrid;
+  subtitle: string;
+  icon: LucideIcon;
   selected: boolean;
   onClick: (tab: HomeTab) => void;
 }) {
+  const priority = id === "all";
+
   return (
     <button
       type="button"
       onClick={() => onClick(id)}
       className={cn(
-        "grid min-h-[96px] w-full place-items-center overflow-hidden rounded-[16px] border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_54%,transparent),color-mix(in_srgb,var(--rp-card-soft)_42%,transparent))] px-1.5 py-2 text-center shadow-[0_16px_38px_rgba(0,0,0,0.18)] backdrop-blur-[6px] transition min-[390px]:px-2",
+        "grid min-h-[82px] w-full place-items-center overflow-hidden rounded-[16px] border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_60%,transparent),color-mix(in_srgb,var(--rp-card-soft)_46%,transparent))] px-1.5 py-2 text-center shadow-[0_16px_38px_rgba(0,0,0,0.2)] backdrop-blur-[6px] transition min-[390px]:min-h-[88px] min-[390px]:px-2",
         selected
-          ? "border-[var(--rp-primary)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-primary)_16%,transparent),color-mix(in_srgb,var(--rp-card)_44%,transparent))] shadow-[0_0_32px_color-mix(in_srgb,var(--rp-primary)_22%,transparent)]"
+          ? "border-[var(--rp-primary)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-primary)_18%,transparent),color-mix(in_srgb,var(--rp-card)_48%,transparent))] shadow-[0_0_32px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
           : "border-white/12 hover:border-[var(--rp-border-strong)] hover:bg-[color-mix(in_srgb,var(--rp-card)_58%,transparent)]",
       )}
     >
-      <span className="grid h-8 w-8 place-items-center text-[var(--rp-primary)]">
-        <Icon className="h-6 w-6 min-[390px]:h-7 min-[390px]:w-7" />
+      <span
+        className={cn(
+          "grid h-8 w-8 place-items-center rounded-full text-[var(--rp-primary)] min-[390px]:h-9 min-[390px]:w-9",
+          priority
+            ? "bg-[color-mix(in_srgb,var(--rp-primary)_20%,transparent)] text-[var(--rp-primary)]"
+            : "bg-sky-300/10 text-sky-200",
+        )}
+      >
+        <Icon className="h-5 w-5 min-[390px]:h-6 min-[390px]:w-6" />
       </span>
-      <span className="mt-2 flex min-h-6 w-full items-center justify-center text-center text-[10px] font-black leading-[1.05] text-[var(--rp-text)] [overflow-wrap:anywhere] min-[390px]:text-[11px]">{label}</span>
-      <span className={cn("mt-0.5 block w-full text-center text-lg font-black", selected ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]")}>
-        {count}
+      <span className="mt-1.5 flex min-h-4 w-full items-center justify-center text-center text-[10px] font-black leading-[1.05] text-[var(--rp-text)] [overflow-wrap:anywhere] min-[390px]:text-[11px]">
+        {label}
+      </span>
+      <span className="mt-0.5 block w-full truncate text-center text-[9px] font-semibold leading-3 text-[var(--rp-muted-strong)] min-[390px]:text-[10px]">
+        {subtitle}
       </span>
     </button>
+  );
+}
+
+function HomeSectionHeader({ title, actionLabel = "See all" }: { title: string; actionLabel?: string }) {
+  return (
+    <div className="mb-3 flex items-center justify-between gap-3">
+      <h2 className="text-sm font-black tracking-tight text-[var(--rp-text)] min-[390px]:text-base">{title}</h2>
+      <button
+        type="button"
+        className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full px-2 text-[10px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/10"
+      >
+        {actionLabel}
+        <ChevronRight className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+function communityToneClass(tone: "gold" | "blue" | "violet" | "green") {
+  if (tone === "gold") return "border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/16 text-[var(--rp-primary)]";
+  if (tone === "violet") return "border-violet-300/35 bg-violet-400/16 text-violet-100";
+  if (tone === "green") return "border-emerald-300/35 bg-emerald-400/16 text-emerald-100";
+  return "border-sky-300/35 bg-sky-400/16 text-sky-100";
+}
+
+function CommunityCard({ community }: { community: (typeof communityCards)[number] }) {
+  const Icon = community.icon;
+
+  return (
+    <button
+      type="button"
+      className="relative min-w-0 rounded-[16px] border border-white/12 bg-[linear-gradient(180deg,rgba(18,32,48,0.86),rgba(10,20,31,0.86))] p-2.5 text-left shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition hover:border-[var(--rp-border-strong)]"
+    >
+      <span className={cn("grid h-10 w-10 place-items-center rounded-full border", communityToneClass(community.tone))}>
+        <Icon className="h-5 w-5" />
+      </span>
+      <span className="mt-2 block truncate text-xs font-black leading-4 text-[var(--rp-text)]">{community.name}</span>
+      <span className="mt-0.5 block truncate text-[10px] font-semibold leading-3 text-[var(--rp-muted-strong)]">{community.members}</span>
+      <span className="absolute bottom-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.7)]" />
+    </button>
+  );
+}
+
+function RideCallCard({ rideCall }: { rideCall: (typeof communityRideCalls)[number] }) {
+  const Icon = rideCall.icon;
+
+  return (
+    <div className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/10 px-2 py-3 last:border-b-0">
+      <span className={cn("grid h-10 w-10 place-items-center rounded-full border", communityToneClass(rideCall.tone === "blue" ? "blue" : rideCall.tone === "violet" ? "violet" : "green"))}>
+        <Icon className="h-5 w-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-black leading-5 text-[var(--rp-text)]">{rideCall.title}</span>
+        <span className="mt-0.5 block truncate text-[11px] font-semibold leading-4 text-[var(--rp-muted-strong)]">{rideCall.route}</span>
+        <span className="mt-0.5 block truncate text-[10px] font-bold leading-4 text-[var(--rp-muted)]">{rideCall.meta}</span>
+      </span>
+      <span className="grid justify-items-end gap-1">
+        <button
+          type="button"
+          className="min-h-8 rounded-full border border-[var(--rp-primary)]/60 bg-[var(--rp-primary)]/10 px-3 text-[10px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
+        >
+          I&apos;m interested
+        </button>
+        <span className="text-[10px] font-semibold text-[var(--rp-muted-strong)]">{rideCall.interested}</span>
+      </span>
+    </div>
+  );
+}
+
+function CommunitiesSection() {
+  return (
+    <section className="relative mt-4 px-4 sm:px-6 lg:px-10">
+      <HomeSectionHeader title="Communities" />
+      <div className="grid grid-cols-4 gap-2">
+        {communityCards.map((community) => (
+          <CommunityCard key={community.name} community={community} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CommunityRideCallsSection() {
+  return (
+    <section className="relative mt-5 px-4 sm:px-6 lg:px-10">
+      <HomeSectionHeader title="Community ride calls" />
+      <div className="overflow-hidden rounded-[18px] border border-white/12 bg-[linear-gradient(180deg,rgba(18,32,48,0.88),rgba(10,20,31,0.9))] shadow-[0_18px_44px_rgba(0,0,0,0.24)]">
+        {communityRideCalls.map((rideCall) => (
+          <RideCallCard key={rideCall.title} rideCall={rideCall} />
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -1592,22 +1744,6 @@ export default function HomePage() {
 
   const visibleRides = tabFilteredRides;
 
-  const categoryCounts = useMemo(() => {
-    const counts: Record<HomeTab, number> = {
-      all: filteredRides.length,
-      airport: filteredRides.filter((ride) => ride.rideKind === "airport").length,
-      one_off: filteredRides.filter((ride) => ride.rideKind === "one_off").length,
-      recurring: filteredRides.filter((ride) => ride.rideKind === "recurring").length,
-      quote_ready: filteredRides.filter((ride) => rideMatchesTab("quote_ready", ride)).length,
-    };
-
-    return counts;
-  }, [filteredRides]);
-  const visibleCategoryCards = useMemo(
-    () => categoryCards.filter((card) => rideModeFilter === "taxi" || card.id !== "quote_ready"),
-    [rideModeFilter],
-  );
-
   function handleTabChange(tab: HomeTab) {
     setActiveTab(tab);
   }
@@ -1789,17 +1925,16 @@ export default function HomePage() {
 
           <div
             className={cn(
-              "mx-auto grid w-full gap-1.5 pb-1 min-[390px]:gap-2",
-              rideModeFilter === "taxi" ? "max-w-[560px] grid-cols-5" : "max-w-[460px] grid-cols-4",
+              "mx-auto grid w-full max-w-[560px] grid-cols-4 gap-1.5 pb-1 min-[390px]:gap-2",
             )}
           >
-            {visibleCategoryCards.map((card) => (
+            {categoryCards.map((card) => (
               <CategoryCard
                 key={card.id}
                 id={card.id}
                 label={card.label}
+                subtitle={card.subtitle}
                 icon={card.icon}
-                count={categoryCounts[card.id] ?? card.fallbackCount}
                 selected={activeTab === card.id}
                 onClick={handleTabChange}
               />
@@ -1808,7 +1943,10 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="relative mt-4 px-4 sm:px-6 lg:px-10">
+      <CommunitiesSection />
+      <CommunityRideCallsSection />
+
+      <section className="relative mt-5 px-4 sm:px-6 lg:px-10">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h1 className="whitespace-nowrap text-base font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
           <div className="flex shrink-0 items-center gap-2">
