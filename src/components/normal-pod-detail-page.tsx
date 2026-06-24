@@ -3665,7 +3665,7 @@ function SelfSettlePodSummaryHero({
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] border border-rose-300/35 bg-rose-500/10 px-3 text-sm font-black text-rose-100 transition hover:bg-rose-500/16"
               >
                 <X className="h-4 w-4" />
-                Leave Pod
+                Leave Ride
               </button>
             </div>
           ) : showInlineJoinRide ? (
@@ -5039,7 +5039,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                                 onClick={() => setShowLeaveSelfSettleModal(true)}
                                 className="min-h-12 rounded-[16px] border border-[var(--rp-primary)]/35 bg-white/8 px-4 text-sm font-black text-[var(--rp-primary)]"
                               >
-                                Leave pod
+                                Leave Ride
                               </button>
                             </div>
                           )}

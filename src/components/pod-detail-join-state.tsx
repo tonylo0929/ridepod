@@ -2954,7 +2954,7 @@ export function PodHeroJoinButton({
             onClick={handleLeavePod}
             className="inline-flex min-h-10 w-full items-center justify-center rounded-[14px] border border-[var(--rp-border-strong)] bg-[color-mix(in_srgb,var(--rp-card-muted)_88%,transparent)] px-3 text-sm font-black text-[var(--rp-primary)] transition hover:border-[var(--rp-primary)] hover:bg-[color-mix(in_srgb,var(--rp-primary)_12%,var(--rp-card-muted))]"
           >
-            Leave pod
+            Leave Ride
           </button>
         ) : null}
       </div>
