@@ -289,7 +289,7 @@ export function readRideGroupsState(): RideGroupsState {
       return {
         ...cloneDefaultState(),
         ...stored,
-        groups: mergeById(defaultGroups, stored.groups),
+        groups: mergeSeededGroups(stored.groups),
         rideCalls: mergeById(defaultRideCalls, stored.rideCalls),
         interests: mergeById(defaultInterests, stored.interests),
       };
@@ -310,6 +310,17 @@ export function writeRideGroupsState(state: RideGroupsState) {
 function mergeById<T extends { id: string }>(defaults: T[], stored: T[]) {
   const storedIds = new Set(stored.map((item) => item.id));
   return [...stored, ...defaults.filter((item) => !storedIds.has(item.id))];
+}
+
+function mergeSeededGroups(stored: RideGroup[]) {
+  const storedById = new Map(stored.map((group) => [group.id, group]));
+  const seededGroups = defaultGroups.map((group) => ({
+    ...storedById.get(group.id),
+    ...group,
+  }));
+  const seededIds = new Set(defaultGroups.map((group) => group.id));
+
+  return [...seededGroups, ...stored.filter((group) => !seededIds.has(group.id))];
 }
 
 function activeInterestsForCall(state: RideGroupsState, rideCallId: string) {
