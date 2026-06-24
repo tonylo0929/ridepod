@@ -3060,7 +3060,7 @@ function PodStatusChecklistRow({
     <>
       <Icon className={cn("h-4 w-4 shrink-0", warning ? "text-amber-200" : "text-[var(--rp-muted-strong)]")} />
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-white">{label}</span>
+        <span className="block text-sm font-semibold text-[var(--rp-primary)]">{label}</span>
         {stackedValue ? (
           <span className={cn("mt-0.5 block break-words text-sm font-black leading-5", set ? "text-white" : "text-amber-100")}>
             {value}
