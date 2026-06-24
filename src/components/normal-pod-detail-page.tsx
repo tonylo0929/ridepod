@@ -371,6 +371,10 @@ function getEstimatedShareRange(pricePerPerson: number) {
   return `HK$${low}-${high}`;
 }
 
+function getPodTypeDisplayLabel(podType: string) {
+  return podType === "Open pod" ? "Anyone" : podType;
+}
+
 function getRideAppEstimateNumberInput(value: string) {
   return value.match(/\d+/)?.[0] ?? "";
 }
@@ -5193,7 +5197,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                   <DetailItem
                     icon={ride.podType === "Open pod" ? <UsersRound className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
                     label="Who can join"
-                    value={ride.podType}
+                    value={getPodTypeDisplayLabel(ride.podType)}
                   />
                   <DetailItem icon={<BriefcaseBusiness className="h-6 w-6" />} label="Group luggage" value={groupLuggageLabel} />
                   {userLuggageLabel ? (
