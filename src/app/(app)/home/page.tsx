@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRightLeft,
   CalendarDays,
@@ -23,7 +24,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { Suspense, type ReactNode, useEffect, useMemo, useState } from "react";
 import { RidePodAvatar, useRidePodAvatarPreference, type RidePodAvatarPreference } from "@/components/animal-avatar";
 import { cn } from "@/components/ui";
 import {
@@ -135,6 +136,14 @@ const tabLabels: Record<HomeTab, string> = {
   recurring: "Recurring",
   quote_ready: "Quote ready",
 };
+
+function getHomeTabFromSearchParam(value: string | null): HomeTab {
+  if (value === "airport" || value === "one_off" || value === "recurring" || value === "quote_ready" || value === "all") {
+    return value;
+  }
+
+  return "all";
+}
 
 const podPreferenceFilters: Array<{ id: PodPreferenceFilter; label: string }> = [
   { id: "all", label: "Any pod" },
@@ -1553,6 +1562,18 @@ function getTimeOfDayGreeting() {
 }
 
 export default function HomePage() {
+  return (
+    <Suspense fallback={null}>
+      <HomePageContent />
+    </Suspense>
+  );
+}
+
+function HomePageContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tabSearchParam = searchParams.get("tab");
+  const activeTab = getHomeTabFromSearchParam(tabSearchParam);
   const { user, profile } = useAuth();
   const isAuthenticated = Boolean(user);
   const displayName = user
@@ -1589,7 +1610,6 @@ export default function HomePage() {
   }, [avatarPreference, avatarProfileId, displayName, profile?.avatar_url, user]);
   const [fromDistrict, setFromDistrict] = useState(initialFromDistrict);
   const [toDistrict, setToDistrict] = useState(initialToDistrict);
-  const [activeTab, setActiveTab] = useState<HomeTab>("all");
   const [podPreferenceFilter, setPodPreferenceFilter] = useState<PodPreferenceFilter>("all");
   const [taxiDriverFilter, setTaxiDriverFilter] = useState<TaxiDriverFilter>("all");
   const [taxiTypeFilter, setTaxiTypeFilter] = useState<TaxiTypeFilter>("all");
@@ -1690,7 +1710,9 @@ export default function HomePage() {
   const visibleRides = tabFilteredRides;
 
   function handleTabChange(tab: HomeTab) {
-    setActiveTab(tab);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("tab", tab);
+    router.replace(`/home?${nextParams.toString()}`, { scroll: false });
   }
 
   function handleRideModeChange(value: Extract<RideModeFilter, "taxi" | "ride_app">) {
@@ -1701,7 +1723,7 @@ export default function HomePage() {
     } else {
       setSettlementFilter("self_settle");
       if (activeTab === "quote_ready") {
-        setActiveTab("all");
+        handleTabChange("all");
       }
     }
   }

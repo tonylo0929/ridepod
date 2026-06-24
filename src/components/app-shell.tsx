@@ -135,7 +135,7 @@ function PremiumTopNav() {
     <header className="sticky top-0 z-40 border-b border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_92%,transparent)] px-4 py-3 shadow-[0_12px_30px_rgba(0,0,0,0.14)] backdrop-blur-xl lg:hidden">
       <div className="mx-auto grid max-w-3xl grid-cols-[56px_1fr_auto] items-center gap-3">
         <HomeMenuDrawer />
-        <Link href="/home" className="inline-flex items-center gap-1.5 justify-self-center" aria-label="RidePod home">
+        <Link href="/home?tab=one_off" className="inline-flex items-center gap-1.5 justify-self-center" aria-label="RidePod home">
           <RidePodLogo className="h-9 justify-center" priority />
           <span className="rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-2 py-0.5 text-[10px] font-black tracking-[0.08em] text-[var(--rp-primary)]">
             v1.0
