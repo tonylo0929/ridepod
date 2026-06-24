@@ -780,7 +780,7 @@ export function RecurringPodDetailPage({ ride, backHref = "/home" }: { ride: Hom
 
         <main className="relative z-10 grid gap-3 px-4">
           <section className="relative -mx-4 -mt-12 overflow-hidden rounded-b-[28px] border-b border-[var(--rp-border)] bg-[var(--rp-shell)] shadow-[var(--rp-shadow-soft)]">
-            <div className="relative min-h-[430px] pt-12">
+            <div className="relative min-h-[610px] pt-12 min-[430px]:min-h-[430px]">
               <Image
                 src="/images/ridepod/home-dark-mode-background.png"
                 alt="Hong Kong skyline illustration at night"
@@ -816,7 +816,7 @@ export function RecurringPodDetailPage({ ride, backHref = "/home" }: { ride: Hom
 
                 <div className="mt-4 border-t border-white/14 pt-4">
                   <div className="grid gap-3">
-                    <div className="grid grid-cols-[minmax(0,1fr)_minmax(112px,0.68fr)] gap-3">
+                    <div className="grid gap-3 min-[430px]:grid-cols-[minmax(0,1fr)_112px]">
                       <div className="min-w-0 rounded-[18px] border border-white/14 bg-black/28 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-md">
                         <div className="flex min-w-0 items-center gap-3">
                           <RiderStack ride={ride} />
@@ -832,7 +832,7 @@ export function RecurringPodDetailPage({ ride, backHref = "/home" }: { ride: Hom
                           />
                         </div>
                       </div>
-                      <div className="grid min-w-0 content-center border-x border-white/14 px-3 py-2 text-left backdrop-blur-md">
+                      <div className="grid min-w-0 content-center rounded-[18px] border border-white/14 bg-black/28 px-3 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-md min-[430px]:rounded-none min-[430px]:border-x min-[430px]:border-y-0 min-[430px]:bg-transparent min-[430px]:px-3 min-[430px]:py-2 min-[430px]:shadow-none">
                         <p className="text-[10px] font-semibold leading-4 text-[var(--rp-muted-strong)]">
                           {howItWorksRideMode === "ride_app" ? "Total estimate" : "Est. share"}
                         </p>
@@ -849,7 +849,7 @@ export function RecurringPodDetailPage({ ride, backHref = "/home" }: { ride: Hom
                       </div>
                     </div>
                   </div>
-                  <div id="quote-status" className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(112px,0.68fr)] items-center gap-3">
+                  <div id="quote-status" className="mt-3 grid items-center gap-3 min-[430px]:grid-cols-[minmax(0,1fr)_112px]">
                     <div className="min-w-0 rounded-[14px] border border-white/14 bg-black/24 px-3 py-2 text-left backdrop-blur-md">
                       <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
                         {howItWorksRideMode === "ride_app" ? "Ride detail status" : "Quote status"}
