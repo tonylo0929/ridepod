@@ -4005,28 +4005,34 @@ function ManagePodRiderGroup({
     <section className="grid gap-2 rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
       <h3 className="text-base font-black text-white">{title}</h3>
       <div className="grid gap-2">
-        {riders.map((rider) => (
-          <div key={`${title}-${rider.name}-${rider.status}`} className="flex min-w-0 items-center justify-between gap-3 rounded-[16px] border border-white/10 bg-black/18 p-3">
-            <span className="flex min-w-0 items-center gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-sm font-black text-cyan-100">
-                {getInitials(rider.name).slice(0, 1)}
+        {riders.map((rider) => {
+          const openSlot = isOpenRiderSlot(rider);
+
+          return (
+            <div key={`${title}-${rider.name}-${rider.status}`} className="flex min-w-0 items-center justify-between gap-3 rounded-[16px] border border-white/10 bg-black/18 p-3">
+              <span className="flex min-w-0 items-center gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-sm font-black text-cyan-100">
+                  {getInitials(rider.name).slice(0, 1)}
+                </span>
+                <span className="min-w-0">
+                  <span className={cn("line-clamp-2 block text-sm leading-5", openSlot ? "font-semibold text-[var(--rp-muted-strong)]" : "font-black text-white")}>{rider.name}</span>
+                  <span className="block text-xs font-semibold text-[var(--rp-muted-strong)]">{getHelper(rider)}</span>
+                </span>
               </span>
-              <span className="min-w-0">
-                <span className="line-clamp-2 block text-sm font-black leading-5 text-white">{rider.name}</span>
-                <span className="block text-xs font-semibold text-[var(--rp-muted-strong)]">{getHelper(rider)}</span>
+              <span className="grid shrink-0 justify-items-end gap-2">
+                <ManagePodActionStatusChip rider={rider} />
+                {openSlot ? null : (
+                  <Link
+                    href={getViewProfileHref(getPodStatusPersonDisplayName(rider.name), rider.role === "host" ? "host" : "rider")}
+                    className="rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
+                  >
+                    View Profile
+                  </Link>
+                )}
               </span>
-            </span>
-            <span className="grid shrink-0 justify-items-end gap-2">
-              <ManagePodActionStatusChip rider={rider} />
-              <Link
-                href={getViewProfileHref(getPodStatusPersonDisplayName(rider.name), rider.role === "host" ? "host" : "rider")}
-                className="rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
-              >
-                View Profile
-              </Link>
-            </span>
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
     </section>
   );
