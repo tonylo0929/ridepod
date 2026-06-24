@@ -5411,7 +5411,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
           }}
         >
           <section className="max-h-[calc(100vh-2rem)] w-full max-w-[380px] overflow-y-auto rounded-[26px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.44)]">
-            <h2 id="ride-app-estimate-title" className="text-2xl font-black leading-tight">
+            <h2 id="ride-app-estimate-title" className="text-2xl font-black leading-tight text-[var(--rp-primary)]">
               Update total estimate
             </h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
