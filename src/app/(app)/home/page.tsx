@@ -971,17 +971,7 @@ function getRecurringRideResultData(ride: HomeRide) {
     seatsOpen,
     estimate: formatRecurringEstimate(ride),
     rating: ride.host_rating ? String(ride.host_rating) : "4.9",
-    isVerified: ride.is_verified ?? true,
   };
-}
-
-function VerifiedBadge() {
-  return (
-    <span className="inline-flex h-7 max-w-full items-center justify-center gap-1.5 rounded-[9px] border border-[color-mix(in_srgb,var(--rp-primary)_58%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_8%,transparent)] px-2 text-[10px] font-black leading-none text-[var(--rp-primary)]">
-      <ShieldCheck className="h-3.5 w-3.5 shrink-0" />
-      <span className="truncate">Verified</span>
-    </span>
-  );
 }
 
 function RideResultMetaItem({ icon, children }: { icon: ReactNode; children: ReactNode }) {
@@ -1075,6 +1065,12 @@ function RecurringRideResultCard({
   const podHref = `/pods/${ride.id}`;
   const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
   const data = getRecurringRideResultData(ride);
+  const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
+  const compactStatusLabel = currentUserRelationship
+    ? currentUserRelationship.tone === "host"
+      ? "Created"
+      : "Joined"
+    : null;
   const hostDisplayName = getRideHostDisplayName(ride);
   const showCurrentUserAvatar = ride.currentUserRole === "host" && Boolean(currentUserAvatar);
   const avatarPreference = showCurrentUserAvatar ? currentUserAvatar.avatarPreference : ride.hostAvatarPreference;
@@ -1089,9 +1085,9 @@ function RecurringRideResultCard({
     >
       <div className="grid min-h-[106px] grid-cols-[78px_minmax(0,1fr)_70px] min-[390px]:grid-cols-[92px_minmax(0,1fr)_80px]">
         <div className="grid min-w-0 content-center gap-1.5 px-2.5 py-3 min-[390px]:px-3">
-          <p className="flex min-w-0 items-center gap-1 text-[8px] font-black uppercase leading-none tracking-[0.1em] text-emerald-300 min-[390px]:text-[9px]">
+          <p className="flex min-w-0 items-start gap-1 text-[8px] font-black uppercase leading-[1.15] tracking-[0.06em] text-emerald-300 min-[390px]:text-[9px]">
             <RefreshCcw className="h-3 w-3 shrink-0" />
-            <span className="truncate">{data.recurrenceLabel}</span>
+            <span className="line-clamp-2 break-words">{data.recurrenceLabel}</span>
           </p>
           <p className="text-xl font-black leading-none text-[var(--rp-text)] min-[390px]:text-[22px]">
             {data.time}
@@ -1116,7 +1112,7 @@ function RecurringRideResultCard({
               <RideResultMetaItem icon={<ArmchairIcon />}>{seatsLabel}</RideResultMetaItem>
             </div>
             <p className="truncate text-[11px] font-black leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-xs">
-              Est. <span className="text-sky-300">{data.estimate}</span> / ride
+              Total Est. <span className="text-sky-300">{data.estimate}</span>
             </p>
           </div>
         </div>
@@ -1139,7 +1135,19 @@ function RecurringRideResultCard({
             <Star className="h-3.5 w-3.5 shrink-0 fill-[var(--rp-primary)] text-[var(--rp-primary)]" />
             <span>{data.rating}</span>
           </div>
-          {data.isVerified ? <VerifiedBadge /> : null}
+          {compactStatusLabel ? (
+            <span
+              className={cn(
+                "inline-flex min-h-7 max-w-full items-center gap-1 rounded-full border px-2 text-[10px] font-black leading-none min-[390px]:px-2.5 min-[390px]:text-[11px]",
+                currentUserRelationship?.tone === "joined"
+                  ? "border-cyan-300/40 bg-cyan-400/12 text-cyan-100"
+                  : "border-[color-mix(in_srgb,var(--rp-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] text-[var(--rp-primary)]",
+              )}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{compactStatusLabel}</span>
+            </span>
+          ) : null}
         </div>
       </div>
     </Link>
