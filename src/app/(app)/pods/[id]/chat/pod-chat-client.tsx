@@ -516,10 +516,10 @@ function buildRideAppTimelineEvents({
 
 function rideAppChatDividerLabel(access: RideAppChatAccessState | null, canUseChat: boolean) {
   if (canUseChat) return "Chat is Open";
-  if (!access) return "Chat is read-only until riders confirm";
+  if (!access) return "Chat opens after riders confirm";
   const remaining = Math.max(0, access.requiredConfirmations - access.confirmedRiders);
-  if (remaining > 0) return `Chat is read-only until ${remaining} ${remaining === 1 ? "rider confirms" : "riders confirm"}`;
-  return "Chat is read-only until riders confirm";
+  if (remaining > 0) return `Chat opens after ${remaining} ${remaining === 1 ? "rider confirms" : "riders confirm"}`;
+  return "Chat opens after riders confirm";
 }
 
 function hasRideAppChatMembership(ride: HomeRide | null, currentUserRole: HomeRide["currentUserRole"] | null) {
@@ -597,11 +597,11 @@ export function PodChatClient({
   const chatHeaderStatusLabel = isRideAppSelfSettle
     ? canUseChat
       ? "Chat open"
-      : "Read-only"
+      : null
     : isTaxiPartnerChat
       ? canUseChat
         ? "Chat open"
-        : "Read-only"
+        : null
       : null;
   const rideAppTimelineEvents = isRideAppSelfSettle
     ? buildRideAppTimelineEvents({
@@ -613,9 +613,9 @@ export function PodChatClient({
       })
     : [];
   const composerPlaceholder = readOnly
-    ? "This pod is read-only."
+    ? "Chat is unavailable."
     : isRideAppSelfSettle && !canUseChat
-      ? effectiveRideAppChatAccess?.helper ?? "Chat unlocks after required riders confirm."
+      ? effectiveRideAppChatAccess?.helper ?? "Chat opens after required riders confirm."
       : canUseChat
         ? "Type a message..."
         : "Chat is locked.";
@@ -920,13 +920,14 @@ export function PodChatClient({
       ) : null}
 
       {isRideAppSelfSettle && effectiveAccessAllowed ? (
-        <section className="rounded-[24px] bg-[linear-gradient(180deg,rgba(8,47,73,0.14),rgba(15,23,42,0.52))] px-2 py-3 shadow-[var(--rp-shadow-soft)]">
+        <section className="relative overflow-hidden rounded-[30px] border border-cyan-300/28 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.12),transparent_36%),linear-gradient(180deg,rgba(2,12,22,0.98),rgba(5,20,32,0.92))] p-3 shadow-[0_24px_58px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.08)]">
+          <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-cyan-200/35" />
           <div className="mb-3 grid justify-items-center">
             <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-muted-strong)]">
               Today
             </span>
           </div>
-          <div className="grid gap-2.5">
+          <div className="grid min-h-[300px] content-start gap-2.5 rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(2,8,23,0.38),rgba(15,23,42,0.24))] px-3 py-4 shadow-[inset_0_0_26px_rgba(0,0,0,0.28)]">
             <RideAppChatStateDivider
               label={rideAppChatDividerLabel(effectiveRideAppChatAccess, canUseChat)}
               open={canUseChat}
@@ -1028,7 +1029,6 @@ export function PodChatClient({
       <section className="rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-4 shadow-[var(--rp-shadow-soft)]">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Latest member status</h2>
-          {readOnly ? <span className="text-xs font-black text-[var(--rp-muted)]">This pod is read-only.</span> : null}
         </div>
         {statuses.length ? (
           <div className="mt-3 grid gap-2">
@@ -1121,7 +1121,7 @@ export function PodChatClient({
             className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[var(--rp-primary)]/28 bg-[var(--rp-primary)]/10 px-4 text-sm font-black text-[var(--rp-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
           >
             <LockKeyhole className="h-4 w-4" />
-            Chat unlocks after required riders confirm.
+            Chat opens after required riders confirm.
           </button>
         ) : (
           <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
