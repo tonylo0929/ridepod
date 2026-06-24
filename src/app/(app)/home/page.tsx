@@ -564,8 +564,6 @@ function CategoryCard({
   selected: boolean;
   onClick: (tab: HomeTab) => void;
 }) {
-  const priority = id === "all";
-
   return (
     <button
       type="button"
@@ -578,12 +576,7 @@ function CategoryCard({
       )}
     >
       <span
-        className={cn(
-          "grid h-8 w-8 place-items-center rounded-full text-[var(--rp-primary)] min-[390px]:h-9 min-[390px]:w-9",
-          priority
-            ? "bg-[color-mix(in_srgb,var(--rp-primary)_20%,transparent)] text-[var(--rp-primary)]"
-            : "bg-sky-300/10 text-sky-200",
-        )}
+        className="grid h-8 w-8 place-items-center rounded-full bg-[color-mix(in_srgb,var(--rp-primary)_20%,transparent)] text-[var(--rp-primary)] min-[390px]:h-9 min-[390px]:w-9"
       >
         <Icon className="h-5 w-5 min-[390px]:h-6 min-[390px]:w-6" />
       </span>
