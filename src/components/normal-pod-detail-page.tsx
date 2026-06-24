@@ -2477,6 +2477,8 @@ export function PodStatusPanel({
                     const chipLabel = hostEchoRider ? "Host" : getPodStatusParticipantChipLabel(rider, confirmationNotStarted, ride);
                     const helper = hostEchoRider ? "Host details shared" : getPodStatusParticipantHelper(rider, currentDetailVersion, confirmationNotStarted, detailsReady, ride);
                     const displayName = hostEchoRider ? "Host" : getPodStatusPersonDisplayName(rider.name);
+                    const profileName = hostEchoRider ? ride.hostName || "Host" : displayName;
+                    const profileRole = rider.role === "host" || hostEchoRider ? "host" : "rider";
                     const participantAvatarUrl =
                       rider.role === "host" || hostEchoRider
                         ? isHost
@@ -2510,26 +2512,29 @@ export function PodStatusPanel({
                         <span className="shrink-0 rounded-full border border-white/12 bg-white/8 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-muted-strong)]">
                           {chipLabel}
                         </span>
+                        <Link
+                          href={getViewProfileHref(profileName, profileRole)}
+                          onClick={(event) => event.stopPropagation()}
+                          className="shrink-0 rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
+                        >
+                          View Profile
+                        </Link>
                       </>
                     );
 
-                    if (rider.role === "host" && isHost) {
-                      return (
-                        <Link key={`${rider.name}-${index}`} href="/profile" className={rowClassName} aria-label="Open your profile">
-                          {rowContent}
-                        </Link>
-                      );
-                    }
-
                     return (
-                      <button
+                      <div
                         key={`${rider.name}-${index}`}
-                        type="button"
+                        role="button"
+                        tabIndex={0}
                         onClick={() => setSelectedRiderProfile(rider)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") setSelectedRiderProfile(rider);
+                        }}
                         className={rowClassName}
                       >
                         {rowContent}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -4016,7 +4021,15 @@ function ManagePodRiderGroup({
                 <span className="block text-xs font-semibold text-[var(--rp-muted-strong)]">{getHelper(rider)}</span>
               </span>
             </span>
-            <ManagePodActionStatusChip rider={rider} />
+            <span className="grid shrink-0 justify-items-end gap-2">
+              <ManagePodActionStatusChip rider={rider} />
+              <Link
+                href={getViewProfileHref(getPodStatusPersonDisplayName(rider.name), rider.role === "host" ? "host" : "rider")}
+                className="rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
+              >
+                View Profile
+              </Link>
+            </span>
           </div>
         ))}
       </div>
