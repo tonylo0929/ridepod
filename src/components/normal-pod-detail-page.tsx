@@ -1802,10 +1802,9 @@ export function PodStatusPanel({
     },
     {
       icon: Clock3,
-      label: "Confirm-by time",
+      label: "Confirmation deadline",
       value: detailsReady && confirmBySet ? confirmByLabel : "Not set",
       set: detailsReady && confirmBySet,
-      helper: "Riders must confirm before this time to keep their seat.",
       onClick: isHost ? () => setShowConfirmByModal(true) : undefined,
       actionLabel: isHost ? "Edit" : undefined,
     },
