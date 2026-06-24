@@ -1173,13 +1173,9 @@ function HomeRideCard({
           : null;
   const compactStatusLabel = currentUserRelationship
     ? currentUserRelationship.tone === "host"
-      ? "Your pod"
+      ? "Created"
       : "Joined"
-    : ride.quoteStatus === "quote_ready"
-      ? "Verified"
-      : minimumReached(ride)
-        ? "Ready"
-        : "Forming";
+    : null;
   const estimateText = isRideApp
     ? rideAppEstimateDisplay.updated
       ? `Total Est. ${rideAppEstimateDisplay.value}`
@@ -1244,19 +1240,19 @@ function HomeRideCard({
               </>
             ) : null}
           </div>
-          <span
-            className={cn(
-              "inline-flex min-h-7 max-w-full items-center gap-1 rounded-full border px-2 text-[10px] font-black leading-none min-[390px]:px-2.5 min-[390px]:text-[11px]",
-              currentUserRelationship?.tone === "joined"
-                ? "border-cyan-300/40 bg-cyan-400/12 text-cyan-100"
-                : currentUserRelationship?.tone === "host"
-                  ? "border-[color-mix(in_srgb,var(--rp-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] text-[var(--rp-primary)]"
-                  : "border-sky-300/35 bg-sky-400/14 text-sky-200",
-            )}
-          >
-            <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{compactStatusLabel}</span>
-          </span>
+          {compactStatusLabel ? (
+            <span
+              className={cn(
+                "inline-flex min-h-7 max-w-full items-center gap-1 rounded-full border px-2 text-[10px] font-black leading-none min-[390px]:px-2.5 min-[390px]:text-[11px]",
+                currentUserRelationship?.tone === "joined"
+                  ? "border-cyan-300/40 bg-cyan-400/12 text-cyan-100"
+                  : "border-[color-mix(in_srgb,var(--rp-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] text-[var(--rp-primary)]",
+              )}
+            >
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{compactStatusLabel}</span>
+            </span>
+          ) : null}
         </div>
       </div>
     </Link>
