@@ -28,6 +28,7 @@ import {
   ReceiptText,
   Share2,
   ShieldCheck,
+  SlidersHorizontal,
   Smartphone,
   Star,
   UserPlus,
@@ -3744,9 +3745,83 @@ function SelfSettlePodSummaryHero({
   );
 }
 
+type ManageRouteRequestCardModel = {
+  id: string;
+  avatarInitial: string;
+  riderName: string;
+  stopLocation: string;
+  reason: string;
+  status: "Pending";
+  stop: RoutePlanStop;
+};
+
+const referenceRouteRequestCards: Array<Omit<ManageRouteRequestCardModel, "stop">> = [
+  {
+    id: "route-request-eason",
+    avatarInitial: "E",
+    riderName: "Eason_Chan",
+    stopLocation: "Font Door, K City",
+    reason: "Extra stop",
+    status: "Pending",
+  },
+  {
+    id: "route-request-may",
+    avatarInitial: "M",
+    riderName: "May_Wong",
+    stopLocation: "Festival Walk",
+    reason: "Near final",
+    status: "Pending",
+  },
+  {
+    id: "route-request-jason",
+    avatarInitial: "J",
+    riderName: "Jason_L",
+    stopLocation: "Kowloon Tong MTR",
+    reason: "Pickup change",
+    status: "Pending",
+  },
+];
+
+function buildManageRouteRequestCards(pendingRequests: RoutePlanStop[]): ManageRouteRequestCardModel[] {
+  const cardCount = Math.max(referenceRouteRequestCards.length, pendingRequests.length);
+
+  return Array.from({ length: cardCount }, (_, index) => {
+    const pendingStop = pendingRequests[index];
+    const card = referenceRouteRequestCards[index] ?? {
+      id: `route-request-${index + 1}`,
+      avatarInitial: "R",
+      riderName: `Rider ${index + 1}`,
+      stopLocation: "Requested stop",
+      reason: "Extra stop",
+      status: "Pending" as const,
+    };
+    const riderName = pendingStop?.requestedBy?.trim() || card.riderName;
+    const stopLocation = pendingStop?.label?.trim() || card.stopLocation;
+    const reason = pendingStop?.reason?.trim() || card.reason;
+    const id = pendingStop?.id || card.id;
+
+    return {
+      ...card,
+      id,
+      avatarInitial: getInitials(riderName).slice(0, 1) || card.avatarInitial,
+      riderName,
+      stopLocation,
+      reason,
+      stop: {
+        id,
+        label: stopLocation,
+        requestedBy: riderName,
+        stopType: pendingStop?.stopType ?? "quick_stop",
+        reason,
+        status: "pending_host_approval",
+      },
+    };
+  });
+}
+
 function ManagePodActionsModal({
   ride,
-  initialTab = "confirmations",
+  initialTab = "route_requests",
   onClose,
   onApproveStop,
   onDeclineStop,
@@ -3762,6 +3837,7 @@ function ManagePodActionsModal({
     !allowStopRequests && initialTab === "route_requests" ? "confirmations" : initialTab,
   );
   const [actionNote, setActionNote] = useState<string | null>(null);
+  const [handledRouteRequestIds, setHandledRouteRequestIds] = useState<string[]>([]);
   const riders = buildManagePodActionRiders(ride);
   const riderRows = riders.filter((item) => item.role === "rider");
   const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
@@ -3776,31 +3852,30 @@ function ManagePodActionsModal({
   const expiredSeatHoldCount = riders.filter((item) => item.role === "rider" && item.status === "seat_hold_expired").length;
   const confirmByLabel = formatConfirmByLabel(getRideAppConfirmByDate(ride));
   const routeRequests = getNormalizedRouteRequests(ride);
-  const pendingRequest = routeRequests.pending[0] ?? null;
-  const approvedRequest = routeRequests.approved[0] ?? null;
-  const declinedRequest = routeRequests.declined[0] ?? null;
-  const pendingStop = pendingRequest ? routeRequestToRoutePlanStop(pendingRequest) : null;
-  const approvedStop = approvedRequest ? routeRequestToRoutePlanStop(approvedRequest) : null;
-  const declinedStop = declinedRequest ? routeRequestToRoutePlanStop(declinedRequest) : null;
+  const pendingStops = routeRequests.pending.map(routeRequestToRoutePlanStop);
+  const routeRequestCards = buildManageRouteRequestCards(pendingStops).filter((request) => !handledRouteRequestIds.includes(request.id));
+  const routeRequestPendingCount = routeRequestCards.length;
   const routeLocked =
     ride.bookingDetailsShared === true ||
     ride.rideAppBookingDetailsConfirmed === true ||
     ride.rideAppBookingDetailsFinalized === true;
-  const tabs: Array<{ id: ManagePodActionsTab; label: string }> = [
+  const tabs: Array<{ id: ManagePodActionsTab; label: string; badge?: number }> = [
     { id: "confirmations", label: "Confirmations" },
-    ...(allowStopRequests ? [{ id: "route_requests" as const, label: "Route requests" }] : []),
+    ...(allowStopRequests ? [{ id: "route_requests" as const, label: "Route requests", badge: routeRequestPendingCount }] : []),
   ];
 
-  function approvePendingStop() {
-    if (!pendingStop || routeLocked) return;
-    onApproveStop(pendingStop);
-    setActionNote("Updated booking details. Riders need to review again.");
+  function confirmRouteRequest(request: ManageRouteRequestCardModel) {
+    if (routeLocked) return;
+    onApproveStop(request.stop);
+    setHandledRouteRequestIds((current) => (current.includes(request.id) ? current : [...current, request.id]));
+    setActionNote(`${request.riderName}'s stop confirmed.`);
   }
 
-  function declinePendingStop() {
-    if (!pendingStop || routeLocked) return;
-    onDeclineStop(pendingStop);
-    setActionNote("Stop declined.");
+  function declineRouteRequest(request: ManageRouteRequestCardModel) {
+    if (routeLocked) return;
+    onDeclineStop(request.stop);
+    setHandledRouteRequestIds((current) => (current.includes(request.id) ? current : [...current, request.id]));
+    setActionNote(`${request.riderName}'s stop declined.`);
   }
 
   return (
@@ -3848,13 +3923,23 @@ function ManagePodActionsModal({
                   }}
                   aria-pressed={activeTab === tab.id}
                   className={cn(
-                    "min-h-10 rounded-[12px] px-2 text-center text-[11px] font-black transition min-[390px]:px-3 min-[390px]:text-xs",
+                    "inline-flex min-h-10 items-center justify-center gap-1.5 rounded-[12px] px-2 text-center text-[11px] font-black transition min-[390px]:px-3 min-[390px]:text-xs",
                     activeTab === tab.id
                       ? "bg-[var(--rp-primary)] text-[#07111a] shadow-[0_10px_20px_rgba(242,193,91,0.18)]"
                       : "text-white/85 hover:bg-white/8 hover:text-white",
                   )}
                 >
-                  {tab.label}
+                  <span>{tab.label}</span>
+                  {tab.badge !== undefined ? (
+                    <span
+                      className={cn(
+                        "grid h-5 min-w-5 place-items-center rounded-full px-1 text-[10px] font-black",
+                        activeTab === tab.id ? "bg-[#07111a] text-[var(--rp-primary)]" : "bg-[var(--rp-primary)] text-[#07111a]",
+                      )}
+                    >
+                      {tab.badge}
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </div>
@@ -3929,12 +4014,10 @@ function ManagePodActionsModal({
             <div className="grid gap-4">
               <RouteRequestsActionContent
                 allowStopRequests={allowStopRequests}
-                pendingStop={pendingStop}
-                approvedStop={approvedStop}
-                declinedStop={declinedStop}
+                requests={routeRequestCards}
                 routeLocked={routeLocked}
-                onApprove={approvePendingStop}
-                onDecline={declinePendingStop}
+                onConfirm={confirmRouteRequest}
+                onDecline={declineRouteRequest}
               />
             </div>
           ) : null}
@@ -4040,25 +4123,21 @@ function ManagePodRiderGroup({
 
 function RouteRequestsActionContent({
   allowStopRequests,
-  pendingStop,
-  approvedStop,
-  declinedStop,
+  requests,
   routeLocked,
-  onApprove,
+  onConfirm,
   onDecline,
 }: {
   allowStopRequests: boolean;
-  pendingStop: RoutePlanStop | null;
-  approvedStop: RoutePlanStop | null;
-  declinedStop: RoutePlanStop | null;
+  requests: ManageRouteRequestCardModel[];
   routeLocked: boolean;
-  onApprove: () => void;
-  onDecline: () => void;
+  onConfirm: (request: ManageRouteRequestCardModel) => void;
+  onDecline: (request: ManageRouteRequestCardModel) => void;
 }) {
   if (!allowStopRequests) {
     return (
       <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-5">
-        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Route requests</p>
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">ROUTE REQUESTS</p>
         <h3 className="mt-2 text-xl font-black text-white">Direct route only</h3>
         <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
           This pod does not allow extra stop requests.
@@ -4067,122 +4146,108 @@ function RouteRequestsActionContent({
     );
   }
 
-  if (routeLocked && pendingStop) {
-    return (
-      <RouteRequestsStateCard
-        title="Route locked"
-        body="Route changes are closed after booking details are confirmed."
-        stop={pendingStop}
-      />
-    );
-  }
-
-  if (pendingStop) {
-    return (
-      <section className="grid gap-4 rounded-[18px] border border-cyan-300/22 bg-cyan-300/8 p-5">
+  return (
+    <section className="grid gap-4">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Route requests</p>
-          <h3 className="mt-2 text-xl font-black text-white">Stop request pending</h3>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">ROUTE REQUESTS</p>
+          <p className="mt-1 text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
+            {requests.length} pending
+          </p>
         </div>
-        <dl className="grid gap-3">
-          <RouteRequestRow label="Requested by" value={pendingStop.requestedBy ?? "Rider"} />
-          <RouteRequestRow label="Stop location" value={pendingStop.label} />
-          <RouteRequestRow label="Reason" value={pendingStop.reason ?? "Easier pickup for me"} />
-          <RouteRequestRow label="Status" value="Pending host approval" />
-        </dl>
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={onDecline}
-            className="min-h-12 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
-          >
-            Decline
-          </button>
-          <button
-            type="button"
-            onClick={onApprove}
-            className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105"
-          >
-            Approve stop
-          </button>
+        <button
+          type="button"
+          aria-label="Filter route requests"
+          className="grid h-10 w-10 place-items-center rounded-full border border-white/12 bg-white/8 text-[var(--rp-primary)] transition hover:bg-white/12"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+        </button>
+      </div>
+
+      {routeLocked && requests.length ? (
+        <div className="rounded-[16px] border border-amber-300/24 bg-amber-300/10 p-3 text-sm font-black leading-5 text-amber-100">
+          Route changes are closed after booking details are confirmed.
         </div>
-      </section>
-    );
-  }
-
-  if (approvedStop) {
-    return (
-      <RouteRequestsStateCard
-        title="Stop approved"
-        body="Updated booking details. Riders need to review again."
-        stop={approvedStop}
-        tone="approved"
-      />
-    );
-  }
-
-  if (declinedStop) {
-    return (
-      <RouteRequestsStateCard
-        title="Stop declined"
-        body="Route remains direct."
-        stop={declinedStop}
-      />
-    );
-  }
-
-  return (
-    <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-5">
-      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Route requests</p>
-      <h3 className="mt-2 text-xl font-black text-white">No route requests</h3>
-      <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-        No riders have requested an extra stop.
-      </p>
-    </section>
-  );
-}
-
-function RouteRequestsStateCard({
-  title,
-  body,
-  stop,
-  tone = "default",
-}: {
-  title: string;
-  body: string;
-  stop?: RoutePlanStop | null;
-  tone?: "default" | "approved";
-}) {
-  return (
-    <section
-      className={cn(
-        "rounded-[18px] border p-5",
-        tone === "approved"
-          ? "border-emerald-300/24 bg-emerald-400/10"
-          : "border-white/10 bg-white/[0.04]",
-      )}
-    >
-      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Route requests</p>
-      <h3 className="mt-2 text-xl font-black text-white">{title}</h3>
-      <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{body}</p>
-      {stop ? (
-        <dl className="mt-4 grid gap-3">
-          <RouteRequestRow label="Requested by" value={stop.requestedBy ?? "Rider"} />
-          <RouteRequestRow label="Stop location" value={stop.label} />
-          <RouteRequestRow label="Reason" value={stop.reason ?? "Easier pickup for me"} />
-          <RouteRequestRow label="Status" value={title} />
-        </dl>
       ) : null}
-    </section>
-  );
-}
 
-function RouteRequestRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[14px] border border-white/10 bg-black/20 p-3">
-      <dt className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">{label}</dt>
-      <dd className="mt-1 break-words text-sm font-black leading-5 text-white">{value}</dd>
-    </div>
+      {requests.length ? (
+        <div className="grid gap-3">
+          {requests.map((request) => (
+            <article
+              key={request.id}
+              className="rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,31,45,0.96),rgba(12,22,33,0.96))] p-4 shadow-[0_18px_42px_rgba(0,0,0,0.26)]"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-cyan-300/25 bg-cyan-300/12 text-lg font-black text-cyan-100">
+                    {request.avatarInitial}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-base font-black leading-6 text-white">{request.riderName}</span>
+                    <span className="block text-xs font-semibold text-[var(--rp-muted-strong)]">requested a stop</span>
+                  </span>
+                </span>
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-primary)]">
+                  <Clock3 className="h-3 w-3" />
+                  {request.status}
+                </span>
+              </div>
+
+              <dl className="mt-4 grid gap-3">
+                <div className="rounded-[16px] border border-white/10 bg-black/18 p-3">
+                  <dt className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
+                    <MapPin className="h-3.5 w-3.5 text-cyan-200" />
+                    Stop location
+                  </dt>
+                  <dd className="mt-1 break-words text-sm font-black leading-5 text-white">{request.stopLocation}</dd>
+                </div>
+                <div className="rounded-[16px] border border-white/10 bg-black/18 p-3">
+                  <dt className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
+                    <MessageCircle className="h-3.5 w-3.5 text-cyan-200" />
+                    Reason
+                  </dt>
+                  <dd className="mt-1 break-words text-sm font-black leading-5 text-white">{request.reason}</dd>
+                </div>
+                <div className="rounded-[16px] border border-white/10 bg-black/18 p-3">
+                  <dt className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
+                    <Clock3 className="h-3.5 w-3.5 text-[var(--rp-primary)]" />
+                    Status
+                  </dt>
+                  <dd className="mt-1 text-sm font-black leading-5 text-[var(--rp-primary)]">{request.status}</dd>
+                </div>
+              </dl>
+
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  disabled={routeLocked}
+                  onClick={() => onDecline(request)}
+                  className="min-h-12 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Decline
+                </button>
+                <button
+                  type="button"
+                  disabled={routeLocked}
+                  onClick={() => onConfirm(request)}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  Confirm
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <section className="rounded-[18px] border border-emerald-300/24 bg-emerald-400/10 p-5">
+          <h3 className="text-lg font-black text-emerald-100">All clear</h3>
+          <p className="mt-2 text-sm font-semibold leading-6 text-emerald-100/85">
+            There are no pending route requests.
+          </p>
+        </section>
+      )}
+    </section>
   );
 }
 
