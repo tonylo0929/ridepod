@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   Bell,
   CalendarCheck,
@@ -75,13 +75,11 @@ function NavLink({
   isLoggedIn?: boolean;
 }) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const homeTab = searchParams.get("tab");
   const destination = requiresAuth && !isLoggedIn ? `/login?next=${encodeURIComponent(href)}` : href;
   const hrefPath = href.split("?")[0] ?? href;
   const active =
     href === "/home" || href === "/home?tab=one_off"
-      ? pathname === "/home" && homeTab !== "all"
+      ? pathname === "/home"
       : href === "/pods"
         ? pathname === hrefPath || pathname.startsWith("/pods/date/")
         : hrefPath === "/ride-groups"
