@@ -1873,7 +1873,12 @@ function HomePageContent() {
 
         <div className="relative z-10">
           <div className="pt-2 min-[720px]:pt-8">
-            <p className="text-[28px] font-serif leading-tight text-[var(--rp-text)] min-[720px]:text-[42px]">
+            <p
+              className={cn(
+                "text-[28px] font-serif leading-tight min-[720px]:text-[42px]",
+                isAuthenticated && rideModeFilter === "ride_app" ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]",
+              )}
+            >
               {isAuthenticated ? `${heroGreeting}, ${displayName}` : "Your ride, together."}
             </p>
             <p className="mt-1.5 text-sm font-semibold text-[var(--rp-muted-strong)] min-[720px]:mt-2 min-[720px]:text-lg">
