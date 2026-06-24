@@ -3767,8 +3767,11 @@ function ManagePodActionsModal({
   const riders = buildManagePodActionRiders(ride);
   const riderRows = riders.filter((item) => item.role === "rider");
   const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
-  const confirmedRiderCount = riderRows.filter((item) => isPodStatusRiderConfirmedForCurrentDetails(item, currentDetailVersion)).length;
-  const riderTotal = riderRows.length;
+  const riderTotal = Math.max(0, ride.seatsTotal - 1);
+  const confirmedRiderCount = Math.min(
+    riderTotal,
+    riderRows.filter((item) => isPodStatusRiderConfirmedForCurrentDetails(item, currentDetailVersion)).length,
+  );
   const pendingConfirmationRiders = riderRows.filter((item) => item.status === "pending" || item.status === "joined_interest");
   const needsReviewRiders = riderRows.filter((item) => item.status === "needs_review" || item.status === "review_needed");
   const ridersNeedingReviewCount = needsReviewRiders.length;
