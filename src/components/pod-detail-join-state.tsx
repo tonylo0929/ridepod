@@ -223,6 +223,12 @@ export function formatUserLuggageLabel(contribution: LuggageContribution, perRid
   return `Your luggage: ${formatGroupLuggageLabel(contribution.bagsCount, contribution.hasLargeLuggage)}${suffix}`;
 }
 
+function formatGroupLuggageWithUserLabel(groupCount: number, contribution: LuggageContribution) {
+  const groupLabel = groupCount === 1 ? "1 bag" : `${groupCount} bags`;
+  if (contribution.bagsCount <= 0) return `${groupLabel} (no luggage added from you)`;
+  return `${groupLabel} (including your ${contribution.bagsCount} luggage)`;
+}
+
 export function getTaxiMaxBags(taxiType: string) {
   const normalized = taxiType.toLowerCase();
   if (normalized.includes("large") || normalized.includes("luggage")) return 4;
@@ -567,7 +573,7 @@ export function usePodDetailJoinState(ride: HomeRide) {
     groupLuggageCount,
     groupHasLargeLuggage,
     groupLuggageLabel: formatGroupLuggageLabel(groupLuggageCount, groupHasLargeLuggage),
-    userLuggageLabel: joined ? formatUserLuggageLabel(currentUserLuggage) : null,
+    userLuggageLabel: joined ? formatGroupLuggageWithUserLabel(groupLuggageCount, currentUserLuggage) : null,
     luggageCapacityWarning: groupLuggageCount > getTaxiMaxBags(ride.taxiType),
     acceptedGuestCount,
     requiredGuestCount,
