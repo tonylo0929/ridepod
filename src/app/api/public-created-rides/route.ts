@@ -37,6 +37,10 @@ function noStoreJson(body: unknown, init?: ResponseInit) {
   return NextResponse.json(body, { ...init, headers });
 }
 
+function isMissingAdminConfig(error: unknown) {
+  return error instanceof Error && error.message.includes("Supabase admin access is not configured");
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -106,8 +110,18 @@ async function findDeletionTargetPod({
 }
 
 export async function GET() {
+  let client: ReturnType<typeof getSupabaseAdminClient>;
+
   try {
-    const client = getSupabaseAdminClient();
+    client = getSupabaseAdminClient();
+  } catch (error) {
+    if (isMissingAdminConfig(error)) {
+      return noStoreJson({ pods: [], fallbackNote: "Public created rides are unavailable." });
+    }
+    throw error;
+  }
+
+  try {
     const result = await client
       .from("pods")
       .select(selectPublicCreatedRideColumns)
@@ -172,6 +186,9 @@ export async function GET() {
       }),
     });
   } catch (error) {
+    if (isMissingAdminConfig(error)) {
+      return noStoreJson({ pods: [], fallbackNote: "Public created rides are unavailable." });
+    }
     console.warn("RidePod public created rides list failed", error);
     return noStoreJson({ pods: [], fallbackNote: "Public created rides are unavailable." }, { status: 200 });
   }
@@ -205,6 +222,9 @@ export async function POST(request: NextRequest) {
     if (result.error) throw result.error;
     return noStoreJson({ pod: result.data as unknown as PublicCreatedRidePod | null });
   } catch (error) {
+    if (isMissingAdminConfig(error)) {
+      return noStoreJson({ error: "Public created rides are not configured." }, { status: 503 });
+    }
     console.warn("RidePod public created ride publish failed", error);
     return noStoreJson({ error: "Public created ride publish failed." }, { status: 503 });
   }
@@ -242,6 +262,9 @@ export async function DELETE(request: NextRequest) {
 
     return noStoreJson({ deleted: true, podId: targetPod.id });
   } catch (error) {
+    if (isMissingAdminConfig(error)) {
+      return noStoreJson({ error: "Public created rides are not configured." }, { status: 503 });
+    }
     console.warn("RidePod public created ride delete failed", error);
     return noStoreJson({ error: "Public created ride delete failed." }, { status: 503 });
   }
