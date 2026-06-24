@@ -5440,7 +5440,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
                   <ImagePlus className="h-5 w-5" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-black text-[var(--rp-text)]">Screenshot proof</p>
+                  <p className="text-sm font-black text-[var(--rp-primary)]">Screenshot proof</p>
                   <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
                     Optional. Add the ride app fare screen if you want riders to see the source.
                   </p>
