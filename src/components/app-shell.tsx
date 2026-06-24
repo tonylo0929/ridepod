@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Bell,
   CalendarCheck,
+  CirclePlus,
   Coffee,
   Crown,
   History as HistoryIcon,
@@ -115,9 +116,10 @@ function PremiumBottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_92%,transparent)] px-0 pb-[env(safe-area-inset-bottom)] shadow-[var(--rp-shadow-nav)] backdrop-blur-xl lg:hidden">
-      <div className="mx-auto grid max-w-md grid-cols-4 items-center">
+      <div className="mx-auto grid max-w-md grid-cols-5 items-center">
         <NavLink href="/home" label="Search" icon={Search} compact />
         <NavLink href="/home?tab=all" label="Ride Group" icon={UsersRound} compact />
+        <NavLink href="/create" label="Create" icon={CirclePlus} compact requiresAuth isLoggedIn={isLoggedIn} />
         <NavLink href="/pods" label="My Ride" icon={CalendarCheck} compact requiresAuth isLoggedIn={isLoggedIn} />
         <NavLink href="/chats" label="Chats" icon={MessageCircle} compact requiresAuth isLoggedIn={isLoggedIn} />
       </div>
