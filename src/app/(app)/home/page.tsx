@@ -1182,7 +1182,7 @@ function HomeRideCard({
         : "Forming";
   const estimateText = isRideApp
     ? rideAppEstimateDisplay.updated
-      ? `Est. ${rideAppEstimateDisplay.value}`
+      ? `Total Est. ${rideAppEstimateDisplay.value}`
       : "Estimate pending"
     : `Est. share HK$${ride.pricePerPerson}`;
   const secondaryRouteLabel = displayHostName ? `Host: ${displayHostName}` : getRideAppProviderLabel(ride) ?? ride.taxiType;
