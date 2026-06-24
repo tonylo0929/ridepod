@@ -2358,7 +2358,7 @@ export function PodStatusPanel({
                 </section>
               ) : null}
 
-              <section className="rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
+              <section className="rounded-[20px] border border-[var(--rp-primary)]/30 bg-white/[0.04] p-4 shadow-[0_0_0_1px_rgba(251,199,82,0.08),0_18px_42px_rgba(251,199,82,0.06)]">
                 <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Overall progress</p>
                 <div className="mt-3">
                   <PodStatusProgressRail currentStep={currentDashboardStep} isHost={isHost} />
@@ -2398,7 +2398,7 @@ export function PodStatusPanel({
                 </section>
               ) : null}
 
-              <section id="fare-split" className="scroll-mt-24 rounded-[20px] border border-white/10 bg-white/[0.04] p-4">
+              <section id="fare-split" className="scroll-mt-24 rounded-[20px] border border-[var(--rp-primary)]/30 bg-white/[0.04] p-4 shadow-[0_0_0_1px_rgba(251,199,82,0.08),0_18px_42px_rgba(251,199,82,0.06)]">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Key details</p>
                   {isHost ? (
