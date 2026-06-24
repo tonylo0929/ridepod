@@ -3393,7 +3393,6 @@ function SelfSettlePodSummaryHero({
   canUpdateEstimate,
   onEstimateClick,
   onManageActionsClick,
-  hasFareProof,
   onViewFareProof,
   onSharePod,
   onJoinRide,
@@ -3408,7 +3407,6 @@ function SelfSettlePodSummaryHero({
   canUpdateEstimate: boolean;
   onEstimateClick: () => void;
   onManageActionsClick: () => void;
-  hasFareProof: boolean;
   onViewFareProof: () => void;
   onSharePod: () => void;
   onJoinRide: () => void;
@@ -3601,7 +3599,7 @@ function SelfSettlePodSummaryHero({
                 <span className="min-w-0 truncate">{estimateActionLabel}</span>
               </span>
             </button>
-          ) : hasFareProof ? (
+          ) : (
             <div className="grid min-h-[124px] justify-items-center rounded-[16px] border border-cyan-300/18 bg-cyan-300/6 px-4 py-4 text-center">
               {estimateContent}
               <button
@@ -3609,13 +3607,9 @@ function SelfSettlePodSummaryHero({
                 onClick={onViewFareProof}
                 className="mt-3 inline-flex min-h-8 w-fit items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 text-[11px] font-black text-cyan-100 transition hover:bg-cyan-300/16"
               >
-                View
+                View Proof
               </button>
             </div>
-          ) : (
-            <a href="#fare-split" className="grid min-h-[124px] justify-items-center rounded-[16px] border border-cyan-300/18 bg-cyan-300/6 px-4 py-4 text-center transition hover:brightness-110">
-              {estimateContent}
-            </a>
           )}
 
           {canUpdateEstimate ? (
@@ -4889,7 +4883,6 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
               canUpdateEstimate={canUpdateRideAppEstimate}
               onEstimateClick={openRideAppEstimateModal}
               onManageActionsClick={() => setShowManagePodActionsModal(true)}
-              hasFareProof={Boolean(rideAppFareProof)}
               onViewFareProof={() => setShowRideAppFareProofModal(true)}
               onSharePod={sharePod}
               onJoinRide={joinSelfSettleFromSummary}
@@ -5552,17 +5545,22 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
           </section>
         </div>
       ) : null}
-      {showRideAppFareProofModal && rideAppFareProof ? (
+      {showRideAppFareProofModal ? (
         <div
           className="fixed inset-0 z-[100] grid place-items-center bg-black/88 px-3 py-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
-          aria-label="Ride app screenshot proof"
+          aria-label={rideAppFareProof ? "Ride app screenshot proof" : "Ride app estimate proof not yet updated"}
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setShowRideAppFareProofModal(false);
           }}
         >
-          <section className="relative h-[min(92dvh,860px)] w-[min(96vw,560px)] overflow-hidden rounded-[24px] border border-cyan-200/18 bg-black shadow-[0_28px_80px_rgba(0,0,0,0.58)]">
+          <section
+            className={cn(
+              "relative overflow-hidden rounded-[24px] border border-cyan-200/18 bg-black shadow-[0_28px_80px_rgba(0,0,0,0.58)]",
+              rideAppFareProof ? "h-[min(92dvh,860px)] w-[min(96vw,560px)]" : "w-[min(92vw,360px)] p-6",
+            )}
+          >
             <button
               type="button"
               onClick={() => setShowRideAppFareProofModal(false)}
@@ -5571,15 +5569,19 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
             >
               <X className="h-5 w-5" />
             </button>
-            {rideAppFareProof.previewUrl ? (
+            {rideAppFareProof?.previewUrl ? (
               <div
                 className="h-full w-full bg-black bg-contain bg-center bg-no-repeat"
                 style={{ backgroundImage: `url(${rideAppFareProof.previewUrl})` }}
                 role="img"
                 aria-label="Ride app fare screenshot proof"
               />
-            ) : (
+            ) : rideAppFareProof ? (
               <div className="h-full w-full bg-black" />
+            ) : (
+              <div className="grid min-h-36 place-items-center pt-6 text-center">
+                <h2 className="text-2xl font-black leading-tight text-[var(--rp-primary)]">Not Yet Updated</h2>
+              </div>
             )}
           </section>
         </div>
