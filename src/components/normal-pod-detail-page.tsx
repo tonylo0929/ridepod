@@ -3815,7 +3815,7 @@ function ManagePodActionsModal({
         <header className="border-b border-white/10 p-5 pb-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h2 id="manage-pod-actions-title" className="text-2xl font-black leading-tight text-white">
+              <h2 id="manage-pod-actions-title" className="text-2xl font-black leading-tight text-[var(--rp-primary)]">
                 Manage pod actions
               </h2>
               <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
@@ -3864,7 +3864,7 @@ function ManagePodActionsModal({
             <div className="grid gap-4">
               <section className="rounded-[18px] border border-cyan-300/22 bg-cyan-300/8 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-lg font-black text-white">Confirmations</h3>
+                  <h3 className="text-lg font-black text-[var(--rp-primary)]">Confirmations</h3>
                   <span className="rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
                     {confirmedRiderCount} / {riderTotal} riders confirmed
                   </span>
