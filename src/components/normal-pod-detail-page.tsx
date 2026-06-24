@@ -3925,13 +3925,6 @@ function ManagePodActionsModal({
                   <Clock3 className="h-4 w-4" />
                   Edit confirm-by time
                 </Link>
-                <Link
-                  href={`/pods/${ride.id}/status?tab=riders`}
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  View confirmations
-                </Link>
               </section>
             </div>
           ) : activeTab === "route_requests" ? (
