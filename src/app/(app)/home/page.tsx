@@ -1434,7 +1434,9 @@ function HomePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tabSearchParam = searchParams.get("tab");
-  const activeTab = getHomeTabFromSearchParam(tabSearchParam);
+  const urlActiveTab = getHomeTabFromSearchParam(tabSearchParam);
+  const [optimisticActiveTab, setOptimisticActiveTab] = useState<HomeTab | null>(null);
+  const activeTab = optimisticActiveTab ?? urlActiveTab;
   const { user, profile } = useAuth();
   const isAuthenticated = Boolean(user);
   const displayName = user
@@ -1575,9 +1577,12 @@ function HomePageContent() {
   const visibleRides = tabFilteredRides;
 
   function handleTabChange(tab: HomeTab) {
+    setOptimisticActiveTab(tab);
     const nextParams = new URLSearchParams(searchParams.toString());
     nextParams.set("tab", tab);
-    router.replace(`/home?${nextParams.toString()}`, { scroll: false });
+    const nextUrl = `/home?${nextParams.toString()}`;
+    window.history.replaceState(null, "", nextUrl);
+    router.replace(nextUrl, { scroll: false });
   }
 
   function handleRideModeChange(value: Extract<RideModeFilter, "taxi" | "ride_app">) {
