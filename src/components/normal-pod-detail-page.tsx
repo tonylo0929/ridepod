@@ -3643,7 +3643,7 @@ function SelfSettlePodSummaryHero({
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] border border-rose-300/35 bg-rose-500/10 px-3 text-sm font-black text-rose-100 transition hover:bg-rose-500/16"
               >
                 <X className="h-4 w-4" />
-                Cancel pod
+                Delete Ride
               </button>
             </div>
           ) : canLeaveRideFromHero ? (
@@ -5368,7 +5368,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
                         : "border-white/10 bg-white/[0.04] hover:bg-white/[0.07]",
                     )}
                   >
-                    <p className="text-sm font-black text-white">Cancel pod for everyone</p>
+                    <p className="text-sm font-black text-white">Delete Ride for everyone</p>
                     <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
                       Use only if the ride plan cannot continue.
                     </p>
@@ -5425,7 +5425,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
                 onClick={confirmHostCancellation}
                 className="min-h-12 rounded-[16px] border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/14 px-4 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/20"
               >
-                {hostCancellationDeletesEmptyPod ? "Delete pod" : "Confirm"}
+                {hostCancellationDeletesEmptyPod ? "Delete Ride" : "Confirm"}
               </button>
             </div>
           </section>
