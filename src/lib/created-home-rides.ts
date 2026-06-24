@@ -17,6 +17,8 @@ const createdHomeRidesCookieKey = "ridepod_created_home_rides";
 const publicCreatedHomeRidesStorageKey = "ridepod-public-created-home-rides";
 const deletedCreatedHomeRidesStorageKey = "ridepod-deleted-created-home-rides";
 const publicCreatedHomeRidesChannel = "ridepod-public-created-home-rides";
+const publicCreatedHomeRidesFetchCooldownMs = 30_000;
+const publicCreatedHomeRidesRealtimeSyncMs = 30_000;
 type CachedPublicCreatedHomeRide = {
   ride: HomeRide;
   hostUserId: string | null;
@@ -538,9 +540,15 @@ async function readPublicCreatedHomeRides(
     const response = await fetch("/api/public-created-rides", { cache: "no-store" });
     if (!response.ok) throw new Error(`List failed with ${response.status}`);
     const payload = (await response.json()) as { pods?: PublicCreatedRidePod[] };
-    return (payload.pods ?? [])
-      .map((pod) => publicCreatedPodToHomeRide(pod, viewerUserId, viewerIdentity))
-      .filter((ride) => !isDeletedCreatedHomeRide(ride));
+    const rides = (payload.pods ?? [])
+      .map((pod) => ({
+        ride: publicCreatedPodToHomeRide(pod, viewerUserId, viewerIdentity),
+        hostUserId: pod.host_user_id?.trim() ?? null,
+      }))
+      .filter(({ ride }) => !isDeletedCreatedHomeRide(ride));
+
+    rides.forEach(({ ride, hostUserId }) => cachePublicCreatedHomeRide(ride, hostUserId));
+    return rides.map(({ ride }) => ride);
   } catch (error) {
     console.warn("RidePod public created rides list failed", error);
     return [];
@@ -728,16 +736,38 @@ export function useCreatedHomeRides(
   useEffect(() => {
     let cancelled = false;
     let syncId = 0;
+    let lastPublicFetchAt = 0;
+    let publicFetchPromise: Promise<HomeRide[]> | null = null;
 
-    async function sync() {
+    async function loadPublicRides(forcePublicFetch = false) {
+      if (publicFetchPromise) return publicFetchPromise;
+
+      const now = Date.now();
+      if (!forcePublicFetch && now - lastPublicFetchAt < publicCreatedHomeRidesFetchCooldownMs) return null;
+
+      lastPublicFetchAt = now;
+      publicFetchPromise = readPublicCreatedHomeRides(viewerUserId, stableViewerIdentity).finally(() => {
+        publicFetchPromise = null;
+      });
+      return publicFetchPromise;
+    }
+
+    async function sync({ forcePublicFetch = false }: { forcePublicFetch?: boolean } = {}) {
       const currentSyncId = ++syncId;
       const localRides = readCreatedHomeRides();
       const cachedPublicRides = cachedPublicRidesForViewer(viewerUserId, stableViewerIdentity);
       setRides(mergeCreatedHomeRides(localRides, cachedPublicRides, includePublicRiderCards));
 
-      const publicRides = await readPublicCreatedHomeRides(viewerUserId, stableViewerIdentity);
+      const publicRides = await loadPublicRides(forcePublicFetch);
+      if (!publicRides) return;
       if (cancelled || currentSyncId !== syncId) return;
-      setRides(mergeCreatedHomeRides(localRides, [...cachedPublicRides, ...publicRides], includePublicRiderCards));
+      setRides(
+        mergeCreatedHomeRides(
+          readCreatedHomeRides(),
+          [...cachedPublicRidesForViewer(viewerUserId, stableViewerIdentity), ...publicRides],
+          includePublicRiderCards,
+        ),
+      );
     }
 
     function syncWhenVisible() {
@@ -755,7 +785,11 @@ export function useCreatedHomeRides(
       void requestRealtimeSync();
     }
 
-    void sync();
+    function syncFromEvent() {
+      void sync();
+    }
+
+    void sync({ forcePublicFetch: true });
     let realtimeClient: ReturnType<typeof getSupabaseBrowserClient> | null = null;
     let realtimeChannel: ReturnType<ReturnType<typeof getSupabaseBrowserClient>["channel"]> | null = null;
     try {
@@ -781,20 +815,20 @@ export function useCreatedHomeRides(
       realtimeClient = null;
       realtimeChannel = null;
     }
-    window.addEventListener("storage", sync);
+    window.addEventListener("storage", syncFromEvent);
     window.addEventListener("ridepod-created-home-rides-updated", syncAndRequest);
     window.addEventListener("focus", syncAndRequest);
     document.addEventListener("visibilitychange", syncWhenVisible);
-    const interval = window.setInterval(sync, 30_000);
+    const interval = window.setInterval(() => void sync({ forcePublicFetch: true }), 30_000);
     const realtimeSyncInterval = window.setInterval(() => {
       if (!realtimeChannel) return;
       void announceLocalCreatedHomeRides(realtimeChannel, viewerUserId);
       void sendPublicCreatedHomeRideSyncRequest(realtimeChannel, viewerUserId ?? null);
-    }, 5_000);
+    }, publicCreatedHomeRidesRealtimeSyncMs);
 
     return () => {
       cancelled = true;
-      window.removeEventListener("storage", sync);
+      window.removeEventListener("storage", syncFromEvent);
       window.removeEventListener("ridepod-created-home-rides-updated", syncAndRequest);
       window.removeEventListener("focus", syncAndRequest);
       document.removeEventListener("visibilitychange", syncWhenVisible);
