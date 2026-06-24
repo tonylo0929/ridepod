@@ -13,6 +13,8 @@ const oauthErrorMessages: Record<string, string> = {
   redirect_mismatch: "Google login redirect is not configured for this RidePod URL.",
   missing_code: "Google login did not return a valid code. Try again.",
   profile_setup_failed: "Google login worked, but RidePod could not finish profile setup. Try again.",
+  oauth_provider_disabled: "Google login is not enabled in Supabase yet. Enable the Google provider, then try again.",
+  oauth_start_failed: "Couldn't start Google login. Check the Supabase Google provider settings.",
 };
 
 export default function LoginPage() {

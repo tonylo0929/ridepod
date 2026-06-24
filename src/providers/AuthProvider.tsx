@@ -594,33 +594,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = useCallback(async (nextPath?: string | null): Promise<AuthResult> => {
     try {
-      const client = getSupabaseBrowserClient();
-      const callbackUrl = new URL("/auth/callback", window.location.origin);
+      const startUrl = new URL("/auth/google", window.location.origin);
       if (nextPath?.startsWith("/")) {
-        callbackUrl.searchParams.set("next", nextPath);
+        startUrl.searchParams.set("next", nextPath);
       }
 
-      const result = await withAuthTimeout(
-        client.auth.signInWithOAuth({
-          provider: "google",
-          options: {
-            redirectTo: callbackUrl.toString(),
-            queryParams: {
-              access_type: "offline",
-              prompt: "select_account",
-            },
-          },
-        }),
-        "Google login took too long.",
-      );
-
-      if (result.error) {
-        return {
-          ok: false,
-          error: result.error.message || "Couldn't start Google login. Check the OAuth redirect settings.",
-        };
-      }
-
+      window.location.assign(startUrl.toString());
       return { ok: true };
     } catch (error) {
       if (isMissingSupabaseConfig(error)) {
