@@ -602,7 +602,7 @@ export default function TodayRidesPage() {
             Good morning, {currentMockUserName}
           </p>
           <h1 className="mt-4 text-[44px] font-black leading-none tracking-tight text-[var(--rp-text)] min-[720px]:text-[62px]">
-            Ride Now
+            Ride Board
           </h1>
           <p className="mt-3 max-w-[310px] text-base font-semibold leading-6 text-[var(--rp-muted-strong)]">
             Find people going your way today.
@@ -662,7 +662,7 @@ export default function TodayRidesPage() {
           ) : (
             <section className="rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 text-center shadow-[var(--rp-shadow-soft)]">
               <Filter className="mx-auto h-8 w-8 text-[var(--rp-primary)]" />
-              <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">No Ride Now posts yet</h2>
+              <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">No Ride Board posts yet</h2>
               <p className="mx-auto mt-2 max-w-xs text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
                 Post where you&apos;re going today and see who&apos;s interested.
               </p>
