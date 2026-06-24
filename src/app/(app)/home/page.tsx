@@ -1172,7 +1172,6 @@ function HomeRideCard({
   const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
   const displayHostName = getKnownRideHostDisplayName(ride);
   const rideAppTrustBadge = isRideApp ? getHomeRideTrustBadge(getRideAppTrustSummary(getHomeRideHostTrustUserId(ride))) : null;
-  const relationshipLabel = currentUserRelationship?.tone === "host" ? "You" : displayHostName ?? "Host";
   const ratingLabel =
     rideAppTrustBadge?.tone === "rating"
       ? rideAppTrustBadge.label.replace(/^Host\s+/i, "")
@@ -1242,7 +1241,6 @@ function HomeRideCard({
         <div className="grid min-w-0 justify-items-center gap-1.5">
           <RideProfileAvatar ride={ride} currentUserAvatar={currentUserAvatar} />
           <div className="flex max-w-full items-center gap-1 text-[11px] font-black leading-4 text-[var(--rp-text)] min-[390px]:text-xs">
-            <span className="truncate">{relationshipLabel}</span>
             {ratingLabel ? (
               <>
                 <Star className="h-3 w-3 shrink-0 fill-[var(--rp-primary)] text-[var(--rp-primary)]" />
