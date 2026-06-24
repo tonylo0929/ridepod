@@ -161,6 +161,15 @@ function writeCachedPublicCreatedHomeRides(rides: CachedPublicCreatedHomeRide[])
   window.localStorage.setItem(publicCreatedHomeRidesStorageKey, JSON.stringify(rides.slice(0, 100)));
 }
 
+function replaceCachedPublicCreatedHomeRides(rides: CachedPublicCreatedHomeRide[]) {
+  writeCachedPublicCreatedHomeRides(rides);
+}
+
+function clearCachedPublicCreatedHomeRides() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(publicCreatedHomeRidesStorageKey);
+}
+
 export function createdHomeRideViewerIdentityFromAuth({
   profile,
   user,
@@ -250,6 +259,38 @@ function cachePublicCreatedHomeRide(ride: HomeRide, hostUserId: string | null) {
 
 function isViewerRide(ride: HomeRide) {
   return ride.currentUserRole === "host" || ride.currentUserRole === "joined_rider" || ride.currentUserJoined === true;
+}
+
+function hasViewerIdentity(
+  viewerUserId?: string | null,
+  viewerIdentity?: CreatedHomeRideViewerIdentity | null,
+) {
+  return Boolean(
+    viewerUserId?.trim() ||
+      viewerIdentity?.accountName?.trim() ||
+      viewerIdentity?.displayName?.trim() ||
+      viewerIdentity?.preferredName?.trim() ||
+      viewerIdentity?.email?.trim() ||
+      viewerIdentity?.metadataAccountName?.trim() ||
+      viewerIdentity?.metadataDisplayName?.trim(),
+  );
+}
+
+function readCreatedHomeRidesForViewer(
+  viewerUserId?: string | null,
+  viewerIdentity?: CreatedHomeRideViewerIdentity | null,
+) {
+  if (!hasViewerIdentity(viewerUserId, viewerIdentity)) return [];
+
+  return readCreatedHomeRides()
+    .filter((ride) => !isDeletedCreatedHomeRide(ride))
+    .filter((ride) => {
+      if (ride.currentUserRole === "host") {
+        return viewerIdentityMatchesHostName(getRideHostNameForViewerMatch(ride), viewerIdentity);
+      }
+
+      return isViewerRide(ride);
+    });
 }
 
 function createdHomeRideSortKey(ride: HomeRide) {
@@ -539,7 +580,12 @@ async function readPublicCreatedHomeRides(
   try {
     const response = await fetch("/api/public-created-rides", { cache: "no-store" });
     if (!response.ok) throw new Error(`List failed with ${response.status}`);
-    const payload = (await response.json()) as { pods?: PublicCreatedRidePod[] };
+    const payload = (await response.json()) as { pods?: PublicCreatedRidePod[]; fallbackNote?: string };
+    if (payload.fallbackNote) {
+      clearCachedPublicCreatedHomeRides();
+      return [];
+    }
+
     const rides = (payload.pods ?? [])
       .map((pod) => ({
         ride: publicCreatedPodToHomeRide(pod, viewerUserId, viewerIdentity),
@@ -547,7 +593,13 @@ async function readPublicCreatedHomeRides(
       }))
       .filter(({ ride }) => !isDeletedCreatedHomeRide(ride));
 
-    rides.forEach(({ ride, hostUserId }) => cachePublicCreatedHomeRide(ride, hostUserId));
+    replaceCachedPublicCreatedHomeRides(
+      rides.map(({ ride, hostUserId }) => ({
+        ride,
+        hostUserId,
+        cachedAt: new Date().toISOString(),
+      })),
+    );
     return rides.map(({ ride }) => ride);
   } catch (error) {
     console.warn("RidePod public created rides list failed", error);
@@ -726,17 +778,14 @@ export function useCreatedHomeRides(
 ) {
   const stableViewerIdentity = viewerIdentity ?? null;
   const [rides, setRides] = useState<HomeRide[]>(() =>
-    mergeCreatedHomeRides(
-      readCreatedHomeRides(),
-      cachedPublicRidesForViewer(viewerUserId, stableViewerIdentity),
-      includePublicRiderCards,
-    ),
+    mergeCreatedHomeRides(readCreatedHomeRidesForViewer(viewerUserId, stableViewerIdentity), [], includePublicRiderCards),
   );
 
   useEffect(() => {
     let cancelled = false;
     let syncId = 0;
     let lastPublicFetchAt = 0;
+    let hasAuthoritativePublicCache = false;
     let publicFetchPromise: Promise<HomeRide[]> | null = null;
 
     async function loadPublicRides(forcePublicFetch = false) {
@@ -754,17 +803,20 @@ export function useCreatedHomeRides(
 
     async function sync({ forcePublicFetch = false }: { forcePublicFetch?: boolean } = {}) {
       const currentSyncId = ++syncId;
-      const localRides = readCreatedHomeRides();
-      const cachedPublicRides = cachedPublicRidesForViewer(viewerUserId, stableViewerIdentity);
+      const localRides = readCreatedHomeRidesForViewer(viewerUserId, stableViewerIdentity);
+      const cachedPublicRides = hasAuthoritativePublicCache
+        ? cachedPublicRidesForViewer(viewerUserId, stableViewerIdentity)
+        : [];
       setRides(mergeCreatedHomeRides(localRides, cachedPublicRides, includePublicRiderCards));
 
       const publicRides = await loadPublicRides(forcePublicFetch);
       if (!publicRides) return;
       if (cancelled || currentSyncId !== syncId) return;
+      hasAuthoritativePublicCache = true;
       setRides(
         mergeCreatedHomeRides(
-          readCreatedHomeRides(),
-          [...cachedPublicRidesForViewer(viewerUserId, stableViewerIdentity), ...publicRides],
+          readCreatedHomeRidesForViewer(viewerUserId, stableViewerIdentity),
+          publicRides,
           includePublicRiderCards,
         ),
       );
