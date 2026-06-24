@@ -1059,12 +1059,14 @@ function RecurringRideResultCard({
   ride,
   currentUserAvatar,
   isAuthenticated,
+  sourceTab,
 }: {
   ride: HomeRide;
   currentUserAvatar: CurrentUserAvatar;
   isAuthenticated: boolean;
+  sourceTab: HomeTab;
 }) {
-  const podHref = `/pods/${ride.id}`;
+  const podHref = `/pods/${ride.id}?fromTab=${encodeURIComponent(sourceTab)}`;
   const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
   const data = getRecurringRideResultData(ride);
   const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
@@ -1160,15 +1162,17 @@ function HomeRideCard({
   ride,
   currentUserAvatar,
   isAuthenticated,
+  sourceTab,
 }: {
   ride: HomeRide;
   currentUserAvatar: CurrentUserAvatar;
   isAuthenticated: boolean;
+  sourceTab: HomeTab;
 }) {
   const isRideApp = isRideAppSelfSettle(ride);
   const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
   const rideAppEstimateDisplay = getRideAppTotalEstimateDisplay(ride);
-  const podHref = `/pods/${ride.id}`;
+  const podHref = `/pods/${ride.id}?fromTab=${encodeURIComponent(sourceTab)}`;
   const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
   const displayHostName = getKnownRideHostDisplayName(ride);
   const rideAppTrustBadge = isRideApp ? getHomeRideTrustBadge(getRideAppTrustSummary(getHomeRideHostTrustUserId(ride))) : null;
@@ -1283,6 +1287,7 @@ function RideSearchResultCard(props: {
   ride: HomeRide;
   currentUserAvatar: CurrentUserAvatar;
   isAuthenticated: boolean;
+  sourceTab: HomeTab;
 }) {
   if (isRideAppSelfSettle(props.ride) && (props.ride.rideKind === "recurring" || props.ride.is_recurring)) {
     return <RecurringRideResultCard {...props} />;
@@ -1960,6 +1965,7 @@ function HomePageContent() {
                   ride={ride}
                   currentUserAvatar={currentUserAvatar}
                   isAuthenticated={isAuthenticated}
+                  sourceTab={activeTab}
                 />
               ))
             ) : (

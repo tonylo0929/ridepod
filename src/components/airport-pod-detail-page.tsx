@@ -315,7 +315,7 @@ function RiderStack({ ride }: { ride: HomeRide }) {
   );
 }
 
-export function AirportPodDetailPage({ ride }: { ride: HomeRide }) {
+export function AirportPodDetailPage({ ride, backHref = "/home" }: { ride: HomeRide; backHref?: string }) {
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [selectedHowItWorksStep, setSelectedHowItWorksStep] = useState<HowItWorksStepId | null>(null);
   const [showLockSeatModal, setShowLockSeatModal] = useState(false);
@@ -378,7 +378,7 @@ export function AirportPodDetailPage({ ride }: { ride: HomeRide }) {
       <div className="mx-auto w-full max-w-[520px] lg:pt-4">
         <header className="relative z-20 flex h-12 items-center justify-between px-4">
           <Link
-            href="/home"
+            href={backHref}
             aria-label="Back to Home"
             className="grid h-10 w-10 place-items-center rounded-full text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]"
           >

@@ -28,12 +28,24 @@ import { getProtectedPod } from "@/lib/money-safety-mock";
 import { mapMemberToPublicProfileViewModel } from "@/lib/public-profile";
 import { getHomeRide } from "@/lib/home-ride-mock";
 
+const homeReturnTabs = new Set(["all", "one_off", "recurring", "airport", "quote_ready"]);
+
+function getHomeBackHref(fromTab?: string | string[]) {
+  const tab = Array.isArray(fromTab) ? fromTab[0] : fromTab;
+
+  return tab && homeReturnTabs.has(tab) ? `/home?tab=${encodeURIComponent(tab)}` : "/home";
+}
+
 export default async function PodDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ fromTab?: string | string[] }>;
 }) {
   const { id } = await params;
+  const { fromTab } = (await searchParams) ?? {};
+  const homeBackHref = getHomeBackHref(fromTab);
 
   if (id === "usc-lax-001" || id === "usc-lax-commute") {
     return <PremiumPodDetailPage />;
@@ -42,18 +54,18 @@ export default async function PodDetailPage({
   const homeRide = getHomeRide(id);
   if (homeRide) {
     if (homeRide.rideKind === "airport" || homeRide.airportDirection) {
-      return <AirportPodDetailPage ride={homeRide} />;
+      return <AirportPodDetailPage ride={homeRide} backHref={homeBackHref} />;
     }
 
     if (homeRide.rideKind === "recurring" || homeRide.repeatsPattern || homeRide.scheduleLabel) {
-      return <RecurringPodDetailPage ride={homeRide} />;
+      return <RecurringPodDetailPage ride={homeRide} backHref={homeBackHref} />;
     }
 
     if (homeRide.rideKind === "one_off" && !homeRide.airportDirection) {
-      return <NormalPodDetailPage ride={homeRide} />;
+      return <NormalPodDetailPage ride={homeRide} backHref={homeBackHref} />;
     }
 
-    return <HomePodDetailPage ride={homeRide} />;
+    return <HomePodDetailPage ride={homeRide} backHref={homeBackHref} />;
   }
 
   const pod = getPod(id);

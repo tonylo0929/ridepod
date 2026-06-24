@@ -151,7 +151,7 @@ function QuoteStatusCard({
   );
 }
 
-export function HomePodDetailPage({ ride }: { ride: HomeRide }) {
+export function HomePodDetailPage({ ride, backHref = "/home" }: { ride: HomeRide; backHref?: string }) {
   const {
     seatsUsed,
     joinView,
@@ -185,7 +185,7 @@ export function HomePodDetailPage({ ride }: { ride: HomeRide }) {
 
       <div className="relative grid gap-4">
         <Link
-          href="/home"
+          href={backHref}
           className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-2 text-sm font-black text-[var(--rp-muted-strong)]"
         >
           <ArrowLeft className="h-4 w-4" />

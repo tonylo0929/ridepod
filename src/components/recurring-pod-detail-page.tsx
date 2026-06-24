@@ -70,7 +70,8 @@ function scheduleLabel(ride: HomeRide) {
 }
 
 function whoCanJoinLabel(ride: HomeRide) {
-  return ride.podType === "Women-only" ? "Women-only pod" : ride.podType;
+  if (ride.podType === "Women-only") return "Women-only pod";
+  return ride.podType === "Open pod" ? "Anyone" : ride.podType;
 }
 
 type DetailTab = "trip" | "pod";
@@ -705,7 +706,7 @@ function RecurringStickyCta({
   );
 }
 
-export function RecurringPodDetailPage({ ride }: { ride: HomeRide }) {
+export function RecurringPodDetailPage({ ride, backHref = "/home" }: { ride: HomeRide; backHref?: string }) {
   const [activeDetailTab, setActiveDetailTab] = useState<DetailTab>("trip");
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [joined, setJoined] = useState(ride.currentUserJoined === true || ride.quoteStatus === "joined");
@@ -768,7 +769,7 @@ export function RecurringPodDetailPage({ ride }: { ride: HomeRide }) {
     <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-5rem)] overflow-hidden pb-48 sm:-mx-6 lg:-mx-10 lg:-mt-8">
       <div className="mx-auto w-full max-w-[520px] lg:pt-4">
         <header className="relative z-20 flex h-12 items-center justify-between px-4">
-          <Link href="/home" aria-label="Back to Home" className="grid h-10 w-10 place-items-center rounded-full text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]">
+          <Link href={backHref} aria-label="Back to Home" className="grid h-10 w-10 place-items-center rounded-full text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]">
             <ArrowLeft className="h-6 w-6" />
           </Link>
           <span className="h-10 w-10" aria-hidden="true" />
