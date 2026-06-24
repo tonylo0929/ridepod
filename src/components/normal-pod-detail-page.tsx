@@ -2278,7 +2278,7 @@ export function PodStatusPanel({
                 const Icon = tab.icon;
                 const active = activeTab === tab.id;
                 const tabClassName = cn(
-                  "flex min-h-11 items-center justify-center gap-1 rounded-[14px] text-[11px] font-black transition min-[390px]:gap-1.5 min-[390px]:text-xs",
+                  "flex min-h-11 items-center justify-center gap-0.5 rounded-[14px] text-[11px] font-black transition min-[390px]:gap-1 min-[390px]:text-xs",
                   active ? "bg-[var(--rp-primary)] text-[#07111a]" : "text-[var(--rp-muted-strong)] hover:bg-white/8",
                 );
 
