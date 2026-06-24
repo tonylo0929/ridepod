@@ -1055,6 +1055,15 @@ function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; curren
   );
 }
 
+function getRideDetailSourceTab(ride: HomeRide, sourceTab: HomeTab): HomeTab {
+  if (sourceTab === "quote_ready") return sourceTab;
+  if (ride.rideKind === "recurring" || ride.is_recurring || ride.repeatsPattern || ride.scheduleLabel) return "recurring";
+  if (ride.rideKind === "airport" || ride.airportDirection) return "airport";
+  if (ride.rideKind === "one_off") return "one_off";
+
+  return sourceTab;
+}
+
 function RecurringRideResultCard({
   ride,
   currentUserAvatar,
@@ -1066,7 +1075,7 @@ function RecurringRideResultCard({
   isAuthenticated: boolean;
   sourceTab: HomeTab;
 }) {
-  const podHref = `/pods/${ride.id}?fromTab=${encodeURIComponent(sourceTab)}`;
+  const podHref = `/pods/${ride.id}?fromTab=${encodeURIComponent(getRideDetailSourceTab(ride, sourceTab))}`;
   const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
   const data = getRecurringRideResultData(ride);
   const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
@@ -1172,7 +1181,7 @@ function HomeRideCard({
   const isRideApp = isRideAppSelfSettle(ride);
   const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
   const rideAppEstimateDisplay = getRideAppTotalEstimateDisplay(ride);
-  const podHref = `/pods/${ride.id}?fromTab=${encodeURIComponent(sourceTab)}`;
+  const podHref = `/pods/${ride.id}?fromTab=${encodeURIComponent(getRideDetailSourceTab(ride, sourceTab))}`;
   const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
   const displayHostName = getKnownRideHostDisplayName(ride);
   const rideAppTrustBadge = isRideApp ? getHomeRideTrustBadge(getRideAppTrustSummary(getHomeRideHostTrustUserId(ride))) : null;
