@@ -4017,7 +4017,7 @@ function ManagePodRiderGroup({
                 {getInitials(rider.name).slice(0, 1)}
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-sm font-black text-white">{rider.name}</span>
+                <span className="line-clamp-2 block text-sm font-black leading-5 text-white">{rider.name}</span>
                 <span className="block text-xs font-semibold text-[var(--rp-muted-strong)]">{getHelper(rider)}</span>
               </span>
             </span>
