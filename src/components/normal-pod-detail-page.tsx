@@ -448,6 +448,11 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
+function getViewProfileHref(name: string, role: "host" | "rider" = "host") {
+  const params = new URLSearchParams({ name, role });
+  return `/profile/view?${params.toString()}`;
+}
+
 function getHostProfileImageUrl(ride: HomeRide) {
   const hostMedia = ride as HomeRide & {
     hostAvatarUrl?: string | null;
@@ -3506,6 +3511,12 @@ function SelfSettlePodSummaryHero({
             <p className="mt-1 text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-muted-strong)]">
               Created by {hostAvatarDisplayName}
             </p>
+            <Link
+              href={getViewProfileHref(hostAvatarDisplayName, "host")}
+              className="mt-2 inline-flex min-h-8 items-center justify-center rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-3 text-[11px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
+            >
+              View Profile
+            </Link>
           </div>
           <span className="flex shrink-0 items-start justify-end gap-2">
             {summaryUserCanOpenChat ? (
@@ -4919,6 +4930,12 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
                     <span className="shrink-0 uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">Created by</span>
                     <span className="truncate text-[var(--rp-text)]">{ride.hostName || "RidePod host"}</span>
                   </div>
+                  <Link
+                    href={getViewProfileHref(ride.hostName || "RidePod host", "host")}
+                    className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[var(--rp-primary)]/35 bg-black/26 px-3 text-[11px] font-black text-[var(--rp-primary)] shadow-[0_8px_18px_rgba(0,0,0,0.18)] backdrop-blur-md transition hover:bg-white/10"
+                  >
+                    View Profile
+                  </Link>
                   <button
                     type="button"
                     onClick={sharePod}
