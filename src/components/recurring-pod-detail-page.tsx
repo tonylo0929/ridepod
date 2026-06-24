@@ -780,7 +780,7 @@ export function RecurringPodDetailPage({ ride, backHref = "/home" }: { ride: Hom
 
         <main className="relative z-10 grid gap-3 px-4">
           <section className="relative -mx-4 -mt-12 overflow-hidden rounded-b-[28px] border-b border-[var(--rp-border)] bg-[var(--rp-shell)] shadow-[var(--rp-shadow-soft)]">
-            <div className="relative min-h-[488px] pt-12">
+            <div className="relative min-h-[430px] pt-12">
               <Image
                 src="/images/ridepod/home-dark-mode-background.png"
                 alt="Hong Kong skyline illustration at night"
@@ -792,7 +792,7 @@ export function RecurringPodDetailPage({ ride, backHref = "/home" }: { ride: Hom
               <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,11,18,0.04)_0%,rgba(5,11,18,0.08)_34%,rgba(5,11,18,0.74)_76%,rgba(5,11,18,0.96)_100%)]" />
 
               <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-5">
-                <h2 className="max-w-full whitespace-nowrap text-[30px] font-black leading-none tracking-tight text-white min-[390px]:text-[34px]">
+                <h2 className="max-w-full text-[28px] font-black leading-[1.03] tracking-tight text-white min-[390px]:text-[32px]">
                   {ride.fromLabel} {"\u2192"} {ride.toLabel}
                 </h2>
 
@@ -815,39 +815,42 @@ export function RecurringPodDetailPage({ ride, backHref = "/home" }: { ride: Hom
                 </div>
 
                 <div className="mt-4 border-t border-white/14 pt-4">
-                  <div className="grid grid-cols-[1fr_auto] items-end gap-4">
-                    <div className="min-w-0 pr-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <RiderStack ride={ride} />
-                        <p className="min-w-0 text-lg font-black text-[var(--rp-text)]">
-                          {seatsUsed} / {ride.seatsTotal} seats filled
+                  <div className="grid gap-3">
+                    <div className="grid grid-cols-[minmax(0,1fr)_minmax(112px,0.68fr)] gap-3">
+                      <div className="min-w-0 rounded-[18px] border border-white/14 bg-black/28 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-md">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <RiderStack ride={ride} />
+                          <p className="min-w-0 text-left font-black leading-tight text-[var(--rp-text)]">
+                            <span className="block whitespace-nowrap text-lg">{seatsUsed} / {ride.seatsTotal}</span>
+                            <span className="block text-xs text-[var(--rp-muted-strong)]">seats filled</span>
+                          </p>
+                        </div>
+                        <div className="relative mt-3 h-2 overflow-hidden rounded-full bg-white/14">
+                          <div
+                            className="h-full rounded-full bg-[var(--rp-primary)]"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid min-w-0 content-center border-x border-white/14 px-3 py-2 text-left backdrop-blur-md">
+                        <p className="text-[10px] font-semibold leading-4 text-[var(--rp-muted-strong)]">
+                          {howItWorksRideMode === "ride_app" ? "Total estimate" : "Est. share"}
+                        </p>
+                        <p className={cn("mt-1 font-black leading-tight text-[var(--rp-primary)]", rideAppTotalEstimate || howItWorksRideMode !== "ride_app" ? "text-lg" : "text-[17px]")}>
+                          {howItWorksRideMode === "ride_app" ? rideAppTotalEstimate ?? "Pending" : `HK$${ride.pricePerPerson}`}
+                        </p>
+                        <p className="mt-1 text-[11px] font-semibold leading-4 text-[var(--rp-muted-strong)]">
+                          {howItWorksRideMode === "ride_app"
+                            ? rideAppTotalEstimate
+                              ? "Ride app estimate"
+                              : "Ride app estimate pending"
+                            : "per person"}
                         </p>
                       </div>
-                      <div className="relative mt-4 h-2.5 overflow-hidden rounded-full bg-white/14">
-                        <div
-                          className="h-full rounded-full bg-[var(--rp-primary)]"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
-                    </div>
-                    <div className="min-w-[144px] border-l border-white/14 pl-4 text-right">
-                      <p className="text-base font-semibold text-[var(--rp-muted-strong)]">
-                        {howItWorksRideMode === "ride_app" ? "Total estimate" : "Est. share"}
-                      </p>
-                      <p className="mt-1 text-3xl font-black leading-none text-white">
-                        {howItWorksRideMode === "ride_app" ? rideAppTotalEstimate ?? "Pending" : `HK$${ride.pricePerPerson}`}
-                      </p>
-                      <p className="mt-1 text-sm font-semibold text-[var(--rp-muted-strong)]">
-                        {howItWorksRideMode === "ride_app"
-                          ? rideAppTotalEstimate
-                            ? "Ride app estimate"
-                            : "Ride app estimate pending"
-                          : "per person"}
-                      </p>
                     </div>
                   </div>
-                  <div id="quote-status" className="mt-4 grid grid-cols-[1fr_150px] items-center gap-3">
-                    <div className="rounded-[14px] border border-white/14 bg-black/24 px-3 py-2 text-left backdrop-blur-md">
+                  <div id="quote-status" className="mt-3 grid grid-cols-[minmax(0,1fr)_minmax(112px,0.68fr)] items-center gap-3">
+                    <div className="min-w-0 rounded-[14px] border border-white/14 bg-black/24 px-3 py-2 text-left backdrop-blur-md">
                       <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
                         {howItWorksRideMode === "ride_app" ? "Ride detail status" : "Quote status"}
                       </p>
