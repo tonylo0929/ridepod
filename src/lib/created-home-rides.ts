@@ -185,6 +185,17 @@ export function createdHomeRideViewerIdentityFromAuth({
     user_metadata?: Record<string, unknown> | null;
   } | null;
 }): CreatedHomeRideViewerIdentity {
+  if (!user) {
+    return {
+      accountName: null,
+      displayName: null,
+      preferredName: null,
+      email: null,
+      metadataAccountName: null,
+      metadataDisplayName: null,
+    };
+  }
+
   return {
     accountName: profile?.account_name ?? null,
     displayName: profile?.display_name ?? null,
@@ -285,11 +296,7 @@ function readCreatedHomeRidesForViewer(
   return readCreatedHomeRides()
     .filter((ride) => !isDeletedCreatedHomeRide(ride))
     .filter((ride) => {
-      if (ride.currentUserRole === "host") {
-        return viewerIdentityMatchesHostName(getRideHostNameForViewerMatch(ride), viewerIdentity);
-      }
-
-      return isViewerRide(ride);
+      return ride.currentUserRole === "host" && viewerIdentityMatchesHostName(getRideHostNameForViewerMatch(ride), viewerIdentity);
     });
 }
 
