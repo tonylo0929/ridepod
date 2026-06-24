@@ -4746,7 +4746,7 @@ export function NormalPodDetailPage({ ride: baseRide }: { ride: HomeRide }) {
       deleteCreatedHomeRide(ride.id);
       closeHostCancellationModal();
       setShowManagePodActionsModal(false);
-      router.replace("/home");
+      router.replace("/home?tab=one_off");
       return;
     }
 
