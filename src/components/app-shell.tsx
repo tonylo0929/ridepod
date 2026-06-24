@@ -6,7 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   Bell,
   CalendarCheck,
-  CirclePlus,
+  CalendarDays,
   Coffee,
   Crown,
   History as HistoryIcon,
@@ -52,6 +52,7 @@ const desktopDrawerNav = [
   { href: "/about", label: "About", icon: Info },
   { href: "/support", label: "Support RidePod", icon: Coffee },
   { href: "/membership", label: "RidePod Plus", icon: Crown },
+  { href: "/today-rides", label: "Today Rides", icon: CalendarDays },
   { href: "/history", label: "Ride history", icon: HistoryIcon, requiresAuth: true },
   { href: "/chats", label: "Live Chat", icon: MessageCircle, requiresAuth: true },
 ];
@@ -79,7 +80,7 @@ function NavLink({
   const destination = requiresAuth && !isLoggedIn ? `/login?next=${encodeURIComponent(href)}` : href;
   const hrefPath = href.split("?")[0] ?? href;
   const active =
-    href === "/home"
+    href === "/home" || href === "/home?tab=one_off"
       ? pathname === "/home" && homeTab !== "all"
       : href === "/home?tab=all"
         ? (pathname === "/home" && homeTab === "all") || pathname === "/ride-groups" || pathname.startsWith("/ride-groups/") || pathname.startsWith("/ride-calls/")
@@ -119,12 +120,11 @@ function PremiumBottomNav() {
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_92%,transparent)] px-0 pb-[env(safe-area-inset-bottom)] shadow-[var(--rp-shadow-nav)] backdrop-blur-xl lg:hidden">
-      <div className="mx-auto grid max-w-md grid-cols-5 items-center">
+      <div className="mx-auto grid max-w-md grid-cols-4 items-center">
         <NavLink href="/home?tab=one_off" label="Search" icon={Search} compact />
         <NavLink href="/home?tab=all" label="Ride Group" icon={UsersRound} compact />
-        <NavLink href="/create" label="Create" icon={CirclePlus} compact requiresAuth isLoggedIn={isLoggedIn} />
         <NavLink href="/pods" label="My Ride" icon={CalendarCheck} compact requiresAuth isLoggedIn={isLoggedIn} />
-        <NavLink href="/chats" label="Chats" icon={MessageCircle} compact requiresAuth isLoggedIn={isLoggedIn} />
+        <NavLink href="/today-rides" label="Today Rides" icon={CalendarDays} compact />
       </div>
     </nav>
   );
