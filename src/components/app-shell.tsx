@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   Bell,
   CalendarCheck,
@@ -52,7 +52,7 @@ const desktopDrawerNav = [
   { href: "/about", label: "About", icon: Info },
   { href: "/support", label: "Support RidePod", icon: Coffee },
   { href: "/membership", label: "RidePod Plus", icon: Crown },
-  { href: "/today-rides", label: "Ride Board", icon: CalendarDays },
+  { href: "/home?tab=all", label: "Ride Board", icon: CalendarDays },
   { href: "/history", label: "Ride history", icon: HistoryIcon, requiresAuth: true },
   { href: "/chats", label: "Live Chat", icon: MessageCircle, requiresAuth: true },
 ];
@@ -75,11 +75,15 @@ function NavLink({
   isLoggedIn?: boolean;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const homeTab = searchParams.get("tab");
   const destination = requiresAuth && !isLoggedIn ? `/login?next=${encodeURIComponent(href)}` : href;
   const hrefPath = href.split("?")[0] ?? href;
   const active =
     href === "/home" || href === "/home?tab=one_off"
-      ? pathname === "/home"
+      ? pathname === "/home" && homeTab !== "all"
+      : href === "/home?tab=all"
+        ? (pathname === "/home" && homeTab === "all") || pathname === "/ride-groups" || pathname.startsWith("/ride-groups/") || pathname.startsWith("/ride-calls/")
       : href === "/pods"
         ? pathname === hrefPath || pathname.startsWith("/pods/date/")
         : hrefPath === "/ride-groups"
@@ -120,7 +124,7 @@ function PremiumBottomNav() {
         <NavLink href="/home?tab=one_off" label="Search" icon={Search} compact />
         <NavLink href="/create" label="Create" icon={PlusCircle} compact />
         <NavLink href="/pods" label="My Ride" icon={CalendarCheck} compact requiresAuth isLoggedIn={isLoggedIn} />
-        <NavLink href="/today-rides" label="Ride Board" icon={CalendarDays} compact />
+        <NavLink href="/home?tab=all" label="Ride Board" icon={CalendarDays} compact />
       </div>
     </nav>
   );
@@ -205,13 +209,15 @@ function DesktopDrawerLink({
   badgeCount?: number;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const homeTab = searchParams.get("tab");
   const destination = requiresAuth && !isLoggedIn ? `/login?next=${encodeURIComponent(href)}` : href;
   const hrefPath = href.split("?")[0] ?? href;
   const active =
     href === "/home"
-      ? pathname === "/home"
+      ? pathname === "/home" && homeTab !== "all"
       : href === "/home?tab=all"
-        ? pathname === "/ride-groups" || pathname.startsWith("/ride-groups/") || pathname.startsWith("/ride-calls/")
+        ? (pathname === "/home" && homeTab === "all") || pathname === "/ride-groups" || pathname.startsWith("/ride-groups/") || pathname.startsWith("/ride-calls/")
       : href === "/pods"
         ? pathname === hrefPath || pathname.startsWith("/pods/date/")
         : hrefPath === "/ride-groups"
