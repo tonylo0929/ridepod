@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LockKeyhole, LogIn, Mail } from "lucide-react";
+import { LockKeyhole, Mail } from "lucide-react";
 import { AuthPageShell } from "@/components/auth-page-shell";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -17,6 +17,28 @@ const oauthErrorMessages: Record<string, string> = {
   oauth_start_failed: "Couldn't start Google login. Check the Supabase Google provider settings.",
 };
 
+function GoogleIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5">
+      <path
+        fill="#4285F4"
+        d="M21.805 12.224c0-.725-.065-1.421-.186-2.09H12v3.953h5.497a4.7 4.7 0 0 1-2.038 3.083v2.56h3.301c1.932-1.779 3.045-4.398 3.045-7.506z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 22c2.76 0 5.073-.914 6.76-2.47l-3.301-2.56c-.914.614-2.084.977-3.459.977-2.665 0-4.922-1.8-5.727-4.22H2.86v2.644A9.996 9.996 0 0 0 12 22z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M6.273 13.727A6.01 6.01 0 0 1 5.96 12c0-.599.108-1.181.313-1.727V7.629H2.86A9.996 9.996 0 0 0 1.805 12c0 1.612.386 3.138 1.055 4.371l3.413-2.644z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 6.053c1.5 0 2.846.516 3.906 1.529l2.927-2.927C17.068 3.011 14.755 2 12 2a9.996 9.996 0 0 0-9.14 5.629l3.413 2.644C7.078 7.853 9.335 6.053 12 6.053z"
+      />
+    </svg>
+  );
+}
 export default function LoginPage() {
   const router = useRouter();
   const { login, loginWithGoogle, fallbackNote } = useAuth();
@@ -78,7 +100,7 @@ export default function LoginPage() {
           <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
             <LockKeyhole className="h-5 w-5" />
           </span>
-          <h1 className="text-3xl font-black text-[var(--rp-text)]">Log in</h1>
+          <h1 className="text-3xl font-black text-[var(--rp-primary)]">Log in</h1>
           <p className="text-sm font-semibold leading-6 text-[var(--rp-muted)]">
             Log in to join shared taxi pods or manage Taxi Partner tools.
           </p>
@@ -132,9 +154,9 @@ export default function LoginPage() {
             type="button"
             onClick={onGoogleLogin}
             disabled={submitting || oauthSubmitting}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-black text-[var(--rp-text)] transition hover:border-[var(--rp-border-strong)] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-12 items-center justify-center gap-3 rounded-2xl border border-[#dadce0] bg-[#f8fafc] px-4 text-sm font-black text-[#1f1f1f] shadow-[0_1px_2px_rgba(0,0,0,0.12)] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <LogIn className="h-4 w-4 text-[var(--rp-primary)]" />
+            <GoogleIcon />
             {oauthSubmitting ? "Opening Google..." : "Continue with Google"}
           </button>
         </div>
