@@ -15,6 +15,7 @@ import {
   Car,
   CheckCircle2,
   CheckSquare,
+  CircleDollarSign,
   Clock3,
   Copy,
   Crown,
@@ -1788,7 +1789,7 @@ export function PodStatusPanel({
   const currentDashboardStep = ride.rideAppPodStatus === "ride_booked" || ride.rideAppPodStatus === "completed" ? 5 : chatAccess.canAccess ? 3 : detailsComplete ? 2 : 1;
   const detailChecklistRows = [
     {
-      icon: WalletCards,
+      icon: CircleDollarSign,
       label: "Estimated fare",
       value: detailsReady && fareEstimateSet ? getPodStatusFareLabel(ride) : "Not set",
       set: detailsReady && fareEstimateSet,
@@ -3060,7 +3061,7 @@ function PodStatusChecklistRow({
     <>
       <Icon className={cn("h-4 w-4 shrink-0", warning ? "text-amber-200" : "text-[var(--rp-muted-strong)]")} />
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-[var(--rp-primary)]">{label}</span>
+        <span className="block text-sm font-semibold text-white">{label}</span>
         {stackedValue ? (
           <span className={cn("mt-0.5 block break-words text-sm font-black leading-5", set ? "text-white" : "text-amber-100")}>
             {value}
