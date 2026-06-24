@@ -3532,11 +3532,13 @@ function SelfSettlePodSummaryHero({
         <div className="relative mt-4 grid grid-cols-[1.18fr_1.05fr_0.85fr] overflow-hidden rounded-[16px] border border-cyan-100/14 bg-white/[0.035] text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] min-[390px]:grid-cols-3">
           <div className="grid min-w-0 content-center justify-items-center gap-1 border-r border-white/10 px-2 py-3 text-center min-[390px]:px-3">
             <CalendarDays className="h-[18px] w-[18px] shrink-0 text-[var(--rp-muted-strong)] min-[390px]:h-5 min-[390px]:w-5" />
-            <span
-              className="block max-w-full truncate whitespace-nowrap text-[10px] font-black leading-[13px] text-cyan-200 min-[390px]:text-[11px] min-[390px]:leading-4"
-              title={`${ride.dateLabel} ${ride.timeLabel}`}
-            >
-              {compactSummaryDateLabel} {ride.timeLabel}
+            <span className="block max-w-full" title={`${ride.dateLabel} ${ride.timeLabel}`}>
+              <span className="block truncate whitespace-nowrap text-[11px] font-black leading-[13px] text-cyan-200 min-[390px]:text-[12px] min-[390px]:leading-4">
+                {ride.timeLabel}
+              </span>
+              <span className="block truncate whitespace-nowrap text-[10px] font-black leading-[13px] text-white min-[390px]:text-[11px] min-[390px]:leading-4">
+                {compactSummaryDateLabel}
+              </span>
             </span>
           </div>
           <div className="min-w-0 border-r border-white/10 px-2.5 py-3">
