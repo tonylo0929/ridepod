@@ -73,14 +73,17 @@ function NavLink({
 }) {
   const pathname = usePathname();
   const destination = requiresAuth && !isLoggedIn ? `/login?next=${encodeURIComponent(href)}` : href;
+  const hrefPath = href.split("?")[0] ?? href;
   const active =
     href === "/home"
-      ? pathname === href
+      ? pathname === "/home"
+      : href === "/home?tab=all"
+        ? pathname === "/ride-groups" || pathname.startsWith("/ride-groups/") || pathname.startsWith("/ride-calls/")
       : href === "/pods"
-        ? pathname === href || pathname.startsWith("/pods/date/")
-        : href === "/ride-groups"
-          ? pathname === href || pathname.startsWith("/ride-groups/") || pathname.startsWith("/ride-calls/")
-        : pathname === href || pathname.startsWith(`${href}/`);
+        ? pathname === hrefPath || pathname.startsWith("/pods/date/")
+        : hrefPath === "/ride-groups"
+          ? pathname === hrefPath || pathname.startsWith("/ride-groups/") || pathname.startsWith("/ride-calls/")
+        : pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
 
   return (
     <Link
@@ -114,7 +117,7 @@ function PremiumBottomNav() {
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_92%,transparent)] px-2 pb-[env(safe-area-inset-bottom)] shadow-[var(--rp-shadow-nav)] backdrop-blur-xl lg:hidden">
       <div className="mx-auto grid max-w-md grid-cols-4 items-center">
         <NavLink href="/home" label="Search" icon={Search} compact />
-        <NavLink href="/ride-groups/coldplay-concert" label="Ride Group" icon={UsersRound} compact />
+        <NavLink href="/home?tab=all" label="Ride Today" icon={UsersRound} compact />
         <NavLink href="/pods" label="My Ride" icon={CalendarCheck} compact requiresAuth isLoggedIn={isLoggedIn} />
         <NavLink href="/chats" label="Chats" icon={MessageCircle} compact requiresAuth isLoggedIn={isLoggedIn} />
       </div>
@@ -194,14 +197,17 @@ function DesktopDrawerLink({
 }) {
   const pathname = usePathname();
   const destination = requiresAuth && !isLoggedIn ? `/login?next=${encodeURIComponent(href)}` : href;
+  const hrefPath = href.split("?")[0] ?? href;
   const active =
     href === "/home"
-      ? pathname === href
+      ? pathname === "/home"
+      : href === "/home?tab=all"
+        ? pathname === "/ride-groups" || pathname.startsWith("/ride-groups/") || pathname.startsWith("/ride-calls/")
       : href === "/pods"
-        ? pathname === href || pathname.startsWith("/pods/date/")
-        : href === "/ride-groups"
-          ? pathname === href || pathname.startsWith("/ride-groups/") || pathname.startsWith("/ride-calls/")
-        : pathname === href || pathname.startsWith(`${href}/`);
+        ? pathname === hrefPath || pathname.startsWith("/pods/date/")
+        : hrefPath === "/ride-groups"
+          ? pathname === hrefPath || pathname.startsWith("/ride-groups/") || pathname.startsWith("/ride-calls/")
+        : pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
 
   return (
     <Link
