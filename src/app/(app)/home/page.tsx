@@ -1315,7 +1315,7 @@ function RideAppCommunityPanel() {
 
   return (
     <>
-      <section className="mb-4 grid gap-4">
+      <section className="mb-4 mt-4 grid gap-4">
         <div className="rounded-[26px] border border-cyan-200/35 bg-[linear-gradient(180deg,rgba(236,254,255,0.96),rgba(240,253,250,0.9))] p-5 text-[#12303a] shadow-[0_24px_60px_rgba(45,212,191,0.16)]">
           <div className="grid gap-4 min-[560px]:grid-cols-[1fr_auto] min-[560px]:items-start">
             <div className="min-w-0">
@@ -1964,8 +1964,6 @@ function HomePageContent() {
             onChange={handleRideModeChange}
           />
 
-          <RideAppCommunityPanel />
-
           <div className="grid gap-3">
             {visibleRides.length > 0 ? (
               visibleRides.map((ride) => (
@@ -1982,6 +1980,7 @@ function HomePageContent() {
             )}
           </div>
           <RideTypeInfoStrip />
+          <RideAppCommunityPanel />
         </section>
       ) : null}
 
