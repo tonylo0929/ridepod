@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -7,13 +7,9 @@ import {
   CalendarDays,
   CarFront,
   ChevronDown,
-  ChevronRight,
   CheckCircle2,
   CircleDollarSign,
   Gift,
-  GraduationCap,
-  MapPin,
-  Music2,
   Plane,
   RefreshCcw,
   ShieldCheck,
@@ -70,57 +66,6 @@ const categoryCards: Array<{ id: HomeTab; label: string; subtitle: string; icon:
   { id: "recurring", label: "Recurring", subtitle: "Ride regularly", icon: RefreshCcw },
   { id: "airport", label: "Airport", subtitle: "Fly together", icon: Plane },
   { id: "all", label: "Ride Today", subtitle: "Find your people", icon: UsersRound },
-];
-
-const communityCards: Array<{
-  name: string;
-  members: string;
-  icon: LucideIcon;
-  tone: "gold" | "blue" | "violet" | "green";
-  href: string;
-}> = [
-  { name: "HKU", members: "1.2K members", icon: GraduationCap, tone: "gold", href: "/ride-groups/coldplay-concert" },
-  { name: "Airport", members: "2.5K members", icon: Plane, tone: "blue", href: "/ride-groups/coldplay-concert" },
-  { name: "Concert", members: "834 members", icon: Music2, tone: "violet", href: "/ride-groups/coldplay-concert" },
-  { name: "TKO", members: "642 members", icon: MapPin, tone: "green", href: "/ride-groups/coldplay-concert" },
-];
-
-const communityRideCalls: Array<{
-  title: string;
-  route: string;
-  meta: string;
-  interested: string;
-  icon: LucideIcon;
-  tone: "blue" | "violet" | "green";
-  href: string;
-}> = [
-  {
-    title: "To Tuen Mun after concert",
-    route: "AsiaWorld-Expo -> Tuen Mun",
-    meta: "Today, 11:15 PM  -  2 seats needed",
-    interested: "6 interested",
-    icon: Music2,
-    tone: "violet",
-    href: "/ride-calls/call-coldplay-tuen-mun",
-  },
-  {
-    title: "Airport run this Friday",
-    route: "Central -> Hong Kong Int'l Airport",
-    meta: "May 23, 7:00 AM  -  3 seats needed",
-    interested: "8 interested",
-    icon: Plane,
-    tone: "blue",
-    href: "/ride-groups/coldplay-concert",
-  },
-  {
-    title: "TKO to Cityplaza",
-    route: "TKO -> Cityplaza",
-    meta: "Tomorrow, 8:30 AM  -  2 seats needed",
-    interested: "5 interested",
-    icon: MapPin,
-    tone: "green",
-    href: "/ride-groups/coldplay-concert",
-  },
 ];
 
 const airportDirectionFilters: Array<{ id: AirportDirectionFilter; label: string }> = [
@@ -587,95 +532,6 @@ function CategoryCard({
         {subtitle}
       </span>
     </button>
-  );
-}
-
-function HomeSectionHeader({ title, actionLabel = "See all" }: { title: string; actionLabel?: string }) {
-  return (
-    <div className="mb-3 flex items-center justify-between gap-3">
-      <h2 className="text-sm font-black tracking-tight text-[var(--rp-text)] min-[390px]:text-base">{title}</h2>
-      <button
-        type="button"
-        className="inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full px-2 text-[10px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/10"
-      >
-        {actionLabel}
-        <ChevronRight className="h-3.5 w-3.5" />
-      </button>
-    </div>
-  );
-}
-
-function communityToneClass(tone: "gold" | "blue" | "violet" | "green") {
-  if (tone === "gold") return "border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/16 text-[var(--rp-primary)]";
-  if (tone === "violet") return "border-violet-300/35 bg-violet-400/16 text-violet-100";
-  if (tone === "green") return "border-emerald-300/35 bg-emerald-400/16 text-emerald-100";
-  return "border-sky-300/35 bg-sky-400/16 text-sky-100";
-}
-
-function CommunityCard({ community }: { community: (typeof communityCards)[number] }) {
-  const Icon = community.icon;
-
-  return (
-    <Link
-      href={community.href}
-      className="relative min-w-0 rounded-[16px] border border-white/12 bg-[linear-gradient(180deg,rgba(18,32,48,0.86),rgba(10,20,31,0.86))] p-2.5 text-left shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition hover:border-[var(--rp-border-strong)]"
-    >
-      <span className={cn("grid h-10 w-10 place-items-center rounded-full border", communityToneClass(community.tone))}>
-        <Icon className="h-5 w-5" />
-      </span>
-      <span className="mt-2 block truncate text-xs font-black leading-4 text-[var(--rp-text)]">{community.name}</span>
-      <span className="mt-0.5 block truncate text-[10px] font-semibold leading-3 text-[var(--rp-muted-strong)]">{community.members}</span>
-      <span className="absolute bottom-2.5 right-2.5 h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.7)]" />
-    </Link>
-  );
-}
-
-function RideCallCard({ rideCall }: { rideCall: (typeof communityRideCalls)[number] }) {
-  const Icon = rideCall.icon;
-
-  return (
-    <Link href={rideCall.href} className="grid grid-cols-[42px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/10 px-2 py-3 transition hover:bg-white/[0.035] last:border-b-0">
-      <span className={cn("grid h-10 w-10 place-items-center rounded-full border", communityToneClass(rideCall.tone === "blue" ? "blue" : rideCall.tone === "violet" ? "violet" : "green"))}>
-        <Icon className="h-5 w-5" />
-      </span>
-      <span className="min-w-0">
-        <span className="block truncate text-sm font-black leading-5 text-[var(--rp-text)]">{rideCall.title}</span>
-        <span className="mt-0.5 block truncate text-[11px] font-semibold leading-4 text-[var(--rp-muted-strong)]">{rideCall.route}</span>
-        <span className="mt-0.5 block truncate text-[10px] font-bold leading-4 text-[var(--rp-muted)]">{rideCall.meta}</span>
-      </span>
-      <span className="grid justify-items-end gap-1">
-        <span className="inline-flex min-h-8 items-center rounded-full border border-[var(--rp-primary)]/60 bg-[var(--rp-primary)]/10 px-3 text-[10px] font-black text-[var(--rp-primary)]">
-          I&apos;m interested
-        </span>
-        <span className="text-[10px] font-semibold text-[var(--rp-muted-strong)]">{rideCall.interested}</span>
-      </span>
-    </Link>
-  );
-}
-
-function CommunitiesSection() {
-  return (
-    <section id="communities" className="relative mt-4 scroll-mt-24 px-4 sm:px-6 lg:px-10">
-      <HomeSectionHeader title="Ride Groups" />
-      <div className="grid grid-cols-4 gap-2">
-        {communityCards.map((community) => (
-          <CommunityCard key={community.name} community={community} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function CommunityRideCallsSection() {
-  return (
-    <section className="relative mt-5 px-4 sm:px-6 lg:px-10">
-      <HomeSectionHeader title="Ride Calls" />
-      <div className="overflow-hidden rounded-[18px] border border-white/12 bg-[linear-gradient(180deg,rgba(18,32,48,0.88),rgba(10,20,31,0.9))] shadow-[0_18px_44px_rgba(0,0,0,0.24)]">
-        {communityRideCalls.map((rideCall) => (
-          <RideCallCard key={rideCall.title} rideCall={rideCall} />
-        ))}
-      </div>
-    </section>
   );
 }
 
@@ -1831,8 +1687,7 @@ function HomePageContent() {
     deadlineFilter !== "any" ||
     seatFilter !== "any" ||
     ownershipFilter !== "all";
-  const showCommunitySections = activeTab === "all";
-  const showRideRecommendations = activeTab !== "all";
+  const showRideRecommendations = true;
   return (
     <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-1.25rem)] overflow-hidden pb-2 sm:-mx-6 lg:-mx-10 lg:-mt-8">
       <section className="relative overflow-hidden px-4 pb-7 pt-7 sm:px-6 lg:px-10">
@@ -1925,13 +1780,6 @@ function HomePageContent() {
           </div>
         </div>
       </section>
-
-      {showCommunitySections ? (
-        <>
-          <CommunitiesSection />
-          <CommunityRideCallsSection />
-        </>
-      ) : null}
 
       {showRideRecommendations ? (
         <section className="relative mt-5 px-4 sm:px-6 lg:px-10">
