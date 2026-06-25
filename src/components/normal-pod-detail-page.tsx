@@ -1831,11 +1831,10 @@ export function PodStatusPanel({
       label: "Gather point",
       value: detailsReady && pickupVenueSet ? ride.pickupLabel ?? "Not set" : "Not set",
       set: detailsReady && pickupVenueSet,
-      helper: detailsReady && pickupVenueSet ? ride.fromLabel : "Where riders meet before booking",
+      helper: detailsReady && pickupVenueSet ? undefined : "Where riders meet before booking",
       onClick: isHost ? openGatherPointModal : undefined,
       actionLabel: isHost ? (detailsReady && pickupVenueSet ? "Edit" : "Set") : undefined,
       tone: detailsReady && !pickupVenueSet ? "warning" : "default",
-      valueLayout: "stacked",
     },
   ];
   const riderJoinedCount = ride.joinedRiderCount ?? ride.joinedRiders.length;
