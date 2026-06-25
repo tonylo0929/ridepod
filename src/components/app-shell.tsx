@@ -141,11 +141,8 @@ function PremiumBottomNavBoundary() {
 function PremiumTopNav() {
   const unreadCount = useRidePodUnreadCount();
   const { user } = useAuth();
-  const pathname = usePathname();
-  const nextPath = pathname || "/home";
   const updatesHref = user ? "/updates" : `/login?next=${encodeURIComponent("/updates")}`;
-  const loginHref = `/login?next=${encodeURIComponent(nextPath)}`;
-  const registerHref = `/register?next=${encodeURIComponent(nextPath)}`;
+  const topNavBadgeCount = user ? unreadCount : 3;
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_92%,transparent)] px-4 py-3 shadow-[0_12px_30px_rgba(0,0,0,0.14)] backdrop-blur-xl lg:hidden">
@@ -158,35 +155,18 @@ function PremiumTopNav() {
           </span>
         </Link>
         <div className="flex justify-self-end gap-2">
-          {user ? (
-            <Link
-              href={updatesHref}
-              aria-label="Notifications"
-              className="relative grid h-12 w-12 place-items-center rounded-[20px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] text-[var(--rp-text)] shadow-[var(--rp-shadow-soft)] transition hover:bg-[var(--rp-card-muted)]"
-            >
-              <Bell className="h-5 w-5 stroke-[2.2]" />
-              {unreadCount ? (
-                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border border-[var(--rp-shell)] bg-[var(--rp-primary)] px-1 text-[10px] font-black text-[var(--rp-primary-text)]">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              ) : null}
-            </Link>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link
-                href={loginHref}
-                className="inline-flex min-h-10 items-center justify-center rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-3 text-sm font-black text-[var(--rp-text)] shadow-[var(--rp-shadow-soft)] transition hover:bg-[var(--rp-card-muted)]"
-              >
-                Login
-              </Link>
-              <Link
-                href={registerHref}
-                className="inline-flex min-h-10 items-center justify-center rounded-[16px] border border-[var(--rp-primary)] bg-[linear-gradient(180deg,#ffd36a_0%,#f2c15b_100%)] px-3 text-sm font-black text-[#07111a] shadow-[0_12px_26px_rgba(242,193,91,0.24)] transition hover:brightness-105"
-              >
-                Register
-              </Link>
-            </div>
-          )}
+          <Link
+            href={updatesHref}
+            aria-label="Notifications"
+            className="relative grid h-12 w-12 place-items-center rounded-[20px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] text-[var(--rp-text)] shadow-[var(--rp-shadow-soft)] transition hover:bg-[var(--rp-card-muted)]"
+          >
+            <Bell className="h-5 w-5 stroke-[2.2]" />
+            {topNavBadgeCount ? (
+              <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full border border-[var(--rp-shell)] bg-[var(--rp-primary)] px-1 text-[10px] font-black text-[var(--rp-primary-text)]">
+                {topNavBadgeCount > 9 ? "9+" : topNavBadgeCount}
+              </span>
+            ) : null}
+          </Link>
         </div>
       </div>
     </header>
