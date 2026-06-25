@@ -121,24 +121,24 @@ function RideBoardCard({ post }: { post: RideBoardPost }) {
   const ActionIcon = post.actionLabel === "View details" ? Eye : MessageCircle;
 
   return (
-    <article className="relative overflow-hidden rounded-[22px] border border-[rgba(242,193,91,0.24)] bg-[linear-gradient(145deg,rgba(14,28,42,0.98),rgba(6,16,25,0.98))] p-4 shadow-[0_20px_52px_rgba(0,0,0,0.32)]">
-      <span className="absolute bottom-6 left-4 top-6 w-1.5 rounded-full bg-[linear-gradient(180deg,#ffd36a_0%,#f2c15b_48%,#d9912f_100%)] shadow-[0_0_18px_rgba(242,193,91,0.34)]" aria-hidden="true" />
+    <article className="relative overflow-hidden rounded-[18px] border border-[rgba(242,193,91,0.24)] bg-[linear-gradient(145deg,rgba(14,28,42,0.98),rgba(6,16,25,0.98))] p-3 shadow-[0_16px_38px_rgba(0,0,0,0.28)]">
+      <span className="absolute bottom-4 left-3 top-4 w-1 rounded-full bg-[linear-gradient(180deg,#ffd36a_0%,#f2c15b_48%,#d9912f_100%)] shadow-[0_0_14px_rgba(242,193,91,0.34)]" aria-hidden="true" />
 
-      <div className="pl-6">
-        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-          <h2 className="min-w-0 text-[29px] font-black leading-[1.08] tracking-tight text-[var(--rp-text)] min-[390px]:text-[32px]">
+      <div className="pl-4">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+          <h2 className="min-w-0 text-[22px] font-black leading-[1.08] tracking-tight text-[var(--rp-text)] min-[390px]:text-[24px]">
             <span className="break-words">{post.from}</span>
-            <span className="mx-3 inline-flex translate-y-1 text-[var(--rp-primary)]">-&gt;</span>
+            <span className="mx-2 inline-flex translate-y-0.5 text-[var(--rp-primary)]">-&gt;</span>
             <span className="break-words">{post.to}</span>
           </h2>
-          <span className="grid h-14 min-w-14 place-items-center rounded-2xl border border-[rgba(242,193,91,0.36)] bg-[rgba(242,193,91,0.12)] px-3 text-sm font-black text-[var(--rp-primary)] shadow-[0_0_22px_rgba(242,193,91,0.1)]">
+          <span className="grid h-11 min-w-11 place-items-center rounded-xl border border-[rgba(242,193,91,0.36)] bg-[rgba(242,193,91,0.12)] px-2 text-xs font-black text-[var(--rp-primary)] shadow-[0_0_18px_rgba(242,193,91,0.1)]">
             TO
           </span>
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 text-sm font-bold text-[var(--rp-muted-strong)]">
-            <CalendarDays className="h-4 w-4 text-[var(--rp-muted-strong)]" />
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-2.5 text-xs font-bold text-[var(--rp-muted-strong)]">
+            <CalendarDays className="h-3.5 w-3.5 text-[var(--rp-muted-strong)]" />
             {post.dateLabel}, {post.timeLabel}
           </span>
           {post.tags.map((tag) => {
@@ -149,49 +149,49 @@ function RideBoardCard({ post }: { post: RideBoardPost }) {
               <span
                 key={tag}
                 className={cn(
-                  "inline-flex min-h-9 items-center gap-2 rounded-full border px-3 text-sm font-bold",
+                  "inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 text-xs font-bold",
                   isGold
                     ? "border-[rgba(242,193,91,0.34)] bg-[rgba(242,193,91,0.1)] text-[var(--rp-primary)]"
                     : "border-white/10 bg-white/[0.06] text-[var(--rp-muted-strong)]",
                 )}
               >
-                <TagIcon className="h-4 w-4" />
+                <TagIcon className="h-3.5 w-3.5" />
                 {tag}
               </span>
             );
           })}
         </div>
 
-        <div className="mt-5 grid grid-cols-[minmax(0,1fr)_86px] items-center gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <span className="grid h-16 w-16 shrink-0 place-items-center rounded-full border border-[rgba(242,193,91,0.28)] bg-[rgba(242,193,91,0.1)] text-[var(--rp-primary)]">
-              <UserRound className="h-8 w-8 fill-[rgba(242,193,91,0.52)]" />
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_72px] items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[rgba(242,193,91,0.28)] bg-[rgba(242,193,91,0.1)] text-[var(--rp-primary)]">
+              <UserRound className="h-6 w-6 fill-[rgba(242,193,91,0.52)]" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-left text-lg font-black text-[var(--rp-text)]">Host: {post.hostName}</p>
-              <p className="mt-1 flex items-center gap-1.5 text-left text-base font-bold text-[var(--rp-muted-strong)]">
-                <Star className="h-5 w-5 fill-[var(--rp-primary)] text-[var(--rp-primary)]" />
+              <p className="truncate text-left text-sm font-black text-[var(--rp-text)]">Host: {post.hostName}</p>
+              <p className="mt-0.5 flex items-center gap-1 text-left text-[12px] font-bold leading-4 text-[var(--rp-muted-strong)] min-[390px]:whitespace-nowrap">
+                <Star className="h-4 w-4 shrink-0 fill-[var(--rp-primary)] text-[var(--rp-primary)]" />
                 {post.hostRating.toFixed(1)} ({post.hostRideCount} rides)
               </p>
             </div>
           </div>
-          <div className="rounded-[18px] border border-white/10 bg-white/[0.055] px-3 py-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <p className="text-left text-3xl font-black leading-none text-[var(--rp-primary)]">{post.interestedCount}</p>
-            <p className="mt-1 text-left text-[11px] font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">
+          <div className="rounded-[14px] border border-white/10 bg-white/[0.055] px-2.5 py-2.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <p className="text-left text-2xl font-black leading-none text-[var(--rp-primary)]">{post.interestedCount}</p>
+            <p className="mt-0.5 text-left text-[9px] font-black uppercase tracking-[0.06em] text-[var(--rp-muted-strong)]">
               Interested
             </p>
           </div>
         </div>
 
-        <p className="mt-5 rounded-[18px] border border-white/8 bg-[#06111d]/76 p-4 text-left text-base font-semibold leading-7 text-[var(--rp-muted-strong)]">
+        <p className="mt-3 rounded-[14px] border border-white/8 bg-[#06111d]/76 px-3 py-2.5 text-left text-[13px] font-semibold leading-5 text-[var(--rp-muted-strong)]">
           {post.note}
         </p>
 
         <button
           type="button"
-          className="mt-4 inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-[18px] border border-[rgba(242,193,91,0.72)] bg-[linear-gradient(180deg,rgba(242,193,91,0.12),rgba(242,193,91,0.06))] px-5 text-base font-black text-[var(--rp-primary)] shadow-[0_14px_34px_rgba(242,193,91,0.08)] transition hover:bg-[rgba(242,193,91,0.16)]"
+          className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] border border-[rgba(242,193,91,0.72)] bg-[linear-gradient(180deg,rgba(242,193,91,0.12),rgba(242,193,91,0.06))] px-4 text-sm font-black text-[var(--rp-primary)] shadow-[0_12px_26px_rgba(242,193,91,0.07)] transition hover:bg-[rgba(242,193,91,0.16)]"
         >
-          <ActionIcon className="h-5 w-5" />
+          <ActionIcon className="h-4 w-4" />
           {post.actionLabel}
         </button>
       </div>
