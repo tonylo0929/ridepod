@@ -52,7 +52,7 @@ const desktopDrawerNav = [
   { href: "/about", label: "About", icon: Info },
   { href: "/support", label: "Support RidePod", icon: Coffee },
   { href: "/membership", label: "RidePod Plus", icon: Crown },
-  { href: "/home?tab=all", label: "Ride Board", icon: CalendarDays },
+  { href: "/today-rides", label: "Ride Board", icon: CalendarDays },
   { href: "/history", label: "Ride history", icon: HistoryIcon, requiresAuth: true },
   { href: "/chats", label: "Live Chat", icon: MessageCircle, requiresAuth: true },
 ];
@@ -124,7 +124,7 @@ function PremiumBottomNav() {
         <NavLink href="/home?tab=one_off" label="Search" icon={Search} compact />
         <NavLink href="/create" label="Create" icon={PlusCircle} compact />
         <NavLink href="/pods" label="My Ride" icon={CalendarCheck} compact requiresAuth isLoggedIn={isLoggedIn} />
-        <NavLink href="/home?tab=all" label="Ride Board" icon={CalendarDays} compact />
+        <NavLink href="/today-rides" label="Ride Board" icon={CalendarDays} compact />
       </div>
     </nav>
   );

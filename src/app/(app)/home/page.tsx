@@ -61,11 +61,11 @@ type CurrentUserAvatar = {
   initials: string;
 };
 
-const categoryCards: Array<{ id: HomeTab; label: string; subtitle: string; icon: LucideIcon }> = [
+const categoryCards: Array<{ id: HomeTab; label: string; subtitle: string; icon: LucideIcon; href?: string }> = [
   { id: "one_off", label: "One-off", subtitle: "Schedule Ride", icon: CarFront },
   { id: "recurring", label: "Recurring", subtitle: "Ride regularly", icon: RefreshCcw },
   { id: "airport", label: "Airport", subtitle: "Fly together", icon: Plane },
-  { id: "all", label: "Ride Board", subtitle: "Find your people", icon: UsersRound },
+  { id: "all", label: "Ride Board", subtitle: "Find your people", icon: UsersRound, href: "/today-rides" },
 ];
 
 const airportDirectionFilters: Array<{ id: AirportDirectionFilter; label: string }> = [
@@ -499,6 +499,7 @@ function CategoryCard({
   label,
   subtitle,
   icon: Icon,
+  href,
   selected,
   onClick,
 }: {
@@ -506,20 +507,18 @@ function CategoryCard({
   label: string;
   subtitle: string;
   icon: LucideIcon;
+  href?: string;
   selected: boolean;
   onClick: (tab: HomeTab) => void;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={() => onClick(id)}
-      className={cn(
+  const className = cn(
         "grid min-h-[88px] w-full content-center justify-items-center overflow-hidden rounded-[16px] border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_60%,transparent),color-mix(in_srgb,var(--rp-card-soft)_46%,transparent))] px-1.5 py-2 text-center shadow-[0_16px_38px_rgba(0,0,0,0.2)] backdrop-blur-[6px] transition min-[390px]:min-h-[92px] min-[390px]:px-2",
         selected
           ? "border-[var(--rp-primary)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-primary)_18%,transparent),color-mix(in_srgb,var(--rp-card)_48%,transparent))] shadow-[0_0_32px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
           : "border-white/12 hover:border-[var(--rp-border-strong)] hover:bg-[color-mix(in_srgb,var(--rp-card)_58%,transparent)]",
-      )}
-    >
+      );
+  const content = (
+    <>
       <span
         className="grid h-8 w-8 place-items-center rounded-full bg-[color-mix(in_srgb,var(--rp-primary)_20%,transparent)] text-[var(--rp-primary)] min-[390px]:h-9 min-[390px]:w-9"
       >
@@ -531,6 +530,20 @@ function CategoryCard({
       <span className="mt-0.5 flex min-h-[20px] w-full items-start justify-center whitespace-normal text-center text-[8px] font-semibold leading-[1.1] text-[var(--rp-muted-strong)] min-[390px]:text-[9px]">
         {subtitle}
       </span>
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link href={href} className={className}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button type="button" onClick={() => onClick(id)} className={className}>
+      {content}
     </button>
   );
 }
