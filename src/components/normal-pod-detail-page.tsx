@@ -646,6 +646,13 @@ function clampConfirmByAmount(value: number, unit: ConfirmByUnit) {
   return Math.min(max, Math.max(1, Math.round(value)));
 }
 
+function normalizeConfirmByInput(value: string, unit: ConfirmByUnit) {
+  const digitsOnly = value.replace(/\D/g, "");
+  if (!digitsOnly) return 0;
+  const max = unit === "days" ? 14 : 72;
+  return Math.min(max, Number(digitsOnly));
+}
+
 function getNextRejoinConfirmByDate(ride: HomeRide, now = new Date()) {
   const currentConfirmBy = getRideAppConfirmByDate(ride, now);
   if (currentConfirmBy.getTime() > now.getTime()) return currentConfirmBy;
@@ -1869,7 +1876,9 @@ export function PodStatusPanel({
           "Chat opens when all required riders confirm.",
         ];
   const ridePickupDate = getRidePickupDate(ride);
-  const confirmByDeadlinePreview = getConfirmByDeadline(ride, confirmByAmount, confirmByUnit);
+  const confirmByAmountIsValid = confirmByAmount >= 1;
+  const confirmByAmountError = confirmByAmountIsValid ? null : `Enter at least 1 ${confirmByUnit === "days" ? "day" : "hour"}.`;
+  const confirmByDeadlinePreview = confirmByAmountIsValid ? getConfirmByDeadline(ride, confirmByAmount, confirmByUnit) : null;
   const confirmByDeadlineIsPast = Boolean(confirmByDeadlinePreview && confirmByDeadlinePreview.getTime() <= nowMs);
   const podStatusRouteTitle = `${ride.fromLabel} -> ${ride.toLabel}`;
   const podStatusActorName =
@@ -2631,7 +2640,7 @@ export function PodStatusPanel({
                     <Clock3 className="h-6 w-6" />
                   </span>
                   <div className="min-w-0">
-                    <h2 id="confirm-by-title" className="text-xl font-black leading-tight text-white">Set confirm-by time</h2>
+                    <h2 id="confirm-by-title" className="text-xl font-black leading-tight text-[var(--rp-primary)]">Set Confirm-by time</h2>
                     <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
                       Riders must confirm ride details before this time. If they do not confirm, their seat hold may expire and reopen for other riders.
                     </p>
@@ -2639,20 +2648,19 @@ export function PodStatusPanel({
                 </div>
 
                 <div className="mt-4 rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Before pickup</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Before Pickup</p>
                   <div className="mt-3 grid grid-cols-[1fr_auto] gap-3">
                     <label className="grid gap-2">
                       <span className="sr-only">Confirm-by amount</span>
                       <input
-                        type="number"
-                        min={1}
-                        max={confirmByUnit === "days" ? 14 : 72}
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         value={confirmByAmount}
                         onChange={(event) => {
-                          const nextValue = Number(event.target.value);
-                          setConfirmByAmount(clampConfirmByAmount(Number.isFinite(nextValue) ? nextValue : 1, confirmByUnit));
+                          setConfirmByAmount(normalizeConfirmByInput(event.target.value, confirmByUnit));
                         }}
-                        className="h-12 rounded-[14px] border border-white/12 bg-black/24 px-4 text-lg font-black text-white outline-none focus:border-cyan-300"
+                        className="h-12 rounded-[14px] border border-white/12 bg-black/24 px-4 text-lg font-black text-white outline-none focus:border-[var(--rp-primary)]"
                       />
                     </label>
                     <div className="grid grid-cols-2 rounded-[14px] border border-white/10 bg-black/20 p-1">
@@ -2663,13 +2671,13 @@ export function PodStatusPanel({
                           aria-pressed={confirmByUnit === unit}
                           onClick={() => {
                             setConfirmByUnit(unit);
-                            setConfirmByAmount((current) => clampConfirmByAmount(current, unit));
+                            setConfirmByAmount((current) => (current < 1 ? current : clampConfirmByAmount(current, unit)));
                           }}
                           className={cn(
                             "min-h-10 rounded-[11px] px-3 text-xs font-black capitalize transition",
                             confirmByUnit === unit
-                              ? "bg-cyan-300 text-[#061019]"
-                              : "text-[var(--rp-muted-strong)] hover:bg-white/8 hover:text-white",
+                              ? "border border-[var(--rp-primary)] bg-[var(--rp-primary)]/18 text-[var(--rp-primary)]"
+                              : "text-[var(--rp-primary)] hover:bg-[var(--rp-primary)]/10",
                           )}
                         >
                           {unit}
@@ -2678,26 +2686,11 @@ export function PodStatusPanel({
                     </div>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    {[
-                      { amount: 2, unit: "hours" as const },
-                      { amount: 6, unit: "hours" as const },
-                      { amount: 12, unit: "hours" as const },
-                      { amount: 1, unit: "days" as const },
-                    ].map((preset) => (
-                      <button
-                        key={`${preset.amount}-${preset.unit}`}
-                        type="button"
-                        onClick={() => {
-                          setConfirmByAmount(preset.amount);
-                          setConfirmByUnit(preset.unit);
-                        }}
-                        className="min-h-10 rounded-[13px] border border-cyan-300/25 bg-cyan-300/8 px-3 text-xs font-black text-cyan-100 transition hover:bg-cyan-300/14"
-                      >
-                        {formatConfirmByOffset(preset.amount, preset.unit)}
-                      </button>
-                    ))}
-                  </div>
+                  {confirmByAmountError ? (
+                    <p className="mt-3 rounded-[12px] border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-100">
+                      {confirmByAmountError}
+                    </p>
+                  ) : null}
                   <p className="mt-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
                     Default is 24 hours before ride. If the ride is within 24 hours, use 1 hour before pickup.
                   </p>
@@ -2712,7 +2705,7 @@ export function PodStatusPanel({
                     Confirm by {confirmByDeadlinePreview ? formatConfirmByLabel(confirmByDeadlinePreview) : "Not available"}
                   </p>
                   <p className="mt-1 text-xs font-bold leading-5 text-cyan-100">
-                    {formatConfirmByOffset(confirmByAmount, confirmByUnit)} before pickup.
+                    {confirmByAmountIsValid ? `${formatConfirmByOffset(confirmByAmount, confirmByUnit)} before pickup.` : "Enter a valid time before pickup."}
                   </p>
                   {confirmByDeadlineIsPast ? (
                     <p className="mt-2 rounded-[12px] border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-100">
@@ -2734,9 +2727,9 @@ export function PodStatusPanel({
                   type="button"
                   onClick={saveConfirmByTime}
                   disabled={!confirmByDeadlinePreview || confirmByDeadlineIsPast}
-                  className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105 disabled:opacity-45"
+                  className="min-h-12 rounded-[16px] border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/12 px-4 text-sm font-black text-[var(--rp-primary)] shadow-[0_14px_30px_rgba(242,193,91,0.16)] transition hover:bg-[var(--rp-primary)]/18 disabled:opacity-45"
                 >
-                  Save time
+                  Confirm
                 </button>
               </div>
             </section>
