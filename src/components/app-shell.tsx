@@ -344,7 +344,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="premium-app min-h-screen bg-[var(--rp-gradient-app)] text-[var(--rp-text)]">
-      <PremiumDesktopSidebar />
+      <Suspense fallback={null}>
+        <PremiumDesktopSidebar />
+      </Suspense>
 
       {fullScreenChatRoom ? null : <PremiumTopNav />}
 
