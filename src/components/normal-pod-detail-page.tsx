@@ -43,6 +43,7 @@ import {
   isHostApprovedStopPolicy,
   routeRequestToRoutePlanStop,
   type HomeRide,
+  type RouteRequest,
   type RoutePlanStop,
 } from "@/lib/home-ride-mock";
 import {
@@ -848,23 +849,72 @@ function buildRideAppStopRequestPatch(ride: HomeRide, stopLabel: string, request
   };
 }
 
+function routeStopKey(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function routeRequestMatchesStop(request: RouteRequest, stop: RoutePlanStop) {
+  return request.id === stop.id || routeStopKey(request.stopLocation) === routeStopKey(stop.label);
+}
+
+function routePlanStopMatchesStop(candidate: RoutePlanStop, stop: RoutePlanStop) {
+  return candidate.id === stop.id || routeStopKey(candidate.label) === routeStopKey(stop.label);
+}
+
+function buildRouteRequestDecisionList(
+  ride: HomeRide,
+  stop: RoutePlanStop,
+  status: "approved" | "declined",
+): RouteRequest[] {
+  let matchedExistingRequest = false;
+  const reviewedByName = ride.hostName || "Host";
+  const routeRequests = getNormalizedRouteRequests(ride).all.map((request) => {
+    if (!routeRequestMatchesStop(request, stop)) return request;
+
+    matchedExistingRequest = true;
+    return {
+      ...request,
+      id: request.id || stop.id,
+      requestedByName: stop.requestedBy ?? request.requestedByName,
+      stopLocation: stop.label,
+      reason: stop.reason ?? request.reason,
+      status,
+      reviewedByName,
+      reviewedAtLabel: "Just now",
+    };
+  });
+
+  if (!matchedExistingRequest) {
+    routeRequests.push({
+      id: stop.id,
+      requestedByName: stop.requestedBy ?? "Rider",
+      stopLocation: stop.label,
+      reason: stop.reason,
+      status,
+      requestedAtLabel: "Just now",
+      reviewedByName,
+      reviewedAtLabel: "Just now",
+    });
+  }
+
+  return routeRequests;
+}
+
+function removeMatchingRouteStop(stops: RoutePlanStop[] = [], stop: RoutePlanStop) {
+  return stops.filter((candidate) => !routePlanStopMatchesStop(candidate, stop));
+}
+
+function upsertRouteStop(stops: RoutePlanStop[] = [], stop: RoutePlanStop) {
+  return [...removeMatchingRouteStop(stops, stop), stop];
+}
+
 function buildApproveRideAppStopPatch(ride: HomeRide, stop: RoutePlanStop): Partial<HomeRide> {
   const approvedStop: RoutePlanStop = { ...stop, status: "approved" };
-  const normalized = getNormalizedRouteRequests(ride);
-  const routeRequests = normalized.all.map((request) =>
-    request.id === stop.id
-      ? {
-          ...request,
-          status: "approved" as const,
-          reviewedByName: ride.hostName || "Host",
-          reviewedAtLabel: "Just now",
-        }
-      : request,
-  );
+  const routeRequests = buildRouteRequestDecisionList(ride, stop, "approved");
   const nextRoutePatch = {
     routeRequests,
-    proposedStops: (ride.proposedStops ?? []).filter((item) => item.id !== stop.id),
-    approvedStops: [...(ride.approvedStops ?? []), approvedStop],
+    proposedStops: removeMatchingRouteStop(ride.proposedStops, stop),
+    approvedStops: upsertRouteStop(ride.approvedStops, approvedStop),
   };
   const reviewPatch = applyRideAppMeaningfulDetailUpdate(
     {
@@ -883,22 +933,12 @@ function buildApproveRideAppStopPatch(ride: HomeRide, stop: RoutePlanStop): Part
 
 function buildDeclineRideAppStopPatch(ride: HomeRide, stop: RoutePlanStop): Partial<HomeRide> {
   const declinedStop: RoutePlanStop = { ...stop, status: "declined" };
-  const normalized = getNormalizedRouteRequests(ride);
-  const routeRequests = normalized.all.map((request) =>
-    request.id === stop.id
-      ? {
-          ...request,
-          status: "declined" as const,
-          reviewedByName: ride.hostName || "Host",
-          reviewedAtLabel: "Just now",
-        }
-      : request,
-  );
+  const routeRequests = buildRouteRequestDecisionList(ride, stop, "declined");
 
   return {
     routeRequests,
-    proposedStops: (ride.proposedStops ?? []).filter((item) => item.id !== stop.id),
-    declinedStops: [...(ride.declinedStops ?? []), declinedStop],
+    proposedStops: removeMatchingRouteStop(ride.proposedStops, stop),
+    declinedStops: upsertRouteStop(ride.declinedStops, declinedStop),
   };
 }
 
@@ -2097,11 +2137,14 @@ export function PodStatusPanel({
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     notifyPodStatusAction({
       type: "ride_app_action_required",
+      audiences: ["all"],
       title: "Route request approved",
       body: `${podStatusActorName} approved ${stop.label}. Please review the latest ride details.`,
       selfTitle: "You approved a route request",
       selfBody: stop.label,
       action: "route_request_approved",
+      relatedUrl: `/pods/${ride.id}#route-requests`,
+      dedupe: false,
       metadata: {
         stopLabel: stop.label,
         requestedBy: stop.requestedBy ?? "Rider",
@@ -2116,11 +2159,14 @@ export function PodStatusPanel({
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     notifyPodStatusAction({
       type: "ride_app_details_updated",
+      audiences: ["all"],
       title: "Route request declined",
       body: `${podStatusActorName} declined ${stop.label}.`,
       selfTitle: "You declined a route request",
       selfBody: stop.label,
       action: "route_request_declined",
+      relatedUrl: `/pods/${ride.id}#route-requests`,
+      dedupe: false,
       metadata: {
         stopLabel: stop.label,
         requestedBy: stop.requestedBy ?? "Rider",
@@ -3159,6 +3205,7 @@ function CompactRideAppRoutePanel({
     ride.bookingDetailsShared === true ||
     ride.rideAppBookingDetailsConfirmed === true ||
     ride.rideAppBookingDetailsFinalized === true;
+  const routeDecisionLocked = ride.status === "cancelled" || ride.pickupStatus === "RIDE_STARTED";
   const canShowStopRequestForm =
     allowStopRequests &&
     canRequestStop &&
@@ -3166,7 +3213,7 @@ function CompactRideAppRoutePanel({
     !routeLocked &&
     !pendingStop &&
     approvedStops.length === 0;
-  const canShowHostReviewActions = Boolean(canReviewStop && pendingStop && !routeLocked && onApproveStop && onDeclineStop);
+  const canShowHostReviewActions = Boolean(canReviewStop && pendingStop && !routeDecisionLocked && onApproveStop && onDeclineStop);
   const stopRequestTitle = pendingStop
     ? "Stop request pending"
       : declinedStop
@@ -3847,24 +3894,25 @@ function ManagePodActionsModal({
   const pendingStops = routeRequests.pending.map(routeRequestToRoutePlanStop);
   const routeRequestCards = buildManageRouteRequestCards(pendingStops).filter((request) => !handledRouteRequestIds.includes(request.id));
   const routeRequestPendingCount = routeRequestCards.length;
-  const routeLocked =
+  const routeDetailsAlreadyShared =
     ride.bookingDetailsShared === true ||
     ride.rideAppBookingDetailsConfirmed === true ||
     ride.rideAppBookingDetailsFinalized === true;
+  const routeDecisionLocked = ride.status === "cancelled" || ride.pickupStatus === "RIDE_STARTED";
   const tabs: Array<{ id: ManagePodActionsTab; label: string; badge?: number }> = [
     { id: "confirmations", label: "Confirmations" },
     ...(allowStopRequests ? [{ id: "route_requests" as const, label: "Route requests", badge: routeRequestPendingCount }] : []),
   ];
 
   function confirmRouteRequest(request: ManageRouteRequestCardModel) {
-    if (routeLocked) return;
+    if (routeDecisionLocked) return;
     onApproveStop(request.stop);
     setHandledRouteRequestIds((current) => (current.includes(request.id) ? current : [...current, request.id]));
     setActionNote(`${request.riderName}'s stop confirmed.`);
   }
 
   function declineRouteRequest(request: ManageRouteRequestCardModel) {
-    if (routeLocked) return;
+    if (routeDecisionLocked) return;
     onDeclineStop(request.stop);
     setHandledRouteRequestIds((current) => (current.includes(request.id) ? current : [...current, request.id]));
     setActionNote(`${request.riderName}'s stop declined.`);
@@ -4007,7 +4055,8 @@ function ManagePodActionsModal({
               <RouteRequestsActionContent
                 allowStopRequests={allowStopRequests}
                 requests={routeRequestCards}
-                routeLocked={routeLocked}
+                routeDetailsAlreadyShared={routeDetailsAlreadyShared}
+                routeDecisionLocked={routeDecisionLocked}
                 onConfirm={confirmRouteRequest}
                 onDecline={declineRouteRequest}
               />
@@ -4116,13 +4165,15 @@ function ManagePodRiderGroup({
 function RouteRequestsActionContent({
   allowStopRequests,
   requests,
-  routeLocked,
+  routeDetailsAlreadyShared,
+  routeDecisionLocked,
   onConfirm,
   onDecline,
 }: {
   allowStopRequests: boolean;
   requests: ManageRouteRequestCardModel[];
-  routeLocked: boolean;
+  routeDetailsAlreadyShared: boolean;
+  routeDecisionLocked: boolean;
   onConfirm: (request: ManageRouteRequestCardModel) => void;
   onDecline: (request: ManageRouteRequestCardModel) => void;
 }) {
@@ -4156,9 +4207,13 @@ function RouteRequestsActionContent({
         </button>
       </div>
 
-      {routeLocked && requests.length ? (
+      {routeDecisionLocked && requests.length ? (
         <div className="rounded-[16px] border border-amber-300/24 bg-amber-300/10 p-3 text-sm font-black leading-5 text-amber-100">
-          Route changes are closed after booking details are confirmed.
+          This ride is no longer accepting route decisions.
+        </div>
+      ) : routeDetailsAlreadyShared && requests.length ? (
+        <div className="rounded-[16px] border border-amber-300/24 bg-amber-300/10 p-3 text-sm font-black leading-5 text-amber-100">
+          Booking details are already shared. Confirm or decline to update Trip and notify riders.
         </div>
       ) : null}
 
@@ -4212,7 +4267,7 @@ function RouteRequestsActionContent({
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  disabled={routeLocked}
+                  disabled={routeDecisionLocked}
                   onClick={() => onDecline(request)}
                   className="min-h-12 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12 disabled:cursor-not-allowed disabled:opacity-45"
                 >
@@ -4220,7 +4275,7 @@ function RouteRequestsActionContent({
                 </button>
                 <button
                   type="button"
-                  disabled={routeLocked}
+                  disabled={routeDecisionLocked}
                   onClick={() => onConfirm(request)}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
                 >
@@ -4855,11 +4910,14 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     applyRideActionPatch(patch);
     notifyRideDetailAction({
       type: "ride_app_action_required",
+      audiences: ["all"],
       title: "Route request approved",
       body: `${detailActorName} approved ${stop.label}. Please review the latest ride details.`,
       selfTitle: "You approved a route request",
       selfBody: stop.label,
       action: "route_request_approved",
+      relatedUrl: `/pods/${ride.id}#route-requests`,
+      dedupe: false,
       metadata: {
         stopLabel: stop.label,
         requestedBy: stop.requestedBy ?? "Rider",
@@ -4873,11 +4931,14 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     applyRideActionPatch(patch);
     notifyRideDetailAction({
       type: "ride_app_details_updated",
+      audiences: ["all"],
       title: "Route request declined",
       body: `${detailActorName} declined ${stop.label}.`,
       selfTitle: "You declined a route request",
       selfBody: stop.label,
       action: "route_request_declined",
+      relatedUrl: `/pods/${ride.id}#route-requests`,
+      dedupe: false,
       metadata: {
         stopLabel: stop.label,
         requestedBy: stop.requestedBy ?? "Rider",
