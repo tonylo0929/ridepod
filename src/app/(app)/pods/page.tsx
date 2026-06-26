@@ -322,9 +322,9 @@ function StatusBadge({ status }: { status: MyRideCalendarStatus }) {
   const Icon = tone === "action" ? AlertCircle : tone === "completed" ? CheckCircle2 : tone === "cancelled" ? XCircle : Clock3;
 
   return (
-    <span className={cn("inline-flex min-h-8 items-center gap-1.5 rounded-full border px-3 text-[11px] font-black", statusChipClass(tone))}>
+    <span className={cn("inline-flex min-h-8 max-w-full shrink-0 items-center gap-1.5 rounded-full border px-3 text-[11px] font-black", statusChipClass(tone))}>
       <Icon className="h-3.5 w-3.5" />
-      {status.label}
+      <span className="min-w-0 truncate">{status.label}</span>
     </span>
   );
 }
@@ -337,8 +337,8 @@ function MyRideDayPodCard({ ride, currentUserId }: { ride: CalendarRide; current
   const Icon = rideTypeTone === "ride_app" ? Smartphone : CarFront;
 
   return (
-    <article className="rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.035))] p-4 shadow-[var(--rp-shadow-soft)]">
-      <div className="grid grid-cols-[58px_minmax(0,1fr)] gap-3 min-[390px]:grid-cols-[68px_minmax(0,1fr)]">
+    <article className="min-w-0 overflow-hidden rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.035))] p-3 shadow-[var(--rp-shadow-soft)] min-[390px]:p-4">
+      <div className="grid min-w-0 grid-cols-[58px_minmax(0,1fr)] gap-3 min-[390px]:grid-cols-[68px_minmax(0,1fr)]">
         <div
           className={cn(
             "grid h-14 w-14 place-items-center rounded-[18px] border min-[390px]:h-[68px] min-[390px]:w-[68px]",
@@ -350,8 +350,8 @@ function MyRideDayPodCard({ ride, currentUserId }: { ride: CalendarRide; current
           <Icon className="h-7 w-7" />
         </div>
 
-        <div className="min-w-0">
-          <div className="flex min-w-0 items-start justify-between gap-2">
+        <div className="min-w-0 overflow-hidden">
+          <div className="grid min-w-0 gap-2 min-[390px]:grid-cols-[minmax(0,1fr)_auto] min-[390px]:items-start">
             <div className="min-w-0">
               <p className="text-left text-xl font-black leading-6 text-[var(--rp-text)]">{timeLabel(ride.time)}</p>
               <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
@@ -359,7 +359,9 @@ function MyRideDayPodCard({ ride, currentUserId }: { ride: CalendarRide; current
                 <RideKindBadge ride={ride} />
               </div>
             </div>
-            <StatusBadge status={status} />
+            <div className="min-w-0 justify-self-start min-[390px]:justify-self-end">
+              <StatusBadge status={status} />
+            </div>
           </div>
 
           <div className="mt-3 grid gap-2 text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
@@ -604,8 +606,8 @@ export default function MyRidePage() {
             </div>
           </section>
 
-          <section className="rounded-[24px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-4 shadow-[var(--rp-shadow-soft)]">
-            <div className="flex items-center justify-between gap-3">
+          <section className="min-w-0 overflow-hidden rounded-[24px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-3 shadow-[var(--rp-shadow-soft)] min-[390px]:p-4">
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 min-[390px]:gap-3">
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-2">
                   <h2 className="min-w-0 truncate text-xl font-black text-[var(--rp-text)]">{selectedDateLabel(effectiveSelectedDate)}</h2>
