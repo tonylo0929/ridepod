@@ -227,7 +227,7 @@ function FilterChip({
       )}
     >
       <Icon className="h-4 w-4 shrink-0" />
-      <span className="min-w-0 max-w-full break-words leading-[1.05]">{label}</span>
+      <span className="min-w-0 max-w-full whitespace-nowrap leading-[1.05]">{label}</span>
     </button>
   );
 }
