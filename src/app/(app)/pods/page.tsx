@@ -167,10 +167,6 @@ function getRideTypeTone(ride: CalendarRide): RideTypeTone {
   return "taxi";
 }
 
-function getRideTypeLabel(ride: CalendarRide) {
-  return ride.rideMode === "ride_app" ? "Ride app" : "Taxi";
-}
-
 function getRouteStops(route: string) {
   const parts = route.split(/\s*(?:->|→|\bto\b)\s*/i).filter(Boolean);
   if (parts.length >= 2) {
@@ -283,18 +279,6 @@ function CalendarDayCell({
   );
 }
 
-function RideTypeBadge({ ride }: { ride: CalendarRide }) {
-  const tone = getRideTypeTone(ride);
-  const Icon = tone === "ride_app" ? Smartphone : CarFront;
-
-  return (
-    <span className={cn("inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-black", rideTypeClass(tone))}>
-      <Icon className="h-3.5 w-3.5" />
-      {getRideTypeLabel(ride)}
-    </span>
-  );
-}
-
 function RideKindBadge({ ride }: { ride: CalendarRide }) {
   if (ride.rideKind === "airport") {
     return (
@@ -355,7 +339,6 @@ function MyRideDayPodCard({ ride, currentUserId }: { ride: CalendarRide; current
             <div className="min-w-0">
               <p className="text-left text-xl font-black leading-6 text-[var(--rp-text)]">{timeLabel(ride.time)}</p>
               <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
-                <RideTypeBadge ride={ride} />
                 <RideKindBadge ride={ride} />
               </div>
             </div>
