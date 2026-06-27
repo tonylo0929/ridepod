@@ -654,7 +654,7 @@ function RecurringPodSummaryHero({
               className="inline-flex min-h-14 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/10 px-3 text-sm font-black text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(242,193,91,0.1)] transition hover:bg-[var(--rp-primary)]/15"
             >
               <Repeat2 className="h-4 w-4" />
-              Join recurring ride
+              Join Ride
             </button>
           )}
           <Link
@@ -731,7 +731,7 @@ function LockRecurringSeatModal({
 
           <dl className="mt-4 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
             <DetailRow label="Route" value={`${ride.fromLabel} \u2192 ${ride.toLabel}`} />
-            <DetailRow label="Schedule" value={scheduleLabel(ride)} />
+            <DetailRow label="Date/time" value={`${ride.dateLabel} \u00b7 ${ride.timeLabel}`} />
             <DetailRow
               label={selfSettlePod ? "Ride App estimate" : "Estimated share"}
               value={selfSettlePod ? rideAppTotalEstimate ?? "Not yet updated" : `HK$${ride.pricePerPerson} per person`}
@@ -740,14 +740,14 @@ function LockRecurringSeatModal({
           </dl>
 
           <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-            You&apos;ll join this recurring ride set. Each ride keeps its own estimate or quote before it proceeds.
+            You&apos;ll hold your seat before reviewing booking details.
           </p>
 
           <section className="mt-4 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
             <div>
               <p className="text-sm font-black text-[var(--rp-text)]">Your luggage</p>
               <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-                Your luggage is added to each recurring ride unless changed later.
+                Tell the group what you&apos;re bringing so the estimate stays clear.
               </p>
             </div>
 
@@ -821,7 +821,7 @@ function LockRecurringSeatModal({
               className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--rp-primary)]"
             />
             <span className="text-sm font-black leading-5 text-[var(--rp-text)]">
-              I understand no live payment is charged now and each recurring ride has its own estimate or quote.
+              I understand no live payment is charged now.
             </span>
           </label>
 
@@ -890,7 +890,7 @@ function RecurringStickyCta({
           <div className="grid gap-2">
             <button type="button" disabled className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-base font-black text-[var(--rp-muted-strong)]">
               <CheckCircle2 className="h-5 w-5" />
-              You joined this recurring pod
+              You joined this ride
             </button>
             <a href="#quote-status" className="flex min-h-12 w-full items-center justify-center rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-primary)]">
               View updates
@@ -904,11 +904,11 @@ function RecurringStickyCta({
               className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[18px] bg-[var(--rp-gradient-primary)] text-base font-black text-[var(--rp-primary-text)]"
             >
               <Repeat2 className="h-5 w-5" />
-              Lock recurring seat
+              Lock my seat
             </button>
             <p className="px-2 text-center text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
               {selfSettle
-                ? "Ride details apply to the selected ride instance. Ride fare is handled outside RidePod."
+                ? "Ride fare is handled outside RidePod."
                 : "Final share appears after each taxi partner quote."}
             </p>
           </div>
