@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 
 const SPLASH_STORAGE_KEY = "ridepod_splash_seen";
 const SPLASH_WINDOW_NAME_MARKER = "ridepod_splash_seen=true";
-const SPLASH_VISIBLE_MS = 650;
+const SPLASH_VISIBLE_MS = 2000;
 const SPLASH_EXIT_MS = 300;
-const REDUCED_VISIBLE_MS = 520;
-const REDUCED_EXIT_MS = 160;
+const REDUCED_VISIBLE_MS = 2000;
+const REDUCED_EXIT_MS = 180;
 
 function hasSeenSplash() {
   try {
@@ -53,18 +53,15 @@ export function SplashScreen() {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const visibleDuration = prefersReducedMotion ? REDUCED_VISIBLE_MS : SPLASH_VISIBLE_MS;
     const exitDuration = prefersReducedMotion ? REDUCED_EXIT_MS : SPLASH_EXIT_MS;
-    const elapsedSinceNavigation = Math.max(0, window.performance.now());
-    const exitDelay = Math.max(0, visibleDuration - elapsedSinceNavigation);
-    const removeDelay = Math.max(0, visibleDuration + exitDuration - elapsedSinceNavigation);
 
     const exitTimer = window.setTimeout(() => {
       setIsExiting(true);
-    }, exitDelay);
+    }, visibleDuration);
 
     const removeTimer = window.setTimeout(() => {
       document.documentElement.dataset.ridepodSplash = "seen";
       setIsMounted(false);
-    }, removeDelay);
+    }, visibleDuration + exitDuration);
 
     return () => {
       window.clearTimeout(exitTimer);
@@ -93,7 +90,7 @@ export function SplashScreen() {
             linear-gradient(180deg, #02070d 0%, #07111a 52%, #03070d 100%);
           opacity: 0;
           isolation: isolate;
-          animation: ridepod-splash-lifecycle 950ms ease-in-out forwards;
+          animation: ridepod-splash-lifecycle 2300ms ease-in-out forwards;
         }
 
         .ridepod-splash::before {
@@ -116,7 +113,7 @@ export function SplashScreen() {
           gap: 14px;
           text-align: center;
           will-change: opacity, transform;
-          animation: ridepod-splash-logo-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+          animation: ridepod-splash-content-in 220ms ease-out both;
         }
 
         .ridepod-splash[data-state="exit"] .ridepod-splash__content {
@@ -175,7 +172,11 @@ export function SplashScreen() {
         }
 
         .ridepod-splash__logo {
+          position: relative;
+          display: inline-flex;
           margin: 0;
+          overflow: hidden;
+          isolation: isolate;
           font-size: clamp(48px, 16vw, 72px);
           line-height: 0.95;
           font-weight: 800;
@@ -183,9 +184,36 @@ export function SplashScreen() {
           text-shadow: 0 18px 50px rgba(0, 0, 0, 0.44);
         }
 
+        .ridepod-splash__logo-text {
+          display: inline-flex;
+          clip-path: inset(0 100% 0 0);
+          animation: ridepod-splash-logo-reveal 560ms 80ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
         .ridepod-splash__logo-gold {
           color: var(--rp-primary);
           text-shadow: 0 0 34px rgba(242, 193, 91, 0.22);
+        }
+
+        .ridepod-splash__logo::after {
+          content: "";
+          position: absolute;
+          z-index: 2;
+          top: -18%;
+          bottom: -18%;
+          left: -58%;
+          width: 46%;
+          pointer-events: none;
+          transform: skewX(-18deg);
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.56),
+            rgba(242, 193, 91, 0.42),
+            transparent
+          );
+          mix-blend-mode: screen;
+          animation: ridepod-splash-logo-flash 640ms 190ms ease-out both;
         }
 
         .ridepod-splash__tagline {
@@ -199,25 +227,68 @@ export function SplashScreen() {
         }
 
         @keyframes ridepod-splash-lifecycle {
-          0% { opacity: 0; }
-          18% { opacity: 1; }
-          68% { opacity: 1; }
-          100% { opacity: 0; }
+          0% {
+            opacity: 0;
+            visibility: visible;
+          }
+          18% {
+            opacity: 1;
+            visibility: visible;
+          }
+          87% {
+            opacity: 1;
+            visibility: visible;
+          }
+          100% {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+          }
         }
 
         @keyframes ridepod-splash-fade-out {
-          from { opacity: 1; }
-          to { opacity: 0; }
+          from {
+            opacity: 1;
+            visibility: visible;
+          }
+          to {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+          }
         }
 
-        @keyframes ridepod-splash-logo-in {
+        @keyframes ridepod-splash-content-in {
           from {
             opacity: 0;
-            transform: scale(0.96) translateY(6px);
+            transform: scale(0.985);
           }
           to {
             opacity: 1;
-            transform: scale(1) translateY(0);
+            transform: scale(1);
+          }
+        }
+
+        @keyframes ridepod-splash-logo-reveal {
+          from {
+            clip-path: inset(0 100% 0 0);
+          }
+          to {
+            clip-path: inset(0 0 0 0);
+          }
+        }
+
+        @keyframes ridepod-splash-logo-flash {
+          0% {
+            left: -58%;
+            opacity: 0;
+          }
+          34% {
+            opacity: 0.72;
+          }
+          100% {
+            left: 112%;
+            opacity: 0;
           }
         }
 
@@ -246,25 +317,45 @@ export function SplashScreen() {
           .ridepod-splash::before,
           .ridepod-splash__content,
           .ridepod-splash[data-state="exit"] .ridepod-splash__content,
+          .ridepod-splash__logo-text,
+          .ridepod-splash__logo::after,
           .ridepod-splash__route-line::after,
           .ridepod-splash__dot--end {
             animation: none !important;
             transform: none !important;
           }
 
+          .ridepod-splash__logo-text {
+            clip-path: none !important;
+          }
+
+          .ridepod-splash__logo::after {
+            display: none;
+          }
+
           .ridepod-splash {
-            animation: ridepod-splash-reduced-lifecycle 680ms ease-out forwards;
+            animation: ridepod-splash-reduced-lifecycle 2180ms ease-out forwards;
           }
 
           .ridepod-splash[data-state="exit"] {
-            animation: ridepod-splash-fade-out 160ms ease-out forwards;
+            animation: ridepod-splash-fade-out 180ms ease-out forwards;
           }
         }
 
         @keyframes ridepod-splash-reduced-lifecycle {
-          0% { opacity: 1; }
-          76% { opacity: 1; }
-          100% { opacity: 0; }
+          0% {
+            opacity: 1;
+            visibility: visible;
+          }
+          92% {
+            opacity: 1;
+            visibility: visible;
+          }
+          100% {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+          }
         }
       `}</style>
 
@@ -275,8 +366,10 @@ export function SplashScreen() {
           <span className="ridepod-splash__dot ridepod-splash__dot--end" />
         </div>
         <h1 className="ridepod-splash__logo">
-          <span>Ride</span>
-          <span className="ridepod-splash__logo-gold">Pod</span>
+          <span className="ridepod-splash__logo-text">
+            <span>Ride</span>
+            <span className="ridepod-splash__logo-gold">Pod</span>
+          </span>
         </h1>
         <p className="ridepod-splash__tagline">Your ride, together.</p>
       </div>
