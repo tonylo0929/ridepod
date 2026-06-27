@@ -2204,8 +2204,8 @@ export function LockSeatConfirmationModal({
         if (event.target === event.currentTarget) onCancel();
       }}
     >
-      <section className="flex max-h-[calc(100dvh-32px)] w-full max-w-[460px] flex-col overflow-hidden rounded-[26px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.46)]">
-        <div className="overflow-y-auto p-4 pb-3 min-[390px]:p-5 min-[390px]:pb-3">
+      <section className="flex max-h-[86dvh] w-full max-w-[460px] flex-col overflow-hidden rounded-[26px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.46)]">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-3 min-[390px]:p-5 min-[390px]:pb-3">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 id={titleId} className="text-2xl font-black leading-tight">
@@ -2398,7 +2398,7 @@ export function LockSeatConfirmationModal({
           </section>
         </div>
 
-        <div className="border-t border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_94%,transparent)] p-3 backdrop-blur-xl min-[390px]:p-4">
+        <div className="shrink-0 border-t border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_94%,transparent)] p-3 backdrop-blur-xl min-[390px]:p-4">
           <label className="flex items-start gap-3 rounded-[15px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-3">
             <input
               type="checkbox"
@@ -2430,7 +2430,7 @@ export function LockSeatConfirmationModal({
                 : "border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted)]",
             )}
           >
-            Lock my seat
+            Confirm
           </button>
           </div>
         </div>
