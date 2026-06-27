@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   AlertCircle,
   CalendarDays,
@@ -12,7 +12,9 @@ import {
   Plane,
   RefreshCcw,
   Smartphone,
+  UsersRound,
   XCircle,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/components/ui";
 import { createdHomeRideViewerIdentityFromAuth, useCreatedCalendarRides } from "@/lib/created-home-rides";
@@ -30,6 +32,13 @@ import { useAuth } from "@/providers/AuthProvider";
 
 type StatusTone = "action" | "upcoming" | "completed" | "cancelled";
 type RideTypeTone = "taxi" | "ride_app" | "airport" | "recurring";
+type HistoryTab = "taxi" | "uber" | "ride_board";
+
+const historyTabs: Array<{ id: HistoryTab; label: string; icon: LucideIcon }> = [
+  { id: "taxi", label: "Taxi", icon: CarFront },
+  { id: "uber", label: "Uber", icon: Smartphone },
+  { id: "ride_board", label: "Ride Board", icon: UsersRound },
+];
 
 function historyDateLabel(date: string) {
   return new Intl.DateTimeFormat("en", {
@@ -83,6 +92,10 @@ function getRideTypeTone(ride: CalendarRide): RideTypeTone {
 
 function getRideTypeLabel(ride: CalendarRide) {
   return ride.rideMode === "ride_app" ? "Ride app" : "Taxi";
+}
+
+function getHistoryTabForRide(ride: CalendarRide): HistoryTab {
+  return ride.rideMode === "ride_app" ? "uber" : "taxi";
 }
 
 function RideTypeBadge({ ride }: { ride: CalendarRide }) {
@@ -213,6 +226,7 @@ function HistoryGroup({
 
 export function RideHistorySection() {
   const { user, profile, isLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState<HistoryTab>("taxi");
   const viewerIdentity = useMemo(() => createdHomeRideViewerIdentityFromAuth({ profile, user }), [profile, user]);
   const createdCalendarRides = useCreatedCalendarRides(user?.id ?? null, viewerIdentity);
   const today = useMemo(() => new Date(), []);
@@ -232,21 +246,35 @@ export function RideHistorySection() {
     () => sortHistoryRides(myRideItems.filter((ride) => isHistoryRide(ride, todayKey))),
     [myRideItems, todayKey],
   );
+  const historyTabCounts = useMemo(() => {
+    const counts: Record<HistoryTab, number> = { taxi: 0, uber: 0, ride_board: 0 };
+
+    for (const ride of historyRideItems) {
+      counts[getHistoryTabForRide(ride)] += 1;
+    }
+
+    return counts;
+  }, [historyRideItems]);
+  const activeTabHistoryRides = useMemo(
+    () => historyRideItems.filter((ride) => getHistoryTabForRide(ride) === activeTab),
+    [activeTab, historyRideItems],
+  );
   const createdHistoryRides = useMemo(
-    () => historyRideItems.filter((ride) => getMyRideCalendarRole(ride, user?.id) === "host"),
-    [historyRideItems, user?.id],
+    () => activeTabHistoryRides.filter((ride) => getMyRideCalendarRole(ride, user?.id) === "host"),
+    [activeTabHistoryRides, user?.id],
   );
   const joinedHistoryRides = useMemo(
-    () => historyRideItems.filter((ride) => getMyRideCalendarRole(ride, user?.id) !== "host"),
-    [historyRideItems, user?.id],
+    () => activeTabHistoryRides.filter((ride) => getMyRideCalendarRole(ride, user?.id) !== "host"),
+    [activeTabHistoryRides, user?.id],
   );
+  const activeTabLabel = historyTabs.find((tab) => tab.id === activeTab)?.label ?? "ride";
 
   return (
     <div className="grid gap-4 pb-3">
       <header className="pt-1">
         <h1 className="text-3xl font-black tracking-tight text-[var(--rp-text)] min-[390px]:text-[34px]">Ride history</h1>
         <p className="mt-2 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-          Finished-date pods are saved here by Created and Joined.
+          Finished-date pods are saved here by ride type.
         </p>
       </header>
 
@@ -282,16 +310,43 @@ export function RideHistorySection() {
             </div>
           </div>
           <div className="mt-4 grid gap-4">
+            <div className="grid grid-cols-3 gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[#06111d]/72 p-1.5">
+              {historyTabs.map((tab) => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.id;
+
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={cn(
+                      "grid min-h-[66px] content-center justify-items-center rounded-[14px] border px-1.5 text-center transition",
+                      active
+                        ? "border-[var(--rp-primary)] bg-[rgba(242,193,91,0.14)] text-[var(--rp-primary)] shadow-[0_0_24px_rgba(242,193,91,0.16)]"
+                        : "border-transparent bg-transparent text-[var(--rp-muted-strong)] hover:bg-white/[0.05]",
+                    )}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="mt-1 text-[11px] font-black leading-tight">{tab.label}</span>
+                    <span className="mt-1 rounded-full border border-white/10 bg-white/[0.055] px-2 py-0.5 text-[10px] font-black">
+                      {historyTabCounts[tab.id]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
             <HistoryGroup
               title="Created"
               rides={createdHistoryRides}
-              emptyText="No created ride history yet."
+              emptyText={`No created ${activeTabLabel} history yet.`}
               currentUserId={user.id}
             />
             <HistoryGroup
               title="Joined"
               rides={joinedHistoryRides}
-              emptyText="No joined ride history yet."
+              emptyText={`No joined ${activeTabLabel} history yet.`}
               currentUserId={user.id}
             />
           </div>
