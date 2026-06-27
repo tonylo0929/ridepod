@@ -10,7 +10,6 @@ import {
   MapPin,
   MessageCircle,
   Navigation,
-  Plane,
   Plus,
   Route,
   Send,
@@ -34,7 +33,7 @@ import {
 } from "react";
 import { cn } from "@/components/ui";
 
-type RideBoardFilter = "near_me" | "airport" | "commute" | "events" | "leaving_soon" | "saved";
+type RideBoardFilter = "near_me" | "commute" | "events" | "leaving_soon" | "saved";
 type RideRequestCategory = "airport" | "commute" | "events" | "other";
 type RideRequestStatus = "open" | "leaving_soon" | "closed" | "expired";
 type RideType = "Taxi" | "Ride App" | "Airport" | "Commute" | "Other";
@@ -82,7 +81,6 @@ type RideRequestFormValues = {
 
 const rideBoardFilters: Array<{ id: RideBoardFilter; label: string; icon: LucideIcon }> = [
   { id: "near_me", label: "Near me", icon: MapPin },
-  { id: "airport", label: "Airport", icon: Plane },
   { id: "commute", label: "Commute", icon: BriefcaseBusiness },
   { id: "events", label: "Events", icon: Sparkles },
   { id: "leaving_soon", label: "Leaving soon", icon: Clock3 },
