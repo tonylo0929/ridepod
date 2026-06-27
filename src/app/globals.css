@@ -94,6 +94,20 @@ select {
   -webkit-tap-highlight-color: transparent;
 }
 
+a[aria-label^="Back"],
+button[aria-label^="Back"] {
+  border-color: rgba(242, 193, 91, 0.5) !important;
+  background: rgba(242, 193, 91, 0.08) !important;
+  color: var(--rp-primary) !important;
+}
+
+a[aria-label^="Back"]:hover,
+button[aria-label^="Back"]:hover {
+  border-color: rgba(242, 193, 91, 0.72) !important;
+  background: rgba(242, 193, 91, 0.14) !important;
+  color: var(--rp-primary-strong) !important;
+}
+
 :focus-visible {
   outline: 3px solid var(--rp-focus);
   outline-offset: 3px;
@@ -126,6 +140,18 @@ select {
 .ridepod-status-dashboard p {
   text-align: left !important;
   text-align-last: start !important;
+}
+
+.whisperlink-shell p {
+  text-align: left !important;
+  text-align-last: start !important;
+}
+
+.whisperlink-shell .text-center,
+.whisperlink-shell .text-center p,
+.whisperlink-shell p.text-center {
+  text-align: center !important;
+  text-align-last: center !important;
 }
 
 .people-vehicle-layout {
