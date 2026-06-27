@@ -346,6 +346,7 @@ function hostPublishedRideUpdates(incoming: HomeRide): Partial<HomeRide> {
     rideAppEstimatedFareUpdatedAt: incoming.rideAppEstimatedFareUpdatedAt,
     rideAppEstimatedFareNote: incoming.rideAppEstimatedFareNote,
     rideAppFareEstimateStatus: incoming.rideAppFareEstimateStatus,
+    rideAppFareEstimateReviewStatus: incoming.rideAppFareEstimateReviewStatus,
     rideAppFareEstimateScreenshotName: incoming.rideAppFareEstimateScreenshotName,
     rideAppFareEstimateScreenshotAddedAt: incoming.rideAppFareEstimateScreenshotAddedAt,
     fareEstimateScreenshot: incoming.fareEstimateScreenshot,
@@ -775,6 +776,7 @@ function createdHomeRideToCalendarRide(ride: HomeRide): CalendarRide {
     rideAppEstimatedFareUpdatedBy: ride.rideAppEstimatedFareUpdatedBy,
     rideAppEstimatedFareUpdatedAt: ride.rideAppEstimatedFareUpdatedAt,
     rideAppEstimatedFareNote: ride.rideAppEstimatedFareNote,
+    rideAppFareEstimateReviewStatus: ride.rideAppFareEstimateReviewStatus,
   };
 }
 

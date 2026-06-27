@@ -230,6 +230,7 @@ export type HomeRide = {
   rideAppProviderName?: string;
   rideAppSplitMethod?: string;
   rideAppFareEstimateStatus?: "pending" | "accepted";
+  rideAppFareEstimateReviewStatus?: "needs_review" | "confirmed";
   rideAppAcceptedPaymentMethods?: string[];
   tripKind?: "normal" | "airport";
   airportDirection: AirportDirection;

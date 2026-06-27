@@ -43,6 +43,7 @@ export type CalendarRide = {
   rideAppEstimatedFareUpdatedBy?: string | null;
   rideAppEstimatedFareUpdatedAt?: string | null;
   rideAppEstimatedFareNote?: string | null;
+  rideAppFareEstimateReviewStatus?: "needs_review" | "confirmed";
   quoteTotal?: number;
   airportDirection?: "to_airport" | "from_airport";
   luggage?: string;

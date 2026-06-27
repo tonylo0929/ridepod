@@ -17,6 +17,7 @@ export type RideAppFareEstimateFields = {
   rideAppEstimatedFareUpdatedAt?: string | null;
   rideAppEstimatedFareNote?: string | null;
   rideAppFareEstimateStatus?: "pending" | "accepted";
+  rideAppFareEstimateReviewStatus?: "needs_review" | "confirmed";
 };
 
 export function getRideAppEstimatedFarePerPerson(ride: (HomeRide | CalendarRide) & RideAppFareEstimateFields) {

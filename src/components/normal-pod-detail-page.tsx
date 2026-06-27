@@ -26,6 +26,7 @@ import {
   MessagesSquare,
   Plus,
   ReceiptText,
+  Route,
   Share2,
   ShieldCheck,
   SlidersHorizontal,
@@ -927,6 +928,7 @@ function buildApproveRideAppStopPatch(ride: HomeRide, stop: RoutePlanStop): Part
   return {
     ...nextRoutePatch,
     ...reviewPatch,
+    rideAppFareEstimateReviewStatus: "needs_review",
     lastBookingDetailsUpdateReason: "Host approved stop request.",
   };
 }
@@ -944,6 +946,18 @@ function buildDeclineRideAppStopPatch(ride: HomeRide, stop: RoutePlanStop): Part
 
 function hasAnyRideAppStopRequestState(ride: HomeRide) {
   return getNormalizedRouteRequests(ride).all.length > 0;
+}
+
+function getRideAppFareEstimateReviewState(ride: HomeRide) {
+  const hasEstimate = Boolean(getRideAppHostFareEstimate(ride));
+  const routeChanged = ride.bookingDetailsLastMeaningfulUpdate === "stop_added";
+  const needsReview =
+    hasEstimate &&
+    (ride.rideAppFareEstimateReviewStatus === "needs_review" ||
+      (routeChanged && ride.bookingDetailsUpdated === true && ride.rideAppFareEstimateReviewStatus !== "confirmed"));
+  const confirmed = hasEstimate && ride.rideAppFareEstimateReviewStatus === "confirmed" && !needsReview;
+
+  return { hasEstimate, needsReview, confirmed };
 }
 
 function metadataValue(metadata: UserNotificationForStopRequest["metadata"], key: string) {
@@ -2116,8 +2130,8 @@ export function PodStatusPanel({
     notifyPodStatusAction({
       type: "ride_app_action_required",
       audiences: ["actor", "host"],
-      title: "New stop requested",
-      body: `${podStatusActorName} requested a new stop: ${trimmedStopLabel}.`,
+      title: "New stop request",
+      body: `${podStatusActorName} requested to add ${trimmedStopLabel} to this ride.`,
       selfTitle: "Stop request sent",
       selfBody: `${trimmedStopLabel} is waiting for host approval.`,
       action: "route_stop_requested",
@@ -2137,12 +2151,27 @@ export function PodStatusPanel({
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     notifyPodStatusAction({
       type: "ride_app_action_required",
-      audiences: ["all"],
-      title: "Route request approved",
-      body: `${podStatusActorName} approved ${stop.label}. Please review the latest ride details.`,
-      selfTitle: "You approved a route request",
-      selfBody: stop.label,
+      audiences: ["riders"],
+      title: "Stop approved",
+      body: `Your stop ${stop.label} has been added to the route.`,
+      selfTitle: "Stop approved",
+      selfBody: `${stop.label} has been added to the route.`,
       action: "route_request_approved",
+      relatedUrl: `/pods/${ride.id}#route-requests`,
+      dedupe: false,
+      metadata: {
+        stopLabel: stop.label,
+        requestedBy: stop.requestedBy ?? "Rider",
+      },
+    });
+    notifyPodStatusAction({
+      type: "ride_app_details_updated",
+      audiences: ["riders"],
+      title: "Route updated",
+      body: `${stop.label} has been added to this ride. Please check the updated route.`,
+      selfTitle: "You approved a stop request",
+      selfBody: stop.label,
+      action: "route_updated",
       relatedUrl: `/pods/${ride.id}#route-requests`,
       dedupe: false,
       metadata: {
@@ -2159,10 +2188,10 @@ export function PodStatusPanel({
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     notifyPodStatusAction({
       type: "ride_app_details_updated",
-      audiences: ["all"],
-      title: "Route request declined",
-      body: `${podStatusActorName} declined ${stop.label}.`,
-      selfTitle: "You declined a route request",
+      audiences: ["riders"],
+      title: "Stop request declined",
+      body: "The host declined your stop request for this ride.",
+      selfTitle: "You declined a stop request",
       selfBody: stop.label,
       action: "route_request_declined",
       relatedUrl: `/pods/${ride.id}#route-requests`,
@@ -3501,7 +3530,6 @@ function SelfSettlePodSummaryHero({
   const hostAvatarLabel = canUpdateEstimate ? "You" : getInitials(ride.hostName || "Host").slice(0, 1);
   const canJoinRide = getCurrentUserCanJoinSelfSettlePod(ride, "quote_pending");
   const rejoinRestriction = getRideAppRejoinRestrictionCopy(ride, ride.seatsUsed < ride.seatsTotal);
-  const hostEstimateUpdated = canUpdateEstimate && estimateUpdated;
   const canLeaveRideFromHero = summaryUserHadRideAppSeat && !summaryUserIsHost;
   const showInlineJoinRide = !summaryUserIsHost && !canLeaveRideFromHero && canJoinRide;
   const summaryUserCanOpenChat =
@@ -3510,11 +3538,12 @@ function SelfSettlePodSummaryHero({
       ride.currentUserJoinIntentStatus !== "seat_hold_expired" &&
       ride.currentUserConfirmationExpired !== true &&
       !isRideAppSeatHoldExpired(ride));
-  const displayEstimateLabel = hostEstimateUpdated ? "Updated estimate" : canUpdateEstimate ? "Your estimate" : estimateLabel;
+  const fareReviewState = getRideAppFareEstimateReviewState(ride);
+  const displayEstimateLabel = estimateLabel;
   const minimumRidersToGoLabel = getRideAppMinimumRidersToGoLabel(ride);
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
   const hostCancellationActive = hostCancellationStatus !== "active";
-  const estimateActionLabel = "Edit";
+  const estimateActionLabel = fareReviewState.confirmed ? "View breakdown" : "Review fare";
   const compactSummaryDateLabel = getCompactPodSummaryDateLabel(ride.dateLabel);
   const manageActionsPendingCount = getManagePodActionsPendingCount(ride);
   const noticeBadgeClass =
@@ -3651,7 +3680,7 @@ function SelfSettlePodSummaryHero({
                 onClick={onViewFareProof}
                 className="mt-3 inline-flex min-h-8 w-fit items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 text-[11px] font-black text-cyan-100 transition hover:bg-cyan-300/16"
               >
-                View Proof
+                View breakdown
               </button>
             </div>
           )}
@@ -3790,62 +3819,26 @@ type ManageRouteRequestCardModel = {
   riderName: string;
   stopLocation: string;
   reason: string;
-  status: "Pending";
+  currentRoute: string;
+  status: "Pending" | "Approved" | "Declined";
   stop: RoutePlanStop;
 };
 
-const referenceRouteRequestCards: Array<Omit<ManageRouteRequestCardModel, "stop">> = [
-  {
-    id: "route-request-eason",
-    avatarInitial: "E",
-    riderName: "Eason_Chan",
-    stopLocation: "Font Door, K City",
-    reason: "Extra stop",
-    status: "Pending",
-  },
-  {
-    id: "route-request-may",
-    avatarInitial: "M",
-    riderName: "May_Wong",
-    stopLocation: "Festival Walk",
-    reason: "Near final",
-    status: "Pending",
-  },
-  {
-    id: "route-request-jason",
-    avatarInitial: "J",
-    riderName: "Jason_L",
-    stopLocation: "Kowloon Tong MTR",
-    reason: "Pickup change",
-    status: "Pending",
-  },
-];
-
-function buildManageRouteRequestCards(pendingRequests: RoutePlanStop[]): ManageRouteRequestCardModel[] {
-  const cardCount = Math.max(referenceRouteRequestCards.length, pendingRequests.length);
-
-  return Array.from({ length: cardCount }, (_, index) => {
-    const pendingStop = pendingRequests[index];
-    const card = referenceRouteRequestCards[index] ?? {
-      id: `route-request-${index + 1}`,
-      avatarInitial: "R",
-      riderName: `Rider ${index + 1}`,
-      stopLocation: "Requested stop",
-      reason: "Extra stop",
-      status: "Pending" as const,
-    };
-    const riderName = pendingStop?.requestedBy?.trim() || card.riderName;
-    const stopLocation = pendingStop?.label?.trim() || card.stopLocation;
-    const reason = pendingStop?.reason?.trim() || card.reason;
-    const id = pendingStop?.id || card.id;
+function buildManageRouteRequestCards(ride: HomeRide, pendingRequests: RoutePlanStop[]): ManageRouteRequestCardModel[] {
+  return pendingRequests.map((pendingStop, index) => {
+    const riderName = pendingStop.requestedBy?.trim() || `Rider ${index + 1}`;
+    const stopLocation = pendingStop.label?.trim() || "Requested stop";
+    const reason = pendingStop.reason?.trim() || "Extra stop";
+    const id = pendingStop.id || `route-request-${index + 1}`;
 
     return {
-      ...card,
       id,
-      avatarInitial: getInitials(riderName).slice(0, 1) || card.avatarInitial,
+      avatarInitial: getInitials(riderName).slice(0, 1) || "R",
       riderName,
       stopLocation,
       reason,
+      currentRoute: `${ride.fromLabel} -> ${ride.toLabel}`,
+      status: "Pending",
       stop: {
         id,
         label: stopLocation,
@@ -3892,7 +3885,7 @@ function ManagePodActionsModal({
   const confirmByLabel = formatConfirmByLabel(getRideAppConfirmByDate(ride));
   const routeRequests = getNormalizedRouteRequests(ride);
   const pendingStops = routeRequests.pending.map(routeRequestToRoutePlanStop);
-  const routeRequestCards = buildManageRouteRequestCards(pendingStops).filter((request) => !handledRouteRequestIds.includes(request.id));
+  const routeRequestCards = buildManageRouteRequestCards(ride, pendingStops).filter((request) => !handledRouteRequestIds.includes(request.id));
   const routeRequestPendingCount = routeRequestCards.length;
   const routeDetailsAlreadyShared =
     ride.bookingDetailsShared === true ||
@@ -3908,7 +3901,7 @@ function ManagePodActionsModal({
     if (routeDecisionLocked) return;
     onApproveStop(request.stop);
     setHandledRouteRequestIds((current) => (current.includes(request.id) ? current : [...current, request.id]));
-    setActionNote(`${request.riderName}'s stop confirmed.`);
+    setActionNote(`${request.riderName}'s stop approved.`);
   }
 
   function declineRouteRequest(request: ManageRouteRequestCardModel) {
@@ -4193,8 +4186,9 @@ function RouteRequestsActionContent({
     <section className="grid gap-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">ROUTE REQUESTS</p>
-          <p className="mt-1 text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Stop requests</p>
+          <h3 className="mt-1 text-xl font-black text-[var(--rp-primary)]">Review stop request</h3>
+          <p className="mt-1 text-xs font-black uppercase tracking-[0.12em] text-cyan-100">
             {requests.length} pending
           </p>
         </div>
@@ -4230,8 +4224,8 @@ function RouteRequestsActionContent({
                     {request.avatarInitial}
                   </span>
                   <span className="min-w-0">
+                    <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Requested by</span>
                     <span className="block truncate text-base font-black leading-6 text-white">{request.riderName}</span>
-                    <span className="block text-xs font-semibold text-[var(--rp-muted-strong)]">requested a stop</span>
                   </span>
                 </span>
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-primary)]">
@@ -4244,16 +4238,16 @@ function RouteRequestsActionContent({
                 <div className="rounded-[16px] border border-white/10 bg-black/18 p-3">
                   <dt className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
                     <MapPin className="h-3.5 w-3.5 text-cyan-200" />
-                    Stop location
+                    Requested stop
                   </dt>
                   <dd className="mt-1 break-words text-sm font-black leading-5 text-white">{request.stopLocation}</dd>
                 </div>
                 <div className="rounded-[16px] border border-white/10 bg-black/18 p-3">
                   <dt className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
-                    <MessageCircle className="h-3.5 w-3.5 text-cyan-200" />
-                    Reason
+                    <Route className="h-3.5 w-3.5 text-cyan-200" />
+                    Current route
                   </dt>
-                  <dd className="mt-1 break-words text-sm font-black leading-5 text-white">{request.reason}</dd>
+                  <dd className="mt-1 break-words text-sm font-black leading-5 text-white">{request.currentRoute}</dd>
                 </div>
                 <div className="rounded-[16px] border border-white/10 bg-black/18 p-3">
                   <dt className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
@@ -4279,7 +4273,7 @@ function RouteRequestsActionContent({
                   onClick={() => onConfirm(request)}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
                 >
-                  Confirm
+                  Approve stop
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
@@ -4435,8 +4429,15 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
   const progress = Math.min((seatsUsed / ride.seatsTotal) * 100, 100);
   const estimatedShareRange = getEstimatedShareRange(ride.pricePerPerson);
   const rideAppEstimateDisplay = getRideAppHostFareEstimateDisplay(ride);
+  const rideAppFareReviewState = getRideAppFareEstimateReviewState(ride);
   const rideAppHeroEstimateUpdated = rideAppTotalEstimateOverride !== null || rideAppEstimateDisplay.updated;
-  const rideAppHeroEstimateLabel = "Ride App Estimate";
+  const rideAppHeroEstimateLabel = rideAppFareReviewState.needsReview
+    ? "Updated estimate"
+    : rideAppFareReviewState.confirmed
+      ? "Confirmed estimate"
+      : rideAppHeroEstimateUpdated
+        ? "Updated estimate"
+        : "Ride App Estimate";
   const rideAppHeroEstimateValue = rideAppTotalEstimateOverride ?? rideAppEstimateDisplay.value;
   const rideAppProviderDisplay = getRideAppProviderDisplay(ride);
   const rideAppAcceptedPaymentDisplay = getRideAppAcceptedPaymentDisplay(ride);
@@ -4718,6 +4719,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
         ? `Screenshot uploaded: ${rideAppEstimateScreenshotDraftName}`
         : "Updated by host.",
       rideAppFareEstimateStatus: "accepted" as const,
+      rideAppFareEstimateReviewStatus: "confirmed" as const,
       rideAppFareEstimateScreenshotName: rideAppEstimateScreenshotDraftName,
       rideAppFareEstimateScreenshotAddedAt: proofUpdatedAt,
       fareEstimateScreenshot: rideAppEstimateScreenshotDraftName || rideAppEstimateScreenshotDraftPreviewUrl
@@ -4749,12 +4751,12 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
       type: fareEstimateChangedMeaningfully ? "ride_app_action_required" : "ride_app_details_updated",
       audiences: ["riders"],
       title: fareEstimateChangedMeaningfully ? "Fare estimate updated" : screenshotOnlyUpdate ? "Fare estimate screenshot added" : "Fare estimate updated",
-      body: fareEstimateChangedMeaningfully
-        ? `${detailActorName} updated the fare estimate to ${formattedEstimate}. Riders need to review.`
+      body: fareEstimateChangedMeaningfully || rideAppFareReviewState.needsReview
+        ? `The estimated fare is now ${formattedEstimate} after the route update.`
         : screenshotOnlyUpdate
           ? `${detailActorName} added a fare estimate screenshot.`
           : `${detailActorName} updated the fare estimate to ${formattedEstimate}.`,
-      action: fareEstimateChangedMeaningfully ? "fare_estimate_needs_review" : screenshotOnlyUpdate ? "fare_screenshot_added" : "estimate_updated",
+      action: fareEstimateChangedMeaningfully || rideAppFareReviewState.needsReview ? "fare_estimate_updated" : screenshotOnlyUpdate ? "fare_screenshot_added" : "estimate_updated",
       dedupe: false,
     });
     setRideAppEstimateError(null);
@@ -4781,8 +4783,8 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     notifyRideDetailAction({
       type: "ride_app_action_required",
       audiences: ["actor", "host"],
-      title: "New stop requested",
-      body: `${detailActorName} requested a new stop: ${trimmedStopLabel}.`,
+      title: "New stop request",
+      body: `${detailActorName} requested to add ${trimmedStopLabel} to this ride.`,
       selfTitle: "Stop request sent",
       selfBody: `${trimmedStopLabel} is waiting for host approval.`,
       action: "route_stop_requested",
@@ -4910,12 +4912,27 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     applyRideActionPatch(patch);
     notifyRideDetailAction({
       type: "ride_app_action_required",
-      audiences: ["all"],
-      title: "Route request approved",
-      body: `${detailActorName} approved ${stop.label}. Please review the latest ride details.`,
-      selfTitle: "You approved a route request",
-      selfBody: stop.label,
+      audiences: ["riders"],
+      title: "Stop approved",
+      body: `Your stop ${stop.label} has been added to the route.`,
+      selfTitle: "Stop approved",
+      selfBody: `${stop.label} has been added to the route.`,
       action: "route_request_approved",
+      relatedUrl: `/pods/${ride.id}#route-requests`,
+      dedupe: false,
+      metadata: {
+        stopLabel: stop.label,
+        requestedBy: stop.requestedBy ?? "Rider",
+      },
+    });
+    notifyRideDetailAction({
+      type: "ride_app_details_updated",
+      audiences: ["riders"],
+      title: "Route updated",
+      body: `${stop.label} has been added to this ride. Please check the updated route.`,
+      selfTitle: "You approved a stop request",
+      selfBody: stop.label,
+      action: "route_updated",
       relatedUrl: `/pods/${ride.id}#route-requests`,
       dedupe: false,
       metadata: {
@@ -4931,10 +4948,10 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     applyRideActionPatch(patch);
     notifyRideDetailAction({
       type: "ride_app_details_updated",
-      audiences: ["all"],
-      title: "Route request declined",
-      body: `${detailActorName} declined ${stop.label}.`,
-      selfTitle: "You declined a route request",
+      audiences: ["riders"],
+      title: "Stop request declined",
+      body: "The host declined your stop request for this ride.",
+      selfTitle: "You declined a stop request",
       selfBody: stop.label,
       action: "route_request_declined",
       relatedUrl: `/pods/${ride.id}#route-requests`,
@@ -5561,13 +5578,25 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
         >
           <section className="max-h-[calc(100vh-2rem)] w-full max-w-[380px] overflow-y-auto rounded-[26px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.44)]">
             <h2 id="ride-app-estimate-title" className="text-2xl font-black leading-tight text-[var(--rp-primary)]">
-              Update total estimate
+              {rideAppFareReviewState.confirmed ? "Fare breakdown" : rideAppFareReviewState.needsReview ? "Review fare breakdown" : "Update total estimate"}
             </h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              Enter the estimate from Ride App. Final ride fare is paid after the ride.
+              {rideAppFareReviewState.needsReview
+                ? "Route changed. Review the external ride app estimate, adjust fare if needed, then confirm."
+                : rideAppFareReviewState.confirmed
+                  ? "This estimate has been confirmed for the current route. Ride fare is paid outside RidePod."
+                  : "Enter the estimate from Ride App. Final ride fare is paid after the ride."}
             </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-3 py-1 text-[11px] font-black text-[var(--rp-primary)]">
+                {rideAppFareReviewState.confirmed ? "Fare confirmed" : rideAppFareReviewState.needsReview ? "Fare updated" : "Fare review"}
+              </span>
+              <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-[11px] font-black text-cyan-100">
+                Ride fare is paid outside RidePod
+              </span>
+            </div>
             <label className="mt-5 block">
-              <span className="text-sm font-black text-[var(--rp-text)]">Estimate from Ride App</span>
+              <span className="text-sm font-black text-[var(--rp-text)]">{rideAppFareReviewState.needsReview ? "Adjust fare from Ride App" : "Estimate from Ride App"}</span>
               <div className="mt-2 flex h-13 w-full items-center overflow-hidden rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] transition focus-within:border-cyan-300">
                 <span className="shrink-0 pl-4 pr-2 text-base font-black text-[var(--rp-muted-strong)]">HK$</span>
                 <input
@@ -5667,7 +5696,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                 onClick={confirmRideAppEstimateUpdate}
                 className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105"
               >
-                Confirm
+                {rideAppFareReviewState.confirmed ? "Done" : "Confirm fare"}
               </button>
             </div>
           </section>
