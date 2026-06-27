@@ -272,10 +272,7 @@ export function RideHistorySection() {
   return (
     <div className="grid gap-4 pb-3">
       <header className="pt-1">
-        <h1 className="text-3xl font-black tracking-tight text-[var(--rp-text)] min-[390px]:text-[34px]">Ride history</h1>
-        <p className="mt-2 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-          Finished-date pods are saved here by ride type.
-        </p>
+        <h1 className="text-3xl font-black tracking-tight text-[var(--rp-primary)] min-[390px]:text-[34px]">Ride history</h1>
       </header>
 
       {isLoading ? (
