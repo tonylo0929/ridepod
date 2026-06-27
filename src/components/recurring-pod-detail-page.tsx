@@ -6,6 +6,7 @@ import { Fragment, useEffect, useId, useState, type ReactNode } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  BarChart3,
   BriefcaseBusiness,
   CalendarDays,
   CarFront,
@@ -22,6 +23,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { cn } from "@/components/ui";
+import { RidePodAvatar } from "@/components/animal-avatar";
 import type { HomeRide } from "@/lib/home-ride-mock";
 import {
   formatGroupLuggageLabel,
@@ -431,12 +433,6 @@ function TaxiTypeVisualCard({ taxiType }: { taxiType: string }) {
   );
 }
 
-const avatarStyles = [
-  "bg-[#f7d8bc] text-[#5b341f]",
-  "bg-[#cfe7dc] text-[#173f34]",
-  "bg-[#e7c7b5] text-[#5c2f22]",
-];
-
 function getInitials(name: string) {
   return name
     .split(" ")
@@ -446,24 +442,36 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-function RiderStack({ ride }: { ride: HomeRide }) {
-  const names = [ride.hostName, ...ride.joinedRiders].slice(0, 3);
+function getViewProfileHref(name: string, role: "host" | "rider" = "host") {
+  const params = new URLSearchParams({ name, role });
+  return `/profile/view?${params.toString()}`;
+}
 
-  return (
-    <div className="flex shrink-0 -space-x-2">
-      {names.map((name, index) => (
-        <span
-          key={`${name}-${index}`}
-          className={cn(
-            "grid h-10 w-10 place-items-center rounded-full border-2 border-[#07111a] text-xs font-black shadow-[0_6px_14px_rgba(0,0,0,0.24)]",
-            avatarStyles[index % avatarStyles.length],
-          )}
-        >
-          {getInitials(name)}
-        </span>
-      ))}
-    </div>
-  );
+function getHostProfileImageUrl(ride: HomeRide) {
+  const hostMedia = ride as HomeRide & {
+    hostAvatarUrl?: string | null;
+    hostImageUrl?: string | null;
+    hostPhotoUrl?: string | null;
+    hostProfileImageUrl?: string | null;
+  };
+  const candidates = [
+    hostMedia.hostProfileImageUrl,
+    hostMedia.hostAvatarUrl,
+    hostMedia.hostPhotoUrl,
+    hostMedia.hostImageUrl,
+  ];
+  const match = candidates.find((value): value is string => typeof value === "string" && value.trim().length > 0);
+
+  return match?.trim() ?? null;
+}
+
+function getCompactRecurringScheduleLabel(ride: HomeRide) {
+  return ride.repeatsPattern ?? ride.recurrence_label ?? ride.dateLabel;
+}
+
+function getRecurringVehicleLabel(ride: HomeRide, selfSettle: boolean) {
+  if (selfSettle) return ride.rideAppProviderName?.trim() || "Ride app";
+  return ride.taxiType;
 }
 
 function getRecurringHeroQuoteStatus(joined: boolean, joinView: string, selfSettle: boolean) {
@@ -475,6 +483,197 @@ function getRecurringHeroQuoteStatus(joined: boolean, joinView: string, selfSett
   if (joinView === "ready_for_pickup") return "Ready for pickup";
 
   return selfSettle ? "Waiting for ride details" : "Waiting for quote";
+}
+
+function RecurringPodSummaryHero({
+  ride,
+  seatsUsed,
+  progress,
+  joined,
+  recurringFull,
+  recurringHeroQuoteStatus,
+  rideAppTotalEstimate,
+  selfSettle,
+  onOpenLock,
+}: {
+  ride: HomeRide;
+  seatsUsed: number;
+  progress: number;
+  joined: boolean;
+  recurringFull: boolean;
+  recurringHeroQuoteStatus: string;
+  rideAppTotalEstimate: string | null;
+  selfSettle: boolean;
+  onOpenLock: () => void;
+}) {
+  const hostAvatarPreference = ride.hostAvatarPreference ?? null;
+  const hostProfileImageUrl = getHostProfileImageUrl(ride);
+  const hostAvatarDisplayName = ride.hostDisplayName?.trim() || ride.hostName || "RidePod host";
+  const hostAvatarLabel = getInitials(hostAvatarDisplayName) || "H";
+  const estimateLabel = selfSettle ? "Total estimate" : "Est. share";
+  const estimateValue = selfSettle ? rideAppTotalEstimate ?? "Pending" : `HK$${ride.pricePerPerson}`;
+  const estimateHelper = selfSettle
+    ? rideAppTotalEstimate
+      ? "Ride app estimate"
+      : "Ride app estimate pending"
+    : "per recurring ride";
+  const vehicleLabel = getRecurringVehicleLabel(ride, selfSettle);
+  const scheduleCompact = getCompactRecurringScheduleLabel(ride);
+
+  return (
+    <section className="relative overflow-hidden rounded-[24px] border border-cyan-100/20 bg-[radial-gradient(circle_at_top_left,rgba(103,232,249,0.1),transparent_34%),linear-gradient(145deg,rgba(13,24,39,0.96),rgba(3,10,18,0.98))] p-4 shadow-[0_20px_56px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.06)]">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent_38%)]" />
+      <div className="relative grid grid-cols-[64px_minmax(0,1fr)_auto] gap-3">
+        <span
+          className="grid h-16 w-16 place-items-center overflow-hidden rounded-full border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/8 bg-cover bg-center text-xl font-black text-[var(--rp-primary)] shadow-[0_14px_32px_rgba(0,0,0,0.28)]"
+          style={!hostAvatarPreference && hostProfileImageUrl ? { backgroundImage: `url(${hostProfileImageUrl})` } : undefined}
+          aria-label={`${hostAvatarDisplayName} profile`}
+        >
+          {hostAvatarPreference ? (
+            <RidePodAvatar
+              avatarUrl={hostProfileImageUrl}
+              avatarPreference={hostAvatarPreference}
+              initials={hostAvatarLabel}
+              displayName={hostAvatarDisplayName}
+              className="h-full w-full rounded-full text-xl"
+            />
+          ) : hostProfileImageUrl ? null : (
+            hostAvatarLabel
+          )}
+        </span>
+
+        <div className="min-w-0 self-center">
+          <h2 className="text-xl font-black leading-tight text-white min-[390px]:text-[21px]">
+            {ride.fromLabel} {"\u2192"} {ride.toLabel}
+          </h2>
+          <p className="mt-1 text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-muted-strong)]">
+            Created by {hostAvatarDisplayName}
+          </p>
+          <Link
+            href={getViewProfileHref(hostAvatarDisplayName, "host")}
+            className="mt-2 inline-flex min-h-8 items-center justify-center rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-3 text-[11px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
+          >
+            View Profile
+          </Link>
+        </div>
+
+        <button
+          type="button"
+          aria-label="Share recurring pod"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cyan-200/35 bg-cyan-300/8 text-cyan-100 shadow-[0_8px_18px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:bg-cyan-300/14"
+        >
+          <Share2 className="h-[18px] w-[18px]" />
+        </button>
+      </div>
+
+      <div className="relative mt-4 flex flex-wrap gap-2">
+        <span className="inline-flex min-h-8 items-center gap-2 rounded-full border border-[var(--rp-primary)]/70 bg-[var(--rp-primary)]/12 px-3 py-1 text-sm font-black text-[var(--rp-primary)]">
+          <Repeat2 className="h-3.5 w-3.5" />
+          Recurring
+        </span>
+        <span className="inline-flex min-h-8 items-center rounded-full border border-cyan-200/20 bg-cyan-300/8 px-3 py-1 text-sm font-black text-cyan-100">
+          {vehicleLabel}
+        </span>
+        <span className="inline-flex min-h-8 items-center rounded-full border border-white/12 bg-white/[0.055] px-3 py-1 text-sm font-black text-[var(--rp-muted-strong)]">
+          {scheduleCompact}
+        </span>
+      </div>
+
+      <div className="relative mt-4 grid grid-cols-[1.18fr_1.05fr_0.85fr] overflow-hidden rounded-[16px] border border-cyan-100/14 bg-white/[0.035] text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] min-[390px]:grid-cols-3">
+        <div className="grid min-w-0 content-center justify-items-center gap-1 border-r border-white/10 px-2 py-3 text-center min-[390px]:px-3">
+          <CalendarDays className="h-[18px] w-[18px] shrink-0 text-[var(--rp-muted-strong)] min-[390px]:h-5 min-[390px]:w-5" />
+          <span className="block max-w-full" title={`${ride.dateLabel} ${ride.timeLabel}`}>
+            <span className="block truncate whitespace-nowrap text-[11px] font-black leading-[13px] text-cyan-200 min-[390px]:text-[12px] min-[390px]:leading-4">
+              {ride.timeLabel}
+            </span>
+            <span className="block truncate whitespace-nowrap text-[10px] font-black leading-[13px] text-white min-[390px]:text-[11px] min-[390px]:leading-4">
+              {scheduleCompact}
+            </span>
+          </span>
+        </div>
+
+        <div className="min-w-0 border-r border-white/10 px-2.5 py-3">
+          <span className="flex min-w-0 items-center gap-2">
+            <UserRound className="h-5 w-5 shrink-0 text-[var(--rp-muted-strong)]" />
+            <span className="block whitespace-nowrap text-lg font-black leading-5 text-cyan-100">
+              {seatsUsed} / {ride.seatsTotal}
+            </span>
+          </span>
+          <span className="mt-0.5 block whitespace-nowrap text-[9px] font-black leading-4 text-[var(--rp-primary)] min-[390px]:text-[10px]">
+            seats filled
+          </span>
+          <span className="mt-1.5 block h-1.5 w-full max-w-24 overflow-hidden rounded-full bg-white/14">
+            <span className="block h-full rounded-full bg-cyan-300" style={{ width: `${progress}%` }} />
+          </span>
+        </div>
+
+        <div className="grid min-w-0 grid-cols-[22px_minmax(0,1fr)] items-center gap-2 px-3 py-3">
+          {selfSettle ? (
+            <Smartphone className="h-5 w-5 shrink-0 text-[var(--rp-muted-strong)]" />
+          ) : (
+            <CarFront className="h-5 w-5 shrink-0 text-[var(--rp-muted-strong)]" />
+          )}
+          <span className="min-w-0">
+            <span className="block truncate text-base font-black leading-5 text-white">{vehicleLabel}</span>
+            <span className="block text-[11px] font-semibold leading-4 text-[var(--rp-muted-strong)]">Ride type</span>
+          </span>
+        </div>
+      </div>
+
+      <div className="relative mt-4 grid grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] gap-3 max-[360px]:grid-cols-1">
+        <div className="grid min-h-[124px] justify-items-center rounded-[16px] border border-cyan-300/24 bg-cyan-300/8 px-3 py-4 text-center">
+          <p className="w-full whitespace-nowrap text-center text-[12px] font-semibold text-[var(--rp-muted-strong)]">{estimateLabel}</p>
+          <p className={cn("mt-1 w-full whitespace-nowrap text-center font-black leading-tight text-[var(--rp-primary)]", estimateValue === "Pending" ? "text-xl" : "text-2xl")}>
+            {estimateValue}
+          </p>
+          <p className="mt-2 text-center text-[11px] font-semibold leading-4 text-[var(--rp-muted-strong)]">{estimateHelper}</p>
+        </div>
+
+        <div id="quote-status" className="grid gap-3">
+          {recurringFull ? (
+            <button
+              type="button"
+              className="inline-flex min-h-14 items-center justify-center gap-2 rounded-[14px] bg-[var(--rp-gradient-primary)] px-3 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_10px_24px_rgba(242,193,91,0.1)]"
+            >
+              <UsersRound className="h-4 w-4" />
+              Join waitlist
+            </button>
+          ) : joined ? (
+            <button
+              type="button"
+              disabled
+              className="inline-flex min-h-14 items-center justify-center gap-2 rounded-[14px] border border-white/12 bg-white/8 px-3 text-sm font-black text-[var(--rp-muted-strong)]"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Seat locked
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onOpenLock}
+              className="inline-flex min-h-14 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/10 px-3 text-sm font-black text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(242,193,91,0.1)] transition hover:bg-[var(--rp-primary)]/15"
+            >
+              <Repeat2 className="h-4 w-4" />
+              Join recurring ride
+            </button>
+          )}
+          <Link
+            href={`/pods/${ride.id}/status`}
+            className="inline-flex min-h-14 items-center justify-center gap-2 rounded-[14px] border border-white/12 bg-white/8 px-3 text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-white/12 hover:text-white"
+          >
+            <BarChart3 className="h-4 w-4" />
+            View status
+          </Link>
+          <div className="rounded-[14px] border border-white/10 bg-white/[0.045] px-3 py-2 text-left">
+            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
+              {selfSettle ? "Ride detail status" : "Quote status"}
+            </p>
+            <p className="mt-1 text-sm font-black text-[var(--rp-primary)]">{recurringHeroQuoteStatus}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function LockRecurringSeatModal({
@@ -768,125 +967,28 @@ export function RecurringPodDetailPage({ ride, backHref = "/home" }: { ride: Hom
   return (
     <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-5rem)] overflow-hidden pb-48 sm:-mx-6 lg:-mx-10 lg:-mt-8">
       <div className="mx-auto w-full max-w-[520px] lg:pt-4">
-        <header className="relative z-20 flex h-12 items-center justify-between px-4">
-          <Link href={backHref} aria-label="Back to Home" className="grid h-10 w-10 place-items-center rounded-full text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]">
+        <header className="relative z-20 flex h-12 items-center px-4">
+          <Link
+            href={backHref}
+            aria-label="Back to Home"
+            className="grid h-10 w-10 place-items-center rounded-full border border-white/12 bg-white/[0.04] text-[var(--rp-text)] shadow-[0_8px_22px_rgba(0,0,0,0.24)] transition hover:bg-[var(--rp-card-muted)]"
+          >
             <ArrowLeft className="h-6 w-6" />
           </Link>
-          <span className="h-10 w-10" aria-hidden="true" />
-          <button type="button" aria-label="Share pod" className="grid h-10 w-10 place-items-center rounded-full text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]">
-            <Share2 className="h-5 w-5" />
-          </button>
         </header>
 
         <main className="relative z-10 grid gap-3 px-4">
-          <section className="relative -mx-4 -mt-12 overflow-hidden rounded-b-[28px] border-b border-[var(--rp-border)] bg-[var(--rp-shell)] shadow-[var(--rp-shadow-soft)]">
-            <div className="relative min-h-[610px] pt-12 min-[430px]:min-h-[430px]">
-              <Image
-                src="/images/ridepod/home-dark-mode-background.png"
-                alt="Hong Kong skyline illustration at night"
-                fill
-                priority
-                sizes="(min-width: 1024px) 520px, 100vw"
-                className="object-cover object-center"
-              />
-              <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,11,18,0.04)_0%,rgba(5,11,18,0.08)_34%,rgba(5,11,18,0.74)_76%,rgba(5,11,18,0.96)_100%)]" />
-
-              <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-5">
-                <h2 className="max-w-full text-[28px] font-black leading-[1.03] tracking-tight text-white min-[390px]:text-[32px]">
-                  {ride.fromLabel} {"\u2192"} {ride.toLabel}
-                </h2>
-
-                <p className="mt-5 text-xl font-semibold text-[var(--rp-muted-strong)]">
-                  {scheduleLabel(ride)}
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <span className="inline-flex min-h-8 items-center gap-2 rounded-full border border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_16%,transparent)] px-3 py-1 text-sm font-black text-[var(--rp-primary)]">
-                    <Repeat2 className="h-3.5 w-3.5" />
-                    Recurring
-                  </span>
-                  <span className="inline-flex min-h-8 items-center rounded-full border border-white/16 bg-black/26 px-3 py-1 text-sm font-black text-[var(--rp-muted-strong)] backdrop-blur-md">
-                    {ride.taxiType}
-                  </span>
-                </div>
-                <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full border border-white/14 bg-black/26 px-3 py-2 text-xs font-black text-white shadow-[0_8px_18px_rgba(0,0,0,0.18)] backdrop-blur-md">
-                  <UserRound className="h-4 w-4 shrink-0 text-[var(--rp-primary)]" />
-                  <span className="uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">Created by</span>
-                  <span className="truncate text-[var(--rp-text)]">{ride.hostName || "RidePod host"}</span>
-                </div>
-
-                <div className="mt-4 border-t border-white/14 pt-4">
-                  <div className="grid gap-3">
-                    <div className="grid gap-3 min-[430px]:grid-cols-[minmax(0,1fr)_112px]">
-                      <div className="min-w-0 rounded-[18px] border border-white/14 bg-black/28 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-md">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <RiderStack ride={ride} />
-                          <p className="min-w-0 text-left font-black leading-tight text-[var(--rp-text)]">
-                            <span className="block whitespace-nowrap text-lg">{seatsUsed} / {ride.seatsTotal}</span>
-                            <span className="block text-xs text-[var(--rp-muted-strong)]">seats filled</span>
-                          </p>
-                        </div>
-                        <div className="relative mt-3 h-2 overflow-hidden rounded-full bg-white/14">
-                          <div
-                            className="h-full rounded-full bg-[var(--rp-primary)]"
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid min-w-0 content-center rounded-[18px] border border-white/14 bg-black/28 px-3 py-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-md min-[430px]:rounded-none min-[430px]:border-x min-[430px]:border-y-0 min-[430px]:bg-transparent min-[430px]:px-3 min-[430px]:py-2 min-[430px]:shadow-none">
-                        <p className="text-[10px] font-semibold leading-4 text-[var(--rp-muted-strong)]">
-                          {howItWorksRideMode === "ride_app" ? "Total estimate" : "Est. share"}
-                        </p>
-                        <p className={cn("mt-1 font-black leading-tight text-[var(--rp-primary)]", rideAppTotalEstimate || howItWorksRideMode !== "ride_app" ? "text-lg" : "text-[17px]")}>
-                          {howItWorksRideMode === "ride_app" ? rideAppTotalEstimate ?? "Pending" : `HK$${ride.pricePerPerson}`}
-                        </p>
-                        <p className="mt-1 text-[11px] font-semibold leading-4 text-[var(--rp-muted-strong)]">
-                          {howItWorksRideMode === "ride_app"
-                            ? rideAppTotalEstimate
-                              ? "Ride app estimate"
-                              : "Ride app estimate pending"
-                            : "per person"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div id="quote-status" className="mt-3 grid items-center gap-3 min-[430px]:grid-cols-[minmax(0,1fr)_112px]">
-                    <div className="min-w-0 rounded-[14px] border border-white/14 bg-black/24 px-3 py-2 text-left backdrop-blur-md">
-                      <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
-                        {howItWorksRideMode === "ride_app" ? "Ride detail status" : "Quote status"}
-                      </p>
-                      <p className="mt-1 text-sm font-black text-[var(--rp-primary)]">{recurringHeroQuoteStatus}</p>
-                    </div>
-                    {recurringFull ? (
-                      <button
-                        type="button"
-                        className="flex min-h-12 w-full items-center justify-center rounded-[16px] bg-[var(--rp-gradient-primary)] px-3 text-sm font-black text-[var(--rp-primary-text)]"
-                      >
-                        Join waitlist
-                      </button>
-                    ) : joined ? (
-                      <button
-                        type="button"
-                        disabled
-                        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-[16px] border border-white/14 bg-black/24 px-3 text-sm font-black text-[var(--rp-muted-strong)]"
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                        Seat locked
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setShowLockSeatModal(true)}
-                        className="flex min-h-12 w-full items-center justify-center gap-2 rounded-[16px] bg-[var(--rp-gradient-primary)] px-3 text-sm font-black text-[var(--rp-primary-text)]"
-                      >
-                        <Repeat2 className="h-4 w-4" />
-                        Join
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </section>
+          <RecurringPodSummaryHero
+            ride={ride}
+            seatsUsed={seatsUsed}
+            progress={progress}
+            joined={joined}
+            recurringFull={recurringFull}
+            recurringHeroQuoteStatus={recurringHeroQuoteStatus}
+            rideAppTotalEstimate={rideAppTotalEstimate}
+            selfSettle={howItWorksRideMode === "ride_app"}
+            onOpenLock={() => setShowLockSeatModal(true)}
+          />
 
           <RecurringCard className="mt-1 p-4">
             <button
