@@ -329,7 +329,7 @@ function MyRideDayPodCard({ ride, currentUserId }: { ride: CalendarRide; current
         </div>
 
         <div className="min-w-0 overflow-hidden">
-          <div className="grid min-w-0 gap-2">
+          <div className="ridepod-my-ride-card-heading grid min-w-0 gap-2">
             <p className="shrink-0 whitespace-nowrap text-left text-xl font-black leading-6 text-[var(--rp-text)]">{timeLabel(ride.time)}</p>
             <div className="flex min-w-0 flex-wrap gap-1.5">
               <StatusBadge status={status} />

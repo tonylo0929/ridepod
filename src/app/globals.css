@@ -584,3 +584,17 @@ button[aria-label^="Back"]:hover {
   font-weight: 800;
   letter-spacing: 0.04em;
 }
+
+.ridepod-my-ride-card-heading,
+article [class*="justify-between"][class*="items-start"]:has(> p[class*="whitespace-nowrap"][class*="text-xl"]) {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start !important;
+  justify-items: start;
+  row-gap: 0.5rem;
+}
+
+.ridepod-my-ride-card-heading > [class*="rounded-full"],
+article [class*="justify-between"][class*="items-start"]:has(> p[class*="whitespace-nowrap"][class*="text-xl"]) > [class*="rounded-full"] {
+  max-width: 100%;
+}
