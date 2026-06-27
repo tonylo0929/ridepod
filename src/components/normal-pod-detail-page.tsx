@@ -3206,6 +3206,65 @@ function PodStatusMetric({ value, label, tone = "cyan" }: { value: string | numb
   );
 }
 
+function ApproveStopFareReviewModal({
+  stopLabel,
+  routeLabel,
+  onCancel,
+  onConfirm,
+}: {
+  stopLabel: string;
+  routeLabel: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[150] grid place-items-center bg-black/72 px-4 py-6 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="approve-stop-fare-title"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onCancel();
+      }}
+    >
+      <section className="w-full max-w-[360px] rounded-[26px] border border-[var(--rp-border-strong)] bg-[linear-gradient(180deg,rgba(11,22,32,0.98),rgba(3,9,16,0.98))] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.52)]">
+        <span className="grid h-13 w-13 place-items-center rounded-[18px] border border-[var(--rp-primary)]/40 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]">
+          <CircleDollarSign className="h-6 w-6" />
+        </span>
+        <h2 id="approve-stop-fare-title" className="mt-4 text-2xl font-black leading-tight text-[var(--rp-primary)]">
+          Fare estimate needs review
+        </h2>
+        <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+          Approving this stop will add <span className="font-black text-white">{stopLabel}</span> to the route and mark the fare estimate as updated.
+        </p>
+        <div className="mt-4 rounded-[18px] border border-cyan-300/22 bg-cyan-300/8 p-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Current route</p>
+          <p className="mt-1 break-words text-sm font-black leading-5 text-white">{routeLabel}</p>
+          <p className="mt-3 text-xs font-semibold leading-5 text-cyan-100">
+            Riders will be notified. Please review and confirm the external ride app fare after approval.
+          </p>
+        </div>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="min-h-12 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="min-h-12 rounded-[16px] bg-[var(--rp-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] shadow-[0_14px_30px_rgba(242,193,91,0.24)] transition hover:brightness-105"
+          >
+            Confirm
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function CompactRideAppRoutePanel({
   ride,
   canRequestStop = false,
@@ -3223,6 +3282,7 @@ function CompactRideAppRoutePanel({
 }) {
   const [stopRequestDraft, setStopRequestDraft] = useState("");
   const [requestScreenOpen, setRequestScreenOpen] = useState(false);
+  const [approvalStop, setApprovalStop] = useState<RoutePlanStop | null>(null);
   const routeRequests = getNormalizedRouteRequests(ride);
   const pendingRequest = routeRequests.pending[0] ?? null;
   const pendingStop = pendingRequest ? routeRequestToRoutePlanStop(pendingRequest) : null;
@@ -3433,7 +3493,7 @@ function CompactRideAppRoutePanel({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onApproveStop?.(pendingStop)}
+                  onClick={() => setApprovalStop(pendingStop)}
                   className="min-h-10 rounded-[14px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-3 text-xs font-black text-[#061019] shadow-[0_12px_24px_rgba(56,189,248,0.18)] transition hover:brightness-105"
                 >
                   Approve stop
@@ -3453,6 +3513,17 @@ function CompactRideAppRoutePanel({
           </div>
         </div>
       </section>
+      {approvalStop ? (
+        <ApproveStopFareReviewModal
+          stopLabel={approvalStop.label}
+          routeLabel={`${ride.fromLabel} -> ${ride.toLabel}`}
+          onCancel={() => setApprovalStop(null)}
+          onConfirm={() => {
+            onApproveStop?.(approvalStop);
+            setApprovalStop(null);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
@@ -3870,6 +3941,7 @@ function ManagePodActionsModal({
   );
   const [actionNote, setActionNote] = useState<string | null>(null);
   const [handledRouteRequestIds, setHandledRouteRequestIds] = useState<string[]>([]);
+  const [approvalRequest, setApprovalRequest] = useState<ManageRouteRequestCardModel | null>(null);
   const riders = buildManagePodActionRiders(ride);
   const riderRows = riders.filter((item) => item.role === "rider");
   const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
@@ -3899,9 +3971,14 @@ function ManagePodActionsModal({
 
   function confirmRouteRequest(request: ManageRouteRequestCardModel) {
     if (routeDecisionLocked) return;
+    setApprovalRequest(request);
+  }
+
+  function completeRouteRequestApproval(request: ManageRouteRequestCardModel) {
     onApproveStop(request.stop);
     setHandledRouteRequestIds((current) => (current.includes(request.id) ? current : [...current, request.id]));
     setActionNote(`${request.riderName}'s stop approved.`);
+    setApprovalRequest(null);
   }
 
   function declineRouteRequest(request: ManageRouteRequestCardModel) {
@@ -4073,6 +4150,14 @@ function ManagePodActionsModal({
           </div>
         ) : null}
       </section>
+      {approvalRequest ? (
+        <ApproveStopFareReviewModal
+          stopLabel={approvalRequest.stopLocation}
+          routeLabel={approvalRequest.currentRoute}
+          onCancel={() => setApprovalRequest(null)}
+          onConfirm={() => completeRouteRequestApproval(approvalRequest)}
+        />
+      ) : null}
     </div>
   );
 }
