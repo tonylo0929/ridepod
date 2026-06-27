@@ -37,9 +37,9 @@ import {
 } from "@/lib/my-ride-calendar-mock";
 import { getDraftPodInvitationCards, useRideGroupsState } from "@/lib/ride-groups";
 
-type MyRideFilter = "all" | "taxi" | "ride_app" | "airport" | "recurring" | "action" | "upcoming" | "completed" | "cancelled";
 type StatusTone = "action" | "upcoming" | "completed" | "cancelled";
 type RideTypeTone = "taxi" | "ride_app" | "airport" | "recurring";
+type MyRideFilter = "all" | RideTypeTone;
 
 const primaryFilters: Array<{ id: MyRideFilter; label: string; icon: LucideIcon; tone: RideTypeTone | "all" }> = [
   { id: "all", label: "All", icon: Grid2X2, tone: "all" },
@@ -49,11 +49,11 @@ const primaryFilters: Array<{ id: MyRideFilter; label: string; icon: LucideIcon;
   { id: "recurring", label: "Recurring", icon: RefreshCcw, tone: "recurring" },
 ];
 
-const statusFilters: Array<{ id: MyRideFilter; label: string; icon: LucideIcon; tone: StatusTone }> = [
-  { id: "action", label: "Action", icon: AlertCircle, tone: "action" },
-  { id: "upcoming", label: "Upcoming", icon: Clock3, tone: "upcoming" },
-  { id: "completed", label: "Completed", icon: CheckCircle2, tone: "completed" },
-  { id: "cancelled", label: "Cancelled", icon: XCircle, tone: "cancelled" },
+const statusLegendItems: Array<{ id: StatusTone; label: string; tone: StatusTone }> = [
+  { id: "action", label: "Action", tone: "action" },
+  { id: "upcoming", label: "Upcoming", tone: "upcoming" },
+  { id: "completed", label: "Completed", tone: "completed" },
+  { id: "cancelled", label: "Cancelled", tone: "cancelled" },
 ];
 
 function ridesByDateMap(rides: CalendarRide[]) {
@@ -182,19 +182,13 @@ function getRouteStops(route: string) {
   };
 }
 
-function matchesFilter(ride: CalendarRide, filter: MyRideFilter, currentUserId?: string | null) {
-  const status = getMyRideCalendarStatus({ pod: ride, currentUserId, role: getMyRideCalendarRole(ride, currentUserId) });
-  const tone = statusTone(status);
-
+function matchesFilter(ride: CalendarRide, filter: MyRideFilter) {
   if (filter === "all") return true;
   if (filter === "taxi") return ride.rideMode !== "ride_app";
   if (filter === "ride_app") return ride.rideMode === "ride_app";
   if (filter === "airport") return ride.rideKind === "airport";
   if (filter === "recurring") return ride.rideKind === "recurring";
-  if (filter === "action") return tone === "action";
-  if (filter === "upcoming") return tone === "upcoming";
-  if (filter === "completed") return tone === "completed";
-  return tone === "cancelled";
+  return true;
 }
 
 function FilterChip({
@@ -439,8 +433,8 @@ export default function MyRidePage() {
     [myRideItems, todayKey],
   );
   const filteredItems = useMemo(
-    () => activeRideItems.filter((ride) => matchesFilter(ride, activeFilter, user?.id)),
-    [activeFilter, activeRideItems, user?.id],
+    () => activeRideItems.filter((ride) => matchesFilter(ride, activeFilter)),
+    [activeFilter, activeRideItems],
   );
   const monthDays = useMemo(() => buildMonthDays(currentMonth), [currentMonth]);
   const ridesByDate = useMemo(() => ridesByDateMap(filteredItems), [filteredItems]);
@@ -530,17 +524,15 @@ export default function MyRidePage() {
                 />
               ))}
             </div>
-            <div className="mt-2 grid min-w-0 grid-cols-4 gap-1.5 min-[390px]:gap-2">
-              {statusFilters.map((filter) => (
-                <FilterChip
-                  key={filter.id}
-                  id={filter.id}
-                  label={filter.label}
-                  icon={filter.icon}
-                  tone={filter.tone}
-                  active={activeFilter === filter.id}
-                  onClick={handleFilterChange}
-                />
+            <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 px-1 min-[390px]:gap-x-4">
+              {statusLegendItems.map((item) => (
+                <span
+                  key={item.id}
+                  className="inline-flex min-w-0 items-center gap-1.5 text-[10px] font-black uppercase leading-none tracking-[0.06em] text-[var(--rp-muted-strong)]"
+                >
+                  <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", markerDotClass(item.tone))} />
+                  <span className="whitespace-nowrap">{item.label}</span>
+                </span>
               ))}
             </div>
           </section>
