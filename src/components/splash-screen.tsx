@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 
 const SPLASH_STORAGE_KEY = "ridepod_splash_seen";
 const SPLASH_WINDOW_NAME_MARKER = "ridepod_splash_seen=true";
-const SPLASH_VISIBLE_MS = 2000;
+const SPLASH_VISIBLE_MS = 700;
 const SPLASH_EXIT_MS = 300;
-const REDUCED_VISIBLE_MS = 2000;
+const REDUCED_VISIBLE_MS = 720;
 const REDUCED_EXIT_MS = 180;
 
 function hasSeenSplash() {
@@ -53,15 +53,18 @@ export function SplashScreen() {
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const visibleDuration = prefersReducedMotion ? REDUCED_VISIBLE_MS : SPLASH_VISIBLE_MS;
     const exitDuration = prefersReducedMotion ? REDUCED_EXIT_MS : SPLASH_EXIT_MS;
+    const elapsedSinceNavigation = Math.max(0, window.performance.now());
+    const exitDelay = Math.max(0, visibleDuration - elapsedSinceNavigation);
+    const removeDelay = Math.max(0, visibleDuration + exitDuration - elapsedSinceNavigation);
 
     const exitTimer = window.setTimeout(() => {
       setIsExiting(true);
-    }, visibleDuration);
+    }, exitDelay);
 
     const removeTimer = window.setTimeout(() => {
       document.documentElement.dataset.ridepodSplash = "seen";
       setIsMounted(false);
-    }, visibleDuration + exitDuration);
+    }, removeDelay);
 
     return () => {
       window.clearTimeout(exitTimer);
@@ -90,7 +93,7 @@ export function SplashScreen() {
             linear-gradient(180deg, #02070d 0%, #07111a 52%, #03070d 100%);
           opacity: 0;
           isolation: isolate;
-          animation: ridepod-splash-lifecycle 2300ms ease-in-out forwards;
+          animation: ridepod-splash-lifecycle 1000ms ease-in-out forwards;
         }
 
         .ridepod-splash::before {
@@ -235,7 +238,7 @@ export function SplashScreen() {
             opacity: 1;
             visibility: visible;
           }
-          87% {
+          68% {
             opacity: 1;
             visibility: visible;
           }
@@ -334,7 +337,7 @@ export function SplashScreen() {
           }
 
           .ridepod-splash {
-            animation: ridepod-splash-reduced-lifecycle 2180ms ease-out forwards;
+            animation: ridepod-splash-reduced-lifecycle 900ms ease-out forwards;
           }
 
           .ridepod-splash[data-state="exit"] {
@@ -347,7 +350,7 @@ export function SplashScreen() {
             opacity: 1;
             visibility: visible;
           }
-          92% {
+          76% {
             opacity: 1;
             visibility: visible;
           }
