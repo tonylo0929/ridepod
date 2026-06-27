@@ -581,7 +581,7 @@ function RideModeSwitch({
                 "inline-flex min-h-14 items-center justify-center gap-2 rounded-full px-4 text-base font-black transition min-[420px]:text-lg",
                 selected
                   ? option.id === "ride_app"
-                    ? "bg-[linear-gradient(180deg,#8cc8ff_0%,#4dabff_100%)] text-[#06213a] shadow-[0_16px_32px_rgba(77,171,255,0.24)]"
+                    ? "bg-[linear-gradient(180deg,#8cc8ff_0%,#4dabff_100%)] text-[#075db3] shadow-[0_16px_32px_rgba(77,171,255,0.24)]"
                     : "bg-[var(--rp-primary)] text-[#07111a] shadow-[0_16px_32px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
                   : option.id === "ride_app"
                     ? "text-blue-900 hover:bg-blue-100"
