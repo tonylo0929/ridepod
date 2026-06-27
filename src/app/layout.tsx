@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { SplashScreen } from "@/components/splash-screen";
 import { AuthProvider } from "@/providers/AuthProvider";
 import "./globals.css";
 
@@ -30,8 +31,38 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
+      <head>
+        <script
+          id="ridepod-splash-session-boot"
+          dangerouslySetInnerHTML={{
+            __html: `
+            (function () {
+              try {
+                var seen = false;
+                try {
+                  seen = Boolean(window.sessionStorage && window.sessionStorage.getItem("ridepod_splash_seen"));
+                } catch (storageError) {}
+                if (!seen) {
+                  seen = window.name.split("|").indexOf("ridepod_splash_seen=true") !== -1;
+                }
+                document.documentElement.dataset.ridepodSplash = seen ? "seen" : "fresh";
+                if (seen && !document.getElementById("ridepod-splash-seen-style")) {
+                  var style = document.createElement("style");
+                  style.id = "ridepod-splash-seen-style";
+                  style.textContent = ".ridepod-splash{display:none!important}";
+                  document.head.appendChild(style);
+                }
+              } catch (error) {
+                document.documentElement.dataset.ridepodSplash = "fresh";
+              }
+            })();
+          `,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <AuthProvider>{children}</AuthProvider>
+        <SplashScreen />
       </body>
     </html>
   );
