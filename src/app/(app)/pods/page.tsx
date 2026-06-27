@@ -335,9 +335,9 @@ function MyRideDayPodCard({ ride, currentUserId }: { ride: CalendarRide; current
         </div>
 
         <div className="min-w-0 overflow-hidden">
-          <div className="grid min-w-0 gap-2 min-[390px]:grid-cols-[minmax(0,1fr)_auto] min-[390px]:items-start">
+          <div className="grid min-w-0 gap-2 min-[390px]:grid-cols-[minmax(96px,1fr)_auto] min-[390px]:items-start">
             <div className="min-w-0">
-              <p className="text-left text-xl font-black leading-6 text-[var(--rp-text)]">{timeLabel(ride.time)}</p>
+              <p className="whitespace-nowrap text-left text-xl font-black leading-6 text-[var(--rp-text)]">{timeLabel(ride.time)}</p>
               <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
                 <RideKindBadge ride={ride} />
               </div>
