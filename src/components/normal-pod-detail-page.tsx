@@ -4059,12 +4059,25 @@ function ManagePodActionsModal({
         <div className="min-h-0 flex-1 overflow-y-auto p-5">
           {activeTab === "confirmations" ? (
             <div className="grid gap-4">
-              <section className="rounded-[18px] border border-cyan-300/22 bg-cyan-300/8 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h3 className="text-lg font-black text-[var(--rp-primary)]">Confirmations</h3>
-                  <span className="rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 py-1 text-xs font-black text-cyan-100">
-                    {confirmedRiderCount} / {riderTotal} riders confirmed
+              <section className="rounded-[18px] border border-[var(--rp-primary)]/35 bg-[linear-gradient(180deg,rgba(242,193,91,0.12),rgba(255,255,255,0.035))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                <div className="grid grid-cols-[44px_minmax(0,1fr)] items-center gap-3">
+                  <span className="grid h-11 w-11 place-items-center rounded-[14px] border border-[var(--rp-primary)]/38 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]">
+                    <UserRound className="h-5 w-5" />
                   </span>
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-black leading-6 text-[var(--rp-primary)]">Confirmations</h3>
+                    <div className="mt-1 flex min-w-0 flex-wrap items-end gap-x-2 gap-y-1">
+                      <p className="whitespace-nowrap text-2xl font-black leading-none text-[var(--rp-primary)]">
+                        {confirmedRiderCount} / {riderTotal}
+                      </p>
+                      <p className="pb-0.5 text-xs font-black leading-4 text-white">
+                        riders confirmed
+                      </p>
+                    </div>
+                    <p className="mt-1 text-xs font-black leading-4 text-white">
+                      {getRideAppMinimumRidersToGoLabel(ride)}
+                    </p>
+                  </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {ridersNeedingReviewCount > 0 ? (
