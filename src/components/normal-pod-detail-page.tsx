@@ -3724,7 +3724,7 @@ function SelfSettlePodSummaryHero({
           className={cn(
             "relative mt-4 grid gap-3",
             canUpdateEstimate || canLeaveRideFromHero
-              ? "grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] max-[360px]:grid-cols-1"
+              ? "grid-cols-[minmax(112px,0.86fr)_minmax(0,1.14fr)] max-[360px]:grid-cols-1"
               : showInlineJoinRide
                 ? "grid-cols-[minmax(0,1fr)_minmax(124px,0.86fr)] max-[340px]:grid-cols-1"
                 : "grid-cols-1",
@@ -3735,10 +3735,10 @@ function SelfSettlePodSummaryHero({
               type="button"
               onClick={onEstimateClick}
               disabled={!canUpdateEstimate || hostCancellationActive}
-              className="grid min-h-[124px] justify-items-center rounded-[16px] border border-cyan-300/24 bg-cyan-300/8 px-3 py-4 text-center transition hover:border-cyan-200/40 hover:bg-cyan-300/12 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55"
+              className="grid min-h-[124px] min-w-0 justify-items-center rounded-[16px] border border-cyan-300/24 bg-cyan-300/8 px-2.5 py-4 text-center transition hover:border-cyan-200/40 hover:bg-cyan-300/12 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55 min-[390px]:px-3"
             >
               {estimateContent}
-              <span className="mx-auto mt-3 inline-flex min-h-8 max-w-full items-center justify-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 text-[11px] font-black uppercase tracking-[0.08em] text-cyan-100">
+              <span className="mx-auto mt-3 inline-flex min-h-8 max-w-full items-center justify-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-2.5 text-[10px] font-black text-cyan-100 min-[390px]:gap-2 min-[390px]:px-3 min-[390px]:text-[11px]">
                 <WalletCards className="h-3.5 w-3.5 shrink-0" />
                 <span className="min-w-0 truncate">{estimateActionLabel}</span>
               </span>
