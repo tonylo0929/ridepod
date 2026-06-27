@@ -723,117 +723,130 @@ function LockRecurringSeatModal({
         if (event.target === event.currentTarget) onCancel();
       }}
     >
-      <section className="w-full max-w-[460px] rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] p-5 text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.46)]">
-        <h2 id={titleId} className="text-2xl font-black leading-tight">
-          Lock recurring seat?
-        </h2>
-        <div className="mt-3 grid gap-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-          <p>You&apos;ll join this recurring shared taxi pod and reserve one seat.</p>
-          <p>Each ride gets its own taxi partner quote before guests accept.</p>
-          <p>No live payment is charged now.</p>
+      <section className="flex max-h-[86dvh] w-full max-w-[460px] flex-col overflow-hidden rounded-[26px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.46)]">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-3 min-[390px]:p-5 min-[390px]:pb-3">
+          <h2 id={titleId} className="text-2xl font-black leading-tight">
+            Lock your seat?
+          </h2>
+
+          <dl className="mt-4 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <DetailRow label="Route" value={`${ride.fromLabel} \u2192 ${ride.toLabel}`} />
+            <DetailRow label="Schedule" value={scheduleLabel(ride)} />
+            <DetailRow
+              label={selfSettlePod ? "Ride App estimate" : "Estimated share"}
+              value={selfSettlePod ? rideAppTotalEstimate ?? "Not yet updated" : `HK$${ride.pricePerPerson} per person`}
+            />
+            <DetailRow label="Seats" value={`${seatsUsed} / ${ride.seatsTotal} seats filled`} />
+          </dl>
+
+          <p className="mt-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+            You&apos;ll join this recurring ride set. Each ride keeps its own estimate or quote before it proceeds.
+          </p>
+
+          <section className="mt-4 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
+            <div>
+              <p className="text-sm font-black text-[var(--rp-text)]">Your luggage</p>
+              <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                Your luggage is added to each recurring ride unless changed later.
+              </p>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-3 rounded-[15px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-3">
+              <span>
+                <span className="block text-sm font-black text-[var(--rp-text)]">Bags</span>
+                <span className="block text-xs font-semibold text-[var(--rp-muted-strong)]">Added to the group summary.</span>
+              </span>
+              <span className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  aria-label="Decrease bags"
+                  disabled={luggage.bagsCount <= 0}
+                  onClick={() => {
+                    const nextBagsCount = Math.max(0, luggage.bagsCount - 1);
+                    onLuggageChange({
+                      bagsCount: nextBagsCount,
+                      hasLargeLuggage: nextBagsCount > 0 && luggage.hasLargeLuggage,
+                    });
+                  }}
+                  className="grid h-9 w-9 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] text-lg font-black text-[var(--rp-primary)] disabled:opacity-40"
+                >
+                  -
+                </button>
+                <span className="grid h-9 min-w-10 place-items-center rounded-full bg-[var(--rp-shell)] px-3 text-base font-black text-[var(--rp-text)]">
+                  {luggage.bagsCount}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Increase bags"
+                  disabled={luggage.bagsCount >= 6}
+                  onClick={() => onLuggageChange({ ...luggage, bagsCount: Math.min(6, luggage.bagsCount + 1) })}
+                  className="grid h-9 w-9 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] text-lg font-black text-[var(--rp-primary)] disabled:opacity-40"
+                >
+                  +
+                </button>
+              </span>
+            </div>
+
+            <label className="mt-3 flex items-center justify-between gap-3 rounded-[15px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-3">
+              <span>
+                <span className="block text-sm font-black text-[var(--rp-text)]">Large luggage</span>
+                <span className="block text-xs font-semibold text-[var(--rp-muted-strong)]">Suitcase or bulky item.</span>
+              </span>
+              <input
+                type="checkbox"
+                disabled={luggage.bagsCount <= 0}
+                checked={luggage.bagsCount > 0 && luggage.hasLargeLuggage}
+                onChange={(event) => onLuggageChange({ ...luggage, hasLargeLuggage: event.target.checked })}
+                className="h-5 w-5 shrink-0 accent-[var(--rp-primary)] disabled:opacity-40"
+              />
+            </label>
+
+            <p className="mt-3 text-xs font-black text-[var(--rp-primary)]">
+              Group luggage: {formatGroupLuggageLabel(totalLuggageCount, totalHasLargeLuggage)}
+            </p>
+            {exceedsCapacity ? (
+              <p className="mt-2 rounded-[12px] border border-amber-300/25 bg-amber-400/10 p-2 text-xs font-bold leading-5 text-amber-100">
+                This taxi may not fit the group luggage. Taxi type and luggage capacity depend on taxi partner availability.
+              </p>
+            ) : null}
+          </section>
         </div>
 
-        <dl className="mt-5 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
-          <DetailRow label="Route" value={`${ride.fromLabel} \u2192 ${ride.toLabel}`} />
-          <DetailRow label="Schedule" value={scheduleLabel(ride)} />
-          <DetailRow
-            label={selfSettlePod ? "Total estimate" : "Est. share"}
-            value={selfSettlePod ? rideAppTotalEstimate ?? "Ride app estimate pending" : `HK$${ride.pricePerPerson} per person`}
-          />
-          <DetailRow label="Seats" value={`${seatsUsed} / ${ride.seatsTotal} seats filled`} />
-        </dl>
-
-        <section className="mt-5 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
-          <p className="text-sm font-black text-[var(--rp-text)]">Your luggage</p>
-          <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-            Your luggage is added to each recurring ride unless changed later.
-          </p>
-          <div className="mt-3 flex items-center justify-between gap-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-3">
-            <span className="text-sm font-black text-[var(--rp-text)]">Bags</span>
-            <span className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={luggage.bagsCount <= 0}
-                onClick={() => {
-                  const nextBagsCount = Math.max(0, luggage.bagsCount - 1);
-                  onLuggageChange({
-                    bagsCount: nextBagsCount,
-                    hasLargeLuggage: nextBagsCount > 0 && luggage.hasLargeLuggage,
-                  });
-                }}
-                className="grid h-9 w-9 place-items-center rounded-full border border-[var(--rp-border-strong)] text-lg font-black text-[var(--rp-primary)] disabled:opacity-40"
-              >
-                -
-              </button>
-              <span className="grid h-9 min-w-10 place-items-center rounded-full bg-[var(--rp-shell)] px-3 text-base font-black">
-                {luggage.bagsCount}
-              </span>
-              <button
-                type="button"
-                disabled={luggage.bagsCount >= 6}
-                onClick={() => onLuggageChange({ ...luggage, bagsCount: Math.min(6, luggage.bagsCount + 1) })}
-                className="grid h-9 w-9 place-items-center rounded-full border border-[var(--rp-border-strong)] text-lg font-black text-[var(--rp-primary)] disabled:opacity-40"
-              >
-                +
-              </button>
-            </span>
-          </div>
-          <label className="mt-3 flex items-center justify-between gap-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-3">
-            <span>
-              <span className="block text-sm font-black text-[var(--rp-text)]">Large luggage</span>
-              <span className="block text-xs font-semibold text-[var(--rp-muted-strong)]">Suitcase or bulky item.</span>
-            </span>
+        <div className="shrink-0 border-t border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_94%,transparent)] p-3 backdrop-blur-xl min-[390px]:p-4">
+          <label className="flex items-start gap-3 rounded-[15px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-3">
             <input
               type="checkbox"
-              disabled={luggage.bagsCount <= 0}
-              checked={luggage.bagsCount > 0 && luggage.hasLargeLuggage}
-              onChange={(event) => onLuggageChange({ ...luggage, hasLargeLuggage: event.target.checked })}
-              className="h-5 w-5 accent-[var(--rp-primary)] disabled:opacity-40"
+              checked={checked}
+              onChange={(event) => onCheckedChange(event.target.checked)}
+              className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--rp-primary)]"
             />
+            <span className="text-sm font-black leading-5 text-[var(--rp-text)]">
+              I understand no live payment is charged now and each recurring ride has its own estimate or quote.
+            </span>
           </label>
-          <p className="mt-3 text-xs font-black text-[var(--rp-primary)]">
-            Group luggage: {formatGroupLuggageLabel(totalLuggageCount, totalHasLargeLuggage)}
-          </p>
-          {exceedsCapacity ? (
-            <p className="mt-2 rounded-[12px] border border-amber-300/25 bg-amber-400/10 p-2 text-xs font-bold leading-5 text-amber-100">
-              This taxi may not fit the group luggage. Taxi type and luggage capacity depend on taxi partner availability.
-            </p>
-          ) : null}
-        </section>
 
-        <label className="mt-5 flex items-start gap-3 rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-3">
-          <input
-            type="checkbox"
-            checked={checked}
-            onChange={(event) => onCheckedChange(event.target.checked)}
-            className="mt-1 h-5 w-5 shrink-0 accent-[var(--rp-primary)]"
-          />
-          <span className="text-sm font-black leading-6 text-[var(--rp-text)]">
-            I understand each ride has its own quote before it proceeds.
-          </span>
-        </label>
-
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={!checked}
-            onClick={onConfirm}
-            className={cn(
-              "min-h-12 rounded-2xl border text-sm font-black transition",
-              checked
-                ? "border-[var(--rp-border-strong)] bg-[var(--rp-gradient-primary)] text-[var(--rp-primary-text)] hover:brightness-105"
-                : "border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted)]",
-            )}
-          >
-            Lock recurring seat
-          </button>
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-sm font-black text-[var(--rp-muted-strong)] transition hover:bg-[var(--rp-card-muted)]"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={!checked}
+              onClick={onConfirm}
+              className={cn(
+                "min-h-12 rounded-2xl border text-sm font-black transition",
+                checked
+                  ? "border-[var(--rp-primary)] bg-[linear-gradient(180deg,#ffd36a_0%,#f2c15b_100%)] text-[#07111a] shadow-[0_12px_28px_rgba(242,193,91,0.24)] hover:brightness-105"
+                  : "border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted)]",
+              )}
+            >
+              Confirm
+            </button>
+          </div>
         </div>
       </section>
     </div>
