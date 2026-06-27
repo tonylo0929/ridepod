@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  Bookmark,
-  BriefcaseBusiness,
   CalendarDays,
   CheckCircle2,
   Clock3,
@@ -14,13 +12,11 @@ import {
   Route,
   Send,
   ShieldCheck,
-  Sparkles,
   Star,
   Sun,
   UserRound,
   UsersRound,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import {
   useEffect,
@@ -33,10 +29,13 @@ import {
 } from "react";
 import { cn } from "@/components/ui";
 
-type RideBoardFilter = "near_me" | "commute" | "events" | "leaving_soon" | "saved";
-type RideRequestCategory = "airport" | "commute" | "events" | "other";
+type RideRequestCategory = "today" | "commute" | "events" | "late_night" | "others";
+type RideBoardFilter = "all" | RideRequestCategory;
 type RideRequestStatus = "open" | "leaving_soon" | "closed" | "expired";
-type RideType = "Taxi" | "Ride App" | "Airport" | "Commute" | "Other";
+type RecurrenceType = "One-time" | "Recurring";
+type EventTiming = "Going to event" | "Leaving after event" | "Both possible";
+type TimeFlexibility = "Exact time" | "±15 minutes" | "±30 minutes" | "Flexible";
+type PickupFlexibility = "Exact pickup point" | "Nearby pickup okay" | "Decide in chat";
 
 type RideRequestHost = {
   name: string;
@@ -53,49 +52,68 @@ type RideRequest = {
   timeLabel: string;
   departureDate: string;
   departureTime: string;
-  rideType: RideType;
   category: RideRequestCategory;
-  pickupFlexibility: string;
+  detailLine: string;
   maxPeople: number;
   interestedCount: number;
   status: RideRequestStatus;
   host: RideRequestHost;
   note: string;
-  saved: boolean;
   chatAllowed: boolean;
   userInterested?: boolean;
   expiryLabel: string;
+  visibilityLabel: string;
+  extraLabel?: string;
 };
 
 type RideRequestFormValues = {
+  category: RideRequestCategory;
   from: string;
   to: string;
   date: string;
   time: string;
-  pickupFlexibility: string;
-  rideType: RideType;
   maxPeople: string;
   note: string;
+  visibility: string;
   expiryTime: string;
+  timeFlexibility: TimeFlexibility;
+  repeatPattern: string;
+  recurrenceType: RecurrenceType;
+  eventName: string;
+  eventTiming: EventTiming;
+  pickupFlexibility: PickupFlexibility;
+  requestType: string;
 };
 
-const rideBoardFilters: Array<{ id: RideBoardFilter; label: string; icon: LucideIcon }> = [
-  { id: "near_me", label: "Near me", icon: MapPin },
-  { id: "commute", label: "Commute", icon: BriefcaseBusiness },
-  { id: "events", label: "Events", icon: Sparkles },
-  { id: "leaving_soon", label: "Leaving soon", icon: Clock3 },
-  { id: "saved", label: "Saved", icon: Bookmark },
+const rideBoardFilters: Array<{ id: RideBoardFilter; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "today", label: "Today Requests" },
+  { id: "commute", label: "Commute" },
+  { id: "events", label: "Events" },
+  { id: "late_night", label: "Late Night" },
+  { id: "others", label: "Others" },
 ];
 
-const rideTypeOptions: RideType[] = ["Taxi", "Ride App", "Airport", "Commute", "Other"];
+const postTypeOptions: Array<{ id: RideRequestCategory; label: string; description: string }> = [
+  { id: "today", label: "Today Requests", description: "For quick ride matching today, tonight, or soon." },
+  { id: "commute", label: "Commute", description: "For regular work, school, or repeated routes." },
+  { id: "events", label: "Events", description: "For concerts, shows, matches, exhibitions, or big venue trips." },
+  { id: "late_night", label: "Late Night", description: "For safer ride sharing after dinner, drinks, overtime, or last train." },
+  { id: "others", label: "Others", description: "For anything that does not fit the categories above." },
+];
 
-const rideTypeToCategory: Record<RideType, RideRequestCategory> = {
-  Taxi: "other",
-  "Ride App": "other",
-  Airport: "airport",
-  Commute: "commute",
-  Other: "other",
+const categoryLabels: Record<RideRequestCategory, string> = {
+  today: "Today Requests",
+  commute: "Commute",
+  events: "Events",
+  late_night: "Late Night",
+  others: "Others",
 };
+
+const timeFlexibilityOptions: TimeFlexibility[] = ["Exact time", "±15 minutes", "±30 minutes", "Flexible"];
+const recurrenceOptions: RecurrenceType[] = ["One-time", "Recurring"];
+const eventTimingOptions: EventTiming[] = ["Going to event", "Leaving after event", "Both possible"];
+const pickupFlexibilityOptions: PickupFlexibility[] = ["Exact pickup point", "Nearby pickup okay", "Decide in chat"];
 
 const statusCopy: Record<
   RideRequestStatus,
@@ -124,16 +142,15 @@ const statusCopy: Record<
 
 const initialRideRequests: RideRequest[] = [
   {
-    id: "board-shibuya-haneda",
-    from: "Shibuya",
-    to: "Haneda Airport",
+    id: "board-central-mong-kok",
+    from: "Central",
+    to: "Mong Kok",
     dateLabel: "Today",
     timeLabel: "6:00 PM",
-    departureDate: "2026-06-27",
+    departureDate: "2026-06-28",
     departureTime: "18:00",
-    rideType: "Airport",
-    category: "airport",
-    pickupFlexibility: "Flexible within 10 minutes near Shibuya Station",
+    category: "today",
+    detailLine: "±15 minutes",
     maxPeople: 4,
     interestedCount: 3,
     status: "leaving_soon",
@@ -141,24 +158,24 @@ const initialRideRequests: RideRequest[] = [
       name: "trial_0",
       rating: 4.9,
       rideCount: 124,
-      trustLabel: "Trusted airport rider",
+      trustLabel: "Fast response rider",
     },
-    note: "Looking for people heading to Terminal 3 tonight.",
-    saved: true,
+    note: "Quick ride match after work. Can meet near the station.",
     chatAllowed: false,
     expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Time flexibility",
   },
   {
-    id: "board-shinjuku-haneda",
-    from: "Shinjuku",
-    to: "Haneda Airport",
+    id: "board-cwb-tst-late",
+    from: "Causeway Bay",
+    to: "Tsim Sha Tsui",
     dateLabel: "Today",
-    timeLabel: "6:45 PM",
-    departureDate: "2026-06-27",
-    departureTime: "18:45",
-    rideType: "Ride App",
-    category: "airport",
-    pickupFlexibility: "Flexible pickup around Shinjuku area",
+    timeLabel: "11:45 PM",
+    departureDate: "2026-06-28",
+    departureTime: "23:45",
+    category: "late_night",
+    detailLine: "Nearby pickup okay",
     maxPeople: 4,
     interestedCount: 2,
     status: "open",
@@ -168,10 +185,11 @@ const initialRideRequests: RideRequest[] = [
       rideCount: 87,
       trustLabel: "Verified RidePod member",
     },
-    note: "Heading to Haneda T3. Flexible on pickup near Shinjuku area.",
-    saved: false,
+    note: "Leaving after dinner. Prefer a safe shared ride back across the harbour.",
     chatAllowed: false,
     expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Pickup flexibility",
   },
   {
     id: "board-central-west-kowloon",
@@ -179,11 +197,10 @@ const initialRideRequests: RideRequest[] = [
     to: "West Kowloon",
     dateLabel: "Tomorrow",
     timeLabel: "8:10 AM",
-    departureDate: "2026-06-28",
+    departureDate: "2026-06-29",
     departureTime: "08:10",
-    rideType: "Taxi",
     category: "commute",
-    pickupFlexibility: "Can meet near IFC or Hong Kong Station",
+    detailLine: "Weekdays, similar timing",
     maxPeople: 3,
     interestedCount: 5,
     status: "open",
@@ -194,10 +211,11 @@ const initialRideRequests: RideRequest[] = [
       trustLabel: "Morning commute regular",
     },
     note: "Regular weekday route. Looking for people with similar timing.",
-    saved: true,
     chatAllowed: true,
     userInterested: true,
     expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Repeat pattern",
   },
   {
     id: "board-cwb-asiaworld",
@@ -205,11 +223,10 @@ const initialRideRequests: RideRequest[] = [
     to: "AsiaWorld-Expo",
     dateLabel: "Today",
     timeLabel: "7:20 PM",
-    departureDate: "2026-06-27",
+    departureDate: "2026-06-28",
     departureTime: "19:20",
-    rideType: "Other",
     category: "events",
-    pickupFlexibility: "Pickup near Times Square taxi stand",
+    detailLine: "Going to event",
     maxPeople: 4,
     interestedCount: 6,
     status: "closed",
@@ -220,47 +237,55 @@ const initialRideRequests: RideRequest[] = [
       trustLabel: "Event ride host",
     },
     note: "Concert ride is now full. Keeping it visible for status only.",
-    saved: false,
     chatAllowed: false,
     expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Event timing",
   },
   {
-    id: "board-expired-sample",
-    from: "Tsim Sha Tsui",
-    to: "Mong Kok",
-    dateLabel: "Today",
-    timeLabel: "9:00 AM",
-    departureDate: "2026-06-27",
-    departureTime: "09:00",
-    rideType: "Taxi",
-    category: "other",
-    pickupFlexibility: "Near the Star Ferry",
+    id: "board-market-sample",
+    from: "Kennedy Town",
+    to: "Quarry Bay",
+    dateLabel: "Sat",
+    timeLabel: "2:30 PM",
+    departureDate: "2026-07-04",
+    departureTime: "14:30",
+    category: "others",
+    detailLine: "Shopping trip with bags",
     maxPeople: 3,
     interestedCount: 1,
-    status: "expired",
+    status: "open",
     host: {
-      name: "old_route",
+      name: "sam_route",
       rating: 4.6,
       rideCount: 18,
-      trustLabel: "Expired ride request",
+      trustLabel: "RidePod member",
     },
-    note: "This expired mock request is intentionally hidden from the board.",
-    saved: false,
+    note: "Looking for someone heading east later with some room for bags.",
     chatAllowed: false,
     expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Request type",
   },
 ];
 
 const defaultFormValues: RideRequestFormValues = {
+  category: "today",
   from: "",
   to: "",
   date: "",
   time: "",
-  pickupFlexibility: "Flexible within 10 minutes",
-  rideType: "Ride App",
   maxPeople: "3",
   note: "",
+  visibility: "Public board",
   expiryTime: "departure",
+  timeFlexibility: "Exact time",
+  repeatPattern: "",
+  recurrenceType: "One-time",
+  eventName: "",
+  eventTiming: "Going to event",
+  pickupFlexibility: "Nearby pickup okay",
+  requestType: "",
 };
 
 const buildingHeights = [30, 48, 38, 58, 44, 72, 52, 64];
@@ -313,9 +338,7 @@ function getRequestStatus(dateValue: string, timeValue: string): RideRequestStat
 function getVisibleRequests(requests: RideRequest[], filter: RideBoardFilter) {
   return requests.filter((request) => {
     if (request.status === "expired") return false;
-    if (filter === "near_me") return true;
-    if (filter === "leaving_soon") return request.status === "leaving_soon";
-    if (filter === "saved") return request.saved;
+    if (filter === "all") return true;
     return request.category === filter;
   });
 }
@@ -403,7 +426,6 @@ function RideBoardFilters({
     <section aria-label="Ride Board filters" className="scrollbar-hide -mx-4 overflow-x-auto px-4">
       <div className="flex min-w-max gap-3">
         {rideBoardFilters.map((chip) => {
-          const Icon = chip.icon;
           const active = activeFilter === chip.id;
 
           return (
@@ -412,13 +434,12 @@ function RideBoardFilters({
               type="button"
               onClick={() => onFilterChange(chip.id)}
               className={cn(
-                "inline-flex min-h-14 shrink-0 items-center gap-2 rounded-full border px-5 text-base font-black transition",
+                "inline-flex min-h-14 shrink-0 items-center rounded-full border px-5 text-base font-black transition",
                 active
                   ? "border-[var(--rp-primary)] bg-[rgba(242,193,91,0.12)] text-[var(--rp-primary)] shadow-[0_0_24px_rgba(242,193,91,0.18)]"
                   : "border-white/10 bg-white/[0.055] text-[var(--rp-muted-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-[var(--rp-border-strong)] hover:text-[var(--rp-text)]",
               )}
             >
-              <Icon className="h-5 w-5" />
               {chip.label}
             </button>
           );
@@ -440,7 +461,6 @@ function RideRequestCard({
   const status = statusCopy[request.status];
   const actionState = getActionState(request);
   const ActionIcon = actionState.icon;
-  const seatsLeft = Math.max(request.maxPeople - request.interestedCount, 0);
 
   const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -478,6 +498,9 @@ function RideRequestCard({
       <div className="pl-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
+            <span className="mb-2 inline-flex min-h-7 items-center rounded-full border border-[rgba(242,193,91,0.42)] bg-[rgba(242,193,91,0.12)] px-3 text-[11px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]">
+              {categoryLabels[request.category]}
+            </span>
             <h2 className="text-left text-[21px] font-black leading-[1.1] tracking-tight text-[var(--rp-text)] min-[390px]:text-[23px]">
               <span className="break-words">{request.from}</span>
               <span className="mx-1.5 inline-flex translate-y-0.5 text-[var(--rp-primary)]">-&gt;</span>
@@ -495,7 +518,7 @@ function RideRequestCard({
               {request.status !== "closed" ? (
                 <span className="inline-flex min-h-6 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-2 text-[11px] font-bold text-[var(--rp-muted-strong)]">
                   <UsersRound className="h-3 w-3" />
-                  {seatsLeft} seats left
+                  {getInterestedLabel(request.interestedCount)}
                 </span>
               ) : null}
             </div>
@@ -533,22 +556,34 @@ function RideRequestCard({
           {request.note}
         </p>
 
-        <button
-          type="button"
-          onClick={handleInterestClick}
-          disabled={actionState.disabled}
-          className={cn(
-            "mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[13px] border px-3.5 text-[13px] font-black transition",
-            request.userInterested
-              ? "border-[rgba(98,232,187,0.32)] bg-[rgba(98,232,187,0.1)] text-[#62e8bb]"
-              : actionState.disabled
-                ? "cursor-not-allowed border-white/10 bg-white/[0.05] text-[var(--rp-muted)]"
-                : "border-[rgba(242,193,91,0.72)] bg-[linear-gradient(180deg,rgba(242,193,91,0.12),rgba(242,193,91,0.06))] text-[var(--rp-primary)] shadow-[0_10px_22px_rgba(242,193,91,0.07)] hover:bg-[rgba(242,193,91,0.16)]",
-          )}
-        >
-          <ActionIcon className="h-4 w-4" />
-          {actionState.label}
-        </button>
+        <div className="mt-3 grid grid-cols-1 gap-2 min-[430px]:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
+          <button
+            type="button"
+            onClick={handleInterestClick}
+            disabled={actionState.disabled}
+            className={cn(
+              "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[13px] border px-3.5 text-[13px] font-black transition",
+              request.userInterested
+                ? "border-[rgba(98,232,187,0.32)] bg-[rgba(98,232,187,0.1)] text-[#62e8bb]"
+                : actionState.disabled
+                  ? "cursor-not-allowed border-white/10 bg-white/[0.05] text-[var(--rp-muted)]"
+                  : "border-[rgba(242,193,91,0.72)] bg-[linear-gradient(180deg,rgba(242,193,91,0.12),rgba(242,193,91,0.06))] text-[var(--rp-primary)] shadow-[0_10px_22px_rgba(242,193,91,0.07)] hover:bg-[rgba(242,193,91,0.16)]",
+            )}
+          >
+            <ActionIcon className="h-4 w-4" />
+            {actionState.label}
+          </button>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpen(request.id);
+            }}
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-[13px] border border-white/10 bg-white/[0.055] px-3.5 text-[13px] font-black text-[var(--rp-text)] transition hover:border-[var(--rp-border-strong)] hover:bg-white/[0.08]"
+          >
+            View details
+          </button>
+        </div>
       </div>
     </article>
   );
@@ -605,14 +640,14 @@ function RideRequestDetailModal({
               </span>
               <span className="inline-flex min-h-7 items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-3 text-xs font-bold text-[var(--rp-muted-strong)]">
                 <Route className="h-3.5 w-3.5" />
-                {request.rideType}
+                {categoryLabels[request.category]}
               </span>
             </div>
 
             <dl className="mt-4 grid gap-3 text-left">
               <div>
-                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Pickup flexibility</dt>
-                <dd className="mt-1 text-sm font-bold leading-5 text-[var(--rp-text)]">{request.pickupFlexibility}</dd>
+                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">{request.extraLabel ?? "Request details"}</dt>
+                <dd className="mt-1 text-sm font-bold leading-5 text-[var(--rp-text)]">{request.detailLine}</dd>
               </div>
               <div>
                 <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Interested users</dt>
@@ -623,6 +658,10 @@ function RideRequestDetailModal({
               <div>
                 <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Expiry</dt>
                 <dd className="mt-1 text-sm font-bold leading-5 text-[var(--rp-text)]">{request.expiryLabel}</dd>
+              </div>
+              <div>
+                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Visibility</dt>
+                <dd className="mt-1 text-sm font-bold leading-5 text-[var(--rp-text)]">{request.visibilityLabel}</dd>
               </div>
             </dl>
           </div>
@@ -696,13 +735,19 @@ function PostRideRequestForm({
     date: getTodayInputValue(),
     time: "18:00",
   }));
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const selectedPostType = postTypeOptions.find((option) => option.id === values.category) ?? postTypeOptions[0];
 
   const inputClass =
     "min-h-12 w-full rounded-[14px] border border-white/10 bg-white/[0.06] px-3 text-sm font-bold text-[var(--rp-text)] outline-none transition placeholder:text-[var(--rp-muted)] focus:border-[var(--rp-primary)] focus:ring-2 focus:ring-[rgba(242,193,91,0.18)]";
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleDetailsSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onSubmit(values);
+    setStep(3);
+  };
+
+  const updateValue = <Key extends keyof RideRequestFormValues>(key: Key, value: RideRequestFormValues[Key]) => {
+    setValues((current) => ({ ...current, [key]: value }));
   };
 
   return (
@@ -718,8 +763,9 @@ function PostRideRequestForm({
           <div>
             <p className="text-left text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Quick post</p>
             <h2 id="post-ride-request-title" className="mt-2 text-left text-2xl font-black text-[var(--rp-text)]">
-              Post Ride Request
+              {step === 1 ? "Choose post type" : step === 2 ? "Ride details" : "Review and post"}
             </h2>
+            <p className="mt-1 text-left text-xs font-bold text-[var(--rp-muted-strong)]">Step {step} of 3</p>
           </div>
           <button
             type="button"
@@ -731,125 +777,216 @@ function PostRideRequestForm({
           </button>
         </div>
 
-        <form className="mt-5 grid gap-4" onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2">
-            <label className="grid gap-2 text-left">
-              <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">From</span>
-              <input
-                required
-                value={values.from}
-                onChange={(event) => setValues((current) => ({ ...current, from: event.target.value }))}
-                className={inputClass}
-                placeholder="Pickup area"
-              />
-            </label>
-            <label className="grid gap-2 text-left">
-              <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">To</span>
-              <input
-                required
-                value={values.to}
-                onChange={(event) => setValues((current) => ({ ...current, to: event.target.value }))}
-                className={inputClass}
-                placeholder="Destination"
-              />
-            </label>
+        {step === 1 ? (
+          <div className="mt-5 grid gap-3">
+            {postTypeOptions.map((option) => {
+              const selected = values.category === option.id;
+
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => updateValue("category", option.id)}
+                  className={cn(
+                    "grid gap-1 rounded-[18px] border p-4 text-left transition",
+                    selected
+                      ? "border-[var(--rp-primary)] bg-[rgba(242,193,91,0.13)] shadow-[0_0_24px_rgba(242,193,91,0.14)]"
+                      : "border-white/10 bg-white/[0.055] hover:border-[var(--rp-border-strong)]",
+                  )}
+                >
+                  <span className={cn("text-base font-black", selected ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]")}>{option.label}</span>
+                  <span className="text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">{option.description}</span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setStep(2)}
+              className="mt-1 inline-flex min-h-[54px] w-full items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#fff0b8_0%,#ffd36a_24%,#f2c15b_58%,#d9912f_100%)] px-5 text-base font-black text-[var(--rp-primary-text)] shadow-[0_18px_36px_rgba(242,193,91,0.22)] transition hover:brightness-105"
+            >
+              Continue
+            </button>
           </div>
+        ) : null}
 
-          <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2">
+        {step === 2 ? (
+          <form className="mt-5 grid gap-4" onSubmit={handleDetailsSubmit}>
+            <div className="rounded-[16px] border border-[rgba(242,193,91,0.2)] bg-[rgba(242,193,91,0.08)] px-3 py-2 text-left">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">{selectedPostType.label}</p>
+              <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{selectedPostType.description}</p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2">
+              <label className="grid gap-2 text-left">
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">From</span>
+                <input required value={values.from} onChange={(event) => updateValue("from", event.target.value)} className={inputClass} placeholder="Pickup area" />
+              </label>
+              <label className="grid gap-2 text-left">
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">To</span>
+                <input required value={values.to} onChange={(event) => updateValue("to", event.target.value)} className={inputClass} placeholder="Destination" />
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2">
+              <label className="grid gap-2 text-left">
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Date</span>
+                <input required type="date" value={values.date} min={getTodayInputValue()} onChange={(event) => updateValue("date", event.target.value)} className={inputClass} />
+              </label>
+              <label className="grid gap-2 text-left">
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Time</span>
+                <input required type="time" value={values.time} onChange={(event) => updateValue("time", event.target.value)} className={inputClass} />
+              </label>
+            </div>
+
+            {values.category === "today" ? (
+              <div className="grid gap-3">
+                <p className="rounded-[14px] border border-white/10 bg-white/[0.055] px-3 py-2 text-left text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                  Today requests can automatically expire after the ride time.
+                </p>
+                <label className="grid gap-2 text-left">
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">How flexible is your time?</span>
+                  <select value={values.timeFlexibility} onChange={(event) => updateValue("timeFlexibility", event.target.value as TimeFlexibility)} className={inputClass}>
+                    {timeFlexibilityOptions.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : null}
+
+            {values.category === "commute" ? (
+              <div className="grid gap-3">
+                <label className="grid gap-2 text-left">
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Repeat pattern</span>
+                  <input value={values.repeatPattern} onChange={(event) => updateValue("repeatPattern", event.target.value)} className={inputClass} placeholder="Weekdays, Monday only, every Friday..." />
+                </label>
+                <label className="grid gap-2 text-left">
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">One-time or recurring?</span>
+                  <select value={values.recurrenceType} onChange={(event) => updateValue("recurrenceType", event.target.value as RecurrenceType)} className={inputClass}>
+                    {recurrenceOptions.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : null}
+
+            {values.category === "events" ? (
+              <div className="grid gap-3">
+                <label className="grid gap-2 text-left">
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Event name</span>
+                  <input value={values.eventName} onChange={(event) => updateValue("eventName", event.target.value)} className={inputClass} placeholder="Coldplay, football match, concert, exhibition..." />
+                </label>
+                <label className="grid gap-2 text-left">
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Before or after event?</span>
+                  <select value={values.eventTiming} onChange={(event) => updateValue("eventTiming", event.target.value as EventTiming)} className={inputClass}>
+                    {eventTimingOptions.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : null}
+
+            {values.category === "late_night" ? (
+              <div className="grid gap-3">
+                <p className="rounded-[14px] border border-white/10 bg-white/[0.055] px-3 py-2 text-left text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                  Share only the ride plan first. Confirm exact pickup details after both sides agree.
+                </p>
+                <label className="grid gap-2 text-left">
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Pickup flexibility</span>
+                  <select value={values.pickupFlexibility} onChange={(event) => updateValue("pickupFlexibility", event.target.value as PickupFlexibility)} className={inputClass}>
+                    {pickupFlexibilityOptions.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : null}
+
+            {values.category === "others" ? (
+              <div className="grid gap-3">
+                <label className="grid gap-2 text-left">
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Request type</span>
+                  <input value={values.requestType} onChange={(event) => updateValue("requestType", event.target.value)} className={inputClass} placeholder="Airport is not included; describe your ride situation here." />
+                </label>
+                <p className="rounded-[14px] border border-white/10 bg-white/[0.055] px-3 py-2 text-left text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                  Use Others only when the request does not fit Today, Commute, Events, or Late Night.
+                </p>
+              </div>
+            ) : null}
+
             <label className="grid gap-2 text-left">
-              <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Date</span>
-              <input
-                required
-                type="date"
-                value={values.date}
-                min={getTodayInputValue()}
-                onChange={(event) => setValues((current) => ({ ...current, date: event.target.value }))}
-                className={inputClass}
-              />
+              <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Short note</span>
+              <textarea value={values.note} onChange={(event) => updateValue("note", event.target.value)} className={cn(inputClass, "min-h-[92px] resize-none py-3 leading-6")} placeholder="Add pickup details or timing notes" maxLength={160} />
             </label>
-            <label className="grid gap-2 text-left">
-              <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Time</span>
-              <input
-                required
-                type="time"
-                value={values.time}
-                onChange={(event) => setValues((current) => ({ ...current, time: event.target.value }))}
-                className={inputClass}
-              />
-            </label>
-          </div>
 
-          <label className="grid gap-2 text-left">
-            <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Flexible time range</span>
-            <input
-              value={values.pickupFlexibility}
-              onChange={(event) => setValues((current) => ({ ...current, pickupFlexibility: event.target.value }))}
-              className={inputClass}
-              placeholder="Flexible within 10 minutes"
-            />
-          </label>
+            <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2">
+              <label className="grid gap-2 text-left">
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Number of people / seats</span>
+                <input required type="number" min="1" max="6" value={values.maxPeople} onChange={(event) => updateValue("maxPeople", event.target.value)} className={inputClass} />
+              </label>
+              <label className="grid gap-2 text-left">
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Visibility / expiry</span>
+                <select value={values.visibility} onChange={(event) => updateValue("visibility", event.target.value)} className={inputClass}>
+                  <option value="Public board">Public board</option>
+                  <option value="Visible until ride time">Visible until ride time</option>
+                  <option value="Hide after 24 hours">Hide after 24 hours</option>
+                </select>
+              </label>
+            </div>
 
-          <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2">
             <label className="grid gap-2 text-left">
-              <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Ride type</span>
-              <select
-                value={values.rideType}
-                onChange={(event) => setValues((current) => ({ ...current, rideType: event.target.value as RideType }))}
-                className={inputClass}
-              >
-                {rideTypeOptions.map((rideType) => (
-                  <option key={rideType} value={rideType}>
-                    {rideType}
-                  </option>
-                ))}
+              <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Expiry setting</span>
+              <select value={values.expiryTime} onChange={(event) => updateValue("expiryTime", event.target.value)} className={inputClass}>
+                <option value="departure">After ride time</option>
+                <option value="thirty_before">30 minutes before ride time</option>
+                <option value="one_hour">1 hour after posting</option>
               </select>
             </label>
-            <label className="grid gap-2 text-left">
-              <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Max people</span>
-              <input
-                required
-                type="number"
-                min="1"
-                max="6"
-                value={values.maxPeople}
-                onChange={(event) => setValues((current) => ({ ...current, maxPeople: event.target.value }))}
-                className={inputClass}
-              />
-            </label>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setStep(1)} className="inline-flex min-h-[52px] items-center justify-center rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-5 text-base font-black text-[var(--rp-text)]">
+                Back
+              </button>
+              <button type="submit" className="inline-flex min-h-[52px] items-center justify-center rounded-[18px] bg-[linear-gradient(180deg,#fff0b8_0%,#ffd36a_24%,#f2c15b_58%,#d9912f_100%)] px-5 text-base font-black text-[var(--rp-primary-text)] shadow-[0_18px_36px_rgba(242,193,91,0.22)]">
+                Review
+              </button>
+            </div>
+          </form>
+        ) : null}
+
+        {step === 3 ? (
+          <div className="mt-5 grid gap-4">
+            <div className="rounded-[18px] border border-white/10 bg-white/[0.055] p-4 text-left">
+              <span className="inline-flex min-h-7 items-center rounded-full border border-[rgba(242,193,91,0.42)] bg-[rgba(242,193,91,0.12)] px-3 text-[11px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]">
+                {categoryLabels[values.category]}
+              </span>
+              <h3 className="mt-3 text-xl font-black leading-tight text-[var(--rp-text)]">
+                {values.from || "From"} -&gt; {values.to || "To"}
+              </h3>
+              <p className="mt-2 text-sm font-bold text-[var(--rp-muted-strong)]">
+                {formatDateLabel(values.date)}, {formatTimeLabel(values.time)} · {values.maxPeople} people / seats
+              </p>
+              <p className="mt-3 rounded-[14px] border border-white/10 bg-black/20 px-3 py-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                {values.note.trim() || "Looking for people going the same way."}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setStep(2)} className="inline-flex min-h-[52px] items-center justify-center rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-5 text-base font-black text-[var(--rp-text)]">
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => onSubmit(values)}
+                className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-[18px] bg-[linear-gradient(180deg,#fff0b8_0%,#ffd36a_24%,#f2c15b_58%,#d9912f_100%)] px-5 text-base font-black text-[var(--rp-primary-text)] shadow-[0_18px_36px_rgba(242,193,91,0.22)] transition hover:brightness-105"
+              >
+                <Send className="h-5 w-5" />
+                Post
+              </button>
+            </div>
           </div>
-
-          <label className="grid gap-2 text-left">
-            <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Short note</span>
-            <textarea
-              value={values.note}
-              onChange={(event) => setValues((current) => ({ ...current, note: event.target.value }))}
-              className={cn(inputClass, "min-h-[92px] resize-none py-3 leading-6")}
-              placeholder="Add pickup details or timing notes"
-              maxLength={160}
-            />
-          </label>
-
-          <label className="grid gap-2 text-left">
-            <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Expiry time</span>
-            <select
-              value={values.expiryTime}
-              onChange={(event) => setValues((current) => ({ ...current, expiryTime: event.target.value }))}
-              className={inputClass}
-            >
-              <option value="departure">After departure</option>
-              <option value="thirty_before">30 minutes before departure</option>
-              <option value="one_hour">1 hour after posting</option>
-            </select>
-          </label>
-
-          <button
-            type="submit"
-            className="mt-1 inline-flex min-h-[54px] w-full items-center justify-center gap-2 rounded-[18px] bg-[linear-gradient(180deg,#fff0b8_0%,#ffd36a_24%,#f2c15b_58%,#d9912f_100%)] px-5 text-base font-black text-[var(--rp-primary-text)] shadow-[0_18px_36px_rgba(242,193,91,0.22)] transition hover:brightness-105"
-          >
-            <Send className="h-5 w-5" />
-            Post Ride Request
-          </button>
-        </form>
+        ) : null}
       </section>
     </div>
   );
@@ -861,9 +998,9 @@ function EmptyRideBoard({ onPostClick }: { onPostClick: () => void }) {
       <span className="mx-auto grid h-14 w-14 place-items-center rounded-[18px] border border-[rgba(242,193,91,0.28)] bg-[rgba(242,193,91,0.1)] text-[var(--rp-primary)]">
         <Navigation className="h-7 w-7" />
       </span>
-      <h2 className="mt-4 text-2xl font-black text-[var(--rp-text)]">No ride requests nearby yet.</h2>
+      <h2 className="mt-4 text-2xl font-black text-[var(--rp-text)]">No ride requests yet</h2>
       <p className="mx-auto mt-2 max-w-[280px] text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-        Post one and see who is going your way.
+        Post the first one for this category.
       </p>
       <div className="mt-5">
         <PostRideRequestButton onClick={onPostClick} compact />
@@ -884,7 +1021,7 @@ function RideBoardToast({ message }: { message: string }) {
 }
 
 export default function RideBoardPage() {
-  const [activeFilter, setActiveFilter] = useState<RideBoardFilter>("near_me");
+  const [activeFilter, setActiveFilter] = useState<RideBoardFilter>("all");
   const [requests, setRequests] = useState<RideRequest[]>(initialRideRequests);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [showPostForm, setShowPostForm] = useState(false);
@@ -924,6 +1061,20 @@ export default function RideBoardPage() {
   };
 
   const handlePostSubmit = (values: RideRequestFormValues) => {
+    const detailLineByCategory: Record<RideRequestCategory, string> = {
+      today: values.timeFlexibility,
+      commute: values.repeatPattern.trim() || values.recurrenceType,
+      events: values.eventName.trim() || values.eventTiming,
+      late_night: values.pickupFlexibility,
+      others: values.requestType.trim() || "Other ride situation",
+    };
+    const extraLabelByCategory: Record<RideRequestCategory, string> = {
+      today: "Time flexibility",
+      commute: "Commute pattern",
+      events: "Event details",
+      late_night: "Pickup flexibility",
+      others: "Request type",
+    };
     const newRequest: RideRequest = {
       id: `posted-${Date.now()}`,
       from: values.from.trim(),
@@ -932,9 +1083,8 @@ export default function RideBoardPage() {
       timeLabel: formatTimeLabel(values.time),
       departureDate: values.date,
       departureTime: values.time,
-      rideType: values.rideType,
-      category: rideTypeToCategory[values.rideType],
-      pickupFlexibility: values.pickupFlexibility.trim() || "Flexible pickup",
+      category: values.category,
+      detailLine: detailLineByCategory[values.category],
       maxPeople: Math.max(Number(values.maxPeople) || 1, 1),
       interestedCount: 0,
       status: getRequestStatus(values.date, values.time),
@@ -945,7 +1095,6 @@ export default function RideBoardPage() {
         trustLabel: "RidePod profile verified",
       },
       note: values.note.trim() || "Looking for people going the same way.",
-      saved: false,
       chatAllowed: false,
       expiryLabel:
         values.expiryTime === "thirty_before"
@@ -953,10 +1102,12 @@ export default function RideBoardPage() {
           : values.expiryTime === "one_hour"
             ? "1 hour after posting"
             : "After departure",
+      visibilityLabel: values.visibility,
+      extraLabel: extraLabelByCategory[values.category],
     };
 
     setRequests((currentRequests) => [newRequest, ...currentRequests]);
-    setActiveFilter("near_me");
+    setActiveFilter(values.category);
     setShowPostForm(false);
     showToast("Ride request posted. We'll show it to nearby riders.");
   };
