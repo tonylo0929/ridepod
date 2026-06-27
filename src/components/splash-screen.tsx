@@ -86,12 +86,13 @@ export function SplashScreen() {
         }
 
         .ridepod-splash {
-          pointer-events: none;
+          pointer-events: auto;
           background:
             radial-gradient(circle at 50% 42%, rgba(242, 193, 91, 0.14), transparent 28%),
             radial-gradient(circle at 50% 100%, rgba(14, 165, 233, 0.08), transparent 46%),
             linear-gradient(180deg, #02070d 0%, #07111a 52%, #03070d 100%);
           opacity: 0;
+          isolation: isolate;
           animation: ridepod-splash-lifecycle 950ms ease-in-out forwards;
         }
 
@@ -114,6 +115,7 @@ export function SplashScreen() {
           justify-items: center;
           gap: 14px;
           text-align: center;
+          will-change: opacity, transform;
           animation: ridepod-splash-logo-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
         }
 
@@ -192,11 +194,8 @@ export function SplashScreen() {
           font-size: clamp(15px, 4vw, 18px);
           font-weight: 700;
           line-height: 1.4;
-        }
-
-        @keyframes ridepod-splash-fade-in {
-          from { opacity: 0; }
-          to { opacity: 1; }
+          text-align: center !important;
+          text-align-last: center !important;
         }
 
         @keyframes ridepod-splash-lifecycle {
