@@ -65,6 +65,7 @@ function NavLink({
   badgeCount,
   requiresAuth,
   isLoggedIn,
+  hardNavigate,
 }: {
   href: string;
   label: string;
@@ -73,6 +74,7 @@ function NavLink({
   badgeCount?: number;
   requiresAuth?: boolean;
   isLoggedIn?: boolean;
+  hardNavigate?: boolean;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -88,19 +90,16 @@ function NavLink({
         ? pathname === hrefPath || pathname.startsWith("/pods/date/")
         : hrefPath === "/ride-groups"
           ? pathname === hrefPath || pathname.startsWith("/ride-groups/") || pathname.startsWith("/ride-calls/")
-        : pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
-
-  return (
-    <Link
-      href={destination}
-      className={cn(
-        "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition",
-        active
-          ? "bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
-          : "text-[var(--rp-muted)] hover:bg-[var(--rp-card-muted)] hover:text-[var(--rp-text)]",
-        compact && "flex-1 flex-col gap-1 rounded-none px-1 py-2 text-center text-[11px] leading-tight",
-      )}
-    >
+          : pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
+  const className = cn(
+    "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition",
+    active
+      ? "bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+      : "text-[var(--rp-muted)] hover:bg-[var(--rp-card-muted)] hover:text-[var(--rp-text)]",
+    compact && "flex-1 flex-col gap-1 rounded-none px-1 py-2 text-center text-[11px] leading-tight",
+  );
+  const content = (
+    <>
       <span className="relative">
         <Icon className="h-5 w-5" />
         {badgeCount ? (
@@ -110,6 +109,20 @@ function NavLink({
         ) : null}
       </span>
       {label}
+    </>
+  );
+
+  if (hardNavigate) {
+    return (
+      <a href={destination} className={className} aria-current={active ? "page" : undefined}>
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <Link href={destination} className={className}>
+      {content}
     </Link>
   );
 }
@@ -123,7 +136,7 @@ function PremiumBottomNav() {
       <div className="mx-auto grid max-w-md grid-cols-4 items-center">
         <NavLink href="/home?tab=one_off" label="Search" icon={Search} compact />
         <NavLink href="/create" label="Create" icon={PlusCircle} compact />
-        <NavLink href="/pods" label="My Ride" icon={CalendarCheck} compact requiresAuth isLoggedIn={isLoggedIn} />
+        <NavLink href="/pods" label="My Ride" icon={CalendarCheck} compact requiresAuth isLoggedIn={isLoggedIn} hardNavigate />
         <NavLink href="/today-rides" label="Ride Board" icon={CalendarDays} compact />
       </div>
     </nav>
