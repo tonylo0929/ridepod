@@ -452,6 +452,8 @@ function PodActionCard({
 }) {
   const unread = !notification.read_at;
   const displayBody = notification.type === "demo_ride_app_estimate_needed" ? null : notification.body;
+  const titleClassName =
+    notification.type === "demo_ride_app_estimate_needed" ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]";
 
   return (
     <article
@@ -465,7 +467,7 @@ function PodActionCard({
       </span>
       <span className="min-w-0">
         <button type="button" onClick={onOpen} className="block w-full text-left">
-          <span className="block text-base font-black text-[var(--rp-text)]">{notification.title}</span>
+          <span className={cn("block text-base font-black", titleClassName)}>{notification.title}</span>
         </button>
         {displayBody ? (
           <span className="mt-1 block text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{displayBody}</span>
