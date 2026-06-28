@@ -19,6 +19,14 @@ function hasSeenSplash() {
   return window.name.split("|").includes(SPLASH_WINDOW_NAME_MARKER);
 }
 
+function isRefreshNavigation() {
+  const navigationEntry = window.performance
+    .getEntriesByType("navigation")
+    .find((entry): entry is PerformanceNavigationTiming => entry.entryType === "navigation");
+
+  return navigationEntry?.type === "reload";
+}
+
 function markSplashSeen() {
   try {
     window.sessionStorage.setItem(SPLASH_STORAGE_KEY, "true");
@@ -36,7 +44,7 @@ export function SplashScreen() {
   const [isExiting, setIsExiting] = useState(false);
 
   useEffect(() => {
-    if (hasSeenSplash()) {
+    if (!isRefreshNavigation() && hasSeenSplash()) {
       document.documentElement.dataset.ridepodSplash = "seen";
       const removeTimer = window.setTimeout(() => {
         setIsMounted(false);

@@ -39,11 +39,19 @@ export default function RootLayout({
             (function () {
               try {
                 var seen = false;
+                var navigationEntries =
+                  window.performance && window.performance.getEntriesByType
+                    ? window.performance.getEntriesByType("navigation")
+                    : [];
+                var isRefresh = Boolean(navigationEntries[0] && navigationEntries[0].type === "reload");
                 try {
                   seen = Boolean(window.sessionStorage && window.sessionStorage.getItem("ridepod_splash_seen"));
                 } catch (storageError) {}
                 if (!seen) {
                   seen = window.name.split("|").indexOf("ridepod_splash_seen=true") !== -1;
+                }
+                if (isRefresh) {
+                  seen = false;
                 }
                 document.documentElement.dataset.ridepodSplash = seen ? "seen" : "fresh";
                 if (seen && !document.getElementById("ridepod-splash-seen-style")) {
