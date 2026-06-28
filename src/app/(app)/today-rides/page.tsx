@@ -7,7 +7,6 @@ import {
   Lock,
   MapPin,
   MessageCircle,
-  Navigation,
   Plus,
   Route,
   Send,
@@ -29,14 +28,12 @@ import {
 } from "react";
 import { cn } from "@/components/ui";
 
-type RideRequestCategory = "near_me" | "airport" | "commute" | "events" | "other";
-type RideBoardFilter = "near_me" | "airport" | "commute" | "events" | "leaving_soon" | "saved";
+type RideRequestCategory = "near_me" | "commute" | "events" | "other";
+type RideBoardFilter = "near_me" | "commute" | "events" | "leaving_soon" | "saved";
 type RideRequestStatus = "open" | "leaving_soon" | "closed" | "expired";
 type RecurrenceType = "One-time" | "Recurring";
 type EventTiming = "Going to event" | "Leaving after event" | "Both possible";
 type TimeFlexibility = "Exact time" | "±15 minutes" | "±30 minutes" | "Flexible";
-type PickupFlexibility = "Exact pickup point" | "Nearby pickup okay" | "Decide in chat";
-
 type RideRequestHost = {
   name: string;
   rating: number;
@@ -82,13 +79,11 @@ type RideRequestFormValues = {
   recurrenceType: RecurrenceType;
   eventName: string;
   eventTiming: EventTiming;
-  pickupFlexibility: PickupFlexibility;
   requestType: string;
 };
 
 const rideBoardFilters: Array<{ id: RideBoardFilter; label: string; icon: typeof MapPin }> = [
   { id: "near_me", label: "Near me", icon: MapPin },
-  { id: "airport", label: "Airport", icon: Navigation },
   { id: "commute", label: "Commute", icon: Route },
   { id: "events", label: "Events", icon: CalendarDays },
   { id: "leaving_soon", label: "Leaving soon", icon: Clock3 },
@@ -97,7 +92,6 @@ const rideBoardFilters: Array<{ id: RideBoardFilter; label: string; icon: typeof
 
 const postTypeOptions: Array<{ id: RideRequestCategory; label: string; description: string }> = [
   { id: "near_me", label: "Near me", description: "For quick ride matching today, tonight, or soon." },
-  { id: "airport", label: "Airport", description: "For airport runs and flights with similar timing." },
   { id: "commute", label: "Commute", description: "For regular work, school, or repeated routes." },
   { id: "events", label: "Events", description: "For concerts, shows, matches, exhibitions, or big venue trips." },
   { id: "other", label: "Other", description: "For anything that does not fit the categories above." },
@@ -105,7 +99,6 @@ const postTypeOptions: Array<{ id: RideRequestCategory; label: string; descripti
 
 const categoryLabels: Record<RideRequestCategory, string> = {
   near_me: "Near me",
-  airport: "Airport",
   commute: "Commute",
   events: "Events",
   other: "Other",
@@ -114,8 +107,6 @@ const categoryLabels: Record<RideRequestCategory, string> = {
 const timeFlexibilityOptions: TimeFlexibility[] = ["Exact time", "±15 minutes", "±30 minutes", "Flexible"];
 const recurrenceOptions: RecurrenceType[] = ["One-time", "Recurring"];
 const eventTimingOptions: EventTiming[] = ["Going to event", "Leaving after event", "Both possible"];
-const pickupFlexibilityOptions: PickupFlexibility[] = ["Exact pickup point", "Nearby pickup okay", "Decide in chat"];
-
 const statusCopy: Record<
   RideRequestStatus,
   {
@@ -143,14 +134,14 @@ const statusCopy: Record<
 
 const initialRideRequests: RideRequest[] = [
   {
-    id: "board-shibuya-haneda",
+    id: "board-shibuya-ebisu",
     from: "Shibuya",
-    to: "Haneda Airport",
+    to: "Ebisu",
     dateLabel: "Today",
     timeLabel: "8:30 AM",
     departureDate: "2026-06-28",
     departureTime: "08:30",
-    category: "airport",
+    category: "other",
     detailLine: "~45 min drive",
     maxPeople: 4,
     interestedCount: 3,
@@ -159,9 +150,9 @@ const initialRideRequests: RideRequest[] = [
       name: "Yuto S.",
       rating: 4.9,
       rideCount: 25,
-      trustLabel: "Verified airport host",
+      trustLabel: "RidePod member",
     },
-    note: "Heading to the airport for a morning flight. Happy to split fuel costs.",
+    note: "Heading across town this morning. Happy to split fuel costs.",
     chatAllowed: false,
     expiryLabel: "After departure",
     visibilityLabel: "Public",
@@ -287,7 +278,6 @@ const defaultFormValues: RideRequestFormValues = {
   recurrenceType: "One-time",
   eventName: "",
   eventTiming: "Going to event",
-  pickupFlexibility: "Nearby pickup okay",
   requestType: "",
 };
 
@@ -883,30 +873,14 @@ function PostRideRequestForm({
               </div>
             ) : null}
 
-            {values.category === "airport" ? (
-              <div className="grid gap-3">
-                <p className="rounded-[14px] border border-white/10 bg-white/[0.055] px-3 py-2 text-left text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                  Share the terminal or pickup zone only when you are ready.
-                </p>
-                <label className="grid gap-2 text-left">
-                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Pickup flexibility</span>
-                  <select value={values.pickupFlexibility} onChange={(event) => updateValue("pickupFlexibility", event.target.value as PickupFlexibility)} className={inputClass}>
-                    {pickupFlexibilityOptions.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            ) : null}
-
             {values.category === "other" ? (
               <div className="grid gap-3">
                 <label className="grid gap-2 text-left">
                   <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Request type</span>
-                  <input value={values.requestType} onChange={(event) => updateValue("requestType", event.target.value)} className={inputClass} placeholder="Airport is not included; describe your ride situation here." />
+                  <input value={values.requestType} onChange={(event) => updateValue("requestType", event.target.value)} className={inputClass} placeholder="Describe your ride situation here." />
                 </label>
                 <p className="rounded-[14px] border border-white/10 bg-white/[0.055] px-3 py-2 text-left text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                  Use Other only when the request does not fit Near me, Airport, Commute, or Events.
+                  Use Other only when the request does not fit Near me, Commute, or Events.
                 </p>
               </div>
             ) : null}
@@ -991,7 +965,7 @@ function EmptyRideBoard({ onPostClick }: { onPostClick: () => void }) {
   return (
     <section className="rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(145deg,rgba(14,28,42,0.92),rgba(6,16,25,0.96))] px-5 py-8 text-center shadow-[var(--rp-shadow-soft)]">
       <span className="mx-auto grid h-14 w-14 place-items-center rounded-[18px] border border-[rgba(152,251,203,0.28)] bg-[rgba(152,251,203,0.1)] text-[#98FBCB]">
-        <Navigation className="h-7 w-7" />
+        <MapPin className="h-7 w-7" />
       </span>
       <h2 className="mt-4 text-2xl font-black text-[var(--rp-text)]">No ride requests nearby yet.</h2>
       <p className="mx-auto mt-2 max-w-[280px] text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
@@ -1058,14 +1032,12 @@ export default function RideBoardPage() {
   const handlePostSubmit = (values: RideRequestFormValues) => {
     const detailLineByCategory: Record<RideRequestCategory, string> = {
       near_me: values.timeFlexibility,
-      airport: values.pickupFlexibility,
       commute: values.repeatPattern.trim() || values.recurrenceType,
       events: values.eventName.trim() || values.eventTiming,
       other: values.requestType.trim() || "Other ride situation",
     };
     const extraLabelByCategory: Record<RideRequestCategory, string> = {
       near_me: "Time flexibility",
-      airport: "Pickup flexibility",
       commute: "Commute pattern",
       events: "Event details",
       other: "Request type",
