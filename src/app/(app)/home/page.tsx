@@ -65,7 +65,7 @@ const categoryCards: Array<{ id: HomeTab; label: string; subtitle: string; icon:
   { id: "one_off", label: "One-off", subtitle: "Schedule Ride", icon: CarFront },
   { id: "recurring", label: "Recurring", subtitle: "Ride regularly", icon: RefreshCcw },
   { id: "airport", label: "Airport", subtitle: "Flight Ride", icon: Plane },
-  { id: "all", label: "All", subtitle: "All public", icon: UsersRound },
+  { id: "all", label: "All Rides", subtitle: "All public", icon: UsersRound },
 ];
 
 const airportDirectionFilters: Array<{ id: AirportDirectionFilter; label: string }> = [
