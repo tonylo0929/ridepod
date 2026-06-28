@@ -190,7 +190,8 @@ export function SplashScreen() {
         .ridepod-splash__logo-text {
           display: inline-flex;
           clip-path: inset(0 100% 0 0);
-          animation: ridepod-splash-logo-reveal 560ms 80ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+          will-change: clip-path;
+          animation: ridepod-splash-logo-reveal 1350ms 120ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
 
         .ridepod-splash__logo-gold {
@@ -216,7 +217,7 @@ export function SplashScreen() {
             transparent
           );
           mix-blend-mode: screen;
-          animation: ridepod-splash-logo-flash 640ms 190ms ease-out both;
+          animation: ridepod-splash-logo-flash 1350ms 220ms ease-out both;
         }
 
         .ridepod-splash__tagline {
