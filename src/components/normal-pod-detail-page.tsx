@@ -3131,8 +3131,8 @@ function PodStatusChecklistRow({
   const stackedValue = valueLayout === "stacked";
   const content = (
     <>
-      <Icon className={cn("h-4 w-4 shrink-0", warning ? "text-amber-200" : "text-[var(--rp-muted-strong)]")} />
-      <span className="min-w-0 flex-1">
+      <Icon className={cn("h-4 w-4 shrink-0 justify-self-center", warning ? "text-amber-200" : "text-[var(--rp-muted-strong)]")} />
+      <span className="min-w-0">
         <span className="block text-sm font-semibold text-white">{label}</span>
         {stackedValue ? (
           <span className={cn("mt-0.5 block break-words text-sm font-black leading-5", set ? "text-white" : "text-amber-100")}>
@@ -3145,7 +3145,7 @@ function PodStatusChecklistRow({
           </span>
         ) : null}
       </span>
-      <span className="flex shrink-0 items-center gap-2">
+      <span className="flex shrink-0 items-center justify-end gap-2">
         {stackedValue ? null : (
           <span
             className={cn(
@@ -3174,7 +3174,7 @@ function PodStatusChecklistRow({
       <button
         type="button"
         onClick={onClick}
-        className="flex w-full items-center gap-3 border-b border-white/8 py-2.5 text-left transition hover:bg-white/[0.03] first:pt-0 last:border-b-0 last:pb-0"
+        className="grid w-full grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/8 py-2.5 text-left transition hover:bg-white/[0.03] first:pt-0 last:border-b-0 last:pb-0"
       >
         {content}
       </button>
@@ -3182,7 +3182,7 @@ function PodStatusChecklistRow({
   }
 
   return (
-    <div className="flex items-center gap-3 border-b border-white/8 py-2.5 first:pt-0 last:border-b-0 last:pb-0">
+    <div className="grid grid-cols-[20px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/8 py-2.5 first:pt-0 last:border-b-0 last:pb-0">
       {content}
     </div>
   );
