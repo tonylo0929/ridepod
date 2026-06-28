@@ -5048,7 +5048,7 @@ function PeopleVehicleStep({
                   : isRideAppProviderPage
                     ? "Which ride app?"
                   : isSelfSettleDetailsPage
-                    ? "Ride App Self-Settle"
+                    ? "Ride App"
                   : isTaxiFlow && taxiDetailsPage === "partner"
                     ? "Taxi partner preference"
                   : "Choose Taxi Type"}
