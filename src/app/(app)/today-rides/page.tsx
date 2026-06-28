@@ -360,10 +360,11 @@ function getActionState(request: RideRequest) {
 function RideBoardHero() {
   return (
     <section
-      className="relative min-h-[116px] overflow-hidden rounded-[24px] border border-[rgba(152,251,203,0.34)] bg-[#06131d] bg-cover bg-center p-4 shadow-[0_22px_60px_rgba(0,0,0,0.34),0_0_30px_rgba(152,251,203,0.08)]"
+      className="relative flex min-h-[154px] items-center overflow-hidden rounded-[24px] border border-[rgba(152,251,203,0.34)] bg-[#06131d] bg-cover p-5 shadow-[0_22px_60px_rgba(0,0,0,0.34),0_0_30px_rgba(152,251,203,0.08)]"
       style={{
         backgroundImage:
-          "linear-gradient(90deg, rgba(3,10,16,0.86) 0%, rgba(3,10,16,0.72) 46%, rgba(3,10,16,0.16) 100%), url('/images/ride-board-hero.png')",
+          "linear-gradient(90deg, rgba(3,10,16,0.94) 0%, rgba(3,10,16,0.78) 44%, rgba(3,10,16,0.30) 72%, rgba(3,10,16,0.10) 100%), url('/images/ride-board-hero.png')",
+        backgroundPosition: "center 18%",
       }}
     >
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(152,251,203,0.26),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.05),transparent_42%)]" aria-hidden="true" />
