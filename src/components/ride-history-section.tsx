@@ -162,7 +162,7 @@ function HistoryRideCard({ ride, currentUserId }: { ride: CalendarRide; currentU
   const status = getHistoryStatus(getMyRideCalendarStatus({ pod: ride, currentUserId, role }));
 
   return (
-    <article className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+    <article className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3.5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
@@ -171,8 +171,8 @@ function HistoryRideCard({ ride, currentUserId }: { ride: CalendarRide; currentU
             </span>
             <StatusBadge status={status} />
           </div>
-          <h3 className="mt-3 break-words text-left text-lg font-black leading-6 text-[var(--rp-text)]">{ride.route}</h3>
-          <p className="mt-1 text-left text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
+          <h3 className="mt-2 break-words text-left text-[15px] font-black leading-5 text-[var(--rp-text)] min-[390px]:text-base">{ride.route}</h3>
+          <p className="mt-1 text-left text-xs font-bold leading-4 text-[var(--rp-muted-strong)]">
             {historyDateLabel(ride.date)} - {timeLabel(ride.time)}
           </p>
           <div className="mt-3 flex flex-wrap gap-1.5">
