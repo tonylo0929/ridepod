@@ -76,10 +76,11 @@ function whoCanJoinLabel(ride: HomeRide) {
   return ride.podType === "Open pod" ? "Anyone" : ride.podType;
 }
 
-type DetailTab = "trip" | "pod";
+type DetailTab = "trip" | "route" | "pod";
 
 const detailTabs: Array<{ id: DetailTab; label: string }> = [
   { id: "trip", label: "Trip" },
+  { id: "route", label: "Route" },
   { id: "pod", label: "Pod" },
 ];
 
@@ -284,7 +285,7 @@ function DetailSwitch({
   onChange: (value: DetailTab) => void;
 }) {
   return (
-    <div className="grid grid-cols-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-1">
+    <div className="grid grid-cols-3 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-1">
       {detailTabs.map((tab) => {
         const active = tab.id === value;
 
@@ -1065,7 +1066,7 @@ export function RecurringPodDetailPage({ ride, backHref = "/home" }: { ride: Hom
           <RecurringCard>
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-xl font-black text-[var(--rp-text)]">
-                {activeDetailTab === "trip" ? "Trip details" : "Pod details"}
+                {activeDetailTab === "trip" ? "Trip details" : activeDetailTab === "route" ? "Route plan" : "Pod details"}
               </h2>
             </div>
             <div className="mt-4">
@@ -1089,9 +1090,6 @@ export function RecurringPodDetailPage({ ride, backHref = "/home" }: { ride: Hom
                     </>
                   ) : null}
                 </div>
-                <div className="grid gap-4 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
-                  <RoutePlanCard ride={ride} joinView={quoteState.joinView} />
-                </div>
                 {ride.upcomingRides?.length ? (
                   <div className="grid gap-3 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
                     <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Upcoming rides</p>
@@ -1104,6 +1102,10 @@ export function RecurringPodDetailPage({ ride, backHref = "/home" }: { ride: Hom
                     ))}
                   </div>
                 ) : null}
+              </div>
+            ) : activeDetailTab === "route" ? (
+              <div className="mt-4 grid gap-4 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
+                <RoutePlanCard ride={ride} joinView={quoteState.joinView} />
               </div>
             ) : (
               <div className="mt-4 grid gap-4">
