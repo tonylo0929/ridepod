@@ -1742,6 +1742,7 @@ export function PodStatusPanel({
   backHref,
   embedded = false,
   initialTab = "summary",
+  initialAction,
 }: {
   ride: HomeRide;
   seatsUsed: number;
@@ -1750,14 +1751,18 @@ export function PodStatusPanel({
   backHref?: string;
   embedded?: boolean;
   initialTab?: PodStatusTab;
+  initialAction?: "confirm-by";
 }) {
   const { user, profile } = useAuth();
   const storedRide = applyRideAppDemoPersona(getRideWithStoredSelfSettleJoin(baseRide), { profile, user });
   const [ridePatchOverride, setRidePatchOverride] = useState<Partial<HomeRide> | null>(null);
   const ride = mergeRidePatch(storedRide, ridePatchOverride) as HomeRide;
+  const isHost = getCurrentUserIsHost(ride);
+  const autoOpenConfirmByModal = initialAction === "confirm-by" && isHost;
   const [activeTab, setActiveTab] = useState<PodStatusTab>(normalizePodStatusTab(initialTab));
   const [selectedRiderProfile, setSelectedRiderProfile] = useState<PodStatusRider | null>(null);
   const [showConfirmByModal, setShowConfirmByModal] = useState(false);
+  const [confirmByInitialActionDismissed, setConfirmByInitialActionDismissed] = useState(false);
   const [showGatherPointModal, setShowGatherPointModal] = useState(false);
   const [showBecomeBookerModal, setShowBecomeBookerModal] = useState(false);
   const [showRejoinModal, setShowRejoinModal] = useState(false);
@@ -1767,6 +1772,7 @@ export function PodStatusPanel({
   const [confirmByAmount, setConfirmByAmount] = useState(6);
   const [confirmByUnit, setConfirmByUnit] = useState<ConfirmByUnit>("hours");
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const confirmByModalOpen = showConfirmByModal || (autoOpenConfirmByModal && !confirmByInitialActionDismissed);
   const confirmationDeadlineMs = getRideAppConfirmByDate(ride).getTime();
   const riders = buildPodStatusRiders(ride);
   const expiredSeatHoldCount = riders.filter((item) => item.role === "rider" && item.status === "seat_hold_expired").length;
@@ -1783,7 +1789,24 @@ export function PodStatusPanel({
     (item) => item.role === "rider" && (item.status === "needs_review" || item.status === "review_needed"),
   );
   const pendingConfirmationActionCount = pendingConfirmationRiders.length + needsReviewRiders.length;
-  const isHost = getCurrentUserIsHost(ride);
+
+  useEffect(() => {
+    if (!autoOpenConfirmByModal || !pageMode || typeof window === "undefined") return;
+
+    const statusUrl = initialTab === "summary" ? `/pods/${ride.id}/status` : `/pods/${ride.id}/status?tab=${initialTab}`;
+    window.history.replaceState(window.history.state, "", statusUrl);
+  }, [autoOpenConfirmByModal, initialTab, pageMode, ride.id]);
+
+  function openConfirmByModal() {
+    setConfirmByInitialActionDismissed(false);
+    setShowConfirmByModal(true);
+  }
+
+  function closeConfirmByModal() {
+    setConfirmByInitialActionDismissed(true);
+    setShowConfirmByModal(false);
+  }
+
   const currentUserHadRideAppSeat =
     !isHost &&
     (ride.currentUserJoined === true ||
@@ -1878,7 +1901,7 @@ export function PodStatusPanel({
       label: "Confirmation deadline",
       value: detailsReady && confirmBySet ? confirmByLabel : "Not set",
       set: detailsReady && confirmBySet,
-      onClick: isHost ? () => setShowConfirmByModal(true) : undefined,
+      onClick: isHost ? openConfirmByModal : undefined,
       actionLabel: isHost ? "Edit" : undefined,
     },
     {
@@ -2005,7 +2028,7 @@ export function PodStatusPanel({
       selfBody: `Riders need to confirm by ${deadlineLabel}.`,
       action: "confirm_by_updated",
     });
-    setShowConfirmByModal(false);
+    closeConfirmByModal();
   }
 
   function openGatherPointModal() {
@@ -2477,7 +2500,7 @@ export function PodStatusPanel({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setShowConfirmByModal(true)}
+                      onClick={openConfirmByModal}
                       className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/12 px-3 text-xs font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/18"
                     >
                       <Clock3 className="h-4 w-4" />
@@ -2493,7 +2516,7 @@ export function PodStatusPanel({
                   {isHost ? (
                     <button
                       type="button"
-                      onClick={() => setShowConfirmByModal(true)}
+                      onClick={openConfirmByModal}
                       className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 text-[10px] font-black uppercase text-cyan-100"
                     >
                       <Clock3 className="h-3.5 w-3.5" />
@@ -2701,7 +2724,7 @@ export function PodStatusPanel({
           ) : null}
         </div>
 
-        {showConfirmByModal ? (
+        {confirmByModalOpen ? (
           <div className="fixed inset-0 z-[105] grid place-items-center bg-black/68 px-4 py-6 backdrop-blur-sm">
             <section
               role="dialog"
@@ -2793,7 +2816,7 @@ export function PodStatusPanel({
               <div className="grid grid-cols-2 gap-3 border-t border-white/10 bg-[var(--rp-shell)] p-5 pt-3">
                 <button
                   type="button"
-                  onClick={() => setShowConfirmByModal(false)}
+                  onClick={closeConfirmByModal}
                   className="min-h-12 rounded-[16px] border border-white/12 bg-white/8 px-4 text-sm font-black text-white transition hover:bg-white/12"
                 >
                   Cancel
@@ -4126,7 +4149,7 @@ function ManagePodActionsModal({
 
               <section className="grid gap-2">
                 <Link
-                  href={`/pods/${ride.id}/status#fare-split`}
+                  href={`/pods/${ride.id}/status?action=confirm-by`}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-4 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/15"
                 >
                   <Clock3 className="h-4 w-4" />

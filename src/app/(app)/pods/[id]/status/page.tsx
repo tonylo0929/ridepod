@@ -8,14 +8,15 @@ export default async function PodStatusPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ action?: string; tab?: string }>;
 }) {
   const { id } = await params;
-  const { tab } = await searchParams;
+  const { action, tab } = await searchParams;
   if (tab === "chat") redirect(`/pods/${id}/chat`);
 
   const ride = getHomeRide(id);
   const initialTab = tab === "riders" || tab === "route" ? tab : "summary";
+  const initialAction = action === "confirm-by" ? "confirm-by" : undefined;
 
   if (!ride || ride.rideCategory !== "ride_app_self_settle") {
     return <CreatedPodStatusRouteClient id={id} />;
@@ -28,6 +29,7 @@ export default async function PodStatusPage({
       pageMode
       backHref={`/pods/${ride.id}`}
       initialTab={initialTab}
+      initialAction={initialAction}
     />
   );
 }
