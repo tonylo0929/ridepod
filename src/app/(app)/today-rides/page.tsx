@@ -7,6 +7,7 @@ import {
   Lock,
   MapPin,
   MessageCircle,
+  Moon,
   Plus,
   Route,
   Send,
@@ -14,6 +15,7 @@ import {
   Star,
   Sun,
   UserRound,
+  UsersRound,
   X,
 } from "lucide-react";
 import {
@@ -27,12 +29,14 @@ import {
 } from "react";
 import { cn } from "@/components/ui";
 
-type RideRequestCategory = "near_me" | "commute" | "events" | "other";
-type RideBoardFilter = "near_me" | "commute" | "events" | "leaving_soon" | "saved";
+type RideRequestCategory = "today_requests" | "commute" | "events" | "late_night" | "others";
+type RideBoardFilter = "all" | RideRequestCategory;
 type RideRequestStatus = "open" | "leaving_soon" | "closed" | "expired";
 type RecurrenceType = "One-time" | "Recurring";
 type EventTiming = "Going to event" | "Leaving after event" | "Both possible";
 type TimeFlexibility = "Exact time" | "±15 minutes" | "±30 minutes" | "Flexible";
+type PickupFlexibility = "Exact pickup point" | "Nearby pickup okay" | "Decide in chat";
+
 type RideRequestHost = {
   name: string;
   rating: number;
@@ -78,34 +82,39 @@ type RideRequestFormValues = {
   recurrenceType: RecurrenceType;
   eventName: string;
   eventTiming: EventTiming;
+  pickupFlexibility: PickupFlexibility;
   requestType: string;
 };
 
 const rideBoardFilters: Array<{ id: RideBoardFilter; label: string; icon: typeof MapPin }> = [
-  { id: "near_me", label: "Near me", icon: MapPin },
+  { id: "all", label: "All", icon: MapPin },
+  { id: "today_requests", label: "Today Requests", icon: Clock3 },
   { id: "commute", label: "Commute", icon: Route },
   { id: "events", label: "Events", icon: CalendarDays },
-  { id: "leaving_soon", label: "Leaving soon", icon: Clock3 },
-  { id: "saved", label: "Saved", icon: ShieldCheck },
+  { id: "late_night", label: "Late Night", icon: Moon },
+  { id: "others", label: "Others", icon: ShieldCheck },
 ];
 
 const postTypeOptions: Array<{ id: RideRequestCategory; label: string; description: string }> = [
-  { id: "near_me", label: "Near me", description: "For quick ride matching today, tonight, or soon." },
+  { id: "today_requests", label: "Today Requests", description: "For quick ride matching today, tonight, or soon." },
   { id: "commute", label: "Commute", description: "For regular work, school, or repeated routes." },
   { id: "events", label: "Events", description: "For concerts, shows, matches, exhibitions, or big venue trips." },
-  { id: "other", label: "Other", description: "For anything that does not fit the categories above." },
+  { id: "late_night", label: "Late Night", description: "For safer ride sharing after dinner, drinks, overtime, or last train." },
+  { id: "others", label: "Others", description: "For anything that does not fit the categories above." },
 ];
 
 const categoryLabels: Record<RideRequestCategory, string> = {
-  near_me: "Near me",
+  today_requests: "Today Requests",
   commute: "Commute",
   events: "Events",
-  other: "Other",
+  late_night: "Late Night",
+  others: "Others",
 };
 
 const timeFlexibilityOptions: TimeFlexibility[] = ["Exact time", "±15 minutes", "±30 minutes", "Flexible"];
 const recurrenceOptions: RecurrenceType[] = ["One-time", "Recurring"];
 const eventTimingOptions: EventTiming[] = ["Going to event", "Leaving after event", "Both possible"];
+const pickupFlexibilityOptions: PickupFlexibility[] = ["Exact pickup point", "Nearby pickup okay", "Decide in chat"];
 const statusCopy: Record<
   RideRequestStatus,
   {
@@ -138,9 +147,9 @@ const initialRideRequests: RideRequest[] = [
     to: "Ebisu",
     dateLabel: "Today",
     timeLabel: "8:30 AM",
-    departureDate: "2026-06-28",
+    departureDate: "2026-06-29",
     departureTime: "08:30",
-    category: "other",
+    category: "today_requests",
     detailLine: "~45 min drive",
     maxPeople: 4,
     interestedCount: 3,
@@ -163,7 +172,7 @@ const initialRideRequests: RideRequest[] = [
     to: "Tokyo Station",
     dateLabel: "Today",
     timeLabel: "6:15 PM",
-    departureDate: "2026-06-28",
+    departureDate: "2026-06-29",
     departureTime: "18:15",
     category: "commute",
     detailLine: "~20 min drive",
@@ -215,9 +224,9 @@ const initialRideRequests: RideRequest[] = [
     to: "Akihabara",
     dateLabel: "Today",
     timeLabel: "9:00 PM",
-    departureDate: "2026-06-28",
+    departureDate: "2026-06-29",
     departureTime: "21:00",
-    category: "near_me",
+    category: "late_night",
     detailLine: "~12 min drive",
     maxPeople: 4,
     interestedCount: 4,
@@ -242,7 +251,7 @@ const initialRideRequests: RideRequest[] = [
     timeLabel: "2:30 PM",
     departureDate: "2026-07-04",
     departureTime: "14:30",
-    category: "other",
+    category: "others",
     detailLine: "~10 min drive",
     maxPeople: 3,
     interestedCount: 1,
@@ -263,7 +272,7 @@ const initialRideRequests: RideRequest[] = [
 ];
 
 const defaultFormValues: RideRequestFormValues = {
-  category: "near_me",
+  category: "today_requests",
   from: "",
   to: "",
   date: "",
@@ -277,6 +286,7 @@ const defaultFormValues: RideRequestFormValues = {
   recurrenceType: "One-time",
   eventName: "",
   eventTiming: "Going to event",
+  pickupFlexibility: "Nearby pickup okay",
   requestType: "",
 };
 
@@ -328,9 +338,7 @@ function getRequestStatus(dateValue: string, timeValue: string): RideRequestStat
 function getVisibleRequests(requests: RideRequest[], filter: RideBoardFilter) {
   return requests.filter((request) => {
     if (request.status === "expired") return false;
-    if (filter === "near_me") return true;
-    if (filter === "leaving_soon") return request.status === "leaving_soon";
-    if (filter === "saved") return Boolean(request.saved);
+    if (filter === "all") return true;
     return request.category === filter;
   });
 }
@@ -408,7 +416,7 @@ function RideBoardFilters({
               className={cn(
                 "inline-flex min-h-11 shrink-0 items-center gap-2.5 rounded-full border px-5 text-[15px] font-black transition",
                 active
-                  ? "border-[#98FBCB] bg-[rgba(152,251,203,0.12)] text-[#98FBCB] shadow-[0_0_24px_rgba(152,251,203,0.18)]"
+                  ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)] shadow-[0_0_24px_color-mix(in_srgb,var(--rp-primary)_20%,transparent)]"
                   : "border-white/10 bg-white/[0.055] text-[var(--rp-muted-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-[var(--rp-border-strong)] hover:text-[var(--rp-text)]",
               )}
             >
@@ -478,7 +486,14 @@ function RideRequestCard({
       <div className="pl-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <span className="mb-1.5 inline-flex min-h-5 items-center rounded-full border border-[rgba(152,251,203,0.34)] bg-[rgba(152,251,203,0.1)] px-2 text-[9px] font-black uppercase tracking-[0.08em] text-[#98FBCB]">
+            <span
+              className={cn(
+                "mb-1.5 inline-flex min-h-5 items-center rounded-full border px-2 text-[9px] font-black uppercase tracking-[0.08em]",
+                request.category === "others"
+                  ? "border-white/12 bg-white/[0.06] text-[var(--rp-muted-strong)]"
+                  : "border-[rgba(152,251,203,0.34)] bg-[rgba(152,251,203,0.1)] text-[#98FBCB]",
+              )}
+            >
               {categoryLabels[request.category]}
             </span>
             <h2 className="text-left text-[16px] font-black leading-[1.15] tracking-tight text-[var(--rp-text)] min-[390px]:text-[17px]">
@@ -494,6 +509,10 @@ function RideRequestCard({
               <span className={cn("inline-flex min-h-5 items-center gap-1 rounded-full border px-1.5 text-[9px] font-black", status.className)}>
                 <Clock3 className="h-2.5 w-2.5" />
                 {status.label}
+              </span>
+              <span className="inline-flex min-h-5 items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-1.5 text-[9px] font-bold text-[var(--rp-muted-strong)]">
+                <UsersRound className="h-2.5 w-2.5" />
+                {getInterestedLabel(request.interestedCount)}
               </span>
             </div>
           </div>
@@ -757,11 +776,11 @@ function PostRideRequestForm({
                   className={cn(
                     "grid gap-1 rounded-[18px] border p-4 text-left transition",
                     selected
-                      ? "border-[#98FBCB] bg-[rgba(152,251,203,0.12)] shadow-[0_0_24px_rgba(152,251,203,0.14)]"
+                      ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] shadow-[0_0_24px_color-mix(in_srgb,var(--rp-primary)_16%,transparent)]"
                       : "border-white/10 bg-white/[0.055] hover:border-[var(--rp-border-strong)]",
                   )}
                 >
-                  <span className={cn("text-base font-black", selected ? "text-[#98FBCB]" : "text-[var(--rp-text)]")}>{option.label}</span>
+                  <span className={cn("text-base font-black", selected ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]")}>{option.label}</span>
                   <span className="text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">{option.description}</span>
                 </button>
               );
@@ -805,10 +824,10 @@ function PostRideRequestForm({
               </label>
             </div>
 
-            {values.category === "near_me" ? (
+            {values.category === "today_requests" ? (
               <div className="grid gap-3">
                 <p className="rounded-[14px] border border-white/10 bg-white/[0.055] px-3 py-2 text-left text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                  Near me requests can automatically expire after the ride time.
+                  Today requests can automatically expire after the ride time.
                 </p>
                 <label className="grid gap-2 text-left">
                   <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">How flexible is your time?</span>
@@ -855,14 +874,30 @@ function PostRideRequestForm({
               </div>
             ) : null}
 
-            {values.category === "other" ? (
+            {values.category === "late_night" ? (
+              <div className="grid gap-3">
+                <p className="rounded-[14px] border border-white/10 bg-white/[0.055] px-3 py-2 text-left text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                  Share only the ride plan first. Confirm exact pickup details after both sides agree.
+                </p>
+                <label className="grid gap-2 text-left">
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Pickup flexibility</span>
+                  <select value={values.pickupFlexibility} onChange={(event) => updateValue("pickupFlexibility", event.target.value as PickupFlexibility)} className={inputClass}>
+                    {pickupFlexibilityOptions.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            ) : null}
+
+            {values.category === "others" ? (
               <div className="grid gap-3">
                 <label className="grid gap-2 text-left">
                   <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Request type</span>
-                  <input value={values.requestType} onChange={(event) => updateValue("requestType", event.target.value)} className={inputClass} placeholder="Describe your ride situation here." />
+                  <input value={values.requestType} onChange={(event) => updateValue("requestType", event.target.value)} className={inputClass} placeholder="Airport is not included; describe your ride situation here." />
                 </label>
                 <p className="rounded-[14px] border border-white/10 bg-white/[0.055] px-3 py-2 text-left text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                  Use Other only when the request does not fit Near me, Commute, or Events.
+                  Use Others only when the request does not fit Today, Commute, Events, or Late Night.
                 </p>
               </div>
             ) : null}
@@ -949,9 +984,9 @@ function EmptyRideBoard({ onPostClick }: { onPostClick: () => void }) {
       <span className="mx-auto grid h-14 w-14 place-items-center rounded-[18px] border border-[rgba(152,251,203,0.28)] bg-[rgba(152,251,203,0.1)] text-[#98FBCB]">
         <MapPin className="h-7 w-7" />
       </span>
-      <h2 className="mt-4 text-2xl font-black text-[var(--rp-text)]">No ride requests nearby yet.</h2>
+      <h2 className="mt-4 text-2xl font-black text-[var(--rp-text)]">No ride requests yet</h2>
       <p className="mx-auto mt-2 max-w-[280px] text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-        Post one and see who is going your way.
+        Post the first one for this category.
       </p>
       <div className="mt-5">
         <PostRideRequestButton onClick={onPostClick} compact />
@@ -972,7 +1007,7 @@ function RideBoardToast({ message }: { message: string }) {
 }
 
 export default function RideBoardPage() {
-  const [activeFilter, setActiveFilter] = useState<RideBoardFilter>("near_me");
+  const [activeFilter, setActiveFilter] = useState<RideBoardFilter>("all");
   const [requests, setRequests] = useState<RideRequest[]>(initialRideRequests);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [showPostForm, setShowPostForm] = useState(false);
@@ -1013,16 +1048,18 @@ export default function RideBoardPage() {
 
   const handlePostSubmit = (values: RideRequestFormValues) => {
     const detailLineByCategory: Record<RideRequestCategory, string> = {
-      near_me: values.timeFlexibility,
+      today_requests: values.timeFlexibility,
       commute: values.repeatPattern.trim() || values.recurrenceType,
       events: values.eventName.trim() || values.eventTiming,
-      other: values.requestType.trim() || "Other ride situation",
+      late_night: values.pickupFlexibility,
+      others: values.requestType.trim() || "Other ride situation",
     };
     const extraLabelByCategory: Record<RideRequestCategory, string> = {
-      near_me: "Time flexibility",
+      today_requests: "Time flexibility",
       commute: "Commute pattern",
       events: "Event details",
-      other: "Request type",
+      late_night: "Pickup flexibility",
+      others: "Request type",
     };
     const newRequest: RideRequest = {
       id: `posted-${Date.now()}`,
@@ -1056,7 +1093,7 @@ export default function RideBoardPage() {
     };
 
     setRequests((currentRequests) => [newRequest, ...currentRequests]);
-    setActiveFilter(values.category === "other" ? "near_me" : values.category);
+    setActiveFilter(values.category);
     setShowPostForm(false);
     showToast("Ride request posted. We'll show it to nearby riders.");
   };
