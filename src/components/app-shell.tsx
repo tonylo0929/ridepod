@@ -91,10 +91,13 @@ function NavLink({
         : hrefPath === "/ride-groups"
           ? pathname === hrefPath || pathname.startsWith("/ride-groups/") || pathname.startsWith("/ride-calls/")
           : pathname === hrefPath || pathname.startsWith(`${hrefPath}/`);
+  const rideBoardActive = active && hrefPath === "/today-rides";
   const className = cn(
     "flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-semibold transition",
     active
-      ? "bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+      ? rideBoardActive
+        ? "bg-[rgba(152,251,203,0.12)] text-[#98FBCB] shadow-[inset_0_3px_0_#98FBCB,0_0_24px_rgba(152,251,203,0.16)]"
+        : "bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
       : "text-[var(--rp-muted)] hover:bg-[var(--rp-card-muted)] hover:text-[var(--rp-text)]",
     compact && "flex-1 flex-col gap-1 rounded-none px-1 py-2 text-center text-[11px] leading-tight",
   );

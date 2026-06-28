@@ -29,8 +29,8 @@ import {
 } from "react";
 import { cn } from "@/components/ui";
 
-type RideRequestCategory = "today" | "commute" | "events" | "late_night" | "others";
-type RideBoardFilter = "all" | RideRequestCategory;
+type RideRequestCategory = "near_me" | "airport" | "commute" | "events" | "other";
+type RideBoardFilter = "near_me" | "airport" | "commute" | "events" | "leaving_soon" | "saved";
 type RideRequestStatus = "open" | "leaving_soon" | "closed" | "expired";
 type RecurrenceType = "One-time" | "Recurring";
 type EventTiming = "Going to event" | "Leaving after event" | "Both possible";
@@ -61,6 +61,7 @@ type RideRequest = {
   note: string;
   chatAllowed: boolean;
   userInterested?: boolean;
+  saved?: boolean;
   expiryLabel: string;
   visibilityLabel: string;
   extraLabel?: string;
@@ -85,29 +86,29 @@ type RideRequestFormValues = {
   requestType: string;
 };
 
-const rideBoardFilters: Array<{ id: RideBoardFilter; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "today", label: "Today Requests" },
-  { id: "commute", label: "Commute" },
-  { id: "events", label: "Events" },
-  { id: "late_night", label: "Late Night" },
-  { id: "others", label: "Others" },
+const rideBoardFilters: Array<{ id: RideBoardFilter; label: string; icon: typeof MapPin }> = [
+  { id: "near_me", label: "Near me", icon: MapPin },
+  { id: "airport", label: "Airport", icon: Navigation },
+  { id: "commute", label: "Commute", icon: Route },
+  { id: "events", label: "Events", icon: CalendarDays },
+  { id: "leaving_soon", label: "Leaving soon", icon: Clock3 },
+  { id: "saved", label: "Saved", icon: ShieldCheck },
 ];
 
 const postTypeOptions: Array<{ id: RideRequestCategory; label: string; description: string }> = [
-  { id: "today", label: "Today Requests", description: "For quick ride matching today, tonight, or soon." },
+  { id: "near_me", label: "Near me", description: "For quick ride matching today, tonight, or soon." },
+  { id: "airport", label: "Airport", description: "For airport runs and flights with similar timing." },
   { id: "commute", label: "Commute", description: "For regular work, school, or repeated routes." },
   { id: "events", label: "Events", description: "For concerts, shows, matches, exhibitions, or big venue trips." },
-  { id: "late_night", label: "Late Night", description: "For safer ride sharing after dinner, drinks, overtime, or last train." },
-  { id: "others", label: "Others", description: "For anything that does not fit the categories above." },
+  { id: "other", label: "Other", description: "For anything that does not fit the categories above." },
 ];
 
 const categoryLabels: Record<RideRequestCategory, string> = {
-  today: "Today Requests",
+  near_me: "Near me",
+  airport: "Airport",
   commute: "Commute",
   events: "Events",
-  late_night: "Late Night",
-  others: "Others",
+  other: "Other",
 };
 
 const timeFlexibilityOptions: TimeFlexibility[] = ["Exact time", "±15 minutes", "±30 minutes", "Flexible"];
@@ -142,127 +143,129 @@ const statusCopy: Record<
 
 const initialRideRequests: RideRequest[] = [
   {
-    id: "board-central-mong-kok",
-    from: "Central",
-    to: "Mong Kok",
+    id: "board-shibuya-haneda",
+    from: "Shibuya",
+    to: "Haneda Airport",
     dateLabel: "Today",
-    timeLabel: "6:00 PM",
+    timeLabel: "8:30 AM",
     departureDate: "2026-06-28",
-    departureTime: "18:00",
-    category: "today",
-    detailLine: "±15 minutes",
+    departureTime: "08:30",
+    category: "airport",
+    detailLine: "~45 min drive",
     maxPeople: 4,
     interestedCount: 3,
     status: "leaving_soon",
     host: {
-      name: "trial_0",
+      name: "Yuto S.",
       rating: 4.9,
-      rideCount: 124,
-      trustLabel: "Fast response rider",
+      rideCount: 25,
+      trustLabel: "Verified airport host",
     },
-    note: "Quick ride match after work. Can meet near the station.",
+    note: "Heading to the airport for a morning flight. Happy to split fuel costs.",
     chatAllowed: false,
     expiryLabel: "After departure",
     visibilityLabel: "Public",
-    extraLabel: "Time flexibility",
+    extraLabel: "Estimated travel time",
   },
   {
-    id: "board-cwb-tst-late",
-    from: "Causeway Bay",
-    to: "Tsim Sha Tsui",
+    id: "board-shinjuku-tokyo",
+    from: "Shinjuku",
+    to: "Tokyo Station",
     dateLabel: "Today",
-    timeLabel: "11:45 PM",
+    timeLabel: "6:15 PM",
     departureDate: "2026-06-28",
-    departureTime: "23:45",
-    category: "late_night",
-    detailLine: "Nearby pickup okay",
+    departureTime: "18:15",
+    category: "commute",
+    detailLine: "~20 min drive",
     maxPeople: 4,
     interestedCount: 2,
-    status: "open",
+    status: "leaving_soon",
     host: {
-      name: "maya_88",
+      name: "Mika T.",
       rating: 4.8,
-      rideCount: 87,
-      trustLabel: "Verified RidePod member",
+      rideCount: 18,
+      trustLabel: "Trusted commute rider",
     },
-    note: "Leaving after dinner. Prefer a safe shared ride back across the harbour.",
+    note: "Driving back after work. Let's ride together and beat the traffic!",
     chatAllowed: false,
     expiryLabel: "After departure",
     visibilityLabel: "Public",
-    extraLabel: "Pickup flexibility",
+    extraLabel: "Estimated travel time",
   },
   {
-    id: "board-central-west-kowloon",
-    from: "Central",
-    to: "West Kowloon",
+    id: "board-roppongi-ginza",
+    from: "Roppongi",
+    to: "Ginza",
     dateLabel: "Tomorrow",
-    timeLabel: "8:10 AM",
+    timeLabel: "7:40 PM",
     departureDate: "2026-06-29",
-    departureTime: "08:10",
-    category: "commute",
-    detailLine: "Weekdays, similar timing",
+    departureTime: "19:40",
+    category: "events",
+    detailLine: "~18 min drive",
     maxPeople: 3,
-    interestedCount: 5,
+    interestedCount: 4,
     status: "open",
     host: {
-      name: "ken_lau",
+      name: "Ari K.",
       rating: 4.7,
-      rideCount: 42,
-      trustLabel: "Morning commute regular",
+      rideCount: 34,
+      trustLabel: "Event ride regular",
     },
-    note: "Regular weekday route. Looking for people with similar timing.",
+    note: "Heading out after an event. Flexible pickup around the main exit.",
     chatAllowed: true,
     userInterested: true,
+    saved: true,
     expiryLabel: "After departure",
     visibilityLabel: "Public",
-    extraLabel: "Repeat pattern",
+    extraLabel: "Estimated travel time",
   },
   {
-    id: "board-cwb-asiaworld",
-    from: "Causeway Bay",
-    to: "AsiaWorld-Expo",
+    id: "board-ueno-akihabara",
+    from: "Ueno",
+    to: "Akihabara",
     dateLabel: "Today",
-    timeLabel: "7:20 PM",
+    timeLabel: "9:00 PM",
     departureDate: "2026-06-28",
-    departureTime: "19:20",
-    category: "events",
-    detailLine: "Going to event",
+    departureTime: "21:00",
+    category: "near_me",
+    detailLine: "~12 min drive",
     maxPeople: 4,
-    interestedCount: 6,
+    interestedCount: 4,
     status: "closed",
     host: {
-      name: "nora_music",
+      name: "Ren M.",
       rating: 4.9,
       rideCount: 61,
-      trustLabel: "Event ride host",
+      trustLabel: "Fast response host",
     },
-    note: "Concert ride is now full. Keeping it visible for status only.",
+    note: "This request is full, but you can still view the public details.",
     chatAllowed: false,
     expiryLabel: "After departure",
     visibilityLabel: "Public",
-    extraLabel: "Event timing",
+    extraLabel: "Estimated travel time",
   },
   {
-    id: "board-market-sample",
-    from: "Kennedy Town",
-    to: "Quarry Bay",
+    id: "board-saved-sample",
+    from: "Meguro",
+    to: "Daikanyama",
     dateLabel: "Sat",
     timeLabel: "2:30 PM",
     departureDate: "2026-07-04",
     departureTime: "14:30",
-    category: "others",
-    detailLine: "Shopping trip with bags",
+    category: "other",
+    detailLine: "~10 min drive",
     maxPeople: 3,
     interestedCount: 1,
     status: "open",
     host: {
-      name: "sam_route",
+      name: "Sam R.",
       rating: 4.6,
       rideCount: 18,
       trustLabel: "RidePod member",
     },
-    note: "Looking for someone heading east later with some room for bags.",
+    note: "Light shopping trip with one suitcase. Saved for later.",
     chatAllowed: false,
+    saved: true,
     expiryLabel: "After departure",
     visibilityLabel: "Public",
     extraLabel: "Request type",
@@ -270,7 +273,7 @@ const initialRideRequests: RideRequest[] = [
 ];
 
 const defaultFormValues: RideRequestFormValues = {
-  category: "today",
+  category: "near_me",
   from: "",
   to: "",
   date: "",
@@ -287,8 +290,6 @@ const defaultFormValues: RideRequestFormValues = {
   pickupFlexibility: "Nearby pickup okay",
   requestType: "",
 };
-
-const buildingHeights = [30, 48, 38, 58, 44, 72, 52, 64];
 
 function getTodayInputValue() {
   const now = new Date();
@@ -338,7 +339,9 @@ function getRequestStatus(dateValue: string, timeValue: string): RideRequestStat
 function getVisibleRequests(requests: RideRequest[], filter: RideBoardFilter) {
   return requests.filter((request) => {
     if (request.status === "expired") return false;
-    if (filter === "all") return true;
+    if (filter === "near_me") return true;
+    if (filter === "leaving_soon") return request.status === "leaving_soon";
+    if (filter === "saved") return Boolean(request.saved);
     return request.category === filter;
   });
 }
@@ -356,43 +359,21 @@ function getActionState(request: RideRequest) {
 
 function RideBoardHero() {
   return (
-    <section className="relative overflow-hidden rounded-[24px] border border-[var(--rp-border)] bg-[linear-gradient(135deg,rgba(12,25,38,0.98),rgba(7,17,27,0.98))] p-5 shadow-[var(--rp-shadow-soft)]">
-      <div className="absolute inset-y-0 right-0 w-44 bg-[linear-gradient(90deg,transparent_0%,rgba(242,193,91,0.08)_58%,rgba(242,193,91,0.16)_100%)]" />
-      <div className="pointer-events-none absolute bottom-0 right-0 h-full w-44 overflow-hidden rounded-r-[24px]" aria-hidden="true">
-        <svg className="absolute bottom-9 right-8 h-16 w-28 text-[var(--rp-primary)]" viewBox="0 0 130 72" fill="none">
-          <path
-            d="M6 60 C 34 44, 48 58, 72 32 C 88 16, 105 26, 122 10"
-            stroke="currentColor"
-            strokeDasharray="3 7"
-            strokeLinecap="round"
-            strokeWidth="2"
-            opacity="0.8"
-          />
-        </svg>
-        <MapPin className="absolute right-8 top-7 h-8 w-8 fill-[var(--rp-primary)] text-[var(--rp-primary)] drop-shadow-[0_0_14px_rgba(242,193,91,0.45)]" />
-        <div className="absolute bottom-0 right-4 flex items-end gap-1.5">
-          {buildingHeights.map((height, index) => (
-            <span
-              key={`${height}-${index}`}
-              className="relative w-3 rounded-t-sm border border-[rgba(242,193,91,0.2)] bg-[linear-gradient(180deg,rgba(242,193,91,0.32),rgba(242,193,91,0.08))]"
-              style={{ height }}
-            >
-              <span className="absolute inset-x-1 top-2 h-1 rounded-full bg-[rgba(255,211,106,0.7)]" />
-              <span className="absolute inset-x-1 top-5 h-1 rounded-full bg-[rgba(255,211,106,0.42)]" />
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="relative z-10 grid max-w-[290px] grid-cols-[56px_1fr] items-center gap-4">
-        <span className="grid h-14 w-14 place-items-center rounded-[18px] border border-[rgba(242,193,91,0.22)] bg-[rgba(242,193,91,0.08)] text-[var(--rp-primary)]">
-          <Sun className="h-9 w-9 stroke-[2.35]" />
+    <section
+      className="relative min-h-[116px] overflow-hidden rounded-[24px] border border-[rgba(152,251,203,0.34)] bg-[#06131d] bg-cover bg-center p-4 shadow-[0_22px_60px_rgba(0,0,0,0.34),0_0_30px_rgba(152,251,203,0.08)]"
+      style={{
+        backgroundImage:
+          "linear-gradient(90deg, rgba(3,10,16,0.86) 0%, rgba(3,10,16,0.72) 46%, rgba(3,10,16,0.16) 100%), url('/images/ride-board-hero.png')",
+      }}
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(152,251,203,0.26),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.05),transparent_42%)]" aria-hidden="true" />
+      <div className="relative z-10 grid max-w-[320px] grid-cols-[56px_1fr] items-center gap-4">
+        <span className="grid h-14 w-14 place-items-center rounded-[18px] border border-[rgba(152,251,203,0.46)] bg-[rgba(3,22,28,0.62)] text-[#98FBCB] shadow-[0_0_28px_rgba(152,251,203,0.18)]">
+          <Sun className="h-8 w-8 stroke-[2.35]" />
         </span>
         <div>
-          <p className="text-left text-[22px] font-black leading-tight text-[var(--rp-text)]">Good morning, trial_2</p>
-          <p className="mt-2 text-left text-base font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            Find people going your way today.
-          </p>
+          <p className="text-left text-[22px] font-black leading-tight text-[var(--rp-text)] min-[390px]:text-[25px]">Good morning, trial_2</p>
+          <p className="mt-1.5 text-left text-[15px] font-semibold leading-6 text-white/80">Find people going your way today.</p>
         </div>
       </div>
     </section>
@@ -406,7 +387,7 @@ function PostRideRequestButton({ onClick, compact = false }: { onClick: () => vo
       onClick={onClick}
       className={cn(
         "inline-flex w-full items-center justify-center gap-3 rounded-[22px] bg-[linear-gradient(180deg,#fff0b8_0%,#ffd36a_24%,#f2c15b_58%,#d9912f_100%)] px-5 font-black text-[var(--rp-primary-text)] shadow-[0_22px_46px_rgba(242,193,91,0.25)] transition hover:brightness-105 active:scale-[0.99]",
-        compact ? "min-h-[54px] text-base" : "min-h-[74px] text-xl",
+        compact ? "min-h-[54px] text-base" : "min-h-14 text-base",
       )}
     >
       <Plus className={cn("stroke-[2.5]", compact ? "h-5 w-5" : "h-8 w-8")} />
@@ -427,6 +408,7 @@ function RideBoardFilters({
       <div className="flex min-w-max gap-3">
         {rideBoardFilters.map((chip) => {
           const active = activeFilter === chip.id;
+          const Icon = chip.icon;
 
           return (
             <button
@@ -434,12 +416,13 @@ function RideBoardFilters({
               type="button"
               onClick={() => onFilterChange(chip.id)}
               className={cn(
-                "inline-flex min-h-14 shrink-0 items-center rounded-full border px-5 text-base font-black transition",
+                "inline-flex min-h-11 shrink-0 items-center gap-2.5 rounded-full border px-5 text-[15px] font-black transition",
                 active
-                  ? "border-[var(--rp-primary)] bg-[rgba(242,193,91,0.12)] text-[var(--rp-primary)] shadow-[0_0_24px_rgba(242,193,91,0.18)]"
+                  ? "border-[#98FBCB] bg-[rgba(152,251,203,0.12)] text-[#98FBCB] shadow-[0_0_24px_rgba(152,251,203,0.18)]"
                   : "border-white/10 bg-white/[0.055] text-[var(--rp-muted-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-[var(--rp-border-strong)] hover:text-[var(--rp-text)]",
               )}
             >
+              <Icon className="h-5 w-5 stroke-[2.2]" />
               {chip.label}
             </button>
           );
@@ -461,6 +444,13 @@ function RideRequestCard({
   const status = statusCopy[request.status];
   const actionState = getActionState(request);
   const ActionIcon = actionState.icon;
+  const hostInitials = request.host.name
+    .split(/\s+/)
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 
   const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -481,16 +471,16 @@ function RideRequestCard({
       onClick={() => onOpen(request.id)}
       onKeyDown={handleCardKeyDown}
       className={cn(
-        "group relative cursor-pointer overflow-hidden rounded-[18px] border border-[rgba(242,193,91,0.24)] bg-[linear-gradient(145deg,rgba(14,28,42,0.98),rgba(6,16,25,0.98))] p-3 shadow-[0_14px_34px_rgba(0,0,0,0.28)] outline-none transition focus-visible:ring-2 focus-visible:ring-[var(--rp-primary)]",
+        "group relative cursor-pointer overflow-hidden rounded-[18px] border border-[rgba(152,251,203,0.22)] bg-[linear-gradient(145deg,rgba(8,27,39,0.98),rgba(5,16,25,0.98))] p-3 shadow-[0_14px_34px_rgba(0,0,0,0.30)] outline-none transition focus-visible:ring-2 focus-visible:ring-[#98FBCB]",
         request.status === "closed" && "border-white/10 opacity-80",
       )}
     >
       <span
         className={cn(
-          "absolute bottom-3 left-3 top-3 w-1 rounded-full shadow-[0_0_14px_rgba(242,193,91,0.28)]",
+          "absolute bottom-3 left-3 top-3 w-1 rounded-full shadow-[0_0_14px_rgba(152,251,203,0.28)]",
           request.status === "closed"
             ? "bg-[linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,255,255,0.08))]"
-            : "bg-[linear-gradient(180deg,#ffd36a_0%,#f2c15b_48%,#d9912f_100%)]",
+            : "bg-[linear-gradient(180deg,#98FBCB_0%,#54e9c6_52%,#1f9f97_100%)]",
         )}
         aria-hidden="true"
       />
@@ -498,18 +488,22 @@ function RideRequestCard({
       <div className="pl-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <span className="mb-2 inline-flex min-h-7 items-center rounded-full border border-[rgba(242,193,91,0.42)] bg-[rgba(242,193,91,0.12)] px-3 text-[11px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]">
+            <span className="mb-2 inline-flex min-h-7 items-center rounded-full border border-[rgba(152,251,203,0.34)] bg-[rgba(152,251,203,0.1)] px-3 text-[11px] font-black uppercase tracking-[0.08em] text-[#98FBCB]">
               {categoryLabels[request.category]}
             </span>
             <h2 className="text-left text-[21px] font-black leading-[1.1] tracking-tight text-[var(--rp-text)] min-[390px]:text-[23px]">
               <span className="break-words">{request.from}</span>
-              <span className="mx-1.5 inline-flex translate-y-0.5 text-[var(--rp-primary)]">-&gt;</span>
+              <span className="mx-1.5 inline-flex translate-y-0.5 text-[#98FBCB]">-&gt;</span>
               <span className="break-words">{request.to}</span>
             </h2>
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
               <span className="inline-flex min-h-6 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-2 text-[11px] font-bold text-[var(--rp-muted-strong)]">
                 <CalendarDays className="h-3 w-3" />
                 {request.dateLabel}, {request.timeLabel}
+              </span>
+              <span className="inline-flex min-h-6 items-center gap-1.5 rounded-full border border-[rgba(152,251,203,0.22)] bg-[rgba(152,251,203,0.08)] px-2 text-[11px] font-bold text-[#bfffe3]">
+                <Clock3 className="h-3 w-3" />
+                {request.detailLine}
               </span>
               <span className={cn("inline-flex min-h-6 items-center gap-1.5 rounded-full border px-2 text-[11px] font-black", status.className)}>
                 <Clock3 className="h-3 w-3" />
@@ -524,7 +518,7 @@ function RideRequestCard({
             </div>
           </div>
           {request.userInterested ? (
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[rgba(98,232,187,0.32)] bg-[rgba(98,232,187,0.12)] text-[#62e8bb]">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[rgba(152,251,203,0.32)] bg-[rgba(152,251,203,0.12)] text-[#98FBCB]">
               <CheckCircle2 className="h-5 w-5" />
             </span>
           ) : null}
@@ -532,8 +526,8 @@ function RideRequestCard({
 
         <div className="mt-3 grid grid-cols-[minmax(0,1fr)_74px] items-center gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[rgba(242,193,91,0.28)] bg-[rgba(242,193,91,0.1)] text-[var(--rp-primary)]">
-              <UserRound className="h-5 w-5" />
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[rgba(152,251,203,0.35)] bg-[linear-gradient(145deg,rgba(152,251,203,0.20),rgba(8,25,31,0.92))] text-[13px] font-black text-[#98FBCB]">
+              {hostInitials || <UserRound className="h-5 w-5" />}
             </span>
             <div className="min-w-0">
               <p className="truncate text-left text-[13px] font-black leading-4 text-[var(--rp-text)]">Host: {request.host.name}</p>
@@ -545,7 +539,7 @@ function RideRequestCard({
           </div>
 
           <div className="rounded-[14px] border border-white/10 bg-white/[0.06] px-2 py-2 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <p className="text-left text-2xl font-black leading-none text-[var(--rp-primary)]">{request.interestedCount}</p>
+            <p className="text-left text-2xl font-black leading-none text-[#98FBCB]">{request.interestedCount}</p>
             <p className="mt-0.5 text-left text-[8px] font-black uppercase tracking-[0.05em] text-[var(--rp-muted-strong)]">
               Interested
             </p>
@@ -564,10 +558,10 @@ function RideRequestCard({
             className={cn(
               "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[13px] border px-3.5 text-[13px] font-black transition",
               request.userInterested
-                ? "border-[rgba(98,232,187,0.32)] bg-[rgba(98,232,187,0.1)] text-[#62e8bb]"
+                ? "border-[rgba(152,251,203,0.34)] bg-[rgba(152,251,203,0.12)] text-[#98FBCB]"
                 : actionState.disabled
                   ? "cursor-not-allowed border-white/10 bg-white/[0.05] text-[var(--rp-muted)]"
-                  : "border-[rgba(242,193,91,0.72)] bg-[linear-gradient(180deg,rgba(242,193,91,0.12),rgba(242,193,91,0.06))] text-[var(--rp-primary)] shadow-[0_10px_22px_rgba(242,193,91,0.07)] hover:bg-[rgba(242,193,91,0.16)]",
+                  : "border-[rgba(152,251,203,0.72)] bg-[linear-gradient(180deg,rgba(152,251,203,0.11),rgba(152,251,203,0.045))] text-[#98FBCB] shadow-[0_10px_22px_rgba(152,251,203,0.07)] hover:bg-[rgba(152,251,203,0.14)]",
             )}
           >
             <ActionIcon className="h-4 w-4" />
@@ -608,11 +602,11 @@ function RideRequestDetailModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="ride-request-detail-title"
-        className="relative z-10 mx-auto w-full max-w-md rounded-[26px] border border-[rgba(242,193,91,0.28)] bg-[linear-gradient(180deg,#0c1824,#07111a)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.55)]"
+        className="relative z-10 mx-auto w-full max-w-md rounded-[26px] border border-[rgba(152,251,203,0.28)] bg-[linear-gradient(180deg,#0c1824,#07111a)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.55)]"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-left text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Ride request</p>
+            <p className="text-left text-xs font-black uppercase tracking-[0.14em] text-[#98FBCB]">Ride request</p>
             <h2 id="ride-request-detail-title" className="mt-2 text-left text-2xl font-black leading-tight text-[var(--rp-text)]">
               {request.from} -&gt; {request.to}
             </h2>
@@ -646,21 +640,21 @@ function RideRequestDetailModal({
 
             <dl className="mt-4 grid gap-3 text-left">
               <div>
-                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">{request.extraLabel ?? "Request details"}</dt>
+                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[#98FBCB]">{request.extraLabel ?? "Request details"}</dt>
                 <dd className="mt-1 text-sm font-bold leading-5 text-[var(--rp-text)]">{request.detailLine}</dd>
               </div>
               <div>
-                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Interested users</dt>
+                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[#98FBCB]">Interested users</dt>
                 <dd className="mt-1 text-sm font-bold leading-5 text-[var(--rp-text)]">
                   {getInterestedLabel(request.interestedCount)} of {request.maxPeople} target riders
                 </dd>
               </div>
               <div>
-                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Expiry</dt>
+                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[#98FBCB]">Expiry</dt>
                 <dd className="mt-1 text-sm font-bold leading-5 text-[var(--rp-text)]">{request.expiryLabel}</dd>
               </div>
               <div>
-                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Visibility</dt>
+                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[#98FBCB]">Visibility</dt>
                 <dd className="mt-1 text-sm font-bold leading-5 text-[var(--rp-text)]">{request.visibilityLabel}</dd>
               </div>
             </dl>
@@ -668,7 +662,7 @@ function RideRequestDetailModal({
 
           <div className="rounded-[18px] border border-white/10 bg-white/[0.055] p-4">
             <div className="flex items-center gap-3">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[rgba(242,193,91,0.28)] bg-[rgba(242,193,91,0.1)] text-[var(--rp-primary)]">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[rgba(152,251,203,0.32)] bg-[rgba(152,251,203,0.1)] text-[#98FBCB]">
                 <UserRound className="h-6 w-6" />
               </span>
               <div className="min-w-0 flex-1">
@@ -679,7 +673,7 @@ function RideRequestDetailModal({
                 </p>
               </div>
             </div>
-            <div className="mt-3 inline-flex min-h-9 items-center gap-2 rounded-full border border-[rgba(98,232,187,0.24)] bg-[rgba(98,232,187,0.1)] px-3 text-xs font-black text-[#62e8bb]">
+            <div className="mt-3 inline-flex min-h-9 items-center gap-2 rounded-full border border-[rgba(152,251,203,0.24)] bg-[rgba(152,251,203,0.1)] px-3 text-xs font-black text-[#98FBCB]">
               <ShieldCheck className="h-4 w-4" />
               {request.host.trustLabel}
             </div>
@@ -698,10 +692,10 @@ function RideRequestDetailModal({
             className={cn(
               "inline-flex min-h-[54px] w-full items-center justify-center gap-2 rounded-[18px] px-5 text-base font-black transition",
               request.userInterested
-                ? "border border-[rgba(98,232,187,0.32)] bg-[rgba(98,232,187,0.12)] text-[#62e8bb]"
+                ? "border border-[rgba(152,251,203,0.32)] bg-[rgba(152,251,203,0.12)] text-[#98FBCB]"
                 : actionState.disabled
                   ? "cursor-not-allowed border border-white/10 bg-white/[0.05] text-[var(--rp-muted)]"
-                  : "bg-[linear-gradient(180deg,#fff0b8_0%,#ffd36a_24%,#f2c15b_58%,#d9912f_100%)] text-[var(--rp-primary-text)] shadow-[0_18px_36px_rgba(242,193,91,0.22)] hover:brightness-105",
+                  : "border border-[rgba(152,251,203,0.72)] bg-[linear-gradient(180deg,rgba(152,251,203,0.14),rgba(152,251,203,0.06))] text-[#98FBCB] shadow-[0_18px_36px_rgba(152,251,203,0.12)] hover:bg-[rgba(152,251,203,0.16)]",
             )}
           >
             <ActionIcon className="h-5 w-5" />
@@ -713,7 +707,7 @@ function RideRequestDetailModal({
               type="button"
               className="inline-flex min-h-[50px] w-full items-center justify-center gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-5 text-sm font-black text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]"
             >
-              <MessageCircle className="h-5 w-5 text-[var(--rp-primary)]" />
+              <MessageCircle className="h-5 w-5 text-[#98FBCB]" />
               Message / View chat
             </button>
           ) : null}
@@ -739,7 +733,7 @@ function PostRideRequestForm({
   const selectedPostType = postTypeOptions.find((option) => option.id === values.category) ?? postTypeOptions[0];
 
   const inputClass =
-    "min-h-12 w-full rounded-[14px] border border-white/10 bg-white/[0.06] px-3 text-sm font-bold text-[var(--rp-text)] outline-none transition placeholder:text-[var(--rp-muted)] focus:border-[var(--rp-primary)] focus:ring-2 focus:ring-[rgba(242,193,91,0.18)]";
+    "min-h-12 w-full rounded-[14px] border border-white/10 bg-white/[0.06] px-3 text-sm font-bold text-[var(--rp-text)] outline-none transition placeholder:text-[var(--rp-muted)] focus:border-[#98FBCB] focus:ring-2 focus:ring-[rgba(152,251,203,0.18)]";
 
   const handleDetailsSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -757,11 +751,11 @@ function PostRideRequestForm({
         role="dialog"
         aria-modal="true"
         aria-labelledby="post-ride-request-title"
-        className="relative z-10 mx-auto w-full max-w-md rounded-[26px] border border-[rgba(242,193,91,0.28)] bg-[linear-gradient(180deg,#0c1824,#07111a)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.55)]"
+        className="relative z-10 mx-auto w-full max-w-md rounded-[26px] border border-[rgba(152,251,203,0.28)] bg-[linear-gradient(180deg,#0c1824,#07111a)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.55)]"
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-left text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Quick post</p>
+            <p className="text-left text-xs font-black uppercase tracking-[0.14em] text-[#98FBCB]">Quick post</p>
             <h2 id="post-ride-request-title" className="mt-2 text-left text-2xl font-black text-[var(--rp-text)]">
               {step === 1 ? "Choose post type" : step === 2 ? "Ride details" : "Review and post"}
             </h2>
@@ -790,11 +784,11 @@ function PostRideRequestForm({
                   className={cn(
                     "grid gap-1 rounded-[18px] border p-4 text-left transition",
                     selected
-                      ? "border-[var(--rp-primary)] bg-[rgba(242,193,91,0.13)] shadow-[0_0_24px_rgba(242,193,91,0.14)]"
+                      ? "border-[#98FBCB] bg-[rgba(152,251,203,0.12)] shadow-[0_0_24px_rgba(152,251,203,0.14)]"
                       : "border-white/10 bg-white/[0.055] hover:border-[var(--rp-border-strong)]",
                   )}
                 >
-                  <span className={cn("text-base font-black", selected ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]")}>{option.label}</span>
+                  <span className={cn("text-base font-black", selected ? "text-[#98FBCB]" : "text-[var(--rp-text)]")}>{option.label}</span>
                   <span className="text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">{option.description}</span>
                 </button>
               );
@@ -811,8 +805,8 @@ function PostRideRequestForm({
 
         {step === 2 ? (
           <form className="mt-5 grid gap-4" onSubmit={handleDetailsSubmit}>
-            <div className="rounded-[16px] border border-[rgba(242,193,91,0.2)] bg-[rgba(242,193,91,0.08)] px-3 py-2 text-left">
-              <p className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">{selectedPostType.label}</p>
+            <div className="rounded-[16px] border border-[rgba(152,251,203,0.22)] bg-[rgba(152,251,203,0.08)] px-3 py-2 text-left">
+              <p className="text-xs font-black uppercase tracking-[0.12em] text-[#98FBCB]">{selectedPostType.label}</p>
               <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{selectedPostType.description}</p>
             </div>
 
@@ -838,10 +832,10 @@ function PostRideRequestForm({
               </label>
             </div>
 
-            {values.category === "today" ? (
+            {values.category === "near_me" ? (
               <div className="grid gap-3">
                 <p className="rounded-[14px] border border-white/10 bg-white/[0.055] px-3 py-2 text-left text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                  Today requests can automatically expire after the ride time.
+                  Near me requests can automatically expire after the ride time.
                 </p>
                 <label className="grid gap-2 text-left">
                   <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">How flexible is your time?</span>
@@ -888,10 +882,10 @@ function PostRideRequestForm({
               </div>
             ) : null}
 
-            {values.category === "late_night" ? (
+            {values.category === "airport" ? (
               <div className="grid gap-3">
                 <p className="rounded-[14px] border border-white/10 bg-white/[0.055] px-3 py-2 text-left text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                  Share only the ride plan first. Confirm exact pickup details after both sides agree.
+                  Share the terminal or pickup zone only when you are ready.
                 </p>
                 <label className="grid gap-2 text-left">
                   <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Pickup flexibility</span>
@@ -904,14 +898,14 @@ function PostRideRequestForm({
               </div>
             ) : null}
 
-            {values.category === "others" ? (
+            {values.category === "other" ? (
               <div className="grid gap-3">
                 <label className="grid gap-2 text-left">
                   <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Request type</span>
                   <input value={values.requestType} onChange={(event) => updateValue("requestType", event.target.value)} className={inputClass} placeholder="Airport is not included; describe your ride situation here." />
                 </label>
                 <p className="rounded-[14px] border border-white/10 bg-white/[0.055] px-3 py-2 text-left text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                  Use Others only when the request does not fit Today, Commute, Events, or Late Night.
+                  Use Other only when the request does not fit Near me, Airport, Commute, or Events.
                 </p>
               </div>
             ) : null}
@@ -959,7 +953,7 @@ function PostRideRequestForm({
         {step === 3 ? (
           <div className="mt-5 grid gap-4">
             <div className="rounded-[18px] border border-white/10 bg-white/[0.055] p-4 text-left">
-              <span className="inline-flex min-h-7 items-center rounded-full border border-[rgba(242,193,91,0.42)] bg-[rgba(242,193,91,0.12)] px-3 text-[11px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]">
+              <span className="inline-flex min-h-7 items-center rounded-full border border-[rgba(152,251,203,0.34)] bg-[rgba(152,251,203,0.1)] px-3 text-[11px] font-black uppercase tracking-[0.08em] text-[#98FBCB]">
                 {categoryLabels[values.category]}
               </span>
               <h3 className="mt-3 text-xl font-black leading-tight text-[var(--rp-text)]">
@@ -995,12 +989,12 @@ function PostRideRequestForm({
 function EmptyRideBoard({ onPostClick }: { onPostClick: () => void }) {
   return (
     <section className="rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(145deg,rgba(14,28,42,0.92),rgba(6,16,25,0.96))] px-5 py-8 text-center shadow-[var(--rp-shadow-soft)]">
-      <span className="mx-auto grid h-14 w-14 place-items-center rounded-[18px] border border-[rgba(242,193,91,0.28)] bg-[rgba(242,193,91,0.1)] text-[var(--rp-primary)]">
+      <span className="mx-auto grid h-14 w-14 place-items-center rounded-[18px] border border-[rgba(152,251,203,0.28)] bg-[rgba(152,251,203,0.1)] text-[#98FBCB]">
         <Navigation className="h-7 w-7" />
       </span>
-      <h2 className="mt-4 text-2xl font-black text-[var(--rp-text)]">No ride requests yet</h2>
+      <h2 className="mt-4 text-2xl font-black text-[var(--rp-text)]">No ride requests nearby yet.</h2>
       <p className="mx-auto mt-2 max-w-[280px] text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-        Post the first one for this category.
+        Post one and see who is going your way.
       </p>
       <div className="mt-5">
         <PostRideRequestButton onClick={onPostClick} compact />
@@ -1012,8 +1006,8 @@ function EmptyRideBoard({ onPostClick }: { onPostClick: () => void }) {
 function RideBoardToast({ message }: { message: string }) {
   return (
     <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] z-[95] px-4 lg:bottom-8 lg:left-72">
-      <div className="mx-auto flex min-h-12 max-w-md items-center gap-2 rounded-[18px] border border-[rgba(98,232,187,0.28)] bg-[linear-gradient(180deg,rgba(13,38,34,0.98),rgba(8,24,28,0.98))] px-4 py-3 text-sm font-bold leading-5 text-[#bdf8df] shadow-[0_18px_50px_rgba(0,0,0,0.42)]">
-        <CheckCircle2 className="h-5 w-5 shrink-0 text-[#62e8bb]" />
+      <div className="mx-auto flex min-h-12 max-w-md items-center gap-2 rounded-[18px] border border-[rgba(152,251,203,0.28)] bg-[linear-gradient(180deg,rgba(13,38,34,0.98),rgba(8,24,28,0.98))] px-4 py-3 text-sm font-bold leading-5 text-[#d8ffea] shadow-[0_18px_50px_rgba(0,0,0,0.42)]">
+        <CheckCircle2 className="h-5 w-5 shrink-0 text-[#98FBCB]" />
         {message}
       </div>
     </div>
@@ -1021,7 +1015,7 @@ function RideBoardToast({ message }: { message: string }) {
 }
 
 export default function RideBoardPage() {
-  const [activeFilter, setActiveFilter] = useState<RideBoardFilter>("all");
+  const [activeFilter, setActiveFilter] = useState<RideBoardFilter>("near_me");
   const [requests, setRequests] = useState<RideRequest[]>(initialRideRequests);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [showPostForm, setShowPostForm] = useState(false);
@@ -1062,18 +1056,18 @@ export default function RideBoardPage() {
 
   const handlePostSubmit = (values: RideRequestFormValues) => {
     const detailLineByCategory: Record<RideRequestCategory, string> = {
-      today: values.timeFlexibility,
+      near_me: values.timeFlexibility,
+      airport: values.pickupFlexibility,
       commute: values.repeatPattern.trim() || values.recurrenceType,
       events: values.eventName.trim() || values.eventTiming,
-      late_night: values.pickupFlexibility,
-      others: values.requestType.trim() || "Other ride situation",
+      other: values.requestType.trim() || "Other ride situation",
     };
     const extraLabelByCategory: Record<RideRequestCategory, string> = {
-      today: "Time flexibility",
+      near_me: "Time flexibility",
+      airport: "Pickup flexibility",
       commute: "Commute pattern",
       events: "Event details",
-      late_night: "Pickup flexibility",
-      others: "Request type",
+      other: "Request type",
     };
     const newRequest: RideRequest = {
       id: `posted-${Date.now()}`,
@@ -1107,7 +1101,7 @@ export default function RideBoardPage() {
     };
 
     setRequests((currentRequests) => [newRequest, ...currentRequests]);
-    setActiveFilter(values.category);
+    setActiveFilter(values.category === "other" ? "near_me" : values.category);
     setShowPostForm(false);
     showToast("Ride request posted. We'll show it to nearby riders.");
   };
@@ -1115,17 +1109,17 @@ export default function RideBoardPage() {
   return (
     <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-1.25rem)] overflow-hidden bg-[linear-gradient(180deg,#050b12_0%,#07111a_48%,#050b12_100%)] pb-5 sm:-mx-6 lg:-mx-10 lg:-mt-8">
       <div
-        className="absolute inset-0 bg-[linear-gradient(90deg,rgba(242,193,91,0.05)_1px,transparent_1px),linear-gradient(180deg,rgba(242,193,91,0.04)_1px,transparent_1px)] bg-[size:44px_44px] opacity-[0.13]"
+        className="absolute inset-0 bg-[linear-gradient(90deg,rgba(152,251,203,0.045)_1px,transparent_1px),linear-gradient(180deg,rgba(152,251,203,0.035)_1px,transparent_1px)] bg-[size:44px_44px] opacity-[0.13]"
         aria-hidden="true"
       />
-      <div className="relative z-10 mx-auto grid w-full max-w-[560px] gap-6 px-4 pb-5 pt-5 sm:px-6 lg:max-w-3xl lg:pt-8">
+      <div className="relative z-10 mx-auto grid w-full max-w-[560px] gap-4 px-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-4 sm:px-6 lg:max-w-3xl lg:pb-8 lg:pt-8">
         <RideBoardHero />
 
         <section>
-          <h1 className="text-left text-[52px] font-black leading-none tracking-tight text-[var(--rp-text)] min-[390px]:text-[60px]">
+          <h1 className="text-left text-[46px] font-black leading-none tracking-tight text-[var(--rp-text)] min-[390px]:text-[52px]">
             Ride Board
           </h1>
-          <div className="mt-6">
+          <div className="mt-3">
             <PostRideRequestButton onClick={() => setShowPostForm(true)} />
           </div>
         </section>
