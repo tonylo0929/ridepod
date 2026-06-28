@@ -4426,6 +4426,7 @@ function RideAppBookingRulesStep({
   const [isPaymentTimingOpen, setIsPaymentTimingOpen] = useState(true);
   const [isOtherPaymentDialogOpen, setIsOtherPaymentDialogOpen] = useState(false);
   const [otherPaymentDraft, setOtherPaymentDraft] = useState(peopleVehicle.rideAppPaymentMethodOther);
+  const [minimumRidersDraft, setMinimumRidersDraft] = useState(() => String(selectedMinimumConfirmedRiders));
   const paymentTimingPanelId = useId();
 
   function updateMinimumRidersToGo(value: number) {
@@ -4436,6 +4437,13 @@ function RideAppBookingRulesStep({
       rideAppBookingTrigger: "minimum_riders_confirmed",
       rideAppMinimumConfirmedRiders: nextMinimum,
     });
+  }
+
+  function handleMinimumRidersDraftChange(value: string) {
+    setMinimumRidersDraft(value);
+
+    const nextMinimum = Number(value);
+    if (Number.isFinite(nextMinimum)) updateMinimumRidersToGo(nextMinimum);
   }
 
   useEffect(() => {
@@ -4542,8 +4550,9 @@ function RideAppBookingRulesStep({
               inputMode="numeric"
               min={1}
               max={maxMinimumRidersToGo}
-              value={selectedMinimumConfirmedRiders}
-              onChange={(event) => updateMinimumRidersToGo(Number(event.target.value))}
+              value={minimumRidersDraft}
+              onChange={(event) => handleMinimumRidersDraftChange(event.target.value)}
+              onBlur={() => setMinimumRidersDraft(String(selectedMinimumConfirmedRiders))}
               className="min-h-11 rounded-xl border border-[var(--rp-border)] bg-[rgba(5,12,20,0.72)] px-3 text-base font-black text-[var(--rp-text)] outline-none focus:border-cyan-300"
             />
             <span className="text-xs font-black text-[var(--rp-primary)]">
