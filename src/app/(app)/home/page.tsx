@@ -1871,7 +1871,6 @@ function HomePageContent() {
         onClose={() => setFiltersOpen(false)}
       />
 
-      <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-10 h-28 bg-[linear-gradient(180deg,transparent,var(--rp-bg))] opacity-55 lg:hidden" />
     </div>
   );
 }
