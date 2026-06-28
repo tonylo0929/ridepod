@@ -472,13 +472,13 @@ function RideRequestCard({
       onClick={() => onOpen(request.id)}
       onKeyDown={handleCardKeyDown}
       className={cn(
-        "group relative cursor-pointer overflow-hidden rounded-[18px] border border-[rgba(152,251,203,0.22)] bg-[linear-gradient(145deg,rgba(8,27,39,0.98),rgba(5,16,25,0.98))] p-3 shadow-[0_14px_34px_rgba(0,0,0,0.30)] outline-none transition focus-visible:ring-2 focus-visible:ring-[#98FBCB]",
+        "group relative cursor-pointer overflow-hidden rounded-[18px] border border-[rgba(152,251,203,0.22)] bg-[linear-gradient(145deg,rgba(8,27,39,0.98),rgba(5,16,25,0.98))] p-2.5 shadow-[0_14px_34px_rgba(0,0,0,0.30)] outline-none transition focus-visible:ring-2 focus-visible:ring-[#98FBCB]",
         request.status === "closed" && "border-white/10 opacity-80",
       )}
     >
       <span
         className={cn(
-          "absolute bottom-3 left-3 top-3 w-1 rounded-full shadow-[0_0_14px_rgba(152,251,203,0.28)]",
+          "absolute bottom-3 left-3 top-3 w-0.5 rounded-full shadow-[0_0_14px_rgba(152,251,203,0.28)]",
           request.status === "closed"
             ? "bg-[linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,255,255,0.08))]"
             : "bg-[linear-gradient(180deg,#98FBCB_0%,#54e9c6_52%,#1f9f97_100%)]",
@@ -486,33 +486,33 @@ function RideRequestCard({
         aria-hidden="true"
       />
 
-      <div className="pl-4">
+      <div className="pl-3.5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <span className="mb-2 inline-flex min-h-7 items-center rounded-full border border-[rgba(152,251,203,0.34)] bg-[rgba(152,251,203,0.1)] px-3 text-[11px] font-black uppercase tracking-[0.08em] text-[#98FBCB]">
+            <span className="mb-1.5 inline-flex min-h-5 items-center rounded-full border border-[rgba(152,251,203,0.34)] bg-[rgba(152,251,203,0.1)] px-2 text-[9px] font-black uppercase tracking-[0.08em] text-[#98FBCB]">
               {categoryLabels[request.category]}
             </span>
-            <h2 className="text-left text-[21px] font-black leading-[1.1] tracking-tight text-[var(--rp-text)] min-[390px]:text-[23px]">
+            <h2 className="text-left text-[16px] font-black leading-[1.15] tracking-tight text-[var(--rp-text)] min-[390px]:text-[17px]">
               <span className="break-words">{request.from}</span>
-              <span className="mx-1.5 inline-flex translate-y-0.5 text-[#98FBCB]">-&gt;</span>
+              <span className="mx-1 inline-flex translate-y-0.5 text-[#98FBCB]">-&gt;</span>
               <span className="break-words">{request.to}</span>
             </h2>
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex min-h-6 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-2 text-[11px] font-bold text-[var(--rp-muted-strong)]">
-                <CalendarDays className="h-3 w-3" />
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex min-h-5 items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-1.5 text-[9px] font-bold text-[var(--rp-muted-strong)]">
+                <CalendarDays className="h-2.5 w-2.5" />
                 {request.dateLabel}, {request.timeLabel}
               </span>
-              <span className="inline-flex min-h-6 items-center gap-1.5 rounded-full border border-[rgba(152,251,203,0.22)] bg-[rgba(152,251,203,0.08)] px-2 text-[11px] font-bold text-[#bfffe3]">
-                <Clock3 className="h-3 w-3" />
+              <span className="inline-flex min-h-5 items-center gap-1 rounded-full border border-[rgba(152,251,203,0.22)] bg-[rgba(152,251,203,0.08)] px-1.5 text-[9px] font-bold text-[#bfffe3]">
+                <Clock3 className="h-2.5 w-2.5" />
                 {request.detailLine}
               </span>
-              <span className={cn("inline-flex min-h-6 items-center gap-1.5 rounded-full border px-2 text-[11px] font-black", status.className)}>
-                <Clock3 className="h-3 w-3" />
+              <span className={cn("inline-flex min-h-5 items-center gap-1 rounded-full border px-1.5 text-[9px] font-black", status.className)}>
+                <Clock3 className="h-2.5 w-2.5" />
                 {status.label}
               </span>
               {request.status !== "closed" ? (
-                <span className="inline-flex min-h-6 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] px-2 text-[11px] font-bold text-[var(--rp-muted-strong)]">
-                  <UsersRound className="h-3 w-3" />
+                <span className="inline-flex min-h-5 items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-1.5 text-[9px] font-bold text-[var(--rp-muted-strong)]">
+                  <UsersRound className="h-2.5 w-2.5" />
                   {getInterestedLabel(request.interestedCount)}
                 </span>
               ) : null}
@@ -525,39 +525,39 @@ function RideRequestCard({
           ) : null}
         </div>
 
-        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_74px] items-center gap-3">
+        <div className="mt-2.5 grid grid-cols-[minmax(0,1fr)_62px] items-center gap-2.5">
           <div className="flex min-w-0 items-center gap-2">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[rgba(152,251,203,0.35)] bg-[linear-gradient(145deg,rgba(152,251,203,0.20),rgba(8,25,31,0.92))] text-[13px] font-black text-[#98FBCB]">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[rgba(152,251,203,0.35)] bg-[linear-gradient(145deg,rgba(152,251,203,0.20),rgba(8,25,31,0.92))] text-[11px] font-black text-[#98FBCB]">
               {hostInitials || <UserRound className="h-5 w-5" />}
             </span>
             <div className="min-w-0">
-              <p className="truncate text-left text-[13px] font-black leading-4 text-[var(--rp-text)]">Host: {request.host.name}</p>
-              <p className="mt-0.5 flex items-center gap-1 text-left text-[11px] font-bold leading-4 text-[var(--rp-muted-strong)]">
-                <Star className="h-3.5 w-3.5 shrink-0 fill-[var(--rp-primary)] text-[var(--rp-primary)]" />
+              <p className="truncate text-left text-[11px] font-black leading-3 text-[var(--rp-text)]">Host: {request.host.name}</p>
+              <p className="mt-0.5 flex items-center gap-1 text-left text-[9px] font-bold leading-3 text-[var(--rp-muted-strong)]">
+                <Star className="h-2.5 w-2.5 shrink-0 fill-[var(--rp-primary)] text-[var(--rp-primary)]" />
                 {request.host.rating.toFixed(1)} ({request.host.rideCount} rides)
               </p>
             </div>
           </div>
 
-          <div className="rounded-[14px] border border-white/10 bg-white/[0.06] px-2 py-2 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <p className="text-left text-2xl font-black leading-none text-[#98FBCB]">{request.interestedCount}</p>
-            <p className="mt-0.5 text-left text-[8px] font-black uppercase tracking-[0.05em] text-[var(--rp-muted-strong)]">
+          <div className="rounded-[12px] border border-white/10 bg-white/[0.06] px-2 py-1.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <p className="text-left text-lg font-black leading-none text-[#98FBCB]">{request.interestedCount}</p>
+            <p className="mt-0.5 text-left text-[7px] font-black uppercase tracking-[0.05em] text-[var(--rp-muted-strong)]">
               Interested
             </p>
           </div>
         </div>
 
-        <p className="mt-3 rounded-[13px] border border-white/10 bg-[#06111d]/75 px-3 py-2.5 text-left text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+        <p className="mt-2.5 rounded-[12px] border border-white/10 bg-[#06111d]/75 px-2.5 py-2 text-left text-[10px] font-semibold leading-4 text-[var(--rp-muted-strong)]">
           {request.note}
         </p>
 
-        <div className="mt-3 grid grid-cols-1 gap-2 min-[430px]:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
+        <div className="mt-2.5 grid grid-cols-1 gap-2 min-[430px]:grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)]">
           <button
             type="button"
             onClick={handleInterestClick}
             disabled={actionState.disabled}
             className={cn(
-              "inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[13px] border px-3.5 text-[13px] font-black transition",
+              "inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-[12px] border px-3 text-[11px] font-black transition",
               request.userInterested
                 ? "border-[rgba(152,251,203,0.34)] bg-[rgba(152,251,203,0.12)] text-[#98FBCB]"
                 : actionState.disabled
@@ -565,7 +565,7 @@ function RideRequestCard({
                   : "border-[rgba(152,251,203,0.72)] bg-[linear-gradient(180deg,rgba(152,251,203,0.11),rgba(152,251,203,0.045))] text-[#98FBCB] shadow-[0_10px_22px_rgba(152,251,203,0.07)] hover:bg-[rgba(152,251,203,0.14)]",
             )}
           >
-            <ActionIcon className="h-4 w-4" />
+            <ActionIcon className="h-3.5 w-3.5" />
             {actionState.label}
           </button>
           <button
@@ -574,7 +574,7 @@ function RideRequestCard({
               event.stopPropagation();
               onOpen(request.id);
             }}
-            className="inline-flex min-h-11 w-full items-center justify-center rounded-[13px] border border-white/10 bg-white/[0.055] px-3.5 text-[13px] font-black text-[var(--rp-text)] transition hover:border-[var(--rp-border-strong)] hover:bg-white/[0.08]"
+            className="inline-flex min-h-9 w-full items-center justify-center rounded-[12px] border border-white/10 bg-white/[0.055] px-3 text-[11px] font-black text-[var(--rp-text)] transition hover:border-[var(--rp-border-strong)] hover:bg-white/[0.08]"
           >
             View details
           </button>
