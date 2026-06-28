@@ -1707,7 +1707,7 @@ function HomePageContent() {
     ownershipFilter !== "all";
   const showRideRecommendations = true;
   return (
-    <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-1.25rem)] overflow-hidden pb-2 sm:-mx-6 lg:-mx-10 lg:-mt-8">
+    <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-1.25rem)] overflow-x-hidden pb-[calc(9rem+env(safe-area-inset-bottom))] sm:-mx-6 lg:-mx-10 lg:-mt-8 lg:pb-8">
       <section className="relative overflow-hidden px-4 pb-7 pt-7 sm:px-6 lg:px-10">
         <div
           aria-hidden="true"
@@ -1871,7 +1871,7 @@ function HomePageContent() {
         onClose={() => setFiltersOpen(false)}
       />
 
-      <div className="pointer-events-none fixed bottom-0 left-0 right-0 h-36 bg-[linear-gradient(180deg,transparent,var(--rp-bg))] opacity-80 lg:hidden" />
+      <div className="pointer-events-none fixed bottom-0 left-0 right-0 z-10 h-28 bg-[linear-gradient(180deg,transparent,var(--rp-bg))] opacity-55 lg:hidden" />
     </div>
   );
 }
