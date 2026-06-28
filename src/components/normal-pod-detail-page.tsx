@@ -1825,7 +1825,8 @@ export function PodStatusPanel({
   const splitMethodSet = Boolean(ride.rideAppSplitMethod || ride.splitMethod);
   const paymentMethodSet = Boolean(ride.rideAppAcceptedPaymentMethods?.length || ride.paymentMethod);
   const confirmBySet = Boolean(ride.confirmationDeadlineAt || ride.rideAppConfirmBy || ride.confirmationDeadlineLabel);
-  const pickupVenueSet = Boolean(ride.pickupLabel);
+  const pickupVenueLabel = ride.pickupLabel?.trim() ?? "";
+  const pickupVenueSet = pickupVenueLabel.length > 0;
   const coreDetailsExceptGatherPointComplete = detailsReady && fareEstimateSet && splitMethodSet && paymentMethodSet && confirmBySet;
   const detailsComplete = coreDetailsExceptGatherPointComplete && pickupVenueSet;
   const currentUserWaitingForHostDetails =
@@ -1883,12 +1884,12 @@ export function PodStatusPanel({
     {
       icon: MapPin,
       label: "Gather point",
-      value: detailsReady && pickupVenueSet ? ride.pickupLabel ?? "Not set" : "Not set",
-      set: detailsReady && pickupVenueSet,
-      helper: detailsReady && pickupVenueSet ? undefined : "Where riders meet before booking",
+      value: pickupVenueSet ? pickupVenueLabel : "Not set",
+      set: pickupVenueSet,
+      helper: pickupVenueSet ? undefined : "Where riders meet before booking",
       onClick: isHost ? openGatherPointModal : undefined,
-      actionLabel: isHost ? (detailsReady && pickupVenueSet ? "Edit" : "Set") : undefined,
-      tone: detailsReady && !pickupVenueSet ? "warning" : "default",
+      actionLabel: isHost ? (pickupVenueSet ? "Edit" : "Set") : undefined,
+      tone: !pickupVenueSet ? "warning" : "default",
     },
   ];
   const riderJoinedCount = ride.joinedRiderCount ?? ride.joinedRiders.length;
