@@ -597,7 +597,7 @@ function RideModeSwitch({
 
   return (
     <div className="mb-5 grid justify-items-center">
-      <div className="w-full max-w-[600px] rounded-[34px] border border-[color-mix(in_srgb,var(--rp-primary)_62%,rgba(249,115,22,0.55))] bg-[linear-gradient(135deg,rgba(242,193,91,0.16),rgba(249,115,22,0.12)_48%,rgba(248,250,252,0.08))] p-1.5 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_22px_54px_rgba(0,0,0,0.36),0_0_38px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]">
+      <div className="w-full max-w-[600px] rounded-[34px] p-1.5">
         <div className="relative grid grid-cols-2 rounded-full border border-white/25 bg-[rgba(248,250,252,0.92)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
         {options.map((option) => {
           const selected = value === option.id;
