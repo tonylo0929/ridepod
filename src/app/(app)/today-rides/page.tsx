@@ -14,7 +14,6 @@ import {
   Star,
   Sun,
   UserRound,
-  UsersRound,
   X,
 } from "lucide-react";
 import {
@@ -492,20 +491,10 @@ function RideRequestCard({
                 <CalendarDays className="h-2.5 w-2.5" />
                 {request.dateLabel}, {request.timeLabel}
               </span>
-              <span className="inline-flex min-h-5 items-center gap-1 rounded-full border border-[rgba(152,251,203,0.22)] bg-[rgba(152,251,203,0.08)] px-1.5 text-[9px] font-bold text-[#bfffe3]">
-                <Clock3 className="h-2.5 w-2.5" />
-                {request.detailLine}
-              </span>
               <span className={cn("inline-flex min-h-5 items-center gap-1 rounded-full border px-1.5 text-[9px] font-black", status.className)}>
                 <Clock3 className="h-2.5 w-2.5" />
                 {status.label}
               </span>
-              {request.status !== "closed" ? (
-                <span className="inline-flex min-h-5 items-center gap-1 rounded-full border border-white/10 bg-white/[0.06] px-1.5 text-[9px] font-bold text-[var(--rp-muted-strong)]">
-                  <UsersRound className="h-2.5 w-2.5" />
-                  {getInterestedLabel(request.interestedCount)}
-                </span>
-              ) : null}
             </div>
           </div>
           {request.userInterested ? (
@@ -515,7 +504,7 @@ function RideRequestCard({
           ) : null}
         </div>
 
-        <div className="mt-2.5 grid grid-cols-[minmax(0,1fr)_62px] items-center gap-2.5">
+        <div className="mt-2.5 flex items-center">
           <div className="flex min-w-0 items-center gap-2">
             <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[rgba(152,251,203,0.35)] bg-[linear-gradient(145deg,rgba(152,251,203,0.20),rgba(8,25,31,0.92))] text-[11px] font-black text-[#98FBCB]">
               {hostInitials || <UserRound className="h-5 w-5" />}
@@ -527,13 +516,6 @@ function RideRequestCard({
                 {request.host.rating.toFixed(1)} ({request.host.rideCount} rides)
               </p>
             </div>
-          </div>
-
-          <div className="rounded-[12px] border border-white/10 bg-white/[0.06] px-2 py-1.5 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <p className="text-left text-lg font-black leading-none text-[#98FBCB]">{request.interestedCount}</p>
-            <p className="mt-0.5 text-left text-[7px] font-black uppercase tracking-[0.05em] text-[var(--rp-muted-strong)]">
-              Interested
-            </p>
           </div>
         </div>
 
