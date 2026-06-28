@@ -64,7 +64,7 @@ type CurrentUserAvatar = {
 const categoryCards: Array<{ id: HomeTab; label: string; subtitle: string; icon: LucideIcon; href?: string }> = [
   { id: "one_off", label: "One-off", subtitle: "Schedule Ride", icon: CarFront },
   { id: "recurring", label: "Recurring", subtitle: "Ride regularly", icon: RefreshCcw },
-  { id: "airport", label: "Airport", subtitle: "Fly together", icon: Plane },
+  { id: "airport", label: "Airport", subtitle: "Flight Ride", icon: Plane },
   { id: "all", label: "All", subtitle: "All public", icon: UsersRound },
 ];
 
@@ -159,11 +159,11 @@ const homeHeroBackgrounds: Record<
   }
 > = {
   ride_app: {
-    image: "/images/ridepod/home-ride-app-blue.png",
+    image: "/images/ridepod/home-ride-app-night-route.png",
     mobilePosition: "58% top",
-    mobileSize: "auto 270px",
+    mobileSize: "auto 286px",
     mobileBackdropPosition: "58% top",
-    mobileBackdropSize: "auto 270px",
+    mobileBackdropSize: "auto 286px",
     mobileBackdropOpacity: 0,
     desktopPosition: "center top",
     desktopSize: "100% auto",
