@@ -260,22 +260,53 @@ function FilterSelect({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <label className="relative block min-w-0">
+    <div className="relative block min-w-0">
       <span className="block text-sm font-black text-[var(--rp-text)]">{label}</span>
-      <select
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-2 h-14 w-full appearance-none rounded-[16px] border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-4 pr-11 text-base font-black text-[var(--rp-text)] outline-none transition focus:border-[var(--rp-primary)]"
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((current) => !current)}
+        className={cn(
+          "mt-2 flex min-h-14 w-full items-center justify-between gap-3 rounded-[16px] border bg-[var(--rp-card-soft)] px-4 text-left text-base font-black text-[var(--rp-text)] outline-none transition",
+          open ? "border-[var(--rp-primary)] shadow-[0_0_0_3px_color-mix(in_srgb,var(--rp-primary)_18%,transparent)]" : "border-[var(--rp-border-strong)]",
+        )}
       >
-        {districtOptions.map((district) => (
-          <option key={district} value={district} className="bg-[var(--rp-shell)] text-[var(--rp-text)]">
-            {district}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute bottom-4 right-4 h-5 w-5 text-[var(--rp-muted-strong)]" />
-    </label>
+        <span className="min-w-0 truncate">{value}</span>
+        <ChevronDown className={cn("h-5 w-5 shrink-0 text-[var(--rp-muted-strong)] transition", open && "rotate-180 text-[var(--rp-primary)]")} />
+      </button>
+      {open ? (
+        <div role="listbox" className="mt-2 max-h-44 overflow-y-auto rounded-[16px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-1.5 shadow-[0_18px_44px_rgba(0,0,0,0.32)]">
+          {districtOptions.map((district) => {
+            const selected = district === value;
+
+            return (
+              <button
+                key={district}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                onClick={() => {
+                  onChange(district);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex min-h-11 w-full items-center rounded-[12px] px-3 text-left text-sm font-black transition",
+                  selected
+                    ? "bg-[var(--rp-primary)] text-[var(--rp-primary-text)]"
+                    : "text-[var(--rp-muted-strong)] hover:bg-[var(--rp-card-muted)] hover:text-[var(--rp-text)]",
+                )}
+              >
+                {district}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
