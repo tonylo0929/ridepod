@@ -4905,6 +4905,11 @@ function PeopleVehicleStep({
         return;
       }
 
+      if (isTaxiFlow) {
+        setTaxiDetailsPage("type");
+        return;
+      }
+
       setConfirmedRideOption(selectedRideOptionId);
       onContinue();
       return;
