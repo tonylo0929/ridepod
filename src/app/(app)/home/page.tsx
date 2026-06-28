@@ -1801,7 +1801,14 @@ function HomePageContent() {
                 isAuthenticated && rideModeFilter === "ride_app" ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]",
               )}
             >
-              {isAuthenticated ? `${heroGreeting}, ${displayName}` : "Your ride, together."}
+              {isAuthenticated ? (
+                <>
+                  <span className="block">{heroGreeting},</span>
+                  <span className="block break-words">{displayName}</span>
+                </>
+              ) : (
+                "Your ride, together."
+              )}
             </p>
             <p className="mt-1.5 text-sm font-semibold text-[var(--rp-muted-strong)] min-[720px]:mt-2 min-[720px]:text-lg">
               {isAuthenticated ? "Your ride, together." : "First Local Shared Ride in Hong Kong"}
