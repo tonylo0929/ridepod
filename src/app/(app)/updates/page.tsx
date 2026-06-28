@@ -477,13 +477,6 @@ function PodActionCard({
         <span className="whitespace-nowrap text-xs font-bold text-[var(--rp-muted)]">{timeAgo(notification.created_at)}</span>
         <button
           type="button"
-          onClick={onOpen}
-          className="inline-flex min-h-8 items-center rounded-full border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/15 px-3 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]"
-        >
-          Open
-        </button>
-        <button
-          type="button"
           onClick={onClear}
           className="inline-flex min-h-8 items-center gap-1 rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-2.5 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]"
         >
