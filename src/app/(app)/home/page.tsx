@@ -168,7 +168,7 @@ const homeHeroBackgrounds: Record<
     desktopPosition: "center top",
     desktopSize: "100% auto",
     overlay:
-      "linear-gradient(90deg,rgba(5,11,18,0.9) 0%,rgba(5,11,18,0.54) 34%,rgba(5,11,18,0.1) 72%),linear-gradient(180deg,rgba(5,11,18,0.02) 0%,rgba(5,11,18,0.1) 42%,rgba(5,11,18,0.62) 80%,var(--rp-bg) 100%)",
+      "linear-gradient(180deg,rgba(5,11,18,0) 0%,rgba(5,11,18,0) 56%,rgba(5,11,18,0.24) 82%,var(--rp-bg) 100%)",
   },
   taxi: {
     image: "/images/ridepod/home-taxi-harbor-night.png",
