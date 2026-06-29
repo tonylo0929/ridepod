@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   Bookmark,
   CalendarDays,
@@ -15,8 +16,8 @@ import {
   Route,
   Send,
   ShieldCheck,
+  SlidersHorizontal,
   Star,
-  Sun,
   UserRound,
   X,
 } from "lucide-react";
@@ -95,6 +96,58 @@ const rideBoardFilters: Array<{ id: RideBoardFilter; label: string; icon: typeof
   { id: "events", label: "Events", icon: CalendarDays },
   { id: "late_night", label: "Late Night", icon: Moon },
   { id: "others", label: "Others", icon: ShieldCheck },
+];
+
+const rideBoardCategories: Array<{
+  id: "today-requests" | "commute" | "events" | "late-night" | "others";
+  label: string;
+  image: string;
+  filter: RideRequestCategory;
+  featured?: boolean;
+  width: number;
+  height: number;
+}> = [
+  {
+    id: "today-requests",
+    label: "Today Requests",
+    image: "/images/ride-board/today-requests.png",
+    filter: "today_requests",
+    featured: true,
+    width: 1448,
+    height: 1086,
+  },
+  {
+    id: "commute",
+    label: "Commute",
+    image: "/images/ride-board/commute.png",
+    filter: "commute",
+    width: 1254,
+    height: 1254,
+  },
+  {
+    id: "events",
+    label: "Events",
+    image: "/images/ride-board/events.png",
+    filter: "events",
+    width: 1254,
+    height: 1254,
+  },
+  {
+    id: "late-night",
+    label: "Late Night",
+    image: "/images/ride-board/late-night.png",
+    filter: "late_night",
+    width: 1254,
+    height: 1254,
+  },
+  {
+    id: "others",
+    label: "Others",
+    image: "/images/ride-board/others.png",
+    filter: "others",
+    width: 1254,
+    height: 1254,
+  },
 ];
 
 const postTypeOptions: Array<{ id: RideRequestCategory; label: string; description: string }> = [
@@ -356,30 +409,6 @@ function getActionState(request: RideRequest) {
   return { label: "I'm interested", disabled: false, icon: MessageCircle };
 }
 
-function RideBoardHero() {
-  return (
-    <section
-      className="relative flex min-h-[154px] items-center overflow-hidden rounded-[24px] border border-[rgba(152,251,203,0.34)] bg-[#06131d] bg-cover p-5 shadow-[0_22px_60px_rgba(0,0,0,0.34),0_0_30px_rgba(152,251,203,0.08)]"
-      style={{
-        backgroundImage:
-          "linear-gradient(90deg, rgba(3,10,16,0.94) 0%, rgba(3,10,16,0.78) 44%, rgba(3,10,16,0.30) 72%, rgba(3,10,16,0.10) 100%), url('/images/ride-board-hero.png')",
-        backgroundPosition: "center 18%",
-      }}
-    >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_22%,rgba(152,251,203,0.26),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.05),transparent_42%)]" aria-hidden="true" />
-      <div className="relative z-10 grid max-w-[320px] grid-cols-[56px_1fr] items-center gap-4">
-        <span className="grid h-14 w-14 place-items-center rounded-[18px] border border-[rgba(152,251,203,0.46)] bg-[rgba(3,22,28,0.62)] text-[#98FBCB] shadow-[0_0_28px_rgba(152,251,203,0.18)]">
-          <Sun className="h-8 w-8 stroke-[2.35]" />
-        </span>
-        <div>
-          <p className="text-left text-[22px] font-black leading-tight text-[var(--rp-text)] min-[390px]:text-[25px]">Good morning, trial_2</p>
-          <p className="mt-1.5 text-left text-[15px] font-semibold leading-6 text-white/80">Find people going your way today.</p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function PostRideRequestButton({ onClick, compact = false }: { onClick: () => void; compact?: boolean }) {
   return (
     <button
@@ -392,6 +421,80 @@ function PostRideRequestButton({ onClick, compact = false }: { onClick: () => vo
     >
       <Plus className={cn("stroke-[2.5]", compact ? "h-5 w-5" : "h-8 w-8")} />
       Post Ride Request
+    </button>
+  );
+}
+
+function RideBoardCategoryArtwork({
+  activeFilter,
+  onCategorySelect,
+}: {
+  activeFilter: RideBoardFilter;
+  onCategorySelect: (filter: RideRequestCategory) => void;
+}) {
+  const featuredCategory = rideBoardCategories.find((category) => category.featured);
+  const secondaryCategories = rideBoardCategories.filter((category) => !category.featured);
+
+  return (
+    <section aria-label="Ride Board categories" className="grid gap-3">
+      {featuredCategory ? (
+        <RideBoardCategoryCard
+          category={featuredCategory}
+          active={activeFilter === featuredCategory.filter}
+          onSelect={onCategorySelect}
+          priority
+        />
+      ) : null}
+
+      <div className="grid grid-cols-2 gap-3 max-[340px]:grid-cols-1">
+        {secondaryCategories.map((category) => (
+          <RideBoardCategoryCard
+            key={category.id}
+            category={category}
+            active={activeFilter === category.filter}
+            onSelect={onCategorySelect}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RideBoardCategoryCard({
+  category,
+  active,
+  onSelect,
+  priority = false,
+}: {
+  category: (typeof rideBoardCategories)[number];
+  active: boolean;
+  onSelect: (filter: RideRequestCategory) => void;
+  priority?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(category.filter)}
+      aria-pressed={active}
+      aria-label={`Show ${category.label} ride requests`}
+      className={cn(
+        "group block w-full overflow-hidden rounded-[24px] border bg-[#06131d] p-1.5 text-left shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.05)] outline-none transition duration-200 hover:-translate-y-0.5 hover:border-[#98FBCB]/46 hover:shadow-[0_20px_48px_rgba(0,0,0,0.32),0_0_24px_rgba(152,251,203,0.12)] focus-visible:ring-2 focus-visible:ring-[#98FBCB] active:translate-y-0",
+        active
+          ? "border-[#98FBCB]/72 bg-[rgba(152,251,203,0.08)] shadow-[0_20px_48px_rgba(0,0,0,0.34),0_0_30px_rgba(152,251,203,0.18)]"
+          : category.id === "others"
+            ? "border-[var(--rp-primary)]/46"
+            : "border-white/10",
+      )}
+    >
+      <Image
+        src={category.image}
+        alt={`${category.label} category artwork`}
+        width={category.width}
+        height={category.height}
+        priority={priority}
+        sizes={category.featured ? "(max-width: 768px) 100vw, 560px" : "(max-width: 768px) 50vw, 270px"}
+        className="block h-auto w-full rounded-[20px]"
+      />
     </button>
   );
 }
@@ -409,6 +512,7 @@ function RideBoardFilters({
         {rideBoardFilters.map((chip) => {
           const active = activeFilter === chip.id;
           const Icon = chip.icon;
+          const isOthers = chip.id === "others";
 
           return (
             <button
@@ -419,7 +523,9 @@ function RideBoardFilters({
                 "inline-flex min-h-11 shrink-0 items-center gap-2.5 rounded-full border px-5 text-[15px] font-black transition",
                 active
                   ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)] shadow-[0_0_24px_color-mix(in_srgb,var(--rp-primary)_20%,transparent)]"
-                  : "border-white/10 bg-white/[0.055] text-[var(--rp-muted-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-[var(--rp-border-strong)] hover:text-[var(--rp-text)]",
+                  : isOthers
+                    ? "border-[var(--rp-primary)]/44 bg-[var(--rp-primary)]/8 text-[var(--rp-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:bg-[var(--rp-primary)]/12"
+                    : "border-white/10 bg-white/[0.055] text-[var(--rp-muted-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-[var(--rp-border-strong)] hover:text-[var(--rp-text)]",
               )}
             >
               <Icon className="h-5 w-5 stroke-[2.2]" />
@@ -1113,19 +1219,31 @@ export default function RideBoardPage() {
         className="absolute inset-0 bg-[linear-gradient(90deg,rgba(152,251,203,0.045)_1px,transparent_1px),linear-gradient(180deg,rgba(152,251,203,0.035)_1px,transparent_1px)] bg-[size:44px_44px] opacity-[0.13]"
         aria-hidden="true"
       />
-      <div className="relative z-10 mx-auto grid w-full max-w-[560px] gap-4 px-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-4 sm:px-6 lg:max-w-3xl lg:pb-8 lg:pt-8">
-        <RideBoardHero />
-
-        <section>
-          <h1 className="text-left text-[46px] font-black leading-none tracking-tight text-[var(--rp-text)] min-[390px]:text-[52px]">
-            Ride Board
-          </h1>
-          <div className="mt-3">
-            <PostRideRequestButton onClick={() => setShowPostForm(true)} />
+      <div className="relative z-10 mx-auto grid w-full max-w-[560px] gap-4 px-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-5 sm:px-6 lg:max-w-3xl lg:pb-8 lg:pt-8">
+        <section className="flex items-end justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-left text-[42px] font-black leading-none tracking-tight text-[var(--rp-text)] min-[390px]:text-[52px]">
+              Ride Board
+            </h1>
+            <p className="mt-2 text-base font-semibold leading-6 text-[#98FBCB]/86">
+              Find a ride. Share the journey.
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={() => setActiveFilter("all")}
+            className="mb-1 inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[var(--rp-primary)]/42 bg-[var(--rp-primary)]/10 px-4 text-sm font-black text-[var(--rp-primary)] shadow-[0_12px_28px_rgba(242,193,91,0.10)] transition hover:bg-[var(--rp-primary)]/14"
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            Filters
+          </button>
         </section>
 
         <RideBoardFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+
+        <RideBoardCategoryArtwork activeFilter={activeFilter} onCategorySelect={setActiveFilter} />
+
+        <PostRideRequestButton onClick={() => setShowPostForm(true)} compact />
 
         <section className="grid gap-4" aria-label="Public ride requests">
           {visibleRequests.length > 0 ? (
