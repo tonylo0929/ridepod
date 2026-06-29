@@ -159,11 +159,11 @@ const homeHeroBackgrounds: Record<
   }
 > = {
   ride_app: {
-    image: "/images/ridepod/home-ride-app-night-route.png",
+    image: "/images/ridepod/home-ride-app-blue.png",
     mobilePosition: "58% top",
-    mobileSize: "auto 286px",
+    mobileSize: "auto 270px",
     mobileBackdropPosition: "58% top",
-    mobileBackdropSize: "auto 286px",
+    mobileBackdropSize: "auto 270px",
     mobileBackdropOpacity: 0,
     desktopPosition: "center top",
     desktopSize: "100% auto",
@@ -1798,7 +1798,7 @@ function HomePageContent() {
             <p
               className={cn(
                 "text-[28px] font-serif leading-tight min-[720px]:text-[42px]",
-                isAuthenticated && rideModeFilter === "ride_app" ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]",
+                isAuthenticated && (rideModeFilter === "ride_app" || rideModeFilter === "taxi") ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]",
               )}
             >
               {isAuthenticated ? (
