@@ -101,52 +101,58 @@ const rideBoardFilters: Array<{ id: RideBoardFilter; label: string; icon: typeof
 const rideBoardCategories: Array<{
   id: "today-requests" | "commute" | "events" | "late-night" | "others";
   label: string;
+  subtitle: string;
   image: string;
   filter: RideRequestCategory;
   featured?: boolean;
-  width: number;
-  height: number;
+  eyebrow?: string;
+  ctaLabel?: string;
+  objectPosition: string;
+  tone?: "mint" | "gold";
 }> = [
   {
     id: "today-requests",
     label: "Today Requests",
+    subtitle: "Find rides happening today, near you.",
     image: "/images/ride-board/today-requests.png",
     filter: "today_requests",
     featured: true,
-    width: 1448,
-    height: 1086,
+    eyebrow: "Featured",
+    ctaLabel: "Browse Today",
+    objectPosition: "right center",
   },
   {
     id: "commute",
     label: "Commute",
+    subtitle: "Daily rides. Better together.",
     image: "/images/ride-board/commute.png",
     filter: "commute",
-    width: 1254,
-    height: 1254,
+    objectPosition: "center bottom",
   },
   {
     id: "events",
     label: "Events",
+    subtitle: "Go together. Enjoy more.",
     image: "/images/ride-board/events.png",
     filter: "events",
-    width: 1254,
-    height: 1254,
+    objectPosition: "right center",
   },
   {
     id: "late-night",
     label: "Late Night",
+    subtitle: "Safe rides. Anytime.",
     image: "/images/ride-board/late-night.png",
     filter: "late_night",
-    width: 1254,
-    height: 1254,
+    objectPosition: "right bottom",
   },
   {
     id: "others",
     label: "Others",
+    subtitle: "Flexible rides. Your way.",
     image: "/images/ride-board/others.png",
     filter: "others",
-    width: 1254,
-    height: 1254,
+    objectPosition: "right bottom",
+    tone: "gold",
   },
 ];
 
@@ -471,6 +477,13 @@ function RideBoardCategoryCard({
   onSelect: (filter: RideRequestCategory) => void;
   priority?: boolean;
 }) {
+  const isFeatured = category.featured === true;
+  const isGold = category.tone === "gold";
+  const accentClassName = isGold ? "text-[var(--rp-primary)]" : "text-[#98FBCB]";
+  const ringClassName = isGold
+    ? "border-[var(--rp-primary)]/54 shadow-[0_20px_48px_rgba(0,0,0,0.34),0_0_28px_rgba(242,193,91,0.12)]"
+    : "border-[#98FBCB]/64 shadow-[0_20px_48px_rgba(0,0,0,0.34),0_0_30px_rgba(152,251,203,0.16)]";
+
   return (
     <button
       type="button"
@@ -478,23 +491,89 @@ function RideBoardCategoryCard({
       aria-pressed={active}
       aria-label={`Show ${category.label} ride requests`}
       className={cn(
-        "group block w-full overflow-hidden rounded-[24px] border bg-[#06131d] p-1.5 text-left shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.05)] outline-none transition duration-200 hover:-translate-y-0.5 hover:border-[#98FBCB]/46 hover:shadow-[0_20px_48px_rgba(0,0,0,0.32),0_0_24px_rgba(152,251,203,0.12)] focus-visible:ring-2 focus-visible:ring-[#98FBCB] active:translate-y-0",
-        active
-          ? "border-[#98FBCB]/72 bg-[rgba(152,251,203,0.08)] shadow-[0_20px_48px_rgba(0,0,0,0.34),0_0_30px_rgba(152,251,203,0.18)]"
-          : category.id === "others"
-            ? "border-[var(--rp-primary)]/46"
-            : "border-white/10",
+        "group relative block w-full overflow-hidden border bg-[rgba(5,18,26,0.92)] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#98FBCB] active:translate-y-0",
+        isFeatured ? "min-h-[188px] rounded-[28px] p-5" : "aspect-[1/1.08] rounded-[24px] p-4",
+        active ? ringClassName : isGold ? "border-[var(--rp-primary)]/38" : "border-[#98FBCB]/22",
+        !active && "shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.05)] hover:border-[#98FBCB]/44 hover:shadow-[0_20px_48px_rgba(0,0,0,0.32),0_0_24px_rgba(152,251,203,0.10)]",
       )}
     >
       <Image
         src={category.image}
-        alt={`${category.label} category artwork`}
-        width={category.width}
-        height={category.height}
+        alt=""
+        fill
         priority={priority}
-        sizes={category.featured ? "(max-width: 768px) 100vw, 560px" : "(max-width: 768px) 50vw, 270px"}
-        className="block h-auto w-full rounded-[20px]"
+        sizes={isFeatured ? "(max-width: 768px) 100vw, 560px" : "(max-width: 768px) 50vw, 270px"}
+        className={cn(
+          "absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]",
+          isFeatured ? "opacity-80" : "opacity-72",
+        )}
+        style={{ objectPosition: category.objectPosition }}
       />
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-0",
+          isFeatured
+            ? "bg-[linear-gradient(90deg,rgba(3,12,18,0.98)_0%,rgba(3,12,18,0.88)_42%,rgba(3,12,18,0.26)_74%,rgba(3,12,18,0.08)_100%)]"
+            : "bg-[linear-gradient(135deg,rgba(3,12,18,0.98)_0%,rgba(3,12,18,0.88)_34%,rgba(3,12,18,0.54)_58%,rgba(3,12,18,0.22)_100%)]",
+        )}
+      />
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute inset-0",
+          isGold
+            ? "bg-[radial-gradient(circle_at_90%_88%,rgba(242,193,91,0.22),transparent_38%)]"
+            : "bg-[radial-gradient(circle_at_86%_80%,rgba(152,251,203,0.16),transparent_40%)]",
+        )}
+      />
+      {isFeatured ? (
+        <span aria-hidden="true" className="absolute inset-y-5 left-0 w-1.5 rounded-r-full bg-[#98FBCB] shadow-[0_0_18px_rgba(152,251,203,0.58)]" />
+      ) : null}
+
+      <span className={cn("relative z-10 flex h-full flex-col items-start", isFeatured ? "max-w-[68%]" : "min-h-full")}>
+        {isFeatured ? (
+          <span className="rounded-full border border-[#98FBCB]/35 bg-[#98FBCB]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#98FBCB]">
+            {category.eyebrow}
+          </span>
+        ) : null}
+        <span
+          className={cn(
+            "block font-black leading-tight",
+            accentClassName,
+            isFeatured ? "mt-4 text-[26px] min-[390px]:text-[30px]" : "text-xl min-[390px]:text-[22px]",
+          )}
+        >
+          {category.label}
+        </span>
+        <span
+          className={cn(
+            "block font-semibold leading-5 text-white/82",
+            isFeatured ? "mt-2 text-sm min-[390px]:text-[15px]" : "mt-1.5 max-w-[9rem] text-xs min-[390px]:text-[13px]",
+          )}
+        >
+          {category.subtitle}
+        </span>
+
+        {isFeatured ? (
+          <span className="mt-5 inline-flex min-h-10 items-center gap-2 rounded-full border border-[#98FBCB]/38 bg-[#98FBCB]/12 px-4 text-sm font-black text-[#98FBCB] transition group-hover:bg-[#98FBCB]/18">
+            {category.ctaLabel}
+            <ChevronRight className="h-4 w-4" />
+          </span>
+        ) : (
+          <span
+            className={cn(
+              "mt-auto grid h-10 w-10 place-items-center rounded-full border transition group-hover:scale-105",
+              isGold
+                ? "border-[var(--rp-primary)]/48 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]"
+                : "border-[#98FBCB]/36 bg-[#98FBCB]/12 text-[#98FBCB]",
+            )}
+            aria-hidden="true"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </span>
+        )}
+      </span>
     </button>
   );
 }
