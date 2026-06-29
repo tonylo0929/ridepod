@@ -499,7 +499,7 @@ function RideRequestCard({
           </span>
         </div>
 
-        <h2 className="text-left text-[26px] font-black leading-tight tracking-tight text-[var(--rp-text)] min-[430px]:text-[30px]">
+        <h2 className="text-left text-[22px] font-black leading-tight tracking-tight text-[var(--rp-text)] min-[430px]:text-[24px]">
           <span className="break-words">{request.from}</span>
           <span className="mx-2 inline-flex text-[#34e9ce]">-&gt;</span>
           <span className="break-words">{request.to}</span>
