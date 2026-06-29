@@ -176,7 +176,7 @@ function PremiumTopNav() {
                 width={320}
                 height={80}
                 priority
-                className="h-full w-full object-contain"
+                className="h-full w-full origin-center scale-[1.55] object-cover"
               />
             </span>
           ) : (
