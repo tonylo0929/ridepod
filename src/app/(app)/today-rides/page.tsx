@@ -505,7 +505,7 @@ function RideBoardCategoryCard({
         sizes={isFeatured ? "(max-width: 768px) 100vw, 560px" : "(max-width: 768px) 50vw, 270px"}
         className={cn(
           "absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]",
-          isFeatured ? "opacity-80" : "opacity-72",
+          isFeatured ? "opacity-100" : "opacity-95",
         )}
         style={{ objectPosition: category.objectPosition }}
       />
@@ -514,8 +514,8 @@ function RideBoardCategoryCard({
         className={cn(
           "absolute inset-0",
           isFeatured
-            ? "bg-[linear-gradient(90deg,rgba(3,12,18,0.98)_0%,rgba(3,12,18,0.88)_42%,rgba(3,12,18,0.26)_74%,rgba(3,12,18,0.08)_100%)]"
-            : "bg-[linear-gradient(135deg,rgba(3,12,18,0.98)_0%,rgba(3,12,18,0.88)_34%,rgba(3,12,18,0.54)_58%,rgba(3,12,18,0.22)_100%)]",
+            ? "bg-[linear-gradient(90deg,rgba(3,12,18,0.92)_0%,rgba(3,12,18,0.62)_38%,rgba(3,12,18,0.14)_68%,rgba(3,12,18,0)_100%)]"
+            : "bg-[linear-gradient(135deg,rgba(3,12,18,0.9)_0%,rgba(3,12,18,0.66)_30%,rgba(3,12,18,0.24)_58%,rgba(3,12,18,0.04)_100%)]",
         )}
       />
       <span
