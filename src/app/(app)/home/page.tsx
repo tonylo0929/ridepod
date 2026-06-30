@@ -1797,7 +1797,7 @@ function HomePageContent() {
           <div className="pt-2 min-[720px]:pt-8">
             <p
               className={cn(
-                "text-[28px] font-serif leading-tight text-[var(--rp-text)] drop-shadow-[0_3px_10px_rgba(0,0,0,0.82)] min-[720px]:text-[42px]",
+                "text-[28px] font-serif leading-tight text-[var(--rp-primary)] drop-shadow-[0_3px_10px_rgba(0,0,0,0.82)] min-[720px]:text-[42px]",
               )}
             >
               {isAuthenticated ? (
