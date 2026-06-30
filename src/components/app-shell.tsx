@@ -136,8 +136,8 @@ function PremiumBottomNav() {
   const isLoggedIn = Boolean(user);
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-[90] min-h-[72px] border-t border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_96%,#02070d)] px-0 pb-[max(env(safe-area-inset-bottom),0.35rem)] shadow-[var(--rp-shadow-nav)] backdrop-blur-xl lg:hidden">
-      <div className="mx-auto grid max-w-md grid-cols-4 items-center">
+    <nav className="fixed bottom-0 left-1/2 z-[120] min-h-[72px] w-full max-w-md -translate-x-1/2 border-t border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_96%,#02070d)] px-0 pb-[max(env(safe-area-inset-bottom),0.35rem)] shadow-[var(--rp-shadow-nav)] backdrop-blur-xl lg:hidden">
+      <div className="grid grid-cols-4 items-center">
         <NavLink href="/home?tab=one_off" label="Search" icon={Search} compact />
         <NavLink href="/create" label="Create" icon={PlusCircle} compact />
         <NavLink href="/pods" label="My Ride" icon={CalendarCheck} compact requiresAuth isLoggedIn={isLoggedIn} hardNavigate />
