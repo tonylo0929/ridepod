@@ -504,7 +504,8 @@ function RideBoardCategoryCard({
           fill
           priority={priority}
           sizes="(max-width: 768px) 100vw, 560px"
-          className="absolute inset-0 h-full w-full object-cover object-right transition duration-300 group-hover:scale-[1.025]"
+          className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]"
+          style={{ objectPosition: "right bottom" }}
         />
         <span
           aria-hidden="true"
@@ -514,7 +515,7 @@ function RideBoardCategoryCard({
           aria-hidden="true"
           viewBox="0 0 260 252"
           preserveAspectRatio="none"
-          className="absolute inset-y-0 left-0 h-full w-[64%] text-[#05111e]"
+          className="absolute inset-y-0 left-0 h-full w-[69%] text-[#05111e]"
         >
           <path
             d="M0 0H211C216 18 203 31 194 43C181 60 188 77 203 87C218 98 214 117 199 129C184 141 182 159 196 172C209 184 206 204 193 215C181 226 181 240 191 252H0V0Z"
@@ -523,14 +524,14 @@ function RideBoardCategoryCard({
         </svg>
         <span
           aria-hidden="true"
-          className="absolute inset-y-0 left-0 w-[56%] bg-[radial-gradient(circle_at_20%_12%,rgba(101,230,208,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))]"
+          className="absolute inset-y-0 left-0 w-[61%] bg-[radial-gradient(circle_at_20%_12%,rgba(101,230,208,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))]"
         />
-        <span className="relative z-10 flex min-h-[252px] w-[58%] flex-col items-start px-5 py-5 min-[390px]:px-6">
+        <span className="relative z-10 flex min-h-[252px] w-[63%] flex-col items-start px-5 py-5 min-[390px]:px-6">
           <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--rp-primary)] min-[390px]:text-xs">
             <Star className="h-6 w-6 fill-current" />
             {category.eyebrow}
           </span>
-          <span className="mt-6 block text-[34px] font-black leading-[0.96] text-[#72E6D0] drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] min-[390px]:text-[38px]">
+          <span className="mt-6 block text-[31px] font-black leading-[0.96] text-[#72E6D0] drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] min-[390px]:text-[34px]">
             Today
             <br />
             Requests
