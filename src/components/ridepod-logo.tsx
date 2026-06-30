@@ -15,8 +15,8 @@ export function RidePodLogo({
       <Image
         src="/ridepod/darkmode-logo-transparent.png"
         alt="RidePod"
-        width={190}
-        height={48}
+        width={999}
+        height={273}
         priority={priority}
         className={cn("h-full w-auto object-contain", imageClassName)}
       />
