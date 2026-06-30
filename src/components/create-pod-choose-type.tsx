@@ -254,7 +254,7 @@ const podTypes: Array<{
   title: string;
   sublabel: string;
   description: string;
-  icon: "calendar" | "airport" | "repeat";
+  image: string;
   accent?: "airport";
 }> = [
   {
@@ -262,14 +262,14 @@ const podTypes: Array<{
     title: "Scheduled",
     sublabel: "",
     description: "For a single trip on a specific date and time.",
-    icon: "calendar",
+    image: "/images/ridepod/trip-types/scheduled.png",
   },
   {
     id: "airport",
     title: "Airport",
     sublabel: "",
     description: "Match around airport trips, flights, and luggage.",
-    icon: "airport",
+    image: "/images/ridepod/trip-types/airport.png",
     accent: "airport",
   },
   {
@@ -277,7 +277,7 @@ const podTypes: Array<{
     title: "Recurring",
     sublabel: "Repeat on specific days or a schedule.",
     description: "",
-    icon: "repeat",
+    image: "/images/ridepod/trip-types/recurring.png",
   },
 ];
 
@@ -1086,33 +1086,32 @@ function CreatePodTopBar({
   );
 }
 
-function TypeIcon({ type }: { type: "calendar" | "airport" | "repeat" }) {
-  if (type === "calendar") {
-    return (
-      <div className="relative h-14 w-14 shrink-0 text-[var(--rp-primary)]">
-        <div className="absolute left-2 top-3 h-10 w-10 rounded-[7px] border-[3px] border-current" />
-        <div className="absolute left-2 top-[24px] h-[3px] w-10 bg-current" />
-        <div className="absolute left-[18px] top-1 h-4 w-[3px] rounded-full bg-current" />
-        <div className="absolute left-[34px] top-1 h-4 w-[3px] rounded-full bg-current" />
-        <span className="absolute left-2 top-[25px] grid h-7 w-10 place-items-center text-[19px] font-black leading-none">
-          17
-        </span>
-      </div>
-    );
-  }
-
-  if (type === "airport") {
-    return (
-      <div className="relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl border border-cyan-300/30 bg-[radial-gradient(circle_at_35%_30%,rgba(103,232,249,0.28),rgba(88,28,135,0.16),rgba(7,17,26,0.52))] text-cyan-200 shadow-[0_0_28px_rgba(34,211,238,0.16)]">
-        <Plane className="-rotate-12 h-9 w-9 stroke-[1.9]" />
-      </div>
-    );
-  }
+function TypeArtwork({ item, selected }: { item: (typeof podTypes)[number]; selected: boolean }) {
+  const isAirport = item.accent === "airport";
 
   return (
-    <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl text-[var(--rp-primary)]">
-      <RefreshCcw className="h-11 w-11 stroke-[1.9]" />
-    </div>
+    <span
+      className={cn(
+        "relative h-[98px] w-[98px] shrink-0 overflow-hidden rounded-[22px] border bg-[var(--rp-card-soft)] shadow-[0_16px_32px_rgba(0,0,0,0.28)] min-[390px]:h-[108px] min-[390px]:w-[108px]",
+        selected
+          ? isAirport
+            ? "border-cyan-300/70 shadow-[0_0_24px_rgba(34,211,238,0.20)]"
+            : "border-[color-mix(in_srgb,var(--rp-primary)_72%,var(--rp-border))]"
+          : isAirport
+            ? "border-cyan-300/28"
+            : "border-[color-mix(in_srgb,var(--rp-primary)_30%,var(--rp-border))]",
+      )}
+      aria-hidden="true"
+    >
+      <Image
+        src={item.image}
+        alt=""
+        fill
+        sizes="(min-width: 390px) 108px, 98px"
+        className="object-cover"
+        priority={item.id === "airport"}
+      />
+    </span>
   );
 }
 
@@ -1134,7 +1133,7 @@ function PodTypeCard({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "group flex w-full items-center gap-4 rounded-[20px] border bg-[var(--rp-card)] p-4 text-left shadow-[var(--rp-shadow-soft)] transition",
+        "group flex min-h-[124px] w-full items-center gap-3 rounded-[22px] border bg-[var(--rp-card)] p-3 text-left shadow-[var(--rp-shadow-soft)] transition min-[390px]:gap-4 min-[390px]:p-4",
         "focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-focus)]",
         selected
           ? isAirport
@@ -1145,13 +1144,13 @@ function PodTypeCard({
             : "border-[var(--rp-border)] hover:border-[var(--rp-border-strong)]",
       )}
     >
-      <TypeIcon type={item.icon} />
+      <TypeArtwork item={item} selected={selected} />
       <span className="min-w-0 flex-1">
-        <span className="block text-base font-black text-[var(--rp-text)]">{item.title}</span>
+        <span className="block text-lg font-black leading-5 text-[var(--rp-text)]">{item.title}</span>
         {item.sublabel ? (
           <span
             className={cn(
-              "mt-1 block text-sm font-bold",
+              "mt-1.5 block text-sm font-bold leading-5",
               selected ? (isAirport ? "text-cyan-200" : "text-[var(--rp-primary)]") : "text-[var(--rp-muted)]",
             )}
           >
@@ -1159,7 +1158,7 @@ function PodTypeCard({
           </span>
         ) : null}
         {item.description ? (
-          <span className="mt-2 block text-sm leading-5 text-[var(--rp-muted)]">
+          <span className="mt-2 block text-sm font-semibold leading-5 text-[var(--rp-muted)]">
             {item.description}
           </span>
         ) : null}
