@@ -1800,7 +1800,7 @@ function HomePageContent() {
         </div>
 
         <div className="relative z-10">
-          <div className="-mx-4 px-4 pt-1 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+          <div className="px-3 pt-1 sm:px-5 min-[720px]:px-7">
             <p
               className={cn(
                 "text-[17px] font-black leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.82)] min-[720px]:text-2xl",
