@@ -484,6 +484,69 @@ function RideBoardCategoryCard({
     ? "border-[var(--rp-primary)]/54 shadow-[0_20px_48px_rgba(0,0,0,0.34),0_0_28px_rgba(242,193,91,0.12)]"
     : "border-[#98FBCB]/64 shadow-[0_20px_48px_rgba(0,0,0,0.34),0_0_30px_rgba(152,251,203,0.16)]";
 
+  if (isFeatured) {
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect(category.filter)}
+        aria-pressed={active}
+        aria-label={`Show ${category.label} ride requests`}
+        className={cn(
+          "group relative block min-h-[252px] w-full overflow-hidden rounded-[28px] border bg-[#071523] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
+          active
+            ? "border-[#65E6D0]/70 shadow-[0_22px_54px_rgba(0,0,0,0.38),0_0_34px_rgba(101,230,208,0.18)]"
+            : "border-white/18 shadow-[0_20px_48px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-[#65E6D0]/54",
+        )}
+      >
+        <Image
+          src={category.image}
+          alt=""
+          fill
+          priority={priority}
+          sizes="(max-width: 768px) 100vw, 560px"
+          className="absolute inset-0 h-full w-full object-cover object-right transition duration-300 group-hover:scale-[1.025]"
+        />
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,9,16,0.08)_0%,rgba(2,9,16,0)_46%,rgba(2,9,16,0.08)_100%)]"
+        />
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 260 252"
+          preserveAspectRatio="none"
+          className="absolute inset-y-0 left-0 h-full w-[64%] text-[#05111e]"
+        >
+          <path
+            d="M0 0H211C216 18 203 31 194 43C181 60 188 77 203 87C218 98 214 117 199 129C184 141 182 159 196 172C209 184 206 204 193 215C181 226 181 240 191 252H0V0Z"
+            fill="currentColor"
+          />
+        </svg>
+        <span
+          aria-hidden="true"
+          className="absolute inset-y-0 left-0 w-[56%] bg-[radial-gradient(circle_at_20%_12%,rgba(101,230,208,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))]"
+        />
+        <span className="relative z-10 flex min-h-[252px] w-[58%] flex-col items-start px-5 py-5 min-[390px]:px-6">
+          <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--rp-primary)] min-[390px]:text-xs">
+            <Star className="h-6 w-6 fill-current" />
+            {category.eyebrow}
+          </span>
+          <span className="mt-6 block text-[34px] font-black leading-[0.96] text-[#72E6D0] drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] min-[390px]:text-[38px]">
+            Today
+            <br />
+            Requests
+          </span>
+          <span className="mt-5 block max-w-[10rem] text-[16px] font-semibold leading-[1.35] text-white/82 min-[390px]:text-[17px]">
+            {category.subtitle}
+          </span>
+          <span className="mt-auto inline-flex min-h-11 min-w-[148px] items-center justify-center gap-2 whitespace-nowrap rounded-[20px] bg-[#63E2CF] px-4 text-[13px] font-black text-[#061321] shadow-[0_14px_30px_rgba(99,226,207,0.22)] transition group-hover:bg-[#7EF1DE] min-[390px]:text-sm">
+            {category.ctaLabel}
+            <ChevronRight className="h-6 w-6" />
+          </span>
+        </span>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -492,7 +555,7 @@ function RideBoardCategoryCard({
       aria-label={`Show ${category.label} ride requests`}
       className={cn(
         "group relative block w-full overflow-hidden border bg-[rgba(5,18,26,0.92)] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#98FBCB] active:translate-y-0",
-        isFeatured ? "min-h-[216px] rounded-[28px] p-5" : "aspect-[1/1.08] rounded-[24px] p-3.5",
+        "aspect-[1/1.08] rounded-[24px] p-3.5",
         active ? ringClassName : isGold ? "border-[var(--rp-primary)]/38" : "border-[#98FBCB]/22",
         !active && "shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.05)] hover:border-[#98FBCB]/44 hover:shadow-[0_20px_48px_rgba(0,0,0,0.32),0_0_24px_rgba(152,251,203,0.10)]",
       )}
@@ -502,21 +565,13 @@ function RideBoardCategoryCard({
         alt=""
         fill
         priority={priority}
-        sizes={isFeatured ? "(max-width: 768px) 100vw, 560px" : "(max-width: 768px) 50vw, 270px"}
-        className={cn(
-          "absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]",
-          isFeatured ? "opacity-100" : "opacity-95",
-        )}
+        sizes="(max-width: 768px) 50vw, 270px"
+        className="absolute inset-0 h-full w-full object-cover opacity-95 transition duration-300 group-hover:scale-[1.025]"
         style={{ objectPosition: category.objectPosition }}
       />
       <span
         aria-hidden="true"
-        className={cn(
-          "absolute inset-0",
-          isFeatured
-            ? "bg-[linear-gradient(90deg,rgba(3,12,18,0.98)_0%,rgba(3,12,18,0.96)_37%,rgba(3,12,18,0.68)_52%,rgba(3,12,18,0.12)_72%,rgba(3,12,18,0)_100%)]"
-            : "bg-[linear-gradient(135deg,rgba(3,12,18,0.82)_0%,rgba(3,12,18,0.58)_32%,rgba(3,12,18,0.18)_62%,rgba(3,12,18,0.02)_100%)]",
-        )}
+        className="absolute inset-0 bg-[linear-gradient(135deg,rgba(3,12,18,0.82)_0%,rgba(3,12,18,0.58)_32%,rgba(3,12,18,0.18)_62%,rgba(3,12,18,0.02)_100%)]"
       />
       <span
         aria-hidden="true"
@@ -527,53 +582,27 @@ function RideBoardCategoryCard({
             : "bg-[radial-gradient(circle_at_86%_80%,rgba(152,251,203,0.16),transparent_40%)]",
         )}
       />
-      {isFeatured ? (
-        <span aria-hidden="true" className="absolute inset-y-5 left-0 w-1.5 rounded-r-full bg-[#98FBCB] shadow-[0_0_18px_rgba(152,251,203,0.58)]" />
-      ) : null}
-
-      <span className={cn("relative z-10 flex h-full flex-col items-start", isFeatured ? "max-w-[68%]" : "min-h-full")}>
-        {isFeatured ? (
-          <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">
-            <Star className="h-4 w-4 fill-current" />
-            {category.eyebrow}
-          </span>
-        ) : null}
+      <span className="relative z-10 flex min-h-full flex-col items-start">
         <span
-          className={cn(
-            "block font-black leading-tight",
-            accentClassName,
-            isFeatured ? "mt-3 text-[18px] min-[390px]:text-[21px]" : "text-[14px] min-[390px]:text-[16px]",
-          )}
+          className={cn("block text-[14px] font-black leading-tight min-[390px]:text-[16px]", accentClassName)}
         >
           {category.label}
         </span>
-        <span
-          className={cn(
-            "block font-semibold leading-5 text-white/82",
-            isFeatured ? "mt-1.5 text-[11px] min-[390px]:text-xs" : "mt-1 max-w-[8rem] text-[10px] min-[390px]:text-[11px]",
-          )}
-        >
+        <span className="mt-1 block max-w-[8rem] text-[10px] font-semibold leading-5 text-white/82 min-[390px]:text-[11px]">
           {category.subtitle}
         </span>
 
-        {isFeatured ? (
-          <span className="mt-3 inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[#98FBCB]/38 bg-[#98FBCB]/12 px-3 text-[11px] font-black text-[#98FBCB] transition group-hover:bg-[#98FBCB]/18">
-            {category.ctaLabel}
-            <ChevronRight className="h-4 w-4" />
-          </span>
-        ) : (
-          <span
-            className={cn(
-              "mt-auto grid h-10 w-10 place-items-center rounded-full border transition group-hover:scale-105",
-              isGold
-                ? "border-[var(--rp-primary)]/48 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]"
-                : "border-[#98FBCB]/36 bg-[#98FBCB]/12 text-[#98FBCB]",
-            )}
-            aria-hidden="true"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </span>
-        )}
+        <span
+          className={cn(
+            "mt-auto grid h-10 w-10 place-items-center rounded-full border transition group-hover:scale-105",
+            isGold
+              ? "border-[var(--rp-primary)]/48 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]"
+              : "border-[#98FBCB]/36 bg-[#98FBCB]/12 text-[#98FBCB]",
+          )}
+          aria-hidden="true"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </span>
       </span>
     </button>
   );
