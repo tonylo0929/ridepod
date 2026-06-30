@@ -1298,22 +1298,22 @@ export default function RideBoardPage() {
         className="absolute inset-0 bg-[linear-gradient(90deg,rgba(152,251,203,0.045)_1px,transparent_1px),linear-gradient(180deg,rgba(152,251,203,0.035)_1px,transparent_1px)] bg-[size:44px_44px] opacity-[0.13]"
         aria-hidden="true"
       />
-      <div className="relative z-10 mx-auto grid w-full max-w-[560px] gap-4 px-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-5 sm:px-6 lg:max-w-3xl lg:pb-8 lg:pt-8">
-        <section className="flex items-end justify-between gap-3">
+      <div className="relative z-10 mx-auto grid w-full max-w-[560px] gap-5 px-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-6 sm:px-6 lg:max-w-3xl lg:pb-8 lg:pt-8">
+        <section className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="text-left text-[42px] font-black leading-none tracking-tight text-[var(--rp-text)] min-[390px]:text-[52px]">
+            <h1 className="whitespace-nowrap text-left text-[38px] font-black leading-none tracking-[-0.02em] text-[var(--rp-text)] min-[390px]:text-[44px]">
               Ride Board
             </h1>
-            <p className="mt-2 text-base font-semibold leading-6 text-[#98FBCB]/86">
+            <p className="mt-2 text-[16px] font-semibold leading-5 text-white/62 min-[390px]:text-[17px]">
               Find a ride. Share the journey.
             </p>
           </div>
           <button
             type="button"
             onClick={() => setActiveFilter("all")}
-            className="mb-1 inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[var(--rp-primary)]/42 bg-[var(--rp-primary)]/10 px-4 text-sm font-black text-[var(--rp-primary)] shadow-[0_12px_28px_rgba(242,193,91,0.10)] transition hover:bg-[var(--rp-primary)]/14"
+            className="mt-0.5 inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full border border-[#0fb7a8]/72 bg-[#0fb7a8]/8 px-4 text-[15px] font-black text-[#20d6c4] shadow-[0_0_26px_rgba(15,183,168,0.12)] transition hover:bg-[#0fb7a8]/14 min-[390px]:px-5"
           >
-            <SlidersHorizontal className="h-4 w-4" />
+            <SlidersHorizontal className="h-5 w-5" />
             Filters
           </button>
         </section>
