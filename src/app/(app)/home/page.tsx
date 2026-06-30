@@ -1792,24 +1792,25 @@ function HomePageContent() {
           );
         })}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,transparent,var(--rp-bg))]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(3,9,15,0.82),rgba(3,9,15,0.38)_58%,transparent)]" />
 
         <div className="relative z-10">
-          <div className="inline-block max-w-[270px] rounded-[22px] border border-white/10 bg-[rgba(2,10,18,0.66)] px-4 py-3 shadow-[0_18px_46px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[5px] min-[720px]:mt-8 min-[720px]:max-w-[360px] min-[720px]:rounded-[26px] min-[720px]:px-5 min-[720px]:py-4">
+          <div className="-mx-4 px-4 pt-1 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
             <p
               className={cn(
-                "text-[28px] font-serif leading-tight text-[var(--rp-primary)] drop-shadow-[0_3px_10px_rgba(0,0,0,0.82)] min-[720px]:text-[42px]",
+                "text-[17px] font-black leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.82)] min-[720px]:text-2xl",
               )}
             >
               {isAuthenticated ? (
                 <>
-                  <span className="block">{heroGreeting},</span>
-                  <span className="block break-words">{displayName}</span>
+                  <span>{heroGreeting}, </span>
+                  <span className="break-words">{displayName}</span>
                 </>
               ) : (
                 "Your ride, together."
               )}
             </p>
-            <p className="mt-1.5 text-sm font-semibold text-[var(--rp-muted-strong)] min-[720px]:mt-2 min-[720px]:text-lg">
+            <p className="mt-0.5 text-xs font-semibold text-white/70 drop-shadow-[0_2px_7px_rgba(0,0,0,0.74)] min-[720px]:text-sm">
               {isAuthenticated ? "Your ride, together." : "First Local Shared Ride in Hong Kong"}
             </p>
           </div>
