@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/components/ui";
 import { RidePodAvatar, useRidePodAvatarPreference } from "@/components/animal-avatar";
+import { RidePodLogo } from "@/components/ridepod-logo";
 import { getMembershipTierInfo, useRidePodMembershipState } from "@/lib/ridepod-membership";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -188,10 +189,14 @@ export function HomeMenuDrawer() {
               </button>
             </div>
 
+            <div className="mt-1 flex justify-center">
+              <RidePodLogo className="h-9" priority />
+            </div>
+
             <Link
               href={profileHref}
               onClick={closeDrawer}
-              className="ridepod-drawer-profile mt-2 flex items-center gap-3 rounded-2xl border p-3 transition"
+              className="ridepod-drawer-profile mt-4 flex items-center gap-3 rounded-2xl border p-3 transition"
             >
               <RidePodAvatar
                 avatarUrl={profile?.avatar_url}
