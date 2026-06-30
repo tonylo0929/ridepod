@@ -1822,6 +1822,15 @@ function HomePageContent() {
 
           <div className="h-[170px] min-[720px]:h-[190px]" aria-hidden="true" />
 
+          {showRideRecommendations ? (
+            <div className="mx-auto mb-5 w-full max-w-[560px]">
+              <RideModeSwitch
+                value={rideModeFilter === "ride_app" ? "ride_app" : "taxi"}
+                onChange={handleRideModeChange}
+              />
+            </div>
+          ) : null}
+
           <div
             className={cn(
               "mx-auto grid w-full max-w-[560px] grid-cols-4 gap-1.5 pb-1 min-[390px]:gap-2",
@@ -1839,15 +1848,6 @@ function HomePageContent() {
               />
             ))}
           </div>
-
-          {showRideRecommendations ? (
-            <div className="mx-auto mt-5 w-full max-w-[560px]">
-              <RideModeSwitch
-                value={rideModeFilter === "ride_app" ? "ride_app" : "taxi"}
-                onChange={handleRideModeChange}
-              />
-            </div>
-          ) : null}
         </div>
       </section>
 
