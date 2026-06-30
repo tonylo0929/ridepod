@@ -141,7 +141,7 @@ const rideBoardCategories: Array<{
     id: "late-night",
     label: "Late Night",
     subtitle: "Safe rides. Anytime.",
-    image: "/images/ride-board/late-night.png",
+    image: "/images/ride-board/late-night-poster.png",
     filter: "late_night",
     objectPosition: "right bottom",
   },
@@ -149,7 +149,7 @@ const rideBoardCategories: Array<{
     id: "others",
     label: "Others",
     subtitle: "Flexible rides. Your way.",
-    image: "/images/ride-board/others.png",
+    image: "/images/ride-board/others-poster.png",
     filter: "others",
     objectPosition: "right bottom",
     tone: "gold",
@@ -524,10 +524,9 @@ function RideBoardCategoryCard({
         )}
       >
         <Image
-          src={`${category.image}?v=poster-art-20260630`}
+          src={category.image}
           alt=""
           fill
-          unoptimized
           priority={priority}
           sizes="(max-width: 768px) 100vw, 560px"
           className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.018]"
