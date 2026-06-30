@@ -79,12 +79,12 @@ function selectedDateLabel(date: string) {
 
 function GuestMyRideIntro() {
   return (
-    <section className="relative isolate min-h-[calc(100dvh-170px)] overflow-hidden rounded-[30px] border border-[color-mix(in_srgb,var(--rp-border)_82%,white_8%)] bg-[radial-gradient(circle_at_22%_14%,rgba(245,188,73,0.22),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.018)),var(--rp-card)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.42)] min-[390px]:p-6">
+    <section className="relative isolate overflow-hidden rounded-[30px] border border-[color-mix(in_srgb,var(--rp-border)_82%,white_8%)] bg-[radial-gradient(circle_at_22%_14%,rgba(245,188,73,0.22),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.018)),var(--rp-card)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.42)] min-[390px]:p-6">
       <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-[color-mix(in_srgb,var(--rp-primary)_24%,transparent)] blur-3xl" />
       <div className="pointer-events-none absolute -bottom-20 left-6 h-44 w-44 rounded-full bg-cyan-300/12 blur-3xl" />
 
-      <div className="relative z-10 flex min-h-[calc(100dvh-222px)] flex-col justify-between gap-8">
-        <div className="grid gap-5 pt-2">
+      <div className="relative z-10 grid gap-7">
+        <div className="grid gap-5 pt-1">
           <span className="grid h-14 w-14 place-items-center rounded-[20px] border border-[color-mix(in_srgb,var(--rp-primary)_40%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] text-[var(--rp-primary)] shadow-[0_18px_34px_rgba(245,188,73,0.12)]">
             <CalendarDays className="h-6 w-6" />
           </span>
@@ -119,7 +119,7 @@ function GuestMyRideIntro() {
             </Link>
           </p>
 
-          <div className="mt-2 flex items-start gap-2 rounded-[18px] border border-white/10 bg-white/[0.045] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+          <div className="mt-1 flex items-start gap-2 rounded-[18px] border border-white/10 bg-white/[0.045] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rp-primary)]" />
             <span>Your private ride calendar appears after you log in.</span>
           </div>
