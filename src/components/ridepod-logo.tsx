@@ -13,7 +13,7 @@ export function RidePodLogo({
   return (
     <span className={cn("inline-flex h-8 items-center", className)} aria-label="RidePod">
       <Image
-        src="/ridepod/darkmode-logo-transparent.png"
+        src="/ridepod/gold-logo-wordmark.png"
         alt="RidePod"
         width={999}
         height={273}
