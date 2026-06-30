@@ -1092,7 +1092,7 @@ function TypeArtwork({ item, selected }: { item: (typeof podTypes)[number]; sele
   return (
     <span
       className={cn(
-        "relative h-[76px] w-[76px] shrink-0 overflow-hidden rounded-[18px] border bg-[var(--rp-card-soft)] shadow-[0_12px_26px_rgba(0,0,0,0.24)]",
+        "relative h-[98px] w-[98px] shrink-0 overflow-hidden rounded-[22px] border bg-[var(--rp-card-soft)] shadow-[0_16px_32px_rgba(0,0,0,0.28)] min-[390px]:h-[108px] min-[390px]:w-[108px]",
         selected
           ? isAirport
             ? "border-cyan-300/70 shadow-[0_0_24px_rgba(34,211,238,0.20)]"
@@ -1107,7 +1107,7 @@ function TypeArtwork({ item, selected }: { item: (typeof podTypes)[number]; sele
         src={item.image}
         alt=""
         fill
-        sizes="76px"
+        sizes="(min-width: 390px) 108px, 98px"
         className="object-cover"
         priority={item.id === "airport"}
       />
@@ -1133,7 +1133,7 @@ function PodTypeCard({
       aria-checked={selected}
       onClick={onSelect}
       className={cn(
-        "group flex w-full items-center gap-4 rounded-[20px] border bg-[var(--rp-card)] p-4 text-left shadow-[var(--rp-shadow-soft)] transition",
+        "group flex min-h-[124px] w-full items-center gap-3 rounded-[22px] border bg-[var(--rp-card)] p-3 text-left shadow-[var(--rp-shadow-soft)] transition min-[390px]:gap-4 min-[390px]:p-4",
         "focus-visible:outline focus-visible:outline-3 focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-focus)]",
         selected
           ? isAirport
@@ -1146,11 +1146,11 @@ function PodTypeCard({
     >
       <TypeArtwork item={item} selected={selected} />
       <span className="min-w-0 flex-1">
-        <span className="block text-base font-black text-[var(--rp-text)]">{item.title}</span>
+        <span className="block text-lg font-black leading-5 text-[var(--rp-text)]">{item.title}</span>
         {item.sublabel ? (
           <span
             className={cn(
-              "mt-1 block text-sm font-bold",
+              "mt-1.5 block text-sm font-bold leading-5",
               selected ? (isAirport ? "text-cyan-200" : "text-[var(--rp-primary)]") : "text-[var(--rp-muted)]",
             )}
           >
@@ -1158,7 +1158,7 @@ function PodTypeCard({
           </span>
         ) : null}
         {item.description ? (
-          <span className="mt-2 block text-sm leading-5 text-[var(--rp-muted)]">
+          <span className="mt-2 block text-sm font-semibold leading-5 text-[var(--rp-muted)]">
             {item.description}
           </span>
         ) : null}
