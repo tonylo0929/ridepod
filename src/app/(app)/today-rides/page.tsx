@@ -440,8 +440,8 @@ function RideBoardCategoryArtwork({
 }) {
   const featuredCategory = rideBoardCategories.find((category) => category.featured);
   const secondaryCategories = rideBoardCategories.filter((category) => !category.featured);
-  const commuteCategory = secondaryCategories.find((category) => category.id === "commute");
-  const compactCategories = secondaryCategories.filter((category) => category.id !== "commute");
+  const showcaseCategoryIds = new Set(["commute", "late-night", "others"]);
+  const compactCategories = secondaryCategories.filter((category) => !showcaseCategoryIds.has(category.id));
 
   return (
     <section aria-label="Ride Board categories" className="grid gap-3">
@@ -454,25 +454,34 @@ function RideBoardCategoryArtwork({
         />
       ) : null}
 
-      {commuteCategory ? (
-        <RideBoardCategoryCard
-          category={commuteCategory}
-          active={activeFilter === commuteCategory.filter}
-          onSelect={onCategorySelect}
-          priority
-        />
-      ) : null}
+      {secondaryCategories.map((category) => {
+        if (showcaseCategoryIds.has(category.id)) {
+          return (
+            <RideBoardCategoryCard
+              key={category.id}
+              category={category}
+              active={activeFilter === category.filter}
+              onSelect={onCategorySelect}
+              priority
+            />
+          );
+        }
 
-      <div className="grid grid-cols-2 gap-3 max-[340px]:grid-cols-1">
-        {compactCategories.map((category) => (
-          <RideBoardCategoryCard
-            key={category.id}
-            category={category}
-            active={activeFilter === category.filter}
-            onSelect={onCategorySelect}
-          />
-        ))}
-      </div>
+        if (category !== compactCategories[0]) return null;
+
+        return (
+          <div key="compact-categories" className="grid grid-cols-2 gap-3 max-[340px]:grid-cols-1">
+            {compactCategories.map((compactCategory) => (
+              <RideBoardCategoryCard
+                key={compactCategory.id}
+                category={compactCategory}
+                active={activeFilter === compactCategory.filter}
+                onSelect={onCategorySelect}
+              />
+            ))}
+          </div>
+        );
+      })}
     </section>
   );
 }
@@ -490,11 +499,46 @@ function RideBoardCategoryCard({
 }) {
   const isFeatured = category.featured === true;
   const isCommute = category.id === "commute";
+  const isPosterArt = category.id === "late-night" || category.id === "others";
   const isGold = category.tone === "gold";
   const accentClassName = isGold ? "text-[var(--rp-primary)]" : "text-[#98FBCB]";
   const ringClassName = isGold
     ? "border-[var(--rp-primary)]/54 shadow-[0_20px_48px_rgba(0,0,0,0.34),0_0_28px_rgba(242,193,91,0.12)]"
     : "border-[#98FBCB]/64 shadow-[0_20px_48px_rgba(0,0,0,0.34),0_0_30px_rgba(152,251,203,0.16)]";
+
+  if (isPosterArt) {
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect(category.filter)}
+        aria-pressed={active}
+        aria-label={`Show ${category.label} ride requests`}
+        className={cn(
+          "group relative block aspect-square w-full overflow-hidden rounded-[30px] border bg-[#030b12] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 active:translate-y-0",
+          isGold ? "focus-visible:ring-[var(--rp-primary)]" : "focus-visible:ring-[#65E6D0]",
+          active
+            ? isGold
+              ? "border-[var(--rp-primary)]/60 shadow-[0_22px_54px_rgba(0,0,0,0.38),0_0_34px_rgba(242,193,91,0.16)]"
+              : "border-[#65E6D0]/70 shadow-[0_22px_54px_rgba(0,0,0,0.38),0_0_34px_rgba(101,230,208,0.18)]"
+            : "border-transparent shadow-[0_20px_50px_rgba(0,0,0,0.34)] hover:border-white/14",
+        )}
+      >
+        <Image
+          src={`${category.image}?v=poster-art-20260630`}
+          alt=""
+          fill
+          unoptimized
+          priority={priority}
+          sizes="(max-width: 768px) 100vw, 560px"
+          className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.018]"
+          style={{ objectPosition: "center center" }}
+        />
+        <span className="sr-only">
+          {category.label}. {category.subtitle}
+        </span>
+      </button>
+    );
+  }
 
   if (isFeatured) {
     return (
