@@ -440,8 +440,6 @@ function RideBoardCategoryArtwork({
 }) {
   const featuredCategory = rideBoardCategories.find((category) => category.featured);
   const secondaryCategories = rideBoardCategories.filter((category) => !category.featured);
-  const showcaseCategoryIds = new Set(["commute", "late-night", "others"]);
-  const compactCategories = secondaryCategories.filter((category) => !showcaseCategoryIds.has(category.id));
 
   return (
     <section aria-label="Ride Board categories" className="grid gap-3">
@@ -454,34 +452,17 @@ function RideBoardCategoryArtwork({
         />
       ) : null}
 
-      {secondaryCategories.map((category) => {
-        if (showcaseCategoryIds.has(category.id)) {
-          return (
-            <RideBoardCategoryCard
-              key={category.id}
-              category={category}
-              active={activeFilter === category.filter}
-              onSelect={onCategorySelect}
-              priority
-            />
-          );
-        }
-
-        if (category !== compactCategories[0]) return null;
-
-        return (
-          <div key="compact-categories" className="grid grid-cols-2 gap-3 max-[340px]:grid-cols-1">
-            {compactCategories.map((compactCategory) => (
-              <RideBoardCategoryCard
-                key={compactCategory.id}
-                category={compactCategory}
-                active={activeFilter === compactCategory.filter}
-                onSelect={onCategorySelect}
-              />
-            ))}
-          </div>
-        );
-      })}
+      <div className="grid grid-cols-2 gap-3 max-[340px]:grid-cols-1">
+        {secondaryCategories.map((category) => (
+          <RideBoardCategoryCard
+            key={category.id}
+            category={category}
+            active={activeFilter === category.filter}
+            onSelect={onCategorySelect}
+            priority={category.id === "commute" || category.id === "events"}
+          />
+        ))}
+      </div>
     </section>
   );
 }
@@ -498,7 +479,6 @@ function RideBoardCategoryCard({
   priority?: boolean;
 }) {
   const isFeatured = category.featured === true;
-  const isCommute = category.id === "commute";
   const isPosterArt = category.id === "late-night" || category.id === "others";
   const isGold = category.tone === "gold";
   const accentClassName = isGold ? "text-[var(--rp-primary)]" : "text-[#98FBCB]";
@@ -514,7 +494,7 @@ function RideBoardCategoryCard({
         aria-pressed={active}
         aria-label={`Show ${category.label} ride requests`}
         className={cn(
-          "group relative block aspect-square w-full overflow-hidden rounded-[30px] border bg-[#030b12] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 active:translate-y-0",
+          "group relative block aspect-square w-full overflow-hidden rounded-[24px] border bg-[#030b12] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 active:translate-y-0",
           isGold ? "focus-visible:ring-[var(--rp-primary)]" : "focus-visible:ring-[#65E6D0]",
           active
             ? isGold
@@ -528,7 +508,7 @@ function RideBoardCategoryCard({
           alt=""
           fill
           priority={priority}
-          sizes="(max-width: 768px) 100vw, 560px"
+          sizes="(max-width: 768px) 50vw, 280px"
           className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.018]"
           style={{ objectPosition: "center center" }}
         />
@@ -603,60 +583,6 @@ function RideBoardCategoryCard({
     );
   }
 
-  if (isCommute) {
-    return (
-      <button
-        type="button"
-        onClick={() => onSelect(category.filter)}
-        aria-pressed={active}
-        aria-label={`Show ${category.label} ride requests`}
-        className={cn(
-          "group relative block aspect-square w-full overflow-hidden rounded-[30px] border bg-[#06111b] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
-          active
-            ? "border-[#65E6D0]/70 shadow-[0_22px_54px_rgba(0,0,0,0.38),0_0_34px_rgba(101,230,208,0.18)]"
-            : "border-[#203544] shadow-[0_20px_50px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-[#65E6D0]/54",
-        )}
-      >
-        <Image
-          src={category.image}
-          alt=""
-          fill
-          priority={priority}
-          sizes="(max-width: 768px) 100vw, 560px"
-          className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]"
-          style={{ objectPosition: "center bottom" }}
-        />
-        <span
-          aria-hidden="true"
-          className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,9,15,0.98)_0%,rgba(2,9,15,0.92)_25%,rgba(2,9,15,0.26)_48%,rgba(2,9,15,0.04)_70%,rgba(2,9,15,0.28)_100%)]"
-        />
-        <span
-          aria-hidden="true"
-          className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(101,230,208,0.12),transparent_30%)]"
-        />
-        <span className="relative z-10 flex h-full flex-col items-start p-7 min-[390px]:p-8">
-          <span className="block text-[40px] font-black leading-none text-[#55DCC8] drop-shadow-[0_2px_12px_rgba(0,0,0,0.48)] min-[390px]:text-[46px]">
-            {category.label}
-          </span>
-          <span className="mt-5 block max-w-[13rem] text-[24px] font-medium leading-[1.22] text-white/92 min-[390px]:text-[27px]">
-            Daily rides.
-            <br />
-            Better together.
-          </span>
-          <span
-            className={cn(
-              "mt-auto grid h-20 w-20 place-items-center rounded-full border text-[#55DCC8] shadow-[0_16px_36px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] transition group-hover:scale-105 min-[390px]:h-24 min-[390px]:w-24",
-              active ? "border-[#65E6D0]/56 bg-[#65E6D0]/16" : "border-[#65E6D0]/24 bg-[#06111b]/72",
-            )}
-            aria-hidden="true"
-          >
-            <ChevronRight className="h-12 w-12 stroke-[3] min-[390px]:h-14 min-[390px]:w-14" />
-          </span>
-        </span>
-      </button>
-    );
-  }
-
   return (
     <button
       type="button"
@@ -665,7 +591,7 @@ function RideBoardCategoryCard({
       aria-label={`Show ${category.label} ride requests`}
       className={cn(
         "group relative block w-full overflow-hidden border bg-[rgba(5,18,26,0.92)] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#98FBCB] active:translate-y-0",
-        "aspect-[1/1.08] rounded-[24px] p-3.5",
+        "aspect-square rounded-[24px] p-3.5 min-[390px]:p-4",
         active ? ringClassName : isGold ? "border-[var(--rp-primary)]/38" : "border-[#98FBCB]/22",
         !active && "shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.05)] hover:border-[#98FBCB]/44 hover:shadow-[0_20px_48px_rgba(0,0,0,0.32),0_0_24px_rgba(152,251,203,0.10)]",
       )}
@@ -675,13 +601,13 @@ function RideBoardCategoryCard({
         alt=""
         fill
         priority={priority}
-        sizes="(max-width: 768px) 50vw, 270px"
+        sizes="(max-width: 768px) 50vw, 280px"
         className="absolute inset-0 h-full w-full object-cover opacity-95 transition duration-300 group-hover:scale-[1.025]"
         style={{ objectPosition: category.objectPosition }}
       />
       <span
         aria-hidden="true"
-        className="absolute inset-0 bg-[linear-gradient(135deg,rgba(3,12,18,0.82)_0%,rgba(3,12,18,0.58)_32%,rgba(3,12,18,0.18)_62%,rgba(3,12,18,0.02)_100%)]"
+        className="absolute inset-0 bg-[linear-gradient(135deg,rgba(3,12,18,0.90)_0%,rgba(3,12,18,0.72)_30%,rgba(3,12,18,0.22)_62%,rgba(3,12,18,0.06)_100%)]"
       />
       <span
         aria-hidden="true"
@@ -694,24 +620,24 @@ function RideBoardCategoryCard({
       />
       <span className="relative z-10 flex min-h-full flex-col items-start">
         <span
-          className={cn("block text-[14px] font-black leading-tight min-[390px]:text-[16px]", accentClassName)}
+          className={cn("block text-[18px] font-black leading-tight min-[390px]:text-[20px]", accentClassName)}
         >
           {category.label}
         </span>
-        <span className="mt-1 block max-w-[8rem] text-[10px] font-semibold leading-5 text-white/82 min-[390px]:text-[11px]">
+        <span className="mt-2 block max-w-[8.6rem] text-[12px] font-semibold leading-[1.45] text-white/86 min-[390px]:text-[13px]">
           {category.subtitle}
         </span>
 
         <span
           className={cn(
-            "mt-auto grid h-10 w-10 place-items-center rounded-full border transition group-hover:scale-105",
+            "mt-auto grid h-12 w-12 place-items-center rounded-full border transition group-hover:scale-105",
             isGold
               ? "border-[var(--rp-primary)]/48 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]"
               : "border-[#98FBCB]/36 bg-[#98FBCB]/12 text-[#98FBCB]",
           )}
           aria-hidden="true"
         >
-          <ChevronRight className="h-5 w-5" />
+          <ChevronRight className="h-7 w-7 stroke-[2.7]" />
         </span>
       </span>
     </button>
