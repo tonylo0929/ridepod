@@ -171,7 +171,7 @@ function PremiumTopNav() {
           {showRideBoardLogo ? (
             <span className="relative inline-flex h-9 w-[120px] items-center overflow-hidden rounded-md">
               <Image
-                src="/ridepod/rideboard-logo.png"
+                src="/ridepod/rideboard-logo-wordmark.png"
                 alt="RidePod"
                 width={320}
                 height={80}
