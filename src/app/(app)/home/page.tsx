@@ -1833,11 +1833,20 @@ function HomePageContent() {
               />
             ))}
           </div>
+
+          {showRideRecommendations ? (
+            <div className="mx-auto mt-5 w-full max-w-[560px]">
+              <RideModeSwitch
+                value={rideModeFilter === "ride_app" ? "ride_app" : "taxi"}
+                onChange={handleRideModeChange}
+              />
+            </div>
+          ) : null}
         </div>
       </section>
 
       {showRideRecommendations ? (
-        <section className="relative mt-5 px-4 sm:px-6 lg:px-10">
+        <section className="relative mt-4 px-4 sm:px-6 lg:px-10">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h1 className="whitespace-nowrap text-base font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
             <div className="flex shrink-0 items-center gap-2">
@@ -1865,11 +1874,6 @@ function HomePageContent() {
               </button>
             </div>
           </div>
-
-          <RideModeSwitch
-            value={rideModeFilter === "ride_app" ? "ride_app" : "taxi"}
-            onChange={handleRideModeChange}
-          />
 
           <div className="grid gap-3">
             {visibleRides.length > 0 ? (
