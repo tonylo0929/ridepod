@@ -596,7 +596,7 @@ function RideModeSwitch({
   ];
 
   return (
-    <div className="mb-5 grid justify-items-center">
+    <div className="grid justify-items-center">
       <div className="w-full max-w-[600px] rounded-[34px] p-1.5">
         <div className="relative grid grid-cols-2 rounded-full border border-white/25 bg-[rgba(248,250,252,0.92)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
         {options.map((option) => {
@@ -1739,14 +1739,33 @@ function HomePageContent() {
   const showRideRecommendations = true;
   return (
     <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-1.25rem)] overflow-x-hidden pb-[calc(9rem+env(safe-area-inset-bottom))] sm:-mx-6 lg:-mx-10 lg:-mt-8 lg:pb-8">
-      <section className="relative overflow-hidden px-4 pb-7 pt-7 sm:px-6 lg:px-10">
+      <section className="relative overflow-hidden px-4 pb-7 pt-6 sm:px-6 lg:px-10">
         <div
           aria-hidden="true"
           className="absolute inset-0 bg-[#04101a]"
         />
+        <div className="relative z-10 mx-auto w-full max-w-[560px] px-3 pb-3 sm:px-5 min-[720px]:px-7">
+          <p
+            className={cn(
+              "text-[17px] font-black leading-tight text-white min-[720px]:text-2xl",
+            )}
+          >
+            {isAuthenticated ? (
+              <>
+                <span>{heroGreeting}, </span>
+                <span className="break-words">{displayName}</span>
+              </>
+            ) : (
+              "Your ride, together."
+            )}
+          </p>
+          <p className="mt-0.5 text-xs font-semibold text-white/70 min-[720px]:text-sm">
+            {isAuthenticated ? "Your ride, together." : "First Local Shared Ride in Hong Kong"}
+          </p>
+        </div>
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-3 top-3 h-[248px] overflow-hidden rounded-[28px] border border-white/10 bg-[#071018] shadow-[0_18px_48px_rgba(0,0,0,0.42)] sm:inset-x-6 min-[720px]:top-5 min-[720px]:h-[290px] lg:inset-x-10"
+          className="pointer-events-none relative z-0 mx-auto h-[210px] w-full max-w-[560px] overflow-hidden rounded-[28px] border border-white/10 bg-[#071018] shadow-[0_18px_48px_rgba(0,0,0,0.42)] min-[720px]:h-[260px]"
         >
           {heroBackgroundModes.map((mode) => {
             const background = homeHeroBackgrounds[mode];
@@ -1795,35 +1814,13 @@ function HomePageContent() {
               </div>
             );
           })}
-          <div className="absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,transparent,var(--rp-bg))]" />
-          <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(3,9,15,0.82),rgba(3,9,15,0.38)_58%,transparent)]" />
+          <div className="absolute inset-x-0 bottom-0 h-10 bg-[linear-gradient(180deg,transparent,var(--rp-bg))] min-[720px]:h-20" />
+          <div className="absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,rgba(3,9,15,0.38),transparent)]" />
         </div>
 
-        <div className="relative z-10">
-          <div className="px-3 pt-1 sm:px-5 min-[720px]:px-7">
-            <p
-              className={cn(
-                "text-[17px] font-black leading-tight text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.82)] min-[720px]:text-2xl",
-              )}
-            >
-              {isAuthenticated ? (
-                <>
-                  <span>{heroGreeting}, </span>
-                  <span className="break-words">{displayName}</span>
-                </>
-              ) : (
-                "Your ride, together."
-              )}
-            </p>
-            <p className="mt-0.5 text-xs font-semibold text-white/70 drop-shadow-[0_2px_7px_rgba(0,0,0,0.74)] min-[720px]:text-sm">
-              {isAuthenticated ? "Your ride, together." : "First Local Shared Ride in Hong Kong"}
-            </p>
-          </div>
-
-          <div className="h-[170px] min-[720px]:h-[190px]" aria-hidden="true" />
-
+        <div className="relative z-10 mt-3">
           {showRideRecommendations ? (
-            <div className="mx-auto mb-5 w-full max-w-[560px]">
+            <div className="mx-auto mb-4 w-full max-w-[560px]">
               <RideModeSwitch
                 value={rideModeFilter === "ride_app" ? "ride_app" : "taxi"}
                 onChange={handleRideModeChange}
