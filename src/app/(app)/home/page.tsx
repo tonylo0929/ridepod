@@ -1794,7 +1794,7 @@ function HomePageContent() {
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,transparent,var(--rp-bg))]" />
 
         <div className="relative z-10">
-          <div className="pt-2 min-[720px]:pt-8">
+          <div className="inline-block max-w-[270px] rounded-[22px] border border-white/10 bg-[rgba(2,10,18,0.66)] px-4 py-3 shadow-[0_18px_46px_rgba(0,0,0,0.36),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-[5px] min-[720px]:mt-8 min-[720px]:max-w-[360px] min-[720px]:rounded-[26px] min-[720px]:px-5 min-[720px]:py-4">
             <p
               className={cn(
                 "text-[28px] font-serif leading-tight text-[var(--rp-primary)] drop-shadow-[0_3px_10px_rgba(0,0,0,0.82)] min-[720px]:text-[42px]",
