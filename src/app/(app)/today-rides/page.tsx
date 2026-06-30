@@ -440,6 +440,8 @@ function RideBoardCategoryArtwork({
 }) {
   const featuredCategory = rideBoardCategories.find((category) => category.featured);
   const secondaryCategories = rideBoardCategories.filter((category) => !category.featured);
+  const commuteCategory = secondaryCategories.find((category) => category.id === "commute");
+  const compactCategories = secondaryCategories.filter((category) => category.id !== "commute");
 
   return (
     <section aria-label="Ride Board categories" className="grid gap-3">
@@ -452,8 +454,17 @@ function RideBoardCategoryArtwork({
         />
       ) : null}
 
+      {commuteCategory ? (
+        <RideBoardCategoryCard
+          category={commuteCategory}
+          active={activeFilter === commuteCategory.filter}
+          onSelect={onCategorySelect}
+          priority
+        />
+      ) : null}
+
       <div className="grid grid-cols-2 gap-3 max-[340px]:grid-cols-1">
-        {secondaryCategories.map((category) => (
+        {compactCategories.map((category) => (
           <RideBoardCategoryCard
             key={category.id}
             category={category}
@@ -478,6 +489,7 @@ function RideBoardCategoryCard({
   priority?: boolean;
 }) {
   const isFeatured = category.featured === true;
+  const isCommute = category.id === "commute";
   const isGold = category.tone === "gold";
   const accentClassName = isGold ? "text-[var(--rp-primary)]" : "text-[#98FBCB]";
   const ringClassName = isGold
@@ -542,6 +554,60 @@ function RideBoardCategoryCard({
           <span className="mt-auto inline-flex min-h-11 min-w-[148px] items-center justify-center gap-2 whitespace-nowrap rounded-[20px] bg-[#63E2CF] px-4 text-[13px] font-black text-[#061321] shadow-[0_14px_30px_rgba(99,226,207,0.22)] transition group-hover:bg-[#7EF1DE] min-[390px]:text-sm">
             {category.ctaLabel}
             <ChevronRight className="h-6 w-6" />
+          </span>
+        </span>
+      </button>
+    );
+  }
+
+  if (isCommute) {
+    return (
+      <button
+        type="button"
+        onClick={() => onSelect(category.filter)}
+        aria-pressed={active}
+        aria-label={`Show ${category.label} ride requests`}
+        className={cn(
+          "group relative block aspect-square w-full overflow-hidden rounded-[30px] border bg-[#06111b] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
+          active
+            ? "border-[#65E6D0]/70 shadow-[0_22px_54px_rgba(0,0,0,0.38),0_0_34px_rgba(101,230,208,0.18)]"
+            : "border-[#203544] shadow-[0_20px_50px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.06)] hover:border-[#65E6D0]/54",
+        )}
+      >
+        <Image
+          src={category.image}
+          alt=""
+          fill
+          priority={priority}
+          sizes="(max-width: 768px) 100vw, 560px"
+          className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]"
+          style={{ objectPosition: "center bottom" }}
+        />
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,9,15,0.98)_0%,rgba(2,9,15,0.92)_25%,rgba(2,9,15,0.26)_48%,rgba(2,9,15,0.04)_70%,rgba(2,9,15,0.28)_100%)]"
+        />
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(101,230,208,0.12),transparent_30%)]"
+        />
+        <span className="relative z-10 flex h-full flex-col items-start p-7 min-[390px]:p-8">
+          <span className="block text-[40px] font-black leading-none text-[#55DCC8] drop-shadow-[0_2px_12px_rgba(0,0,0,0.48)] min-[390px]:text-[46px]">
+            {category.label}
+          </span>
+          <span className="mt-5 block max-w-[13rem] text-[24px] font-medium leading-[1.22] text-white/92 min-[390px]:text-[27px]">
+            Daily rides.
+            <br />
+            Better together.
+          </span>
+          <span
+            className={cn(
+              "mt-auto grid h-20 w-20 place-items-center rounded-full border text-[#55DCC8] shadow-[0_16px_36px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] transition group-hover:scale-105 min-[390px]:h-24 min-[390px]:w-24",
+              active ? "border-[#65E6D0]/56 bg-[#65E6D0]/16" : "border-[#65E6D0]/24 bg-[#06111b]/72",
+            )}
+            aria-hidden="true"
+          >
+            <ChevronRight className="h-12 w-12 stroke-[3] min-[390px]:h-14 min-[390px]:w-14" />
           </span>
         </span>
       </button>
