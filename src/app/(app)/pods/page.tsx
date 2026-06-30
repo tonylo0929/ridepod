@@ -520,7 +520,7 @@ export default function MyRidePage() {
     <div className="grid min-w-0 gap-4 overflow-hidden pb-3">
       {user || isLoading ? (
         <header className="pt-1">
-          <h1 className="text-3xl font-black tracking-tight text-[var(--rp-primary)] min-[390px]:text-[34px]">My Ride</h1>
+          <h1 className="text-3xl font-black tracking-tight text-[var(--rp-text)] min-[390px]:text-[34px]">My Ride</h1>
           <p className="mt-2 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
             See your upcoming taxi and Ride app pods.
           </p>
