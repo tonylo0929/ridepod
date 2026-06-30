@@ -11,10 +11,13 @@ import {
   ChevronRight,
   Clock3,
   Grid2X2,
+  LogIn,
   Plane,
   RefreshCcw,
+  ShieldCheck,
   SlidersHorizontal,
   Smartphone,
+  UserPlus,
   XCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -72,6 +75,58 @@ function selectedDateLabel(date: string) {
     day: "numeric",
     year: "numeric",
   }).format(dateFromKey(date));
+}
+
+function GuestMyRideIntro() {
+  return (
+    <section className="relative isolate min-h-[calc(100dvh-170px)] overflow-hidden rounded-[30px] border border-[color-mix(in_srgb,var(--rp-border)_82%,white_8%)] bg-[radial-gradient(circle_at_22%_14%,rgba(245,188,73,0.22),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.018)),var(--rp-card)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.42)] min-[390px]:p-6">
+      <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-[color-mix(in_srgb,var(--rp-primary)_24%,transparent)] blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 left-6 h-44 w-44 rounded-full bg-cyan-300/12 blur-3xl" />
+
+      <div className="relative z-10 flex min-h-[calc(100dvh-222px)] flex-col justify-between gap-8">
+        <div className="grid gap-5 pt-2">
+          <span className="grid h-14 w-14 place-items-center rounded-[20px] border border-[color-mix(in_srgb,var(--rp-primary)_40%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] text-[var(--rp-primary)] shadow-[0_18px_34px_rgba(245,188,73,0.12)]">
+            <CalendarDays className="h-6 w-6" />
+          </span>
+
+          <div>
+            <h1 className="max-w-[11ch] text-[36px] font-black leading-[0.98] tracking-[-0.02em] text-[var(--rp-text)] min-[390px]:text-[42px]">
+              Keep your rides{" "}
+              <span className="inline-flex rounded-full bg-[var(--rp-primary)] px-2.5 pb-1 pt-0.5 text-[0.82em] leading-none text-[var(--rp-primary-text)] shadow-[0_10px_24px_rgba(245,188,73,0.24)]">
+                safe
+              </span>
+            </h1>
+            <p className="mt-4 max-w-[28ch] text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              Save your RidePod calendar, track joined pods, and keep booking details in one place.
+            </p>
+          </div>
+        </div>
+
+        <div className="relative z-10 grid gap-3">
+          <Link
+            href="/register?next=/pods"
+            className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-[#f8f4ea] px-5 text-sm font-black text-[#101316] shadow-[0_18px_36px_rgba(0,0,0,0.28)] transition hover:bg-white"
+          >
+            <UserPlus className="h-4 w-4" />
+            Create New Account
+          </Link>
+
+          <p className="text-center text-xs font-semibold text-[var(--rp-muted-strong)]">
+            Already have an account?{" "}
+            <Link href="/login?next=/pods" className="inline-flex items-center gap-1 font-black text-[var(--rp-text)] underline decoration-[var(--rp-primary)] underline-offset-4">
+              Login
+              <LogIn className="h-3.5 w-3.5 text-[var(--rp-primary)]" />
+            </Link>
+          </p>
+
+          <div className="mt-2 flex items-start gap-2 rounded-[18px] border border-white/10 bg-white/[0.045] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rp-primary)]" />
+            <span>Your private ride calendar appears after you log in.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 function isHistoryRide(ride: CalendarRide, todayKey: string) {
@@ -463,31 +518,21 @@ export default function MyRidePage() {
 
   return (
     <div className="grid min-w-0 gap-4 overflow-hidden pb-3">
-      <header className="pt-1">
-        <h1 className="text-3xl font-black tracking-tight text-[var(--rp-primary)] min-[390px]:text-[34px]">My Ride</h1>
-        <p className="mt-2 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-          See your upcoming taxi and Ride app pods.
-        </p>
-      </header>
+      {user || isLoading ? (
+        <header className="pt-1">
+          <h1 className="text-3xl font-black tracking-tight text-[var(--rp-primary)] min-[390px]:text-[34px]">My Ride</h1>
+          <p className="mt-2 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+            See your upcoming taxi and Ride app pods.
+          </p>
+        </header>
+      ) : null}
 
       {isLoading ? (
         <section className="rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 text-sm font-bold text-[var(--rp-muted)]">
           Loading your ride calendar...
         </section>
       ) : !user ? (
-        <section className="rounded-[24px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
-          <CalendarDays className="h-7 w-7 text-[var(--rp-primary)]" />
-          <h2 className="mt-4 text-xl font-black text-[var(--rp-text)]">Log in to view your ride calendar.</h2>
-          <p className="mt-2 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            Your shared taxi and Ride app pods appear here after you log in.
-          </p>
-          <Link
-            href="/login?next=/pods"
-            className="mt-4 inline-flex min-h-11 items-center justify-center rounded-[14px] bg-[var(--rp-gradient-primary)] px-5 text-sm font-black text-[var(--rp-primary-text)]"
-          >
-            Log in
-          </Link>
-        </section>
+        <GuestMyRideIntro />
       ) : (
         <>
           {draftInvitations.length ? (

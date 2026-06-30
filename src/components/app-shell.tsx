@@ -80,7 +80,7 @@ function NavLink({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const homeTab = searchParams.get("tab");
-  const destination = requiresAuth && !isLoggedIn ? `/login?next=${encodeURIComponent(href)}` : href;
+  const destination = requiresAuth && !isLoggedIn ? (href === "/pods" ? href : `/login?next=${encodeURIComponent(href)}`) : href;
   const hrefPath = href.split("?")[0] ?? href;
   const active =
     href === "/home" || href === "/home?tab=one_off"
@@ -228,7 +228,7 @@ function DesktopDrawerLink({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const homeTab = searchParams.get("tab");
-  const destination = requiresAuth && !isLoggedIn ? `/login?next=${encodeURIComponent(href)}` : href;
+  const destination = requiresAuth && !isLoggedIn ? (href === "/pods" ? href : `/login?next=${encodeURIComponent(href)}`) : href;
   const hrefPath = href.split("?")[0] ?? href;
   const active =
     href === "/home"
