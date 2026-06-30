@@ -4014,7 +4014,7 @@ function ManagePodActionsModal({
 
   return (
     <div
-      className="fixed inset-0 z-[110] grid items-end bg-black/72 px-3 pb-3 pt-10 backdrop-blur-sm min-[520px]:place-items-center min-[520px]:p-5"
+      className="fixed inset-0 z-[110] grid items-end bg-black/38 px-3 pb-3 pt-10 backdrop-blur-[1px] min-[520px]:place-items-center min-[520px]:p-5"
       role="dialog"
       aria-modal="true"
       aria-labelledby="manage-pod-actions-title"
