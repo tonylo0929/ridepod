@@ -541,7 +541,7 @@ function RideBoardCategoryCard({
           className={cn(
             "block font-black leading-tight",
             accentClassName,
-            isFeatured ? "mt-4 text-[22px] min-[390px]:text-[25px]" : "text-[17px] min-[390px]:text-[19px]",
+            isFeatured ? "mt-3 text-[18px] min-[390px]:text-[21px]" : "text-[14px] min-[390px]:text-[16px]",
           )}
         >
           {category.label}
@@ -549,14 +549,14 @@ function RideBoardCategoryCard({
         <span
           className={cn(
             "block font-semibold leading-5 text-white/82",
-            isFeatured ? "mt-2 text-[13px] min-[390px]:text-sm" : "mt-1 max-w-[8.5rem] text-[11px] min-[390px]:text-xs",
+            isFeatured ? "mt-1.5 text-[11px] min-[390px]:text-xs" : "mt-1 max-w-[8rem] text-[10px] min-[390px]:text-[11px]",
           )}
         >
           {category.subtitle}
         </span>
 
         {isFeatured ? (
-          <span className="mt-4 inline-flex min-h-9 items-center gap-2 rounded-full border border-[#98FBCB]/38 bg-[#98FBCB]/12 px-3.5 text-xs font-black text-[#98FBCB] transition group-hover:bg-[#98FBCB]/18">
+          <span className="mt-3 inline-flex min-h-8 items-center gap-1.5 rounded-full border border-[#98FBCB]/38 bg-[#98FBCB]/12 px-3 text-[11px] font-black text-[#98FBCB] transition group-hover:bg-[#98FBCB]/18">
             {category.ctaLabel}
             <ChevronRight className="h-4 w-4" />
           </span>
@@ -599,7 +599,7 @@ function RideBoardFilters({
               type="button"
               onClick={() => onFilterChange(chip.id)}
               className={cn(
-                "inline-flex min-h-10 shrink-0 items-center gap-2 rounded-full border px-4 text-[13px] font-black transition min-[390px]:text-sm",
+                "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-black transition min-[390px]:text-[13px]",
                 active
                   ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)] shadow-[0_0_24px_color-mix(in_srgb,var(--rp-primary)_20%,transparent)]"
                   : isOthers
@@ -1301,17 +1301,17 @@ export default function RideBoardPage() {
       <div className="relative z-10 mx-auto grid w-full max-w-[560px] gap-5 px-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-6 sm:px-6 lg:max-w-3xl lg:pb-8 lg:pt-8">
         <section className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="whitespace-nowrap text-left text-[34px] font-black leading-none text-[var(--rp-text)] min-[390px]:text-[40px]">
+            <h1 className="whitespace-nowrap text-left text-[30px] font-black leading-none text-[var(--rp-text)] min-[390px]:text-[36px]">
               Ride Board
             </h1>
-            <p className="mt-2 text-sm font-semibold leading-5 text-white/62 min-[390px]:text-[15px]">
+            <p className="mt-1.5 text-[13px] font-semibold leading-5 text-white/62 min-[390px]:text-sm">
               Find a ride. Share the journey.
             </p>
           </div>
           <button
             type="button"
             onClick={() => setActiveFilter("all")}
-            className="mt-0.5 inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-[#0fb7a8]/72 bg-[#0fb7a8]/8 px-4 text-[13px] font-black text-[#20d6c4] shadow-[0_0_26px_rgba(15,183,168,0.12)] transition hover:bg-[#0fb7a8]/14 min-[390px]:text-sm"
+            className="mt-0.5 inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-[#0fb7a8]/72 bg-[#0fb7a8]/8 px-3.5 text-xs font-black text-[#20d6c4] shadow-[0_0_26px_rgba(15,183,168,0.12)] transition hover:bg-[#0fb7a8]/14 min-[390px]:text-[13px]"
           >
             <SlidersHorizontal className="h-4 w-4" />
             Filters
