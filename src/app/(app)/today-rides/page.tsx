@@ -492,7 +492,7 @@ function RideBoardCategoryCard({
       aria-label={`Show ${category.label} ride requests`}
       className={cn(
         "group relative block w-full overflow-hidden border bg-[rgba(5,18,26,0.92)] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#98FBCB] active:translate-y-0",
-        isFeatured ? "min-h-[216px] rounded-[28px] p-5" : "aspect-[1/1.08] rounded-[24px] p-3.5",
+        isFeatured ? "min-h-[188px] rounded-[28px] p-5" : "aspect-[1/1.08] rounded-[24px] p-3.5",
         active ? ringClassName : isGold ? "border-[var(--rp-primary)]/38" : "border-[#98FBCB]/22",
         !active && "shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.05)] hover:border-[#98FBCB]/44 hover:shadow-[0_20px_48px_rgba(0,0,0,0.32),0_0_24px_rgba(152,251,203,0.10)]",
       )}
@@ -514,8 +514,8 @@ function RideBoardCategoryCard({
         className={cn(
           "absolute inset-0",
           isFeatured
-            ? "bg-[linear-gradient(90deg,rgba(3,12,18,0.98)_0%,rgba(3,12,18,0.96)_37%,rgba(3,12,18,0.68)_52%,rgba(3,12,18,0.12)_72%,rgba(3,12,18,0)_100%)]"
-            : "bg-[linear-gradient(135deg,rgba(3,12,18,0.82)_0%,rgba(3,12,18,0.58)_32%,rgba(3,12,18,0.18)_62%,rgba(3,12,18,0.02)_100%)]",
+            ? "bg-[linear-gradient(90deg,rgba(3,12,18,0.92)_0%,rgba(3,12,18,0.62)_38%,rgba(3,12,18,0.14)_68%,rgba(3,12,18,0)_100%)]"
+            : "bg-[linear-gradient(135deg,rgba(3,12,18,0.9)_0%,rgba(3,12,18,0.66)_30%,rgba(3,12,18,0.24)_58%,rgba(3,12,18,0.04)_100%)]",
         )}
       />
       <span
@@ -533,8 +533,7 @@ function RideBoardCategoryCard({
 
       <span className={cn("relative z-10 flex h-full flex-col items-start", isFeatured ? "max-w-[68%]" : "min-h-full")}>
         {isFeatured ? (
-          <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">
-            <Star className="h-4 w-4 fill-current" />
+          <span className="rounded-full border border-[#98FBCB]/35 bg-[#98FBCB]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#98FBCB]">
             {category.eyebrow}
           </span>
         ) : null}
