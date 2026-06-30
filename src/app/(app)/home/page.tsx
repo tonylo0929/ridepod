@@ -1744,55 +1744,60 @@ function HomePageContent() {
           aria-hidden="true"
           className="absolute inset-0 bg-[#04101a]"
         />
-        {heroBackgroundModes.map((mode) => {
-          const background = homeHeroBackgrounds[mode];
-          const active = activeHeroBackgroundMode === mode;
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-3 top-3 h-[248px] overflow-hidden rounded-[28px] border border-white/10 bg-[#071018] shadow-[0_18px_48px_rgba(0,0,0,0.42)] sm:inset-x-6 min-[720px]:top-5 min-[720px]:h-[290px] lg:inset-x-10"
+        >
+          {heroBackgroundModes.map((mode) => {
+            const background = homeHeroBackgrounds[mode];
+            const active = activeHeroBackgroundMode === mode;
 
-          return (
-            <div key={mode} aria-hidden="true" className="absolute inset-0">
-              <div
-                className="absolute inset-0 bg-no-repeat transition-opacity duration-300 ease-out min-[720px]:hidden"
-                style={{
-                  backgroundImage: `url('${background.image}')`,
-                  backgroundPosition: background.mobileBackdropPosition,
-                  backgroundSize: background.mobileBackdropSize,
-                  opacity: active ? background.mobileBackdropOpacity : 0,
-                  willChange: "opacity",
-                }}
-              />
-              <div
-                className="absolute inset-0 bg-no-repeat transition-opacity duration-300 ease-out min-[720px]:hidden"
-                style={{
-                  backgroundImage: `url('${background.image}')`,
-                  backgroundPosition: background.mobilePosition,
-                  backgroundSize: background.mobileSize,
-                  opacity: active ? 1 : 0,
-                  willChange: "opacity",
-                }}
-              />
-              <div
-                className="absolute inset-0 hidden bg-no-repeat transition-opacity duration-300 ease-out min-[720px]:block"
-                style={{
-                  backgroundImage: `url('${background.image}')`,
-                  backgroundPosition: background.desktopPosition,
-                  backgroundSize: background.desktopSize,
-                  opacity: active ? 1 : 0,
-                  willChange: "opacity",
-                }}
-              />
-              <div
-                className="absolute inset-0 transition-opacity duration-300 ease-out"
-                style={{
-                  backgroundImage: background.overlay,
-                  opacity: active ? 1 : 0,
-                  willChange: "opacity",
-                }}
-              />
-            </div>
-          );
-        })}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,transparent,var(--rp-bg))]" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(3,9,15,0.82),rgba(3,9,15,0.38)_58%,transparent)]" />
+            return (
+              <div key={mode} className="absolute inset-0">
+                <div
+                  className="absolute inset-0 bg-no-repeat transition-opacity duration-300 ease-out min-[720px]:hidden"
+                  style={{
+                    backgroundImage: `url('${background.image}')`,
+                    backgroundPosition: background.mobileBackdropPosition,
+                    backgroundSize: background.mobileBackdropSize,
+                    opacity: active ? background.mobileBackdropOpacity : 0,
+                    willChange: "opacity",
+                  }}
+                />
+                <div
+                  className="absolute inset-0 bg-no-repeat transition-opacity duration-300 ease-out min-[720px]:hidden"
+                  style={{
+                    backgroundImage: `url('${background.image}')`,
+                    backgroundPosition: background.mobilePosition,
+                    backgroundSize: background.mobileSize,
+                    opacity: active ? 1 : 0,
+                    willChange: "opacity",
+                  }}
+                />
+                <div
+                  className="absolute inset-0 hidden bg-no-repeat transition-opacity duration-300 ease-out min-[720px]:block"
+                  style={{
+                    backgroundImage: `url('${background.image}')`,
+                    backgroundPosition: background.desktopPosition,
+                    backgroundSize: background.desktopSize,
+                    opacity: active ? 1 : 0,
+                    willChange: "opacity",
+                  }}
+                />
+                <div
+                  className="absolute inset-0 transition-opacity duration-300 ease-out"
+                  style={{
+                    backgroundImage: background.overlay,
+                    opacity: active ? 1 : 0,
+                    willChange: "opacity",
+                  }}
+                />
+              </div>
+            );
+          })}
+          <div className="absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,transparent,var(--rp-bg))]" />
+          <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(3,9,15,0.82),rgba(3,9,15,0.38)_58%,transparent)]" />
+        </div>
 
         <div className="relative z-10">
           <div className="-mx-4 px-4 pt-1 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
