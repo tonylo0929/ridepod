@@ -169,7 +169,7 @@ function PremiumTopNav() {
         <HomeMenuDrawer />
         <Link href="/home?tab=one_off" className="inline-flex items-center gap-1.5 justify-self-center" aria-label="RidePod home">
           {showRideBoardLogo ? (
-            <span className="relative inline-flex h-9 w-[136px] items-center overflow-hidden rounded-md">
+            <span className="relative inline-flex h-8 w-[122px] items-center overflow-hidden rounded-md">
               <Image
                 src="/ridepod/rideboard-logo-wordmark.png"
                 alt="RidePod"
@@ -180,7 +180,7 @@ function PremiumTopNav() {
               />
             </span>
           ) : (
-            <RidePodLogo className="h-9 w-[120px] justify-center" imageClassName="h-full w-full" priority />
+            <RidePodLogo className="h-8 w-[108px] justify-center" imageClassName="h-full w-full" priority />
           )}
           <span
             className={cn(
