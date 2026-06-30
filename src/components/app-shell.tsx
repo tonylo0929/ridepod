@@ -182,7 +182,12 @@ function PremiumTopNav() {
           ) : (
             <RidePodLogo className="h-9 justify-center" priority />
           )}
-          <span className="rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-2 py-0.5 text-[10px] font-black tracking-[0.08em] text-[var(--rp-primary)]">
+          <span
+            className={cn(
+              "rounded-full border bg-[var(--rp-card-soft)] px-2 py-0.5 text-[10px] font-black tracking-[0.08em]",
+              showRideBoardLogo ? "border-cyan-300/45 text-cyan-300" : "border-[var(--rp-border-strong)] text-[var(--rp-primary)]",
+            )}
+          >
             v1.0
           </span>
         </Link>
