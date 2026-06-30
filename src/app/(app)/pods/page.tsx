@@ -93,7 +93,7 @@ function GuestMyRideIntro() {
             <h1 className="max-w-[11ch] text-[36px] font-black leading-[0.98] tracking-[-0.02em] text-[var(--rp-text)] min-[390px]:text-[42px]">
               Keep your rides{" "}
               <span className="inline-flex rounded-full bg-[var(--rp-primary)] px-2.5 pb-1 pt-0.5 text-[0.82em] leading-none text-[var(--rp-primary-text)] shadow-[0_10px_24px_rgba(245,188,73,0.24)]">
-                safe
+                organized
               </span>
             </h1>
             <p className="mt-4 max-w-[28ch] text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
