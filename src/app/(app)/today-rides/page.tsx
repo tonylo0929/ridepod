@@ -114,7 +114,7 @@ const rideBoardCategories: Array<{
     id: "today-requests",
     label: "Today Requests",
     subtitle: "Find rides happening today, near you.",
-    image: "/images/ride-board/today-requests.png",
+    image: "/images/ride-board/today-requests-reference-card.png",
     filter: "today_requests",
     featured: true,
     eyebrow: "Featured",
@@ -125,7 +125,7 @@ const rideBoardCategories: Array<{
     id: "commute",
     label: "Commute",
     subtitle: "Daily rides. Better together.",
-    image: "/images/ride-board/commute.png",
+    image: "/images/ride-board/commute-reference-card.png",
     filter: "commute",
     objectPosition: "center bottom",
   },
@@ -133,7 +133,7 @@ const rideBoardCategories: Array<{
     id: "events",
     label: "Events",
     subtitle: "Go together. Enjoy more.",
-    image: "/images/ride-board/events.png",
+    image: "/images/ride-board/events-reference-card.png",
     filter: "events",
     objectPosition: "right center",
   },
@@ -141,7 +141,7 @@ const rideBoardCategories: Array<{
     id: "late-night",
     label: "Late Night",
     subtitle: "Safe rides. Anytime.",
-    image: "/images/ride-board/late-night-poster.png",
+    image: "/images/ride-board/late-night-reference-card.png",
     filter: "late_night",
     objectPosition: "right bottom",
   },
@@ -149,7 +149,7 @@ const rideBoardCategories: Array<{
     id: "others",
     label: "Others",
     subtitle: "Flexible rides. Your way.",
-    image: "/images/ride-board/others-poster.png",
+    image: "/images/ride-board/others-reference-card.png",
     filter: "others",
     objectPosition: "right bottom",
     tone: "gold",
@@ -442,7 +442,7 @@ function RideBoardCategoryArtwork({
   const secondaryCategories = rideBoardCategories.filter((category) => !category.featured);
 
   return (
-    <section aria-label="Ride Board categories" className="grid gap-3">
+    <section aria-label="Ride Board categories" className="grid gap-2">
       {featuredCategory ? (
         <RideBoardCategoryCard
           category={featuredCategory}
@@ -452,7 +452,7 @@ function RideBoardCategoryArtwork({
         />
       ) : null}
 
-      <div className="grid grid-cols-2 gap-3 max-[340px]:grid-cols-1">
+      <div className="grid grid-cols-2 gap-2 max-[340px]:grid-cols-1">
         {secondaryCategories.map((category) => (
           <RideBoardCategoryCard
             key={category.id}
@@ -479,109 +479,6 @@ function RideBoardCategoryCard({
   priority?: boolean;
 }) {
   const isFeatured = category.featured === true;
-  const isPosterArt = category.id === "late-night" || category.id === "others";
-  const isGold = category.tone === "gold";
-  const accentClassName = isGold ? "text-[var(--rp-primary)]" : "text-[#98FBCB]";
-  const ringClassName = isGold
-    ? "border-[var(--rp-primary)]/54 shadow-[0_20px_48px_rgba(0,0,0,0.34),0_0_28px_rgba(242,193,91,0.12)]"
-    : "border-[#98FBCB]/64 shadow-[0_20px_48px_rgba(0,0,0,0.34),0_0_30px_rgba(152,251,203,0.16)]";
-
-  if (isPosterArt) {
-    return (
-      <button
-        type="button"
-        onClick={() => onSelect(category.filter)}
-        aria-pressed={active}
-        aria-label={`Show ${category.label} ride requests`}
-        className={cn(
-          "group relative block aspect-square w-full overflow-hidden rounded-[24px] border bg-[#030b12] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 active:translate-y-0",
-          isGold ? "focus-visible:ring-[var(--rp-primary)]" : "focus-visible:ring-[#65E6D0]",
-          active
-            ? isGold
-              ? "border-[var(--rp-primary)]/60 shadow-[0_22px_54px_rgba(0,0,0,0.38),0_0_34px_rgba(242,193,91,0.16)]"
-              : "border-[#65E6D0]/70 shadow-[0_22px_54px_rgba(0,0,0,0.38),0_0_34px_rgba(101,230,208,0.18)]"
-            : "border-transparent shadow-[0_20px_50px_rgba(0,0,0,0.34)] hover:border-white/14",
-        )}
-      >
-        <Image
-          src={category.image}
-          alt=""
-          fill
-          priority={priority}
-          sizes="(max-width: 768px) 50vw, 280px"
-          className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.018]"
-          style={{ objectPosition: "center center" }}
-        />
-        <span className="sr-only">
-          {category.label}. {category.subtitle}
-        </span>
-      </button>
-    );
-  }
-
-  if (isFeatured) {
-    return (
-      <button
-        type="button"
-        onClick={() => onSelect(category.filter)}
-        aria-pressed={active}
-        aria-label={`Show ${category.label} ride requests`}
-        className={cn(
-          "group relative block min-h-[252px] w-full overflow-hidden rounded-[28px] border bg-[#071523] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
-          active
-            ? "border-[#65E6D0]/70 shadow-[0_22px_54px_rgba(0,0,0,0.38),0_0_34px_rgba(101,230,208,0.18)]"
-            : "border-white/18 shadow-[0_20px_48px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.08)] hover:border-[#65E6D0]/54",
-        )}
-      >
-        <Image
-          src={category.image}
-          alt=""
-          fill
-          priority={priority}
-          sizes="(max-width: 768px) 100vw, 560px"
-          className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]"
-          style={{ objectPosition: "right bottom" }}
-        />
-        <span
-          aria-hidden="true"
-          className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,9,16,0.08)_0%,rgba(2,9,16,0)_46%,rgba(2,9,16,0.08)_100%)]"
-        />
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 260 252"
-          preserveAspectRatio="none"
-          className="absolute inset-y-0 left-0 h-full w-[69%] text-[#05111e]"
-        >
-          <path
-            d="M0 0H211C216 18 203 31 194 43C181 60 188 77 203 87C218 98 214 117 199 129C184 141 182 159 196 172C209 184 206 204 193 215C181 226 181 240 191 252H0V0Z"
-            fill="currentColor"
-          />
-        </svg>
-        <span
-          aria-hidden="true"
-          className="absolute inset-y-0 left-0 w-[61%] bg-[radial-gradient(circle_at_20%_12%,rgba(101,230,208,0.14),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0))]"
-        />
-        <span className="relative z-10 flex min-h-[252px] w-[63%] flex-col items-start px-5 py-5 min-[390px]:px-6">
-          <span className="inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.16em] text-[var(--rp-primary)] min-[390px]:text-xs">
-            <Star className="h-6 w-6 fill-current" />
-            {category.eyebrow}
-          </span>
-          <span className="mt-6 block text-[31px] font-black leading-[0.96] text-[#72E6D0] drop-shadow-[0_2px_10px_rgba(0,0,0,0.45)] min-[390px]:text-[34px]">
-            Today
-            <br />
-            Requests
-          </span>
-          <span className="mt-5 block max-w-[10rem] text-[16px] font-semibold leading-[1.35] text-white/82 min-[390px]:text-[17px]">
-            {category.subtitle}
-          </span>
-          <span className="mt-auto inline-flex min-h-11 min-w-[148px] items-center justify-center gap-2 whitespace-nowrap rounded-[20px] bg-[#63E2CF] px-4 text-[13px] font-black text-[#061321] shadow-[0_14px_30px_rgba(99,226,207,0.22)] transition group-hover:bg-[#7EF1DE] min-[390px]:text-sm">
-            {category.ctaLabel}
-            <ChevronRight className="h-6 w-6" />
-          </span>
-        </span>
-      </button>
-    );
-  }
 
   return (
     <button
@@ -590,10 +487,11 @@ function RideBoardCategoryCard({
       aria-pressed={active}
       aria-label={`Show ${category.label} ride requests`}
       className={cn(
-        "group relative block w-full overflow-hidden border bg-[rgba(5,18,26,0.92)] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#98FBCB] active:translate-y-0",
-        "aspect-square rounded-[24px] p-3.5 min-[390px]:p-4",
-        active ? ringClassName : isGold ? "border-[var(--rp-primary)]/38" : "border-[#98FBCB]/22",
-        !active && "shadow-[0_18px_42px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.05)] hover:border-[#98FBCB]/44 hover:shadow-[0_20px_48px_rgba(0,0,0,0.32),0_0_24px_rgba(152,251,203,0.10)]",
+        "group relative block w-full overflow-hidden bg-[#030b12] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
+        isFeatured ? "aspect-[875/443] rounded-[24px]" : "aspect-[430/395] rounded-[18px]",
+        active
+          ? "ring-2 ring-[#65E6D0]/70 shadow-[0_22px_54px_rgba(0,0,0,0.38),0_0_34px_rgba(101,230,208,0.18)]"
+          : "shadow-[0_18px_42px_rgba(0,0,0,0.28)]",
       )}
     >
       <Image
@@ -601,44 +499,11 @@ function RideBoardCategoryCard({
         alt=""
         fill
         priority={priority}
-        sizes="(max-width: 768px) 50vw, 280px"
-        className="absolute inset-0 h-full w-full object-cover opacity-95 transition duration-300 group-hover:scale-[1.025]"
-        style={{ objectPosition: category.objectPosition }}
+        sizes={isFeatured ? "(max-width: 768px) 100vw, 875px" : "(max-width: 768px) 50vw, 430px"}
+        className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.012]"
       />
-      <span
-        aria-hidden="true"
-        className="absolute inset-0 bg-[linear-gradient(135deg,rgba(3,12,18,0.90)_0%,rgba(3,12,18,0.72)_30%,rgba(3,12,18,0.22)_62%,rgba(3,12,18,0.06)_100%)]"
-      />
-      <span
-        aria-hidden="true"
-        className={cn(
-          "absolute inset-0",
-          isGold
-            ? "bg-[radial-gradient(circle_at_90%_88%,rgba(242,193,91,0.22),transparent_38%)]"
-            : "bg-[radial-gradient(circle_at_86%_80%,rgba(152,251,203,0.16),transparent_40%)]",
-        )}
-      />
-      <span className="relative z-10 flex min-h-full flex-col items-start">
-        <span
-          className={cn("block text-[18px] font-black leading-tight min-[390px]:text-[20px]", accentClassName)}
-        >
-          {category.label}
-        </span>
-        <span className="mt-2 block max-w-[8.6rem] text-[12px] font-semibold leading-[1.45] text-white/86 min-[390px]:text-[13px]">
-          {category.subtitle}
-        </span>
-
-        <span
-          className={cn(
-            "mt-auto grid h-12 w-12 place-items-center rounded-full border transition group-hover:scale-105",
-            isGold
-              ? "border-[var(--rp-primary)]/48 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]"
-              : "border-[#98FBCB]/36 bg-[#98FBCB]/12 text-[#98FBCB]",
-          )}
-          aria-hidden="true"
-        >
-          <ChevronRight className="h-7 w-7 stroke-[2.7]" />
-        </span>
+      <span className="sr-only">
+        {category.label}. {category.subtitle}
       </span>
     </button>
   );
