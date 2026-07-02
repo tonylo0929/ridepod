@@ -159,16 +159,16 @@ const homeHeroBackgrounds: Record<
   }
 > = {
   ride_app: {
-    image: "/images/ridepod/home-ride-app-blue.png",
-    mobilePosition: "58% top",
-    mobileSize: "auto 270px",
-    mobileBackdropPosition: "58% top",
-    mobileBackdropSize: "auto 270px",
+    image: "/images/ridepod/home-ride-app-clean-pickup.png",
+    mobilePosition: "center center",
+    mobileSize: "auto 100%",
+    mobileBackdropPosition: "center center",
+    mobileBackdropSize: "auto 100%",
     mobileBackdropOpacity: 0,
-    desktopPosition: "center top",
-    desktopSize: "100% auto",
+    desktopPosition: "center center",
+    desktopSize: "cover",
     overlay:
-      "linear-gradient(180deg,rgba(5,11,18,0) 0%,rgba(5,11,18,0) 56%,rgba(5,11,18,0.24) 82%,var(--rp-bg) 100%)",
+      "linear-gradient(180deg,rgba(5,11,18,0.72) 0%,rgba(5,11,18,0.24) 42%,rgba(5,11,18,0.12) 68%,var(--rp-bg) 100%)",
   },
   taxi: {
     image: "/images/ridepod/home-taxi-harbor-night.png",
