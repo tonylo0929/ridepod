@@ -499,6 +499,7 @@ function RideBoardCategoryCard({
         alt=""
         fill
         priority={priority}
+        unoptimized
         sizes={isFeatured ? "(max-width: 768px) 100vw, 875px" : "(max-width: 768px) 50vw, 430px"}
         className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.012]"
       />
