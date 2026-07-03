@@ -4,12 +4,15 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRightLeft,
+  CalendarCheck,
   CalendarDays,
   CarFront,
   ChevronDown,
+  ChevronRight,
   CheckCircle2,
   CircleDollarSign,
   Gift,
+  MapPin,
   Plane,
   RefreshCcw,
   ShieldCheck,
@@ -63,7 +66,7 @@ type CurrentUserAvatar = {
 
 const categoryCards: Array<{ id: HomeTab; label: string; subtitle: string; icon: LucideIcon; href?: string }> = [
   { id: "one_off", label: "One-off", subtitle: "Schedule Ride", icon: CarFront },
-  { id: "recurring", label: "Recurring", subtitle: "Ride regularly", icon: RefreshCcw },
+  { id: "recurring", label: "Recurring", subtitle: "Ride Regularly", icon: RefreshCcw },
   { id: "airport", label: "Airport", subtitle: "Flight Ride", icon: Plane },
   { id: "all", label: "All Rides", subtitle: "All public", icon: UsersRound },
 ];
@@ -542,24 +545,109 @@ function CategoryCard({
   selected: boolean;
   onClick: (tab: HomeTab) => void;
 }) {
+  const actionCardStyles: Record<
+    HomeTab,
+    {
+      shell: string;
+      icon: string;
+      label: string;
+      title: string;
+      arrow: string;
+      decor: string;
+      layout: string;
+    }
+  > = {
+    one_off: {
+      shell:
+        "col-span-2 row-span-2 bg-[radial-gradient(circle_at_88%_86%,rgba(255,255,255,0.28),transparent_28%),linear-gradient(145deg,#ffd96d_0%,#ffc43f_48%,#f3aa25_100%)] text-[#071018]",
+      icon: "bg-white/24 text-[#071018] ring-1 ring-white/34",
+      label: "text-[#4e3411]/82",
+      title: "text-[26px] leading-[0.96] min-[390px]:text-[30px]",
+      arrow: "bg-[#111827] text-[#ffd15a]",
+      decor: "opacity-70",
+      layout: "justify-between p-6 min-[390px]:p-7",
+    },
+    recurring: {
+      shell:
+        "col-span-2 bg-[radial-gradient(circle_at_90%_24%,rgba(255,255,255,0.22),transparent_36%),linear-gradient(135deg,#95f08f_0%,#62d875_54%,#45c86e_100%)] text-[#071018]",
+      icon: "bg-white/18 text-[#071018] ring-1 ring-white/36",
+      label: "text-[#143314]/78",
+      title: "text-[21px] leading-[1.02] min-[390px]:text-[24px]",
+      arrow: "bg-[#071018] text-[#a6f59f]",
+      decor: "opacity-18",
+      layout: "p-5 min-[390px]:p-6",
+    },
+    airport: {
+      shell:
+        "col-span-1 bg-[radial-gradient(circle_at_80%_24%,rgba(255,255,255,0.5),transparent_42%),linear-gradient(145deg,#fff1dc_0%,#eadcc8_100%)] text-[#071018]",
+      icon: "bg-[#f6d7c6] text-[#071018] ring-1 ring-white/60",
+      label: "text-[#604330]/70",
+      title: "text-[19px] leading-[1.02] min-[390px]:text-[22px]",
+      arrow: "bg-[#071018] text-white",
+      decor: "opacity-20",
+      layout: "p-4 min-[390px]:p-5",
+    },
+    all: {
+      shell:
+        "col-span-1 bg-[radial-gradient(circle_at_82%_26%,rgba(255,255,255,0.24),transparent_42%),linear-gradient(145deg,#4d8dff_0%,#2d6cdf_100%)] text-white",
+      icon: "bg-white/14 text-white ring-1 ring-white/34",
+      label: "text-white/72",
+      title: "text-[19px] leading-[1.02] min-[390px]:text-[22px]",
+      arrow: "bg-[#071018] text-white",
+      decor: "opacity-13",
+      layout: "p-4 min-[390px]:p-5",
+    },
+    quote_ready: {
+      shell:
+        "col-span-2 bg-[linear-gradient(145deg,#ffd96d_0%,#ffc43f_100%)] text-[#071018]",
+      icon: "bg-white/24 text-[#071018] ring-1 ring-white/34",
+      label: "text-[#4e3411]/82",
+      title: "text-[21px] leading-[1.02] min-[390px]:text-[24px]",
+      arrow: "bg-[#071018] text-[#ffd15a]",
+      decor: "opacity-20",
+      layout: "p-5 min-[390px]:p-6",
+    },
+  };
+  const style = actionCardStyles[id];
   const className = cn(
-        "grid min-h-[88px] w-full content-center justify-items-center overflow-hidden rounded-[16px] border bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_60%,transparent),color-mix(in_srgb,var(--rp-card-soft)_46%,transparent))] px-1.5 py-2 text-center shadow-[0_16px_38px_rgba(0,0,0,0.2)] backdrop-blur-[6px] transition min-[390px]:min-h-[92px] min-[390px]:px-2",
-        selected
-          ? "border-[var(--rp-primary)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-primary)_18%,transparent),color-mix(in_srgb,var(--rp-card)_48%,transparent))] shadow-[0_0_32px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
-          : "border-white/12 hover:border-[var(--rp-border-strong)] hover:bg-[color-mix(in_srgb,var(--rp-card)_58%,transparent)]",
-      );
+    "group relative flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[26px] border text-left shadow-[0_22px_46px_rgba(0,0,0,0.22)] transition active:scale-[0.99]",
+    style.shell,
+    style.layout,
+    selected
+      ? "border-white/70 shadow-[0_0_0_1px_rgba(255,255,255,0.12),0_28px_58px_rgba(0,0,0,0.3)]"
+      : "border-white/18 hover:border-white/50",
+  );
   const content = (
     <>
+      <div aria-hidden="true" className={cn("pointer-events-none absolute inset-0", style.decor)}>
+        {id === "one_off" ? (
+          <>
+            <CarFront className="absolute bottom-5 right-1 h-20 w-20 rotate-[-14deg] text-white" />
+            <MapPin className="absolute right-8 top-16 h-9 w-9 text-[#4a3421]" />
+            <span className="absolute right-12 top-28 h-20 border-l-2 border-dashed border-[#4a3421]" />
+          </>
+        ) : id === "recurring" ? (
+          <CalendarCheck className="absolute -right-5 bottom-2 h-28 w-28 text-[#071018]" />
+        ) : id === "airport" ? (
+          <>
+            <Plane className="absolute right-3 top-7 h-10 w-10 -rotate-12 text-[#071018]" />
+            <span className="absolute bottom-0 right-0 h-16 w-12 rounded-tl-[28px] bg-[#8b735d]" />
+          </>
+        ) : (
+          <UsersRound className="absolute -right-5 bottom-2 h-24 w-24 text-white" />
+        )}
+      </div>
       <span
-        className="grid h-8 w-8 place-items-center rounded-full bg-[color-mix(in_srgb,var(--rp-primary)_20%,transparent)] text-[var(--rp-primary)] min-[390px]:h-9 min-[390px]:w-9"
+        className={cn("relative z-10 grid h-14 w-14 place-items-center rounded-full backdrop-blur-sm", style.icon)}
       >
-        <Icon className="h-5 w-5 min-[390px]:h-6 min-[390px]:w-6" />
+        <Icon className="h-7 w-7" />
       </span>
-      <span className="mt-1.5 flex min-h-4 w-full items-center justify-center whitespace-normal text-center text-[9px] font-black leading-[1.05] text-[var(--rp-text)] min-[390px]:text-[10px]">
-        {label}
+      <span className="relative z-10 mt-auto block">
+        <span className={cn("block text-sm font-semibold leading-tight", style.label)}>{label}</span>
+        <span className={cn("mt-1 block max-w-[8rem] font-black tracking-tight", style.title)}>{subtitle}</span>
       </span>
-      <span className="mt-0.5 flex min-h-[20px] w-full items-start justify-center whitespace-normal text-center text-[8px] font-semibold leading-[1.1] text-[var(--rp-muted-strong)] min-[390px]:text-[9px]">
-        {subtitle}
+      <span className={cn("absolute bottom-5 right-5 z-10 grid h-10 w-10 place-items-center rounded-full shadow-[0_12px_24px_rgba(0,0,0,0.24)]", style.arrow)}>
+        <ChevronRight className="h-5 w-5" />
       </span>
     </>
   );
@@ -597,8 +685,8 @@ function RideModeSwitch({
 
   return (
     <div className="grid justify-items-center">
-      <div className="w-full max-w-[600px] rounded-[34px] p-1.5">
-        <div className="relative grid grid-cols-2 rounded-full border border-white/25 bg-[rgba(248,250,252,0.92)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+      <div className="w-full max-w-[600px] rounded-full bg-white/30 p-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.24)] backdrop-blur-md">
+        <div className="relative grid grid-cols-2 overflow-hidden rounded-full border border-white/35 bg-[rgba(248,250,252,0.92)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
         {options.map((option) => {
           const selected = value === option.id;
           const Icon = option.icon;
@@ -609,13 +697,13 @@ function RideModeSwitch({
               type="button"
               onClick={() => onChange(option.id)}
               className={cn(
-                "inline-flex min-h-14 items-center justify-center gap-2 rounded-full px-4 text-base font-black transition min-[420px]:text-lg",
+                "inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full px-4 text-base font-black transition min-[420px]:text-lg",
                 selected
                   ? option.id === "ride_app"
-                    ? "bg-[linear-gradient(180deg,#8cc8ff_0%,#4dabff_100%)] text-[#075db3] shadow-[0_16px_32px_rgba(77,171,255,0.24)]"
-                    : "bg-[var(--rp-primary)] text-[#07111a] shadow-[0_16px_32px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
+                    ? "bg-[linear-gradient(180deg,#176fc7_0%,#0b4f9f_100%)] text-white shadow-[0_16px_32px_rgba(14,79,158,0.36)]"
+                    : "bg-[linear-gradient(180deg,#ffd966_0%,#ffc542_100%)] text-[#07111a] shadow-[0_16px_32px_rgba(255,197,66,0.3)]"
                   : option.id === "ride_app"
-                    ? "text-blue-900 hover:bg-blue-100"
+                    ? "bg-[#0b3f7d] text-blue-100/72 hover:text-white"
                     : "text-amber-900 hover:bg-amber-100",
               )}
             >
@@ -627,11 +715,11 @@ function RideModeSwitch({
         <span
           aria-hidden="true"
           className={cn(
-            "pointer-events-none absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-full border bg-white/92 px-2 py-0.5 text-xs font-black tracking-[0.12em] shadow-[0_8px_18px_rgba(15,23,42,0.14)]",
+            "pointer-events-none absolute left-1/2 top-1/2 z-10 grid h-9 w-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border bg-white/95 text-xs font-black tracking-[0.12em] shadow-[0_8px_18px_rgba(15,23,42,0.18)]",
             value === "ride_app" ? "border-blue-200 text-blue-700" : "border-amber-200 text-amber-700",
           )}
         >
-          {value === "ride_app" ? "<--" : "-->"}
+          <ArrowRightLeft className="h-4 w-4" />
         </span>
         </div>
       </div>
@@ -1739,15 +1827,15 @@ function HomePageContent() {
   const showRideRecommendations = true;
   return (
     <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-1.25rem)] overflow-x-hidden pb-[calc(9rem+env(safe-area-inset-bottom))] sm:-mx-6 lg:-mx-10 lg:-mt-8 lg:pb-8">
-      <section className="relative overflow-hidden px-4 pb-7 pt-6 sm:px-6 lg:px-10">
+      <section className="relative overflow-hidden px-4 pb-8 pt-7 sm:px-6 lg:px-10">
         <div
           aria-hidden="true"
           className="absolute inset-0 bg-[#04101a]"
         />
-        <div className="relative z-10 mx-auto w-full max-w-[560px] px-3 pb-3 sm:px-5 min-[720px]:px-7">
+        <div className="relative z-10 mx-auto w-full max-w-[680px] px-1 pb-4 sm:px-2 min-[720px]:px-3">
           <p
             className={cn(
-              "text-[17px] font-black leading-tight text-white min-[720px]:text-2xl",
+              "text-[25px] font-black leading-tight tracking-tight text-white min-[720px]:text-3xl",
             )}
           >
             {isAuthenticated ? (
@@ -1759,20 +1847,19 @@ function HomePageContent() {
               "Your ride, together."
             )}
           </p>
-          <p className="mt-0.5 text-xs font-semibold text-white/70 min-[720px]:text-sm">
+          <p className="mt-1 text-[15px] font-semibold text-white/72 min-[720px]:text-base">
             {isAuthenticated ? "Your ride, together." : "First Local Shared Ride in Hong Kong"}
           </p>
         </div>
         <div
-          aria-hidden="true"
-          className="pointer-events-none relative z-0 mx-auto h-[210px] w-full max-w-[560px] overflow-hidden rounded-[28px] border border-white/10 bg-[#071018] shadow-[0_18px_48px_rgba(0,0,0,0.42)] min-[720px]:h-[260px]"
+          className="relative z-0 mx-auto mt-1 h-[286px] w-full max-w-[680px] overflow-hidden rounded-[30px] border border-white/10 bg-[#071018] shadow-[0_28px_64px_rgba(0,0,0,0.38)] min-[390px]:h-[300px] min-[720px]:h-[340px]"
         >
           {heroBackgroundModes.map((mode) => {
             const background = homeHeroBackgrounds[mode];
             const active = activeHeroBackgroundMode === mode;
 
             return (
-              <div key={mode} className="absolute inset-0">
+              <div key={mode} aria-hidden="true" className="absolute inset-0">
                 <div
                   className="absolute inset-0 bg-no-repeat transition-opacity duration-300 ease-out min-[720px]:hidden"
                   style={{
@@ -1814,23 +1901,22 @@ function HomePageContent() {
               </div>
             );
           })}
-          <div className="absolute inset-x-0 bottom-0 h-10 bg-[linear-gradient(180deg,transparent,var(--rp-bg))] min-[720px]:h-20" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-[linear-gradient(180deg,transparent,rgba(3,9,15,0.82))]" />
           <div className="absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,rgba(3,9,15,0.38),transparent)]" />
-        </div>
-
-        <div className="relative z-10 mt-3">
           {showRideRecommendations ? (
-            <div className="mx-auto mb-4 w-full max-w-[560px]">
+            <div className="absolute inset-x-5 bottom-5 z-10 min-[420px]:inset-x-8">
               <RideModeSwitch
                 value={rideModeFilter === "ride_app" ? "ride_app" : "taxi"}
                 onChange={handleRideModeChange}
               />
             </div>
           ) : null}
+        </div>
 
+        <div className="relative z-10 mt-6">
           <div
             className={cn(
-              "mx-auto grid w-full max-w-[560px] grid-cols-4 gap-1.5 pb-1 min-[390px]:gap-2",
+              "mx-auto grid w-full max-w-[680px] grid-cols-4 auto-rows-[176px] gap-3 pb-1 min-[390px]:auto-rows-[196px] min-[720px]:auto-rows-[220px]",
             )}
           >
             {categoryCards.map((card) => (
@@ -1849,7 +1935,7 @@ function HomePageContent() {
       </section>
 
       {showRideRecommendations ? (
-        <section className="relative mt-4 px-4 sm:px-6 lg:px-10">
+        <section className="relative mx-auto mt-4 w-full max-w-[712px] px-4 sm:px-6 lg:px-4">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h1 className="whitespace-nowrap text-base font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
             <div className="flex shrink-0 items-center gap-2">
