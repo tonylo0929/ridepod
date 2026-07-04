@@ -33,7 +33,8 @@ import {
 import { cn } from "@/components/ui";
 
 type RideRequestCategory = "today_requests" | "commute" | "events" | "late_night" | "others";
-type RideBoardFilter = "all" | RideRequestCategory;
+type RideBoardCategory = "today" | "commute" | "events" | "late_night" | "others";
+type RideBoardFilter = "all" | RideBoardCategory;
 type RideRequestStatus = "open" | "leaving_soon" | "closed" | "expired";
 type RecurrenceType = "One-time" | "Recurring";
 type EventTiming = "Going to event" | "Leaving after event" | "Both possible";
@@ -56,6 +57,19 @@ type RideRequest = {
   departureDate: string;
   departureTime: string;
   category: RideRequestCategory;
+  rideBoardCategory?: RideBoardCategory;
+  rideCategory?: string;
+  rideMode?: string;
+  scheduleType?: string;
+  tripKind?: string;
+  routePolicy?: string;
+  currentUserJoinIntentStatus?: string;
+  eventName?: string;
+  eventVenue?: string;
+  purpose?: string;
+  commuteLabel?: string;
+  sameDay?: boolean;
+  lateNight?: boolean;
   detailLine: string;
   maxPeople: number;
   interestedCount: number;
@@ -91,19 +105,90 @@ type RideRequestFormValues = {
 
 const rideBoardFilters: Array<{ id: RideBoardFilter; label: string; icon: typeof MapPin }> = [
   { id: "all", label: "All", icon: MapPin },
-  { id: "today_requests", label: "Today Requests", icon: Clock3 },
+  { id: "today", label: "Today Requests", icon: Clock3 },
   { id: "commute", label: "Commute", icon: Route },
   { id: "events", label: "Events", icon: CalendarDays },
   { id: "late_night", label: "Late Night", icon: Moon },
   { id: "others", label: "Others", icon: ShieldCheck },
 ];
 
+const rideRequestCategoryToBoardCategory: Record<RideRequestCategory, RideBoardCategory> = {
+  today_requests: "today",
+  commute: "commute",
+  events: "events",
+  late_night: "late_night",
+  others: "others",
+};
+
+const rideBoardCategoryToRequestCategory: Record<RideBoardCategory, RideRequestCategory> = {
+  today: "today_requests",
+  commute: "commute",
+  events: "events",
+  late_night: "late_night",
+  others: "others",
+};
+
+const allRideBoardCopy = {
+  heading: "Ride Board requests",
+  helper: "Browse active ride requests across every category.",
+  emptyHeading: "No ride requests yet.",
+  emptyBody: "Create a ride request and see who is going the same way.",
+  emptyCtaLabel: "Create ride",
+};
+
+const rideBoardCategoryCopy: Record<
+  RideBoardCategory,
+  {
+    heading: string;
+    helper: string;
+    emptyHeading: string;
+    emptyBody: string;
+    emptyCtaLabel: string;
+  }
+> = {
+  today: {
+    heading: "Today Requests",
+    helper: "Short-notice rides happening today.",
+    emptyHeading: "No today requests yet.",
+    emptyBody: "Create a same-day ride request and see who is going the same way.",
+    emptyCtaLabel: "Create today request",
+  },
+  commute: {
+    heading: "Commute rides",
+    helper: "Find repeated routes for work, school, or regular travel.",
+    emptyHeading: "No commute pods yet.",
+    emptyBody: "Create a commute pod for your regular route.",
+    emptyCtaLabel: "Create commute pod",
+  },
+  events: {
+    heading: "Event rides",
+    helper: "Share rides before or after concerts, shows, games, and gatherings.",
+    emptyHeading: "No event rides yet.",
+    emptyBody: "Create a ride for an upcoming event.",
+    emptyCtaLabel: "Create event ride",
+  },
+  late_night: {
+    heading: "Late Night rides",
+    helper: "Find rides for late-night travel with clear pickup, confirmation, and chat status.",
+    emptyHeading: "No late-night rides yet.",
+    emptyBody: "Create a late-night ride request.",
+    emptyCtaLabel: "Create late-night ride",
+  },
+  others: {
+    heading: "Other rides",
+    helper: "Flexible shared ride requests.",
+    emptyHeading: "No other rides yet.",
+    emptyBody: "Create a flexible ride request.",
+    emptyCtaLabel: "Create ride",
+  },
+};
+
 const rideBoardCategories: Array<{
   id: "today-requests" | "commute" | "events" | "late-night" | "others";
   label: string;
   subtitle: string;
   image: string;
-  filter: RideRequestCategory;
+  filter: RideBoardCategory;
   featured?: boolean;
   eyebrow?: string;
   ctaLabel?: string;
@@ -115,7 +200,7 @@ const rideBoardCategories: Array<{
     label: "Today Requests",
     subtitle: "Find rides happening today, near you.",
     image: "/images/ride-board/today-requests-reference-card.png",
-    filter: "today_requests",
+    filter: "today",
     featured: true,
     eyebrow: "Featured",
     ctaLabel: "Browse Today",
@@ -140,7 +225,7 @@ const rideBoardCategories: Array<{
   {
     id: "late-night",
     label: "Late Night",
-    subtitle: "Safe rides. Anytime.",
+    subtitle: "Clear late-night pickup plans.",
     image: "/images/ride-board/late-night-reference-card.png",
     filter: "late_night",
     objectPosition: "right bottom",
@@ -203,127 +288,139 @@ const statusCopy: Record<
 
 const initialRideRequests: RideRequest[] = [
   {
-    id: "board-shibuya-ebisu",
-    from: "Shibuya",
-    to: "Ebisu",
+    id: "board-causeway-central",
+    from: "Causeway Bay",
+    to: "Central",
     dateLabel: "Today",
-    timeLabel: "8:30 AM",
-    departureDate: "2026-06-29",
-    departureTime: "08:30",
+    timeLabel: "7:30 PM",
+    departureDate: "2026-07-04",
+    departureTime: "19:30",
     category: "today_requests",
-    detailLine: "~45 min drive",
+    rideBoardCategory: "today",
+    sameDay: true,
+    detailLine: "Same-day request",
     maxPeople: 4,
     interestedCount: 3,
-    status: "leaving_soon",
+    status: "open",
     host: {
-      name: "Yuto S.",
+      name: "Maya C.",
       rating: 4.9,
       rideCount: 25,
       trustLabel: "RidePod member",
     },
-    note: "Heading across town this morning. Happy to split fuel costs.",
+    note: "Heading across the harbour later today and open to a nearby pickup point.",
     chatAllowed: false,
     expiryLabel: "After departure",
     visibilityLabel: "Public",
-    extraLabel: "Estimated travel time",
+    extraLabel: "Request type",
   },
   {
-    id: "board-shinjuku-tokyo",
-    from: "Shinjuku",
-    to: "Tokyo Station",
-    dateLabel: "Today",
-    timeLabel: "6:15 PM",
-    departureDate: "2026-06-29",
-    departureTime: "18:15",
+    id: "board-tko-central",
+    from: "Tseung Kwan O",
+    to: "Central",
+    dateLabel: "Weekdays",
+    timeLabel: "8:20 AM",
+    departureDate: "2026-07-06",
+    departureTime: "08:20",
     category: "commute",
-    detailLine: "~20 min drive",
+    rideBoardCategory: "commute",
+    scheduleType: "recurring",
+    commuteLabel: "weekday commute",
+    detailLine: "Weekday commute",
     maxPeople: 4,
     interestedCount: 2,
-    status: "leaving_soon",
+    status: "open",
     host: {
-      name: "Mika T.",
+      name: "Jason L.",
       rating: 4.8,
       rideCount: 18,
       trustLabel: "Trusted commute rider",
     },
-    note: "Driving back after work. Let's ride together and beat the traffic!",
+    note: "Regular morning route on weekdays. Looking for riders with a similar schedule.",
     chatAllowed: false,
     expiryLabel: "After departure",
     visibilityLabel: "Public",
-    extraLabel: "Estimated travel time",
+    extraLabel: "Commute pattern",
   },
   {
-    id: "board-roppongi-ginza",
-    from: "Roppongi",
-    to: "Ginza",
-    dateLabel: "Tomorrow",
-    timeLabel: "7:40 PM",
-    departureDate: "2026-06-29",
-    departureTime: "19:40",
+    id: "board-asiaworld-mongkok",
+    from: "AsiaWorld-Expo",
+    to: "Mong Kok",
+    dateLabel: "After concert",
+    timeLabel: "10:45 PM",
+    departureDate: "2026-07-12",
+    departureTime: "22:45",
     category: "events",
-    detailLine: "~18 min drive",
+    rideBoardCategory: "events",
+    eventName: "Concert",
+    eventVenue: "AsiaWorld-Expo",
+    purpose: "event ride",
+    detailLine: "Post-event ride",
     maxPeople: 3,
     interestedCount: 4,
     status: "open",
     host: {
-      name: "Ari K.",
+      name: "Ari W.",
       rating: 4.7,
       rideCount: 34,
       trustLabel: "Event ride regular",
     },
-    note: "Heading out after an event. Flexible pickup around the main exit.",
+    note: "Leaving after the concert. Flexible pickup around the main exits.",
     chatAllowed: true,
     userInterested: true,
     saved: true,
     expiryLabel: "After departure",
     visibilityLabel: "Public",
-    extraLabel: "Estimated travel time",
+    extraLabel: "Event details",
   },
   {
-    id: "board-ueno-akihabara",
-    from: "Ueno",
-    to: "Akihabara",
-    dateLabel: "Today",
-    timeLabel: "9:00 PM",
-    departureDate: "2026-06-29",
-    departureTime: "21:00",
+    id: "board-lkf-taipo",
+    from: "Lan Kwai Fong",
+    to: "Tai Po",
+    dateLabel: "Tonight",
+    timeLabel: "12:30 AM",
+    departureDate: "2026-07-05",
+    departureTime: "00:30",
     category: "late_night",
-    detailLine: "~12 min drive",
+    rideBoardCategory: "late_night",
+    lateNight: true,
+    detailLine: "Late-night pickup",
     maxPeople: 4,
-    interestedCount: 4,
-    status: "closed",
+    interestedCount: 1,
+    status: "open",
     host: {
-      name: "Ren M.",
+      name: "Ren C.",
       rating: 4.9,
       rideCount: 61,
       trustLabel: "Fast response host",
     },
-    note: "This request is full, but you can still view the public details.",
+    note: "Looking for a clear pickup point and confirmation before leaving.",
     chatAllowed: false,
     expiryLabel: "After departure",
     visibilityLabel: "Public",
-    extraLabel: "Estimated travel time",
+    extraLabel: "Pickup flexibility",
   },
   {
-    id: "board-saved-sample",
-    from: "Meguro",
-    to: "Daikanyama",
-    dateLabel: "Sat",
+    id: "board-flexible-route",
+    from: "Flexible pickup",
+    to: "Flexible route",
+    dateLabel: "Flexible",
     timeLabel: "2:30 PM",
-    departureDate: "2026-07-04",
+    departureDate: "2026-07-11",
     departureTime: "14:30",
     category: "others",
-    detailLine: "~10 min drive",
+    rideBoardCategory: "others",
+    detailLine: "Flexible route",
     maxPeople: 3,
     interestedCount: 1,
     status: "open",
     host: {
-      name: "Sam R.",
+      name: "Sam K.",
       rating: 4.6,
       rideCount: 18,
       trustLabel: "RidePod member",
     },
-    note: "Light shopping trip with one suitcase. Saved for later.",
+    note: "Flexible destination and timing. Share your route if it is nearby.",
     chatAllowed: false,
     saved: true,
     expiryLabel: "After departure",
@@ -396,11 +493,82 @@ function getRequestStatus(dateValue: string, timeValue: string): RideRequestStat
   return "open";
 }
 
+function getRideBoardSectionCopy(filter: RideBoardFilter) {
+  return filter === "all" ? allRideBoardCopy : rideBoardCategoryCopy[filter];
+}
+
+function getRequestBoardCategory(request: RideRequest): RideBoardCategory {
+  return request.rideBoardCategory ?? rideRequestCategoryToBoardCategory[request.category] ?? "others";
+}
+
+function getRequestSignalText(request: RideRequest) {
+  return [
+    request.category,
+    request.rideBoardCategory,
+    request.rideCategory,
+    request.rideMode,
+    request.scheduleType,
+    request.tripKind,
+    request.routePolicy,
+    request.currentUserJoinIntentStatus,
+    request.eventName,
+    request.eventVenue,
+    request.purpose,
+    request.commuteLabel,
+    request.detailLine,
+    request.note,
+    request.extraLabel,
+    request.dateLabel,
+    request.timeLabel,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function isRideDateToday(request: RideRequest) {
+  const dateLabel = request.dateLabel.trim().toLowerCase();
+  return request.sameDay === true || request.departureDate === getTodayInputValue() || dateLabel === "today" || dateLabel.includes("today");
+}
+
+function isLateNightTime(request: RideRequest) {
+  const [hourValue] = request.departureTime.split(":");
+  const hour = Number(hourValue);
+
+  if (Number.isNaN(hour)) return false;
+  return hour >= 22 || hour < 6;
+}
+
+function matchesRideBoardCategory(request: RideRequest, filter: RideBoardCategory) {
+  const boardCategory = getRequestBoardCategory(request);
+  const signalText = getRequestSignalText(request);
+
+  if (boardCategory === filter) return true;
+
+  if (filter === "today") {
+    return isRideDateToday(request);
+  }
+
+  if (filter === "commute") {
+    return request.scheduleType === "recurring" || signalText.includes("commute") || signalText.includes("recurring") || signalText.includes("weekdays");
+  }
+
+  if (filter === "events") {
+    return Boolean(request.eventName || request.eventVenue) || signalText.includes("event") || signalText.includes("concert") || signalText.includes("show") || signalText.includes("game") || signalText.includes("gathering");
+  }
+
+  if (filter === "late_night") {
+    return request.lateNight === true || isLateNightTime(request) || signalText.includes("late night") || signalText.includes("late-night") || signalText.includes("after midnight");
+  }
+
+  return boardCategory === "others";
+}
+
 function getVisibleRequests(requests: RideRequest[], filter: RideBoardFilter) {
   return requests.filter((request) => {
     if (request.status === "expired") return false;
     if (filter === "all") return true;
-    return request.category === filter;
+    return matchesRideBoardCategory(request, filter);
   });
 }
 
@@ -415,7 +583,15 @@ function getActionState(request: RideRequest) {
   return { label: "I'm interested", disabled: false, icon: MessageCircle };
 }
 
-function PostRideRequestButton({ onClick, compact = false }: { onClick: () => void; compact?: boolean }) {
+function PostRideRequestButton({
+  onClick,
+  compact = false,
+  label = "Post Ride Request",
+}: {
+  onClick: () => void;
+  compact?: boolean;
+  label?: string;
+}) {
   return (
     <button
       type="button"
@@ -426,7 +602,7 @@ function PostRideRequestButton({ onClick, compact = false }: { onClick: () => vo
       )}
     >
       <Plus className={cn("stroke-[2.5]", compact ? "h-5 w-5" : "h-8 w-8")} />
-      Post Ride Request
+      {label}
     </button>
   );
 }
@@ -436,7 +612,7 @@ function RideBoardCategoryArtwork({
   onCategorySelect,
 }: {
   activeFilter: RideBoardFilter;
-  onCategorySelect: (filter: RideRequestCategory) => void;
+  onCategorySelect: (filter: RideBoardFilter) => void;
 }) {
   const featuredCategory = rideBoardCategories.find((category) => category.featured);
   const secondaryCategories = rideBoardCategories.filter((category) => !category.featured);
@@ -475,7 +651,7 @@ function RideBoardCategoryCard({
 }: {
   category: (typeof rideBoardCategories)[number];
   active: boolean;
-  onSelect: (filter: RideRequestCategory) => void;
+  onSelect: (filter: RideBoardFilter) => void;
   priority?: boolean;
 }) {
   const isFeatured = category.featured === true;
@@ -530,6 +706,7 @@ function RideBoardFilters({
               key={chip.id}
               type="button"
               onClick={() => onFilterChange(chip.id)}
+              aria-pressed={active}
               className={cn(
                 "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-black transition min-[390px]:text-[13px]",
                 active
@@ -838,12 +1015,15 @@ function RideRequestDetailModal({
 function PostRideRequestForm({
   onClose,
   onSubmit,
+  initialCategory = defaultFormValues.category,
 }: {
   onClose: () => void;
   onSubmit: (values: RideRequestFormValues) => void;
+  initialCategory?: RideRequestCategory;
 }) {
   const [values, setValues] = useState<RideRequestFormValues>(() => ({
     ...defaultFormValues,
+    category: initialCategory,
     date: getTodayInputValue(),
     time: "18:00",
   }));
@@ -1104,18 +1284,24 @@ function PostRideRequestForm({
   );
 }
 
-function EmptyRideBoard({ onPostClick }: { onPostClick: () => void }) {
+function EmptyRideBoard({
+  copy,
+  onPostClick,
+}: {
+  copy: typeof allRideBoardCopy;
+  onPostClick: () => void;
+}) {
   return (
     <section className="rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(145deg,rgba(14,28,42,0.92),rgba(6,16,25,0.96))] px-5 py-8 text-center shadow-[var(--rp-shadow-soft)]">
       <span className="mx-auto grid h-14 w-14 place-items-center rounded-[18px] border border-[rgba(152,251,203,0.28)] bg-[rgba(152,251,203,0.1)] text-[#98FBCB]">
         <MapPin className="h-7 w-7" />
       </span>
-      <h2 className="mt-4 text-2xl font-black text-[var(--rp-text)]">No ride requests yet</h2>
+      <h2 className="mt-4 text-2xl font-black text-[var(--rp-text)]">{copy.emptyHeading}</h2>
       <p className="mx-auto mt-2 max-w-[280px] text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-        Post the first one for this category.
+        {copy.emptyBody}
       </p>
       <div className="mt-5">
-        <PostRideRequestButton onClick={onPostClick} compact />
+        <PostRideRequestButton onClick={onPostClick} compact label={copy.emptyCtaLabel} />
       </div>
     </section>
   );
@@ -1137,11 +1323,15 @@ export default function RideBoardPage() {
   const [requests, setRequests] = useState<RideRequest[]>(initialRideRequests);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [showPostForm, setShowPostForm] = useState(false);
+  const [postFormCategory, setPostFormCategory] = useState<RideRequestCategory>(defaultFormValues.category);
   const [toastMessage, setToastMessage] = useState("");
   const toastTimerRef = useRef<number | null>(null);
+  const requestListRef = useRef<HTMLElement | null>(null);
+  const requestListHeadingRef = useRef<HTMLHeadingElement | null>(null);
 
   const visibleRequests = useMemo(() => getVisibleRequests(requests, activeFilter), [requests, activeFilter]);
   const selectedRequest = selectedRequestId ? requests.find((request) => request.id === selectedRequestId) ?? null : null;
+  const requestSectionCopy = getRideBoardSectionCopy(activeFilter);
 
   useEffect(() => {
     return () => {
@@ -1153,6 +1343,24 @@ export default function RideBoardPage() {
     setToastMessage(message);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     toastTimerRef.current = window.setTimeout(() => setToastMessage(""), 3200);
+  };
+
+  const focusRideList = () => {
+    window.requestAnimationFrame(() => {
+      requestListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      requestListHeadingRef.current?.focus({ preventScroll: true });
+    });
+  };
+
+  const handleFilterChange = (filter: RideBoardFilter) => {
+    setActiveFilter(filter);
+    focusRideList();
+  };
+
+  const openPostForm = (category?: RideRequestCategory) => {
+    const categoryToUse = category ?? (activeFilter === "all" ? defaultFormValues.category : rideBoardCategoryToRequestCategory[activeFilter]);
+    setPostFormCategory(categoryToUse);
+    setShowPostForm(true);
   };
 
   const handleInterested = (requestId: string) => {
@@ -1187,6 +1395,7 @@ export default function RideBoardPage() {
       late_night: "Pickup flexibility",
       others: "Request type",
     };
+    const rideBoardCategory = rideRequestCategoryToBoardCategory[values.category];
     const newRequest: RideRequest = {
       id: `posted-${Date.now()}`,
       from: values.from.trim(),
@@ -1196,6 +1405,7 @@ export default function RideBoardPage() {
       departureDate: values.date,
       departureTime: values.time,
       category: values.category,
+      rideBoardCategory,
       detailLine: detailLineByCategory[values.category],
       maxPeople: Math.max(Number(values.maxPeople) || 1, 1),
       interestedCount: 0,
@@ -1219,8 +1429,9 @@ export default function RideBoardPage() {
     };
 
     setRequests((currentRequests) => [newRequest, ...currentRequests]);
-    setActiveFilter(values.category);
+    setActiveFilter(rideBoardCategory);
     setShowPostForm(false);
+    focusRideList();
     showToast("Ride request posted. We'll show it to nearby riders.");
   };
 
@@ -1242,7 +1453,8 @@ export default function RideBoardPage() {
           </div>
           <button
             type="button"
-            onClick={() => setActiveFilter("all")}
+            onClick={() => handleFilterChange("all")}
+            aria-pressed={activeFilter === "all"}
             className="mt-0.5 inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-[#0fb7a8]/72 bg-[#0fb7a8]/8 px-3.5 text-xs font-black text-[#20d6c4] shadow-[0_0_26px_rgba(15,183,168,0.12)] transition hover:bg-[#0fb7a8]/14 min-[390px]:text-[13px]"
           >
             <SlidersHorizontal className="h-4 w-4" />
@@ -1250,13 +1462,32 @@ export default function RideBoardPage() {
           </button>
         </section>
 
-        <RideBoardFilters activeFilter={activeFilter} onFilterChange={setActiveFilter} />
+        <RideBoardFilters activeFilter={activeFilter} onFilterChange={handleFilterChange} />
 
-        <RideBoardCategoryArtwork activeFilter={activeFilter} onCategorySelect={setActiveFilter} />
+        <RideBoardCategoryArtwork activeFilter={activeFilter} onCategorySelect={handleFilterChange} />
 
-        <PostRideRequestButton onClick={() => setShowPostForm(true)} compact />
+        <PostRideRequestButton onClick={() => openPostForm()} compact />
 
-        <section className="grid gap-4" aria-label="Public ride requests">
+        <section ref={requestListRef} className="grid scroll-mt-24 gap-4" aria-labelledby="ride-board-results-heading">
+          <div className="flex items-start justify-between gap-3 rounded-[20px] border border-white/10 bg-white/[0.045] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <div className="min-w-0 text-left">
+              <h2
+                ref={requestListHeadingRef}
+                id="ride-board-results-heading"
+                tabIndex={-1}
+                className="text-xl font-black leading-tight text-[var(--rp-text)] outline-none focus-visible:ring-2 focus-visible:ring-[#98FBCB]"
+              >
+                {requestSectionCopy.heading}
+              </h2>
+              <p className="mt-1 text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                {requestSectionCopy.helper}
+              </p>
+            </div>
+            <span className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-[#34e9ce]/35 bg-[#34e9ce]/10 px-3 text-xs font-black text-[#34e9ce]">
+              {visibleRequests.length} {visibleRequests.length === 1 ? "ride" : "rides"}
+            </span>
+          </div>
+
           {visibleRequests.length > 0 ? (
             visibleRequests.map((request) => (
               <RideRequestCard
@@ -1267,7 +1498,7 @@ export default function RideBoardPage() {
               />
             ))
           ) : (
-            <EmptyRideBoard onPostClick={() => setShowPostForm(true)} />
+            <EmptyRideBoard copy={requestSectionCopy} onPostClick={() => openPostForm()} />
           )}
         </section>
       </div>
@@ -1279,7 +1510,14 @@ export default function RideBoardPage() {
           onInterested={handleInterested}
         />
       ) : null}
-      {showPostForm ? <PostRideRequestForm onClose={() => setShowPostForm(false)} onSubmit={handlePostSubmit} /> : null}
+      {showPostForm ? (
+        <PostRideRequestForm
+          key={postFormCategory}
+          initialCategory={postFormCategory}
+          onClose={() => setShowPostForm(false)}
+          onSubmit={handlePostSubmit}
+        />
+      ) : null}
       {toastMessage ? <RideBoardToast message={toastMessage} /> : null}
     </div>
   );
