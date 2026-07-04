@@ -1332,6 +1332,7 @@ export default function RideBoardPage() {
   const visibleRequests = useMemo(() => getVisibleRequests(requests, activeFilter), [requests, activeFilter]);
   const selectedRequest = selectedRequestId ? requests.find((request) => request.id === selectedRequestId) ?? null : null;
   const requestSectionCopy = getRideBoardSectionCopy(activeFilter);
+  const showRequestList = activeFilter !== "all";
 
   useEffect(() => {
     return () => {
@@ -1354,7 +1355,9 @@ export default function RideBoardPage() {
 
   const handleFilterChange = (filter: RideBoardFilter) => {
     setActiveFilter(filter);
-    focusRideList();
+    if (filter !== "all") {
+      focusRideList();
+    }
   };
 
   const openPostForm = (category?: RideRequestCategory) => {
@@ -1468,39 +1471,41 @@ export default function RideBoardPage() {
 
         <PostRideRequestButton onClick={() => openPostForm()} compact />
 
-        <section ref={requestListRef} className="grid scroll-mt-24 gap-4" aria-labelledby="ride-board-results-heading">
-          <div className="flex items-start justify-between gap-3 rounded-[20px] border border-white/10 bg-white/[0.045] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <div className="min-w-0 text-left">
-              <h2
-                ref={requestListHeadingRef}
-                id="ride-board-results-heading"
-                tabIndex={-1}
-                className="text-xl font-black leading-tight text-[var(--rp-text)] outline-none focus-visible:ring-2 focus-visible:ring-[#98FBCB]"
-              >
-                {requestSectionCopy.heading}
-              </h2>
-              <p className="mt-1 text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                {requestSectionCopy.helper}
-              </p>
+        {showRequestList ? (
+          <section ref={requestListRef} className="grid scroll-mt-24 gap-4" aria-labelledby="ride-board-results-heading">
+            <div className="flex items-start justify-between gap-3 rounded-[20px] border border-white/10 bg-white/[0.045] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <div className="min-w-0 text-left">
+                <h2
+                  ref={requestListHeadingRef}
+                  id="ride-board-results-heading"
+                  tabIndex={-1}
+                  className="text-xl font-black leading-tight text-[var(--rp-text)] outline-none focus-visible:ring-2 focus-visible:ring-[#98FBCB]"
+                >
+                  {requestSectionCopy.heading}
+                </h2>
+                <p className="mt-1 text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                  {requestSectionCopy.helper}
+                </p>
+              </div>
+              <span className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-[#34e9ce]/35 bg-[#34e9ce]/10 px-3 text-xs font-black text-[#34e9ce]">
+                {visibleRequests.length} {visibleRequests.length === 1 ? "ride" : "rides"}
+              </span>
             </div>
-            <span className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-[#34e9ce]/35 bg-[#34e9ce]/10 px-3 text-xs font-black text-[#34e9ce]">
-              {visibleRequests.length} {visibleRequests.length === 1 ? "ride" : "rides"}
-            </span>
-          </div>
 
-          {visibleRequests.length > 0 ? (
-            visibleRequests.map((request) => (
-              <RideRequestCard
-                key={request.id}
-                request={request}
-                onOpen={setSelectedRequestId}
-                onInterested={handleInterested}
-              />
-            ))
-          ) : (
-            <EmptyRideBoard copy={requestSectionCopy} onPostClick={() => openPostForm()} />
-          )}
-        </section>
+            {visibleRequests.length > 0 ? (
+              visibleRequests.map((request) => (
+                <RideRequestCard
+                  key={request.id}
+                  request={request}
+                  onOpen={setSelectedRequestId}
+                  onInterested={handleInterested}
+                />
+              ))
+            ) : (
+              <EmptyRideBoard copy={requestSectionCopy} onPostClick={() => openPostForm()} />
+            )}
+          </section>
+        ) : null}
       </div>
 
       {selectedRequest ? (
