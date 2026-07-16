@@ -65,7 +65,7 @@ type CurrentUserAvatar = {
 };
 
 const categoryCards: Array<{ id: HomeTab; label: string; subtitle: string; icon: LucideIcon; href?: string }> = [
-  { id: "one_off", label: "One-off", subtitle: "Schedule Ride", icon: CarFront },
+  { id: "one_off", label: "One-off", subtitle: "Schedule Ride", icon: CalendarCheck },
   { id: "recurring", label: "Recurring", subtitle: "Ride Regularly", icon: RefreshCcw },
   { id: "airport", label: "Airport", subtitle: "Flight Ride", icon: Plane },
   { id: "all", label: "All Rides", subtitle: "All public", icon: UsersRound },
@@ -553,6 +553,9 @@ function CategoryCard({
       label: string;
       title: string;
       arrow: string;
+      arrowPosition: string;
+      content: string;
+      titleWidth: string;
       decor: string;
       layout: string;
     }
@@ -562,40 +565,52 @@ function CategoryCard({
         "col-span-2 row-span-2 bg-[radial-gradient(circle_at_88%_86%,rgba(255,255,255,0.28),transparent_28%),linear-gradient(145deg,#ffd96d_0%,#ffc43f_48%,#f3aa25_100%)] text-[#071018]",
       icon: "bg-white/24 text-[#071018] ring-1 ring-white/34",
       label: "text-[#4e3411]/82",
-      title: "text-[26px] leading-[0.96] min-[390px]:text-[30px]",
+      title: "text-[23px] leading-[0.96] min-[390px]:text-[26px] min-[720px]:text-[30px]",
       arrow: "bg-[#111827] text-[#ffd15a]",
+      arrowPosition: "bottom-5 left-5 min-[390px]:bottom-6 min-[390px]:left-6",
+      content: "mb-12 min-[720px]:mb-14",
+      titleWidth: "max-w-[8rem]",
       decor: "opacity-70",
-      layout: "justify-between p-6 min-[390px]:p-7",
+      layout: "justify-between p-5 min-[390px]:p-6 min-[720px]:p-7",
     },
     recurring: {
       shell:
         "col-span-2 bg-[radial-gradient(circle_at_90%_24%,rgba(255,255,255,0.22),transparent_36%),linear-gradient(135deg,#95f08f_0%,#62d875_54%,#45c86e_100%)] text-[#071018]",
       icon: "bg-white/18 text-[#071018] ring-1 ring-white/36",
       label: "text-[#143314]/78",
-      title: "text-[21px] leading-[1.02] min-[390px]:text-[24px]",
+      title: "text-[18px] leading-[1.02] min-[390px]:text-[20px] min-[720px]:text-[24px]",
       arrow: "bg-[#071018] text-[#a6f59f]",
+      arrowPosition: "bottom-4 right-4 min-[390px]:bottom-5 min-[390px]:right-5",
+      content: "mb-1 min-[390px]:mb-2 min-[720px]:mb-0",
+      titleWidth: "max-w-[5.25rem] min-[720px]:max-w-[8rem]",
       decor: "opacity-18",
-      layout: "p-5 min-[390px]:p-6",
+      layout: "p-4 min-[390px]:p-5 min-[720px]:p-6",
     },
     airport: {
       shell:
         "col-span-1 bg-[radial-gradient(circle_at_80%_24%,rgba(255,255,255,0.5),transparent_42%),linear-gradient(145deg,#fff1dc_0%,#eadcc8_100%)] text-[#071018]",
       icon: "bg-[#f6d7c6] text-[#071018] ring-1 ring-white/60",
       label: "text-[#604330]/70",
-      title: "text-[19px] leading-[1.02] min-[390px]:text-[22px]",
+      title: "text-[13px] leading-[1.02] min-[390px]:text-[15px] min-[720px]:text-[22px]",
       arrow: "bg-[#071018] text-white",
+      arrowPosition: "bottom-2 right-2 min-[390px]:bottom-3 min-[390px]:right-3 min-[720px]:bottom-4 min-[720px]:right-4",
+      content: "mb-11 min-[720px]:mb-10",
+      titleWidth: "max-w-[4.4rem] min-[720px]:max-w-[8rem]",
       decor: "opacity-20",
-      layout: "p-4 min-[390px]:p-5",
+      layout: "p-3.5 min-[390px]:p-4 min-[720px]:p-5",
     },
     all: {
       shell:
         "col-span-1 bg-[radial-gradient(circle_at_82%_26%,rgba(255,255,255,0.24),transparent_42%),linear-gradient(145deg,#4d8dff_0%,#2d6cdf_100%)] text-white",
       icon: "bg-white/14 text-white ring-1 ring-white/34",
       label: "text-white/72",
-      title: "text-[19px] leading-[1.02] min-[390px]:text-[22px]",
+      title: "text-[13px] leading-[1.02] min-[390px]:text-[15px] min-[720px]:text-[22px]",
       arrow: "bg-[#071018] text-white",
+      arrowPosition: "bottom-2 right-2 min-[390px]:bottom-3 min-[390px]:right-3 min-[720px]:bottom-4 min-[720px]:right-4",
+      content: "mb-11 min-[720px]:mb-10",
+      titleWidth: "max-w-[4.4rem] min-[720px]:max-w-[8rem]",
       decor: "opacity-13",
-      layout: "p-4 min-[390px]:p-5",
+      layout: "p-3.5 min-[390px]:p-4 min-[720px]:p-5",
     },
     quote_ready: {
       shell:
@@ -604,6 +619,9 @@ function CategoryCard({
       label: "text-[#4e3411]/82",
       title: "text-[21px] leading-[1.02] min-[390px]:text-[24px]",
       arrow: "bg-[#071018] text-[#ffd15a]",
+      arrowPosition: "bottom-5 right-5",
+      content: "mb-0",
+      titleWidth: "max-w-[8rem]",
       decor: "opacity-20",
       layout: "p-5 min-[390px]:p-6",
     },
@@ -622,7 +640,7 @@ function CategoryCard({
       <div aria-hidden="true" className={cn("pointer-events-none absolute inset-0", style.decor)}>
         {id === "one_off" ? (
           <>
-            <CarFront className="absolute bottom-5 right-1 h-20 w-20 rotate-[-14deg] text-white" />
+            <CarFront className="absolute bottom-2 -right-10 h-20 w-20 rotate-[-14deg] text-white" />
             <MapPin className="absolute right-8 top-16 h-9 w-9 text-[#4a3421]" />
             <span className="absolute right-12 top-28 h-20 border-l-2 border-dashed border-[#4a3421]" />
           </>
@@ -638,15 +656,15 @@ function CategoryCard({
         )}
       </div>
       <span
-        className={cn("relative z-10 grid h-14 w-14 place-items-center rounded-full backdrop-blur-sm", style.icon)}
+        className={cn("relative z-10 grid h-11 w-11 place-items-center rounded-full backdrop-blur-sm min-[390px]:h-12 min-[390px]:w-12 min-[720px]:h-14 min-[720px]:w-14", style.icon)}
       >
-        <Icon className="h-7 w-7" />
+        <Icon className="h-6 w-6 min-[720px]:h-7 min-[720px]:w-7" />
       </span>
-      <span className="relative z-10 mt-auto block">
-        <span className={cn("block text-sm font-semibold leading-tight", style.label)}>{label}</span>
-        <span className={cn("mt-1 block max-w-[8rem] font-black tracking-tight", style.title)}>{subtitle}</span>
+      <span className={cn("relative z-10 mt-auto block", style.content)}>
+        <span className={cn("block text-xs font-semibold leading-tight min-[720px]:text-sm", style.label)}>{label}</span>
+        <span className={cn("mt-1 block font-black tracking-tight", style.title, style.titleWidth)}>{subtitle}</span>
       </span>
-      <span className={cn("absolute bottom-5 right-5 z-10 grid h-10 w-10 place-items-center rounded-full shadow-[0_12px_24px_rgba(0,0,0,0.24)]", style.arrow)}>
+      <span className={cn("absolute z-10 grid h-9 w-9 place-items-center rounded-full shadow-[0_12px_24px_rgba(0,0,0,0.24)] min-[720px]:h-10 min-[720px]:w-10", style.arrow, style.arrowPosition)}>
         <ChevronRight className="h-5 w-5" />
       </span>
     </>
@@ -1825,6 +1843,20 @@ function HomePageContent() {
     seatFilter !== "any" ||
     ownershipFilter !== "all";
   const showRideRecommendations = true;
+  const [oneOffCard, recurringCard, airportCard, allRidesCard] = categoryCards;
+  const renderCategoryCard = (card: (typeof categoryCards)[number]) => (
+    <CategoryCard
+      key={card.id}
+      id={card.id}
+      label={card.label}
+      subtitle={card.subtitle}
+      icon={card.icon}
+      href={card.href}
+      selected={activeTab === card.id}
+      onClick={handleTabChange}
+    />
+  );
+
   return (
     <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-1.25rem)] overflow-x-hidden pb-[calc(9rem+env(safe-area-inset-bottom))] sm:-mx-6 lg:-mx-10 lg:-mt-8 lg:pb-8">
       <section className="relative overflow-hidden px-4 pb-8 pt-7 sm:px-6 lg:px-10">
@@ -1916,20 +1948,25 @@ function HomePageContent() {
         <div className="relative z-10 mt-6">
           <div
             className={cn(
-              "mx-auto grid w-full max-w-[680px] grid-cols-4 auto-rows-[176px] gap-3 pb-1 min-[390px]:auto-rows-[196px] min-[720px]:auto-rows-[220px]",
+              "mx-auto grid w-full max-w-[680px] grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 pb-1",
             )}
+            style={{
+              gridTemplateRows: "clamp(104px, 27vw, 188px) clamp(116px, 32vw, 226px)",
+            }}
           >
-            {categoryCards.map((card) => (
-              <CategoryCard
-                key={card.id}
-                id={card.id}
-                label={card.label}
-                subtitle={card.subtitle}
-                icon={card.icon}
-                selected={activeTab === card.id}
-                onClick={handleTabChange}
-              />
-            ))}
+            <div className="row-span-2 min-h-0">
+              {renderCategoryCard(oneOffCard)}
+            </div>
+            <div className="min-h-0">
+              {renderCategoryCard(recurringCard)}
+            </div>
+            <div
+              className="relative z-20 grid min-h-0 grid-cols-[1.08fr_1fr] gap-3"
+              style={{ marginLeft: "clamp(-64px, -12vw, -46px)" }}
+            >
+              {renderCategoryCard(airportCard)}
+              {renderCategoryCard(allRidesCard)}
+            </div>
           </div>
         </div>
       </section>
