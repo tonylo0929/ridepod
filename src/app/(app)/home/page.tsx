@@ -1745,9 +1745,9 @@ function HomePageContent() {
       onClick={handleTabChange}
       className={
         card.id === "one_off"
-          ? "absolute left-0 top-0 z-[1] h-[calc(100%-12px)] w-[49%] rounded-[26px]"
+          ? "absolute left-0 top-0 z-[1] h-[90.2%] w-[48.35%] rounded-[clamp(22px,4vw,28px)]"
           : card.id === "recurring"
-            ? "absolute right-0 top-0 z-[2] h-[44%] w-[49%] rounded-[24px]"
+            ? "absolute right-0 top-0 z-[2] h-[41%] w-[49.55%] rounded-[clamp(20px,3.8vw,26px)]"
             : ""
       }
     />
@@ -1842,10 +1842,10 @@ function HomePageContent() {
         </div>
 
         <div className="relative z-10 mt-6">
-          <div className="relative isolate mx-auto h-[clamp(224px,60vw,430px)] w-full max-w-[680px] pb-1">
+          <div className="relative isolate mx-auto aspect-[1.45/1] w-full max-w-[680px] overflow-visible pb-1">
             {renderCategoryCard(oneOffCard)}
             {renderCategoryCard(recurringCard)}
-            <div className="absolute bottom-0 right-0 z-[3] grid h-[53%] w-[58.5%] grid-cols-[1.1fr_0.9fr] gap-2.5">
+            <div className="absolute bottom-0 right-0 z-[3] grid h-[56.2%] w-[57.1%] grid-cols-[minmax(0,1.095fr)_minmax(0,1fr)] gap-[clamp(8px,1.7vw,13px)]">
               <CategoryCard
                 id={airportCard.id}
                 imageSrc={airportCard.imageSrc}
@@ -1853,7 +1853,7 @@ function HomePageContent() {
                 href={airportCard.href}
                 selected={activeTab === airportCard.id}
                 onClick={handleTabChange}
-                className="relative h-full w-full rounded-[23px]"
+                className="relative h-full w-full min-w-0 rounded-[clamp(19px,3.5vw,24px)]"
               />
               <CategoryCard
                 id={allRidesCard.id}
@@ -1862,7 +1862,7 @@ function HomePageContent() {
                 href={allRidesCard.href}
                 selected={activeTab === allRidesCard.id}
                 onClick={handleTabChange}
-                className="relative h-full w-full rounded-[23px]"
+                className="relative h-full w-full min-w-0 rounded-[clamp(19px,3.5vw,24px)]"
               />
             </div>
           </div>
