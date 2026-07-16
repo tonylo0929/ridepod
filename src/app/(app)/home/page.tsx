@@ -545,7 +545,7 @@ function CategoryCard({
   className: string;
 }) {
   const cardClassName = cn(
-    "group block overflow-hidden rounded-[22px] text-left shadow-[0_22px_46px_rgba(0,0,0,0.26)] outline-none transition active:scale-[0.99] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)] min-[390px]:rounded-[24px] min-[720px]:rounded-[28px]",
+    "group block overflow-hidden text-left shadow-[0_22px_46px_rgba(0,0,0,0.26)] outline-none transition active:scale-[0.99] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]",
     selected ? "ring-1 ring-white/20" : "",
     className,
   );
@@ -1745,9 +1745,9 @@ function HomePageContent() {
       onClick={handleTabChange}
       className={
         card.id === "one_off"
-          ? "absolute left-0 top-0 z-[1] h-[calc(100%-10px)] w-[47%]"
+          ? "absolute left-0 top-0 z-[1] h-[calc(100%-12px)] w-[49%] rounded-[26px]"
           : card.id === "recurring"
-            ? "absolute right-0 top-0 z-[2] h-[43%] w-[49%]"
+            ? "absolute right-0 top-0 z-[2] h-[44%] w-[49%] rounded-[24px]"
             : ""
       }
     />
@@ -1842,10 +1842,10 @@ function HomePageContent() {
         </div>
 
         <div className="relative z-10 mt-6">
-          <div className="relative isolate mx-auto h-[clamp(248px,64vw,365px)] w-full max-w-[680px] pb-1">
+          <div className="relative isolate mx-auto h-[clamp(224px,60vw,430px)] w-full max-w-[680px] pb-1">
             {renderCategoryCard(oneOffCard)}
             {renderCategoryCard(recurringCard)}
-            <div className="absolute bottom-0 right-0 z-[3] grid h-[52%] w-[55%] grid-cols-[1.08fr_0.92fr] gap-2 min-[390px]:gap-3">
+            <div className="absolute bottom-0 right-0 z-[3] grid h-[53%] w-[58.5%] grid-cols-[1.1fr_0.9fr] gap-2.5">
               <CategoryCard
                 id={airportCard.id}
                 imageSrc={airportCard.imageSrc}
@@ -1853,7 +1853,7 @@ function HomePageContent() {
                 href={airportCard.href}
                 selected={activeTab === airportCard.id}
                 onClick={handleTabChange}
-                className="relative h-full w-full"
+                className="relative h-full w-full rounded-[23px]"
               />
               <CategoryCard
                 id={allRidesCard.id}
@@ -1862,7 +1862,7 @@ function HomePageContent() {
                 href={allRidesCard.href}
                 selected={activeTab === allRidesCard.id}
                 onClick={handleTabChange}
-                className="relative h-full w-full"
+                className="relative h-full w-full rounded-[23px]"
               />
             </div>
           </div>
