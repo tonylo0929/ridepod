@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
+  ArrowLeft,
   Bookmark,
   CalendarDays,
   CarFront,
@@ -1358,7 +1359,7 @@ export default function RideBoardPage() {
   const visibleRequests = useMemo(() => getVisibleRequests(requests, activeFilter), [requests, activeFilter]);
   const selectedRequest = selectedRequestId ? requests.find((request) => request.id === selectedRequestId) ?? null : null;
   const requestSectionCopy = getRideBoardSectionCopy(activeFilter);
-  const showRequestList = activeFilter !== "all";
+  const isCategoryPage = activeFilter !== "all";
 
   useEffect(() => {
     return () => {
@@ -1471,45 +1472,23 @@ export default function RideBoardPage() {
         aria-hidden="true"
       />
       <div className="relative z-10 mx-auto grid w-full max-w-[560px] gap-5 px-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-6 sm:px-6 lg:max-w-3xl lg:pb-8 lg:pt-8">
-        <section className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="whitespace-nowrap text-left text-[30px] font-black leading-none text-[var(--rp-text)] min-[390px]:text-[36px]">
+        {isCategoryPage ? (
+          <section className="grid gap-3">
+            <Link
+              href="/today-rides"
+              className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.055] px-3.5 py-2 text-xs font-black text-[var(--rp-muted-strong)] transition hover:border-[#65E6D0]/45 hover:text-[#65E6D0]"
+            >
+              <ArrowLeft className="h-4 w-4" />
               Ride Board
-            </h1>
-            <p className="mt-1.5 text-[13px] font-semibold leading-5 text-white/62 min-[390px]:text-sm">
-              Find a ride. Share the journey.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => handleFilterChange("all")}
-            aria-pressed={activeFilter === "all"}
-            className="mt-0.5 inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-[#0fb7a8]/72 bg-[#0fb7a8]/8 px-3.5 text-xs font-black text-[#20d6c4] shadow-[0_0_26px_rgba(15,183,168,0.12)] transition hover:bg-[#0fb7a8]/14 min-[390px]:text-[13px]"
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            Filters
-          </button>
-        </section>
+            </Link>
 
-        <RideBoardFilters activeFilter={activeFilter} onFilterChange={handleFilterChange} />
-
-        <RideBoardCategoryArtwork activeFilter={activeFilter} />
-
-        <PostRideRequestButton onClick={() => openPostForm()} compact />
-
-        {showRequestList ? (
-          <section ref={requestListRef} className="grid scroll-mt-24 gap-4" aria-labelledby="ride-board-results-heading">
-            <div className="flex items-start justify-between gap-3 rounded-[20px] border border-white/10 bg-white/[0.045] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <div className="flex items-start justify-between gap-3 rounded-[22px] border border-[#65E6D0]/24 bg-[linear-gradient(145deg,rgba(101,230,208,0.105),rgba(255,255,255,0.035))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_44px_rgba(0,0,0,0.28)]">
               <div className="min-w-0 text-left">
-                <h2
-                  ref={requestListHeadingRef}
-                  id="ride-board-results-heading"
-                  tabIndex={-1}
-                  className="text-xl font-black leading-tight text-[var(--rp-text)] outline-none focus-visible:ring-2 focus-visible:ring-[#98FBCB]"
-                >
+                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#65E6D0]">Ride requests</p>
+                <h1 className="mt-1 text-[28px] font-black leading-tight text-[var(--rp-text)] min-[390px]:text-[32px]">
                   {requestSectionCopy.heading}
-                </h2>
-                <p className="mt-1 text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                </h1>
+                <p className="mt-1.5 text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
                   {requestSectionCopy.helper}
                 </p>
               </div>
@@ -1517,6 +1496,45 @@ export default function RideBoardPage() {
                 {visibleRequests.length} {visibleRequests.length === 1 ? "ride" : "rides"}
               </span>
             </div>
+          </section>
+        ) : (
+          <section className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h1 className="whitespace-nowrap text-left text-[30px] font-black leading-none text-[var(--rp-text)] min-[390px]:text-[36px]">
+                Ride Board
+              </h1>
+              <p className="mt-1.5 text-[13px] font-semibold leading-5 text-white/62 min-[390px]:text-sm">
+                Find a ride. Share the journey.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleFilterChange("all")}
+              aria-pressed={activeFilter === "all"}
+              className="mt-0.5 inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-[#0fb7a8]/72 bg-[#0fb7a8]/8 px-3.5 text-xs font-black text-[#20d6c4] shadow-[0_0_26px_rgba(15,183,168,0.12)] transition hover:bg-[#0fb7a8]/14 min-[390px]:text-[13px]"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filters
+            </button>
+          </section>
+        )}
+
+        <RideBoardFilters activeFilter={activeFilter} onFilterChange={handleFilterChange} />
+
+        {isCategoryPage ? null : <RideBoardCategoryArtwork activeFilter={activeFilter} />}
+
+        <PostRideRequestButton onClick={() => openPostForm()} compact />
+
+        {isCategoryPage ? (
+          <section ref={requestListRef} className="grid scroll-mt-24 gap-4" aria-labelledby="ride-board-results-heading">
+            <h2
+              ref={requestListHeadingRef}
+              id="ride-board-results-heading"
+              tabIndex={-1}
+              className="sr-only outline-none"
+            >
+              {requestSectionCopy.heading}
+            </h2>
 
             {visibleRequests.length > 0 ? (
               visibleRequests.map((request) => (
