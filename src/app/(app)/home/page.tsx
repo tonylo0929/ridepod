@@ -1948,24 +1948,27 @@ function HomePageContent() {
         <div className="relative z-10 mt-6">
           <div
             className={cn(
-              "mx-auto grid w-full max-w-[680px] grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 pb-1",
+              "mx-auto grid w-full max-w-[680px] grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-stretch gap-3 pb-1",
             )}
             style={{
               gridTemplateRows: "clamp(104px, 27vw, 188px) clamp(116px, 32vw, 226px)",
             }}
           >
-            <div className="row-span-2 min-h-0">
+            <div className="row-span-2 min-h-0 min-w-0">
               {renderCategoryCard(oneOffCard)}
             </div>
-            <div className="min-h-0">
-              {renderCategoryCard(recurringCard)}
-            </div>
-            <div
-              className="relative z-20 grid min-h-0 grid-cols-[1.08fr_1fr] gap-3"
-              style={{ marginLeft: "clamp(-64px, -12vw, -46px)" }}
-            >
-              {renderCategoryCard(airportCard)}
-              {renderCategoryCard(allRidesCard)}
+            <div className="row-span-2 grid min-h-0 min-w-0 grid-rows-[minmax(0,0.86fr)_minmax(0,1fr)] gap-3">
+              <div className="min-h-0 min-w-0">
+                {renderCategoryCard(recurringCard)}
+              </div>
+              <div className="grid min-h-0 min-w-0 grid-cols-2 gap-3">
+                <div className="min-h-0 min-w-0">
+                  {renderCategoryCard(airportCard)}
+                </div>
+                <div className="min-h-0 min-w-0">
+                  {renderCategoryCard(allRidesCard)}
+                </div>
+              </div>
             </div>
           </div>
         </div>
