@@ -686,11 +686,11 @@ function RideBoardCategoryCard({
       aria-current={active ? "page" : undefined}
       aria-label={`Open ${category.label} ride requests`}
       className={cn(
-        "group relative block w-full overflow-hidden bg-[#030b12] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
+        "group relative block w-full overflow-hidden border bg-[#030b12] text-left outline-none ring-1 ring-inset transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
         isFeatured ? "aspect-[875/443] rounded-[24px]" : "aspect-[430/395] rounded-[18px]",
         active
-          ? "ring-2 ring-[#65E6D0]/70 shadow-[0_22px_54px_rgba(0,0,0,0.38),0_0_34px_rgba(101,230,208,0.18)]"
-          : "shadow-[0_18px_42px_rgba(0,0,0,0.28)]",
+          ? "border-[#65E6D0]/70 ring-2 ring-[#65E6D0]/70 shadow-[0_22px_54px_rgba(0,0,0,0.38),0_0_34px_rgba(101,230,208,0.18)]"
+          : "border-[rgba(101,230,208,0.18)] ring-white/10 shadow-[0_18px_42px_rgba(0,0,0,0.28)]",
       )}
     >
       <Image
