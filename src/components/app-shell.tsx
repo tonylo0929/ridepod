@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
@@ -156,38 +155,18 @@ function PremiumBottomNavBoundary() {
 }
 
 function PremiumTopNav() {
-  const pathname = usePathname();
   const unreadCount = useRidePodUnreadCount();
   const { user } = useAuth();
   const updatesHref = user ? "/updates" : `/login?next=${encodeURIComponent("/updates")}`;
   const topNavBadgeCount = user ? unreadCount : 3;
-  const showRideBoardLogo = pathname === "/today-rides" || pathname.startsWith("/today-rides/");
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_92%,transparent)] px-4 py-3 shadow-[0_12px_30px_rgba(0,0,0,0.14)] backdrop-blur-xl lg:hidden">
       <div className="mx-auto grid max-w-3xl grid-cols-[56px_1fr_auto] items-center gap-3">
         <HomeMenuDrawer />
         <Link href="/home?tab=one_off" className="inline-flex items-center gap-1.5 justify-self-center" aria-label="RidePod home">
-          {showRideBoardLogo ? (
-            <span className="relative inline-flex h-8 w-[122px] items-center overflow-hidden rounded-md">
-              <Image
-                src="/ridepod/rideboard-logo-wordmark.png"
-                alt="RidePod"
-                width={320}
-                height={80}
-                priority
-                className="h-full w-full object-contain"
-              />
-            </span>
-          ) : (
-            <RidePodLogo className="h-8 w-[108px] justify-center" imageClassName="h-full w-full" priority />
-          )}
-          <span
-            className={cn(
-              "rounded-full border bg-[var(--rp-card-soft)] px-2 py-0.5 text-[10px] font-black tracking-[0.08em]",
-              showRideBoardLogo ? "border-cyan-300/45 text-cyan-300" : "border-[var(--rp-border-strong)] text-[var(--rp-primary)]",
-            )}
-          >
+          <RidePodLogo className="h-8 w-[108px] justify-center" imageClassName="h-full w-full" priority />
+          <span className="rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-soft)] px-2 py-0.5 text-[10px] font-black tracking-[0.08em] text-[var(--rp-primary)]">
             v1.0
           </span>
         </Link>
