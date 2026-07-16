@@ -1745,7 +1745,7 @@ function HomePageContent() {
       onClick={handleTabChange}
       className={
         card.id === "one_off"
-          ? "absolute left-0 top-0 z-[1] h-[calc(100%-10px)] w-[49%]"
+          ? "absolute left-0 top-0 z-[1] h-[calc(100%-10px)] w-[47%]"
           : card.id === "recurring"
             ? "absolute right-0 top-0 z-[2] h-[43%] w-[49%]"
             : ""
@@ -1845,7 +1845,7 @@ function HomePageContent() {
           <div className="relative isolate mx-auto h-[clamp(248px,64vw,365px)] w-full max-w-[680px] pb-1">
             {renderCategoryCard(oneOffCard)}
             {renderCategoryCard(recurringCard)}
-            <div className="absolute bottom-0 right-0 z-[3] grid h-[54%] w-[59%] grid-cols-[1.08fr_0.92fr] gap-2 min-[390px]:gap-3">
+            <div className="absolute bottom-0 right-0 z-[3] grid h-[52%] w-[55%] grid-cols-[1.08fr_0.92fr] gap-2 min-[390px]:gap-3">
               <CategoryCard
                 id={airportCard.id}
                 imageSrc={airportCard.imageSrc}
