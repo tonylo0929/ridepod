@@ -635,7 +635,6 @@ function RideBoardCategoryArtwork({
             category={category}
             active={activeFilter === category.filter}
             onSelect={onCategorySelect}
-            priority={category.id === "commute" || category.id === "events"}
           />
         ))}
       </div>
@@ -675,8 +674,8 @@ function RideBoardCategoryCard({
         alt=""
         fill
         priority={priority}
-        unoptimized
-        sizes={isFeatured ? "(max-width: 768px) 100vw, 875px" : "(max-width: 768px) 50vw, 430px"}
+        quality={68}
+        sizes={isFeatured ? "(max-width: 768px) calc(100vw - 48px), 875px" : "(max-width: 768px) calc((100vw - 56px) / 2), 430px"}
         className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.012]"
       />
       <span className="sr-only">
