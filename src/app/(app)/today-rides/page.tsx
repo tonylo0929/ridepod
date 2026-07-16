@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import {
   Bookmark,
   CalendarDays,
@@ -35,6 +37,7 @@ import { cn } from "@/components/ui";
 type RideRequestCategory = "today_requests" | "commute" | "events" | "late_night" | "others";
 type RideBoardCategory = "today" | "commute" | "events" | "late_night" | "others";
 type RideBoardFilter = "all" | RideBoardCategory;
+type RideBoardCategorySlug = "today-requests" | "commute" | "events" | "late-night" | "others";
 type RideRequestStatus = "open" | "leaving_soon" | "closed" | "expired";
 type RecurrenceType = "One-time" | "Recurring";
 type EventTiming = "Going to event" | "Leaving after event" | "Both possible";
@@ -128,6 +131,34 @@ const rideBoardCategoryToRequestCategory: Record<RideBoardCategory, RideRequestC
   others: "others",
 };
 
+const rideBoardCategoryToSlug: Record<RideBoardCategory, RideBoardCategorySlug> = {
+  today: "today-requests",
+  commute: "commute",
+  events: "events",
+  late_night: "late-night",
+  others: "others",
+};
+
+const rideBoardSlugToCategory: Record<RideBoardCategorySlug, RideBoardCategory> = {
+  "today-requests": "today",
+  commute: "commute",
+  events: "events",
+  "late-night": "late_night",
+  others: "others",
+};
+
+function getRideBoardHref(filter: RideBoardFilter) {
+  return filter === "all" ? "/today-rides" : `/today-rides/${rideBoardCategoryToSlug[filter]}`;
+}
+
+function getRideBoardFilterFromParam(param: string | string[] | undefined): RideBoardFilter {
+  const slug = Array.isArray(param) ? param[0] : param;
+
+  if (!slug) return "all";
+
+  return slug in rideBoardSlugToCategory ? rideBoardSlugToCategory[slug as RideBoardCategorySlug] : "all";
+}
+
 const allRideBoardCopy = {
   heading: "Ride Board requests",
   helper: "Browse active ride requests across every category.",
@@ -199,7 +230,7 @@ const rideBoardCategories: Array<{
     id: "today-requests",
     label: "Today Requests",
     subtitle: "Find rides happening today, near you.",
-    image: "/images/ride-board/today-requests-reference-card.png",
+    image: "/images/ride-board/today-requests-card.webp",
     filter: "today",
     featured: true,
     eyebrow: "Featured",
@@ -210,7 +241,7 @@ const rideBoardCategories: Array<{
     id: "commute",
     label: "Commute",
     subtitle: "Daily rides. Better together.",
-    image: "/images/ride-board/commute-reference-card.png",
+    image: "/images/ride-board/commute-card.webp",
     filter: "commute",
     objectPosition: "center bottom",
   },
@@ -218,7 +249,7 @@ const rideBoardCategories: Array<{
     id: "events",
     label: "Events",
     subtitle: "Go together. Enjoy more.",
-    image: "/images/ride-board/events-reference-card.png",
+    image: "/images/ride-board/events-card.webp",
     filter: "events",
     objectPosition: "right center",
   },
@@ -226,7 +257,7 @@ const rideBoardCategories: Array<{
     id: "late-night",
     label: "Late Night",
     subtitle: "Clear late-night pickup plans.",
-    image: "/images/ride-board/late-night-reference-card.png",
+    image: "/images/ride-board/late-night-card.webp",
     filter: "late_night",
     objectPosition: "right bottom",
   },
@@ -234,7 +265,7 @@ const rideBoardCategories: Array<{
     id: "others",
     label: "Others",
     subtitle: "Flexible rides. Your way.",
-    image: "/images/ride-board/others-reference-card.png",
+    image: "/images/ride-board/others-card.webp",
     filter: "others",
     objectPosition: "right bottom",
     tone: "gold",
@@ -609,10 +640,8 @@ function PostRideRequestButton({
 
 function RideBoardCategoryArtwork({
   activeFilter,
-  onCategorySelect,
 }: {
   activeFilter: RideBoardFilter;
-  onCategorySelect: (filter: RideBoardFilter) => void;
 }) {
   const featuredCategory = rideBoardCategories.find((category) => category.featured);
   const secondaryCategories = rideBoardCategories.filter((category) => !category.featured);
@@ -623,7 +652,6 @@ function RideBoardCategoryArtwork({
         <RideBoardCategoryCard
           category={featuredCategory}
           active={activeFilter === featuredCategory.filter}
-          onSelect={onCategorySelect}
           priority
         />
       ) : null}
@@ -634,7 +662,6 @@ function RideBoardCategoryArtwork({
             key={category.id}
             category={category}
             active={activeFilter === category.filter}
-            onSelect={onCategorySelect}
           />
         ))}
       </div>
@@ -645,22 +672,19 @@ function RideBoardCategoryArtwork({
 function RideBoardCategoryCard({
   category,
   active,
-  onSelect,
   priority = false,
 }: {
   category: (typeof rideBoardCategories)[number];
   active: boolean;
-  onSelect: (filter: RideBoardFilter) => void;
   priority?: boolean;
 }) {
   const isFeatured = category.featured === true;
 
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(category.filter)}
-      aria-pressed={active}
-      aria-label={`Show ${category.label} ride requests`}
+    <Link
+      href={getRideBoardHref(category.filter)}
+      aria-current={active ? "page" : undefined}
+      aria-label={`Open ${category.label} ride requests`}
       className={cn(
         "group relative block w-full overflow-hidden bg-[#030b12] text-left outline-none transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
         isFeatured ? "aspect-[875/443] rounded-[24px]" : "aspect-[430/395] rounded-[18px]",
@@ -681,7 +705,7 @@ function RideBoardCategoryCard({
       <span className="sr-only">
         {category.label}. {category.subtitle}
       </span>
-    </button>
+    </Link>
   );
 }
 
@@ -1318,7 +1342,10 @@ function RideBoardToast({ message }: { message: string }) {
 }
 
 export default function RideBoardPage() {
-  const [activeFilter, setActiveFilter] = useState<RideBoardFilter>("all");
+  const params = useParams();
+  const router = useRouter();
+  const routeFilter = getRideBoardFilterFromParam(params.category);
+  const activeFilter = routeFilter;
   const [requests, setRequests] = useState<RideRequest[]>(initialRideRequests);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [showPostForm, setShowPostForm] = useState(false);
@@ -1353,7 +1380,7 @@ export default function RideBoardPage() {
   };
 
   const handleFilterChange = (filter: RideBoardFilter) => {
-    setActiveFilter(filter);
+    router.push(getRideBoardHref(filter), { scroll: false });
     if (filter !== "all") {
       focusRideList();
     }
@@ -1431,7 +1458,7 @@ export default function RideBoardPage() {
     };
 
     setRequests((currentRequests) => [newRequest, ...currentRequests]);
-    setActiveFilter(rideBoardCategory);
+    router.push(getRideBoardHref(rideBoardCategory), { scroll: false });
     setShowPostForm(false);
     focusRideList();
     showToast("Ride request posted. We'll show it to nearby riders.");
@@ -1466,7 +1493,7 @@ export default function RideBoardPage() {
 
         <RideBoardFilters activeFilter={activeFilter} onFilterChange={handleFilterChange} />
 
-        <RideBoardCategoryArtwork activeFilter={activeFilter} onCategorySelect={handleFilterChange} />
+        <RideBoardCategoryArtwork activeFilter={activeFilter} />
 
         <PostRideRequestButton onClick={() => openPostForm()} compact />
 
