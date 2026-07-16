@@ -1,18 +1,16 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRightLeft,
-  CalendarCheck,
   CalendarDays,
   CarFront,
   ChevronDown,
-  ChevronRight,
   CheckCircle2,
   CircleDollarSign,
   Gift,
-  MapPin,
   Plane,
   RefreshCcw,
   ShieldCheck,
@@ -21,7 +19,6 @@ import {
   Star,
   UsersRound,
   X,
-  type LucideIcon,
 } from "lucide-react";
 import { Suspense, type ReactNode, useEffect, useMemo, useState } from "react";
 import { RidePodAvatar, useRidePodAvatarPreference, type RidePodAvatarPreference } from "@/components/animal-avatar";
@@ -64,11 +61,13 @@ type CurrentUserAvatar = {
   initials: string;
 };
 
-const categoryCards: Array<{ id: HomeTab; label: string; subtitle: string; icon: LucideIcon; href?: string }> = [
-  { id: "one_off", label: "One-off", subtitle: "Schedule Ride", icon: CalendarCheck },
-  { id: "recurring", label: "Recurring", subtitle: "Ride Regularly", icon: RefreshCcw },
-  { id: "airport", label: "Airport", subtitle: "Flight Ride", icon: Plane },
-  { id: "all", label: "All Rides", subtitle: "All public", icon: UsersRound },
+type HomeCategoryCardId = Extract<HomeTab, "one_off" | "recurring" | "airport" | "all">;
+
+const categoryCards: Array<{ id: HomeCategoryCardId; imageSrc: string; imageAlt: string; href?: string }> = [
+  { id: "one_off", imageSrc: "/ride-cards/schedule-ride.png", imageAlt: "Schedule a one-off ride" },
+  { id: "recurring", imageSrc: "/ride-cards/ride-regularly.png", imageAlt: "Create a recurring ride" },
+  { id: "airport", imageSrc: "/ride-cards/flight-ride.png", imageAlt: "Create an airport ride" },
+  { id: "all", imageSrc: "/ride-cards/all-public.png", imageAlt: "View all public rides" },
 ];
 
 const airportDirectionFilters: Array<{ id: AirportDirectionFilter; label: string }> = [
@@ -530,156 +529,47 @@ function SegmentedFilter({
 
 function CategoryCard({
   id,
-  label,
-  subtitle,
-  icon: Icon,
+  imageSrc,
+  imageAlt,
   href,
   selected,
   onClick,
+  className,
 }: {
-  id: HomeTab;
-  label: string;
-  subtitle: string;
-  icon: LucideIcon;
+  id: HomeCategoryCardId;
+  imageSrc: string;
+  imageAlt: string;
   href?: string;
   selected: boolean;
   onClick: (tab: HomeTab) => void;
+  className: string;
 }) {
-  const actionCardStyles: Record<
-    HomeTab,
-    {
-      shell: string;
-      icon: string;
-      label: string;
-      title: string;
-      arrow: string;
-      arrowPosition: string;
-      content: string;
-      titleWidth: string;
-      decor: string;
-      layout: string;
-    }
-  > = {
-    one_off: {
-      shell:
-        "col-span-2 row-span-2 bg-[radial-gradient(circle_at_88%_86%,rgba(255,255,255,0.28),transparent_28%),linear-gradient(145deg,#ffd96d_0%,#ffc43f_48%,#f3aa25_100%)] text-[#071018]",
-      icon: "bg-white/24 text-[#071018] ring-1 ring-white/34",
-      label: "text-[#4e3411]/82",
-      title: "text-[23px] leading-[0.96] min-[390px]:text-[26px] min-[720px]:text-[30px]",
-      arrow: "bg-[#111827] text-[#ffd15a]",
-      arrowPosition: "bottom-5 left-5 min-[390px]:bottom-6 min-[390px]:left-6",
-      content: "mb-12 min-[720px]:mb-14",
-      titleWidth: "max-w-[8rem]",
-      decor: "opacity-70",
-      layout: "justify-between p-5 min-[390px]:p-6 min-[720px]:p-7",
-    },
-    recurring: {
-      shell:
-        "col-span-2 bg-[radial-gradient(circle_at_90%_24%,rgba(255,255,255,0.22),transparent_36%),linear-gradient(135deg,#95f08f_0%,#62d875_54%,#45c86e_100%)] text-[#071018]",
-      icon: "bg-white/18 text-[#071018] ring-1 ring-white/36",
-      label: "text-[#143314]/78",
-      title: "text-[18px] leading-[1.02] min-[390px]:text-[20px] min-[720px]:text-[24px]",
-      arrow: "bg-[#071018] text-[#a6f59f]",
-      arrowPosition: "bottom-4 right-4 min-[390px]:bottom-5 min-[390px]:right-5",
-      content: "mb-1 min-[390px]:mb-2 min-[720px]:mb-0",
-      titleWidth: "max-w-[5.25rem] min-[720px]:max-w-[8rem]",
-      decor: "opacity-18",
-      layout: "p-4 min-[390px]:p-5 min-[720px]:p-6",
-    },
-    airport: {
-      shell:
-        "col-span-1 bg-[radial-gradient(circle_at_80%_24%,rgba(255,255,255,0.5),transparent_42%),linear-gradient(145deg,#fff1dc_0%,#eadcc8_100%)] text-[#071018]",
-      icon: "bg-[#f6d7c6] text-[#071018] ring-1 ring-white/60",
-      label: "text-[#604330]/70",
-      title: "text-[13px] leading-[1.02] min-[390px]:text-[15px] min-[720px]:text-[22px]",
-      arrow: "bg-[#071018] text-white",
-      arrowPosition: "bottom-2 right-2 min-[390px]:bottom-3 min-[390px]:right-3 min-[720px]:bottom-4 min-[720px]:right-4",
-      content: "mb-11 min-[720px]:mb-10",
-      titleWidth: "max-w-[4.4rem] min-[720px]:max-w-[8rem]",
-      decor: "opacity-20",
-      layout: "p-3.5 min-[390px]:p-4 min-[720px]:p-5",
-    },
-    all: {
-      shell:
-        "col-span-1 bg-[radial-gradient(circle_at_82%_26%,rgba(255,255,255,0.24),transparent_42%),linear-gradient(145deg,#4d8dff_0%,#2d6cdf_100%)] text-white",
-      icon: "bg-white/14 text-white ring-1 ring-white/34",
-      label: "text-white/72",
-      title: "text-[13px] leading-[1.02] min-[390px]:text-[15px] min-[720px]:text-[22px]",
-      arrow: "bg-[#071018] text-white",
-      arrowPosition: "bottom-2 right-2 min-[390px]:bottom-3 min-[390px]:right-3 min-[720px]:bottom-4 min-[720px]:right-4",
-      content: "mb-11 min-[720px]:mb-10",
-      titleWidth: "max-w-[4.4rem] min-[720px]:max-w-[8rem]",
-      decor: "opacity-13",
-      layout: "p-3.5 min-[390px]:p-4 min-[720px]:p-5",
-    },
-    quote_ready: {
-      shell:
-        "col-span-2 bg-[linear-gradient(145deg,#ffd96d_0%,#ffc43f_100%)] text-[#071018]",
-      icon: "bg-white/24 text-[#071018] ring-1 ring-white/34",
-      label: "text-[#4e3411]/82",
-      title: "text-[21px] leading-[1.02] min-[390px]:text-[24px]",
-      arrow: "bg-[#071018] text-[#ffd15a]",
-      arrowPosition: "bottom-5 right-5",
-      content: "mb-0",
-      titleWidth: "max-w-[8rem]",
-      decor: "opacity-20",
-      layout: "p-5 min-[390px]:p-6",
-    },
-  };
-  const style = actionCardStyles[id];
-  const className = cn(
-    "group relative flex h-full min-h-0 w-full flex-col overflow-hidden rounded-[26px] border text-left shadow-[0_22px_46px_rgba(0,0,0,0.22)] transition active:scale-[0.99]",
-    style.shell,
-    style.layout,
-    selected
-      ? "border-white/70 shadow-[0_0_0_1px_rgba(255,255,255,0.12),0_28px_58px_rgba(0,0,0,0.3)]"
-      : "border-white/18 hover:border-white/50",
+  const cardClassName = cn(
+    "group block overflow-hidden rounded-[22px] text-left shadow-[0_22px_46px_rgba(0,0,0,0.26)] outline-none transition active:scale-[0.99] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)] min-[390px]:rounded-[24px] min-[720px]:rounded-[28px]",
+    selected ? "ring-1 ring-white/20" : "",
+    className,
   );
   const content = (
-    <>
-      <div aria-hidden="true" className={cn("pointer-events-none absolute inset-0", style.decor)}>
-        {id === "one_off" ? (
-          <>
-            <CarFront className="absolute bottom-2 -right-10 h-20 w-20 rotate-[-14deg] text-white" />
-            <MapPin className="absolute right-8 top-16 h-9 w-9 text-[#4a3421]" />
-            <span className="absolute right-12 top-28 h-20 border-l-2 border-dashed border-[#4a3421]" />
-          </>
-        ) : id === "recurring" ? (
-          <CalendarCheck className="absolute -right-5 bottom-2 h-28 w-28 text-[#071018]" />
-        ) : id === "airport" ? (
-          <>
-            <Plane className="absolute right-3 top-7 h-10 w-10 -rotate-12 text-[#071018]" />
-            <span className="absolute bottom-0 right-0 h-16 w-12 rounded-tl-[28px] bg-[#8b735d]" />
-          </>
-        ) : (
-          <UsersRound className="absolute -right-5 bottom-2 h-24 w-24 text-white" />
-        )}
-      </div>
-      <span
-        className={cn("relative z-10 grid h-11 w-11 place-items-center rounded-full backdrop-blur-sm min-[390px]:h-12 min-[390px]:w-12 min-[720px]:h-14 min-[720px]:w-14", style.icon)}
-      >
-        <Icon className="h-6 w-6 min-[720px]:h-7 min-[720px]:w-7" />
-      </span>
-      <span className={cn("relative z-10 mt-auto block", style.content)}>
-        <span className={cn("block text-xs font-semibold leading-tight min-[720px]:text-sm", style.label)}>{label}</span>
-        <span className={cn("mt-1 block font-black tracking-tight", style.title, style.titleWidth)}>{subtitle}</span>
-      </span>
-      <span className={cn("absolute z-10 grid h-9 w-9 place-items-center rounded-full shadow-[0_12px_24px_rgba(0,0,0,0.24)] min-[720px]:h-10 min-[720px]:w-10", style.arrow, style.arrowPosition)}>
-        <ChevronRight className="h-5 w-5" />
-      </span>
-    </>
+    <Image
+      src={imageSrc}
+      alt={imageAlt}
+      fill
+      priority
+      sizes="(max-width: 720px) 55vw, 320px"
+      className="object-cover object-center transition-transform duration-200 ease-out group-active:scale-[0.985]"
+    />
   );
 
   if (href) {
     return (
-      <Link href={href} className={className}>
+      <Link href={href} className={cardClassName} aria-current={selected ? "page" : undefined}>
         {content}
       </Link>
     );
   }
 
   return (
-    <button type="button" onClick={() => onClick(id)} className={className}>
+    <button type="button" onClick={() => onClick(id)} className={cardClassName} aria-pressed={selected}>
       {content}
     </button>
   );
@@ -1848,18 +1738,24 @@ function HomePageContent() {
     <CategoryCard
       key={card.id}
       id={card.id}
-      label={card.label}
-      subtitle={card.subtitle}
-      icon={card.icon}
+      imageSrc={card.imageSrc}
+      imageAlt={card.imageAlt}
       href={card.href}
       selected={activeTab === card.id}
       onClick={handleTabChange}
+      className={
+        card.id === "one_off"
+          ? "absolute left-0 top-0 z-[1] h-[calc(100%-10px)] w-[49%]"
+          : card.id === "recurring"
+            ? "absolute right-0 top-0 z-[2] h-[43%] w-[49%]"
+            : ""
+      }
     />
   );
 
   return (
     <div className="relative -mx-4 -mt-5 min-h-[calc(100vh-1.25rem)] overflow-x-hidden pb-[calc(9rem+env(safe-area-inset-bottom))] sm:-mx-6 lg:-mx-10 lg:-mt-8 lg:pb-8">
-      <section className="relative overflow-hidden px-4 pb-8 pt-7 sm:px-6 lg:px-10">
+      <section className="relative overflow-hidden px-4 pb-2 pt-7 sm:px-6 lg:px-10">
         <div
           aria-hidden="true"
           className="absolute inset-0 bg-[#04101a]"
@@ -1946,29 +1842,28 @@ function HomePageContent() {
         </div>
 
         <div className="relative z-10 mt-6">
-          <div
-            className={cn(
-              "mx-auto grid w-full max-w-[680px] grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-stretch gap-3 pb-1",
-            )}
-            style={{
-              gridTemplateRows: "clamp(104px, 27vw, 188px) clamp(116px, 32vw, 226px)",
-            }}
-          >
-            <div className="row-span-2 min-h-0 min-w-0">
-              {renderCategoryCard(oneOffCard)}
-            </div>
-            <div className="row-span-2 grid min-h-0 min-w-0 grid-rows-[minmax(0,0.86fr)_minmax(0,1fr)] gap-3">
-              <div className="min-h-0 min-w-0">
-                {renderCategoryCard(recurringCard)}
-              </div>
-              <div className="grid min-h-0 min-w-0 grid-cols-2 gap-3">
-                <div className="min-h-0 min-w-0">
-                  {renderCategoryCard(airportCard)}
-                </div>
-                <div className="min-h-0 min-w-0">
-                  {renderCategoryCard(allRidesCard)}
-                </div>
-              </div>
+          <div className="relative isolate mx-auto h-[clamp(248px,64vw,365px)] w-full max-w-[680px] pb-1">
+            {renderCategoryCard(oneOffCard)}
+            {renderCategoryCard(recurringCard)}
+            <div className="absolute bottom-0 right-0 z-[3] grid h-[54%] w-[59%] grid-cols-[1.08fr_0.92fr] gap-2 min-[390px]:gap-3">
+              <CategoryCard
+                id={airportCard.id}
+                imageSrc={airportCard.imageSrc}
+                imageAlt={airportCard.imageAlt}
+                href={airportCard.href}
+                selected={activeTab === airportCard.id}
+                onClick={handleTabChange}
+                className="relative h-full w-full"
+              />
+              <CategoryCard
+                id={allRidesCard.id}
+                imageSrc={allRidesCard.imageSrc}
+                imageAlt={allRidesCard.imageAlt}
+                href={allRidesCard.href}
+                selected={activeTab === allRidesCard.id}
+                onClick={handleTabChange}
+                className="relative h-full w-full"
+              />
             </div>
           </div>
         </div>
