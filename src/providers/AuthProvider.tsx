@@ -616,11 +616,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    const notifyLogoutSuccess = () => {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("ridepod:logout-success"));
+      }
+    };
+
     if (source === "mock") {
       writeMockProfile(null);
       setProfile(null);
       setSession(null);
       setUser(null);
+      notifyLogoutSuccess();
       return;
     }
 
@@ -633,6 +640,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null);
       setSession(null);
       setUser(null);
+      notifyLogoutSuccess();
     }
   }, [source]);
 
