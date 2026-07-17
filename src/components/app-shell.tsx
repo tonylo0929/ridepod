@@ -358,7 +358,7 @@ function PremiumDesktopSidebar() {
 
 function LogoutSuccessToast({ message }: { message: string }) {
   return (
-    <div className="fixed inset-x-0 top-[calc(env(safe-area-inset-top)+1rem)] z-[150] px-4 lg:left-72 lg:right-0">
+    <div className="fixed inset-0 z-[150] grid pointer-events-none place-items-center px-4 lg:left-72">
       <div className="mx-auto flex min-h-12 max-w-md items-center justify-center rounded-[18px] border border-[var(--rp-primary)]/45 bg-[linear-gradient(180deg,rgba(38,31,16,0.98),rgba(12,18,24,0.98))] px-4 py-3 text-center text-sm font-black leading-5 text-[var(--rp-primary)] shadow-[0_18px_54px_rgba(0,0,0,0.45),0_0_28px_rgba(245,197,91,0.15)]">
         {message}
       </div>
