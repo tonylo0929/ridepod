@@ -1748,7 +1748,7 @@ function HomePageContent() {
       style={card.id === "one_off" ? { clipPath: "url(#ride-mode-schedule-notch)" } : undefined}
       className={
         card.id === "one_off"
-          ? "absolute left-0 top-0 z-[1] h-[90.2%] w-[48.35%] rounded-[clamp(22px,4vw,28px)] [clip-path:polygon(0_0,100%_0,100%_43%,89%_53%,89%_100%,0_100%)]"
+          ? "absolute left-0 top-0 z-[1] h-full w-[48.35%] rounded-[clamp(22px,4vw,28px)] [clip-path:polygon(0_0,100%_0,100%_43%,90%_55%,90%_66%,100%_78%,100%_100%,0_100%)]"
           : card.id === "recurring"
             ? "absolute right-0 top-0 z-[2] h-[41%] w-[49.55%] rounded-[clamp(20px,3.8vw,26px)]"
             : ""
@@ -1845,11 +1845,11 @@ function HomePageContent() {
         </div>
 
         <div className="relative z-10 mt-6">
-          <div className="relative isolate mx-auto aspect-[1.45/1] w-full max-w-[680px] overflow-visible pb-1">
+          <div className="relative isolate mx-auto aspect-[1.6/1] w-full max-w-[680px] overflow-visible pb-1">
             <svg aria-hidden="true" focusable="false" className="pointer-events-none absolute h-0 w-0">
               <defs>
                 <clipPath id="ride-mode-schedule-notch" clipPathUnits="objectBoundingBox">
-                  <path d="M0,0 H1 V0.43 C1,0.49 0.89,0.45 0.89,0.53 V1 H0 Z" />
+                  <path d="M0,0 H1 V0.43 C1,0.49 0.9,0.47 0.9,0.55 V0.66 C0.9,0.74 1,0.7 1,0.78 V1 H0 Z" />
                 </clipPath>
               </defs>
             </svg>
