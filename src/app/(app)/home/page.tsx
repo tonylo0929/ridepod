@@ -1745,10 +1745,9 @@ function HomePageContent() {
       href={card.href}
       selected={activeTab === card.id}
       onClick={handleTabChange}
-      style={card.id === "one_off" ? { clipPath: "url(#ride-mode-schedule-notch)" } : undefined}
       className={
         card.id === "one_off"
-          ? "absolute left-0 top-0 z-[1] h-full w-[48.35%] rounded-[clamp(22px,4vw,28px)] [clip-path:polygon(0_0,100%_0,100%_47%,93%_53%,85%_58%,85%_69%,93%_76%,100%_83%,100%_100%,0_100%)]"
+          ? "absolute left-0 top-0 z-[1] h-full w-[48.35%] rounded-[clamp(22px,4vw,28px)]"
           : card.id === "recurring"
             ? "absolute right-0 top-0 z-[2] h-[44%] w-[49.55%] rounded-[clamp(20px,3.8vw,26px)]"
             : ""
@@ -1846,25 +1845,20 @@ function HomePageContent() {
 
         <div className="relative z-10 mt-6">
           <div className="relative isolate mx-auto aspect-[1.6/1] w-full max-w-[680px] overflow-visible pb-1">
-            <svg aria-hidden="true" focusable="false" className="pointer-events-none absolute h-0 w-0">
-              <defs>
-                <clipPath id="ride-mode-schedule-notch" clipPathUnits="objectBoundingBox">
-                  <path d="M0,0 H1 V0.47 C1,0.53 0.85,0.5 0.85,0.58 V0.69 C0.85,0.78 1,0.74 1,0.83 V1 H0 Z" />
-                </clipPath>
-              </defs>
-            </svg>
             {renderCategoryCard(oneOffCard)}
             {renderCategoryCard(recurringCard)}
             <div className="absolute bottom-0 right-0 z-[3] grid h-[53%] w-[57.1%] grid-cols-[minmax(0,1.095fr)_minmax(0,1fr)] gap-[clamp(8px,1.7vw,13px)]">
-              <CategoryCard
-                id={airportCard.id}
-                imageSrc={airportCard.imageSrc}
-                imageAlt={airportCard.imageAlt}
-                href={airportCard.href}
-                selected={activeTab === airportCard.id}
-                onClick={handleTabChange}
-                className="relative h-full w-full min-w-0 rounded-[clamp(19px,3.5vw,24px)]"
-              />
+              <div className="relative isolate h-full w-full min-w-0 before:pointer-events-none before:absolute before:-inset-[clamp(6px,1.35vw,10px)] before:z-0 before:rounded-[clamp(23px,4vw,29px)] before:bg-[#04101a]">
+                <CategoryCard
+                  id={airportCard.id}
+                  imageSrc={airportCard.imageSrc}
+                  imageAlt={airportCard.imageAlt}
+                  href={airportCard.href}
+                  selected={activeTab === airportCard.id}
+                  onClick={handleTabChange}
+                  className="relative z-10 h-full w-full min-w-0 rounded-[clamp(19px,3.5vw,24px)]"
+                />
+              </div>
               <CategoryCard
                 id={allRidesCard.id}
                 imageSrc={allRidesCard.imageSrc}
