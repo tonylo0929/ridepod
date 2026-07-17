@@ -20,7 +20,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { Suspense, type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react";
+import { Suspense, type CSSProperties, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { RidePodAvatar, useRidePodAvatarPreference, type RidePodAvatarPreference } from "@/components/animal-avatar";
 import { cn } from "@/components/ui";
 import {
@@ -82,6 +82,13 @@ const tabLabels: Record<HomeTab, string> = {
   one_off: "One-off",
   recurring: "Recurring",
   quote_ready: "Quote ready",
+};
+
+const categoryRecommendationLabels: Record<HomeCategoryCardId, string> = {
+  all: "All Public",
+  airport: "Flight Ride",
+  one_off: "Schedule Ride",
+  recurring: "Ride Regularly",
 };
 
 function getHomeTabFromSearchParam(value: string | null): HomeTab {
@@ -174,25 +181,25 @@ const homeHeroBackgrounds: Record<
   },
   taxi: {
     image: "/images/ridepod/home-taxi-harbor-night.png",
-    mobilePosition: "72% -252px",
-    mobileSize: "auto 540px",
-    mobileBackdropPosition: "58% top",
-    mobileBackdropSize: "auto 100%",
-    mobileBackdropOpacity: 1,
-    desktopPosition: "center top",
-    desktopSize: "100% auto",
+    mobilePosition: "center center",
+    mobileSize: "cover",
+    mobileBackdropPosition: "center center",
+    mobileBackdropSize: "cover",
+    mobileBackdropOpacity: 0,
+    desktopPosition: "center center",
+    desktopSize: "cover",
     overlay:
       "linear-gradient(180deg,rgba(5,11,18,0) 0%,rgba(5,11,18,0) 56%,rgba(5,11,18,0.24) 82%,var(--rp-bg) 100%)",
   },
 };
 
 function getEmptyTitle(tab: HomeTab, rideModeFilter: RideModeFilter) {
-  if (rideModeFilter === "taxi") return "No taxi pods found";
-  if (rideModeFilter === "ride_app") return "No ride app pods found";
   if (tab === "airport") return "No airport rides found.";
   if (tab === "one_off") return "No one-off rides found.";
   if (tab === "recurring") return "No recurring rides found.";
   if (tab === "quote_ready") return "No quotes ready to confirm.";
+  if (rideModeFilter === "taxi") return "No taxi pods found";
+  if (rideModeFilter === "ride_app") return "No ride app pods found";
   return "No rides found.";
 }
 
@@ -532,6 +539,7 @@ function CategoryCard({
   imageSrc,
   imageAlt,
   href,
+  rideCount,
   selected,
   onClick,
   className,
@@ -541,8 +549,9 @@ function CategoryCard({
   imageSrc: string;
   imageAlt: string;
   href?: string;
+  rideCount?: number;
   selected: boolean;
-  onClick: (tab: HomeTab) => void;
+  onClick: (tab: HomeCategoryCardId) => void;
   className: string;
   style?: CSSProperties;
 }) {
@@ -551,27 +560,41 @@ function CategoryCard({
     selected ? "ring-1 ring-white/20" : "",
     className,
   );
+  const rideCountLabel = typeof rideCount === "number" ? `${rideCount} ${rideCount === 1 ? "ride" : "rides"}` : "";
+  const cardLabel = rideCountLabel
+    ? `Show ${categoryRecommendationLabels[id]} recommendations, ${rideCountLabel}`
+    : `Show ${categoryRecommendationLabels[id]} recommendations`;
   const content = (
-    <Image
-      src={imageSrc}
-      alt={imageAlt}
-      fill
-      priority
-      sizes="(max-width: 720px) 55vw, 320px"
-      className="object-cover object-center transition-transform duration-200 ease-out group-active:scale-[0.985]"
-    />
+    <>
+      <Image
+        src={imageSrc}
+        alt={imageAlt}
+        fill
+        priority
+        sizes="(max-width: 720px) 55vw, 320px"
+        className="pointer-events-none object-cover object-center transition-transform duration-200 ease-out group-active:scale-[0.985]"
+      />
+      {typeof rideCount === "number" ? (
+        <span className="pointer-events-none absolute right-[clamp(10px,2.3vw,16px)] top-[clamp(10px,2.3vw,16px)] z-20 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-[rgba(3,9,15,0.68)] px-[clamp(8px,1.7vw,11px)] py-[clamp(4px,1vw,6px)] text-white shadow-[0_10px_24px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-md">
+          <span className="text-[clamp(13px,2.9vw,17px)] font-black leading-none text-[var(--rp-primary)]">{rideCount}</span>
+          <span className="text-[clamp(8px,1.8vw,10px)] font-black uppercase leading-none tracking-[0.08em] text-white/82">
+            {rideCount === 1 ? "ride" : "rides"}
+          </span>
+        </span>
+      ) : null}
+    </>
   );
 
   if (href) {
     return (
-      <Link href={href} className={cardClassName} style={style} aria-current={selected ? "page" : undefined}>
+      <Link href={href} className={cardClassName} style={style} aria-label={cardLabel} aria-current={selected ? "page" : undefined}>
         {content}
       </Link>
     );
   }
 
   return (
-    <button type="button" onClick={() => onClick(id)} className={cardClassName} style={style} aria-pressed={selected}>
+    <button type="button" onClick={() => onClick(id)} className={cardClassName} style={style} aria-label={cardLabel} aria-pressed={selected}>
       {content}
     </button>
   );
@@ -1464,6 +1487,44 @@ function getTimeOfDayGreeting() {
   return "Good evening";
 }
 
+function prefersReducedMotion() {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+}
+
+function scrollElementToTop(element: HTMLElement | null, offset = 88) {
+  if (!element) return;
+
+  const targetY = Math.max(0, element.getBoundingClientRect().top + window.scrollY - offset);
+
+  if (prefersReducedMotion()) {
+    window.scrollTo({ top: targetY, behavior: "auto" });
+    return;
+  }
+
+  const startY = window.scrollY;
+  const distance = targetY - startY;
+  const duration = 420;
+  const startTime = window.performance.now();
+
+  if (Math.abs(distance) < 4) {
+    window.scrollTo({ top: targetY, behavior: "auto" });
+    return;
+  }
+
+  const easeOutCubic = (progress: number) => 1 - Math.pow(1 - progress, 3);
+
+  function step(now: number) {
+    const progress = Math.min((now - startTime) / duration, 1);
+    window.scrollTo({ top: startY + distance * easeOutCubic(progress), behavior: "auto" });
+
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+    }
+  }
+
+  window.requestAnimationFrame(step);
+}
+
 export default function HomePage() {
   return (
     <Suspense fallback={null}>
@@ -1475,6 +1536,8 @@ export default function HomePage() {
 function HomePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const rideTypesRef = useRef<HTMLDivElement | null>(null);
+  const recommendationsRef = useRef<HTMLElement | null>(null);
   const tabSearchParam = searchParams.get("tab");
   const urlActiveTab = getHomeTabFromSearchParam(tabSearchParam);
   const [optimisticActiveTab, setOptimisticActiveTab] = useState<HomeTab | null>(null);
@@ -1530,6 +1593,7 @@ function HomePageContent() {
   const [seatFilter, setSeatFilter] = useState<SeatFilter>("any");
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [rideTypesVisible, setRideTypesVisible] = useState(true);
   const today = useMemo(() => new Date(), []);
   const activeHeroBackgroundMode = rideModeFilter === "ride_app" ? "ride_app" : "taxi";
   const heroGreeting = useMemo(() => getTimeOfDayGreeting(), []);
@@ -1559,6 +1623,27 @@ function HomePageContent() {
 
     return isAuthenticated ? rides : rides.map(withoutCurrentUserRelationship);
   }, [createdHomeRides, isAuthenticated, profile, user]);
+
+  useEffect(() => {
+    const element = rideTypesRef.current;
+    if (!element) return;
+    const rideTypesElement = element;
+    const win = window;
+
+    function updateVisibility() {
+      const rect = rideTypesElement.getBoundingClientRect();
+      setRideTypesVisible(rect.bottom > 88 && rect.top < win.innerHeight - 96);
+    }
+
+    updateVisibility();
+    win.addEventListener("scroll", updateVisibility, { passive: true });
+    win.addEventListener("resize", updateVisibility);
+
+    return () => {
+      win.removeEventListener("scroll", updateVisibility);
+      win.removeEventListener("resize", updateVisibility);
+    };
+  }, []);
 
   const taxiTypeOptions = useMemo(
     () =>
@@ -1617,6 +1702,15 @@ function HomePageContent() {
   );
 
   const visibleRides = tabFilteredRides;
+  const categoryRideCounts = useMemo<Record<HomeCategoryCardId, number>>(
+    () => ({
+      all: filteredRides.length,
+      airport: filteredRides.filter((ride) => rideMatchesTab("airport", ride)).length,
+      one_off: filteredRides.filter((ride) => rideMatchesTab("one_off", ride)).length,
+      recurring: filteredRides.filter((ride) => rideMatchesTab("recurring", ride)).length,
+    }),
+    [filteredRides],
+  );
 
   function handleTabChange(tab: HomeTab) {
     setOptimisticActiveTab(tab);
@@ -1625,6 +1719,17 @@ function HomePageContent() {
     const nextUrl = `/home?${nextParams.toString()}`;
     window.history.replaceState(null, "", nextUrl);
     router.replace(nextUrl, { scroll: false });
+  }
+
+  function handleCategoryCardSelect(tab: HomeCategoryCardId) {
+    handleTabChange(tab);
+    window.requestAnimationFrame(() => {
+      scrollElementToTop(recommendationsRef.current);
+    });
+  }
+
+  function handleBackToRideTypes() {
+    scrollElementToTop(rideTypesRef.current);
   }
 
   function handleRideModeChange(value: Extract<RideModeFilter, "taxi" | "ride_app">) {
@@ -1735,6 +1840,10 @@ function HomePageContent() {
     seatFilter !== "any" ||
     ownershipFilter !== "all";
   const showRideRecommendations = true;
+  const activeRecommendationLabel =
+    activeTab === "all" || activeTab === "airport" || activeTab === "one_off" || activeTab === "recurring"
+      ? categoryRecommendationLabels[activeTab]
+      : tabLabels[activeTab];
   const [oneOffCard, recurringCard, airportCard, allRidesCard] = categoryCards;
   const renderCategoryCard = (card: (typeof categoryCards)[number]) => (
     <CategoryCard
@@ -1743,8 +1852,9 @@ function HomePageContent() {
       imageSrc={card.imageSrc}
       imageAlt={card.imageAlt}
       href={card.href}
+      rideCount={categoryRideCounts[card.id]}
       selected={activeTab === card.id}
-      onClick={handleTabChange}
+      onClick={handleCategoryCardSelect}
       className={
         card.id === "one_off"
           ? "absolute left-0 top-0 z-[1] h-full w-[48.35%] rounded-[clamp(22px,4vw,28px)]"
@@ -1843,7 +1953,7 @@ function HomePageContent() {
           </div>
         ) : null}
 
-        <div className="relative z-10 mt-6">
+        <div ref={rideTypesRef} className="relative z-10 mt-6 scroll-mt-[88px]">
           <div className="relative isolate mx-auto aspect-[1.6/1] w-full max-w-[680px] overflow-visible pb-1">
             {renderCategoryCard(oneOffCard)}
             {renderCategoryCard(recurringCard)}
@@ -1854,8 +1964,9 @@ function HomePageContent() {
                   imageSrc={airportCard.imageSrc}
                   imageAlt={airportCard.imageAlt}
                   href={airportCard.href}
+                  rideCount={categoryRideCounts[airportCard.id]}
                   selected={activeTab === airportCard.id}
-                  onClick={handleTabChange}
+                  onClick={handleCategoryCardSelect}
                   className="relative z-10 h-full w-full min-w-0 rounded-[clamp(19px,3.5vw,24px)]"
                 />
               </div>
@@ -1864,8 +1975,9 @@ function HomePageContent() {
                 imageSrc={allRidesCard.imageSrc}
                 imageAlt={allRidesCard.imageAlt}
                 href={allRidesCard.href}
+                rideCount={categoryRideCounts[allRidesCard.id]}
                 selected={activeTab === allRidesCard.id}
-                onClick={handleTabChange}
+                onClick={handleCategoryCardSelect}
                 className="relative h-full w-full min-w-0 rounded-[clamp(19px,3.5vw,24px)]"
               />
             </div>
@@ -1874,9 +1986,14 @@ function HomePageContent() {
       </section>
 
       {showRideRecommendations ? (
-        <section className="relative mx-auto mt-4 w-full max-w-[712px] px-4 sm:px-6 lg:px-4">
+        <section ref={recommendationsRef} className="relative mx-auto mt-4 w-full max-w-[712px] scroll-mt-[88px] px-4 pb-4 sm:px-6 lg:px-4 min-[720px]:pb-64">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <h1 className="whitespace-nowrap text-base font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
+            <div className="min-w-0">
+              <h1 className="whitespace-nowrap text-base font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
+              <span className="mt-1 inline-flex max-w-full items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 py-1 text-[11px] font-black text-[var(--rp-primary)]">
+                {activeRecommendationLabel}
+              </span>
+            </div>
             <div className="flex shrink-0 items-center gap-2">
               {hasActiveFilters ? (
                 <button
@@ -1921,6 +2038,17 @@ function HomePageContent() {
           <RideTypeInfoStrip />
           <RideAppCommunityPanel />
         </section>
+      ) : null}
+
+      {showRideRecommendations && !rideTypesVisible ? (
+        <button
+          type="button"
+          onClick={handleBackToRideTypes}
+          className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-40 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_42%,transparent)] bg-[rgba(4,16,26,0.92)] px-3.5 text-xs font-black text-[var(--rp-primary)] shadow-[0_18px_42px_rgba(0,0,0,0.42)] backdrop-blur-md transition hover:border-[var(--rp-primary)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)] min-[720px]:bottom-8 min-[720px]:right-8"
+        >
+          <span aria-hidden="true">↑</span>
+          Back to ride types
+        </button>
       ) : null}
 
       <DistrictFilterSheet
