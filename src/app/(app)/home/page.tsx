@@ -595,8 +595,8 @@ function RideModeSwitch({
 
   return (
     <div className="grid justify-items-center">
-      <div className="w-full max-w-[600px] rounded-full bg-white/30 p-1.5 shadow-[0_18px_42px_rgba(0,0,0,0.24)] backdrop-blur-md">
-        <div className="relative grid grid-cols-2 overflow-hidden rounded-full border border-white/35 bg-[rgba(248,250,252,0.92)] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.82)]">
+      <div className="w-full max-w-[560px] rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(10,24,36,0.92),rgba(4,12,20,0.96))] p-1.5 shadow-[0_18px_44px_rgba(0,0,0,0.34)] backdrop-blur-md">
+        <div className="relative grid grid-cols-2 gap-1.5 overflow-hidden rounded-[22px] bg-black/10 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
         {options.map((option) => {
           const selected = value === option.id;
           const Icon = option.icon;
@@ -607,14 +607,14 @@ function RideModeSwitch({
               type="button"
               onClick={() => onChange(option.id)}
               className={cn(
-                "inline-flex min-h-[50px] items-center justify-center gap-2 rounded-full px-4 text-base font-black transition min-[420px]:text-lg",
+                "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] px-4 text-base font-black transition min-[420px]:text-lg",
                 selected
                   ? option.id === "ride_app"
-                    ? "bg-[linear-gradient(180deg,#176fc7_0%,#0b4f9f_100%)] text-white shadow-[0_16px_32px_rgba(14,79,158,0.36)]"
-                    : "bg-[linear-gradient(180deg,#ffd966_0%,#ffc542_100%)] text-[#07111a] shadow-[0_16px_32px_rgba(255,197,66,0.3)]"
+                    ? "bg-[linear-gradient(180deg,#1d7de4_0%,#0d56ab_100%)] text-white shadow-[0_14px_28px_rgba(14,79,158,0.34)]"
+                    : "bg-[linear-gradient(180deg,#ffdc72_0%,#ffc844_100%)] text-[#07111a] shadow-[0_14px_28px_rgba(255,197,66,0.28)]"
                   : option.id === "ride_app"
-                    ? "bg-[#0b3f7d] text-blue-100/72 hover:text-white"
-                    : "text-amber-900 hover:bg-amber-100",
+                    ? "text-blue-100/72 hover:bg-white/5 hover:text-white"
+                    : "text-amber-100/74 hover:bg-white/5 hover:text-amber-50",
               )}
             >
               <Icon className="h-5 w-5" />
@@ -625,8 +625,8 @@ function RideModeSwitch({
         <span
           aria-hidden="true"
           className={cn(
-            "pointer-events-none absolute left-1/2 top-1/2 z-10 grid h-9 w-9 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border bg-white/95 text-xs font-black tracking-[0.12em] shadow-[0_8px_18px_rgba(15,23,42,0.18)]",
-            value === "ride_app" ? "border-blue-200 text-blue-700" : "border-amber-200 text-amber-700",
+            "pointer-events-none absolute left-1/2 top-1/2 z-10 grid h-8 w-8 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border bg-[#07111a]/95 text-xs font-black tracking-[0.12em] shadow-[0_8px_18px_rgba(0,0,0,0.28)]",
+            value === "ride_app" ? "border-blue-300/40 text-blue-200" : "border-amber-300/45 text-amber-200",
           )}
         >
           <ArrowRightLeft className="h-4 w-4" />
@@ -1832,17 +1832,17 @@ function HomePageContent() {
               </div>
             );
           })}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-[linear-gradient(180deg,transparent,rgba(3,9,15,0.82))]" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-[linear-gradient(180deg,transparent,rgba(3,9,15,0.42))]" />
           <div className="absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,rgba(3,9,15,0.38),transparent)]" />
-          {showRideRecommendations ? (
-            <div className="absolute inset-x-5 bottom-5 z-10 min-[420px]:inset-x-8">
-              <RideModeSwitch
-                value={rideModeFilter === "ride_app" ? "ride_app" : "taxi"}
-                onChange={handleRideModeChange}
-              />
-            </div>
-          ) : null}
         </div>
+        {showRideRecommendations ? (
+          <div className="relative z-10 mx-auto mt-3 w-full max-w-[680px] px-4 min-[420px]:px-8">
+            <RideModeSwitch
+              value={rideModeFilter === "ride_app" ? "ride_app" : "taxi"}
+              onChange={handleRideModeChange}
+            />
+          </div>
+        ) : null}
 
         <div className="relative z-10 mt-6">
           <div className="relative isolate mx-auto aspect-[1.6/1] w-full max-w-[680px] overflow-visible pb-1">
