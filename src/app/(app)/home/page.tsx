@@ -20,7 +20,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { Suspense, type ReactNode, useEffect, useMemo, useState } from "react";
+import { Suspense, type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react";
 import { RidePodAvatar, useRidePodAvatarPreference, type RidePodAvatarPreference } from "@/components/animal-avatar";
 import { cn } from "@/components/ui";
 import {
@@ -535,6 +535,7 @@ function CategoryCard({
   selected,
   onClick,
   className,
+  style,
 }: {
   id: HomeCategoryCardId;
   imageSrc: string;
@@ -543,6 +544,7 @@ function CategoryCard({
   selected: boolean;
   onClick: (tab: HomeTab) => void;
   className: string;
+  style?: CSSProperties;
 }) {
   const cardClassName = cn(
     "group block overflow-hidden text-left shadow-[0_22px_46px_rgba(0,0,0,0.26)] outline-none transition active:scale-[0.99] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]",
@@ -562,14 +564,14 @@ function CategoryCard({
 
   if (href) {
     return (
-      <Link href={href} className={cardClassName} aria-current={selected ? "page" : undefined}>
+      <Link href={href} className={cardClassName} style={style} aria-current={selected ? "page" : undefined}>
         {content}
       </Link>
     );
   }
 
   return (
-    <button type="button" onClick={() => onClick(id)} className={cardClassName} aria-pressed={selected}>
+    <button type="button" onClick={() => onClick(id)} className={cardClassName} style={style} aria-pressed={selected}>
       {content}
     </button>
   );
@@ -1743,9 +1745,10 @@ function HomePageContent() {
       href={card.href}
       selected={activeTab === card.id}
       onClick={handleTabChange}
+      style={card.id === "one_off" ? { clipPath: "url(#ride-mode-schedule-notch)" } : undefined}
       className={
         card.id === "one_off"
-          ? "absolute left-0 top-0 z-[1] h-[90.2%] w-[48.35%] rounded-[clamp(22px,4vw,28px)]"
+          ? "absolute left-0 top-0 z-[1] h-[90.2%] w-[48.35%] rounded-[clamp(22px,4vw,28px)] [clip-path:polygon(0_0,100%_0,100%_43%,89%_53%,89%_100%,0_100%)]"
           : card.id === "recurring"
             ? "absolute right-0 top-0 z-[2] h-[41%] w-[49.55%] rounded-[clamp(20px,3.8vw,26px)]"
             : ""
@@ -1843,6 +1846,13 @@ function HomePageContent() {
 
         <div className="relative z-10 mt-6">
           <div className="relative isolate mx-auto aspect-[1.45/1] w-full max-w-[680px] overflow-visible pb-1">
+            <svg aria-hidden="true" focusable="false" className="pointer-events-none absolute h-0 w-0">
+              <defs>
+                <clipPath id="ride-mode-schedule-notch" clipPathUnits="objectBoundingBox">
+                  <path d="M0,0 H1 V0.43 C1,0.49 0.89,0.45 0.89,0.53 V1 H0 Z" />
+                </clipPath>
+              </defs>
+            </svg>
             {renderCategoryCard(oneOffCard)}
             {renderCategoryCard(recurringCard)}
             <div className="absolute bottom-0 right-0 z-[3] grid h-[56.2%] w-[57.1%] grid-cols-[minmax(0,1.095fr)_minmax(0,1fr)] gap-[clamp(8px,1.7vw,13px)]">
