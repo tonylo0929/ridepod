@@ -1748,9 +1748,9 @@ function HomePageContent() {
       style={card.id === "one_off" ? { clipPath: "url(#ride-mode-schedule-notch)" } : undefined}
       className={
         card.id === "one_off"
-          ? "absolute left-0 top-0 z-[1] h-full w-[48.35%] rounded-[clamp(22px,4vw,28px)] [clip-path:polygon(0_0,100%_0,100%_43%,90%_55%,90%_66%,100%_78%,100%_100%,0_100%)]"
+          ? "absolute left-0 top-0 z-[1] h-full w-[48.35%] rounded-[clamp(22px,4vw,28px)] [clip-path:polygon(0_0,100%_0,100%_47%,93%_53%,85%_58%,85%_69%,93%_76%,100%_83%,100%_100%,0_100%)]"
           : card.id === "recurring"
-            ? "absolute right-0 top-0 z-[2] h-[41%] w-[49.55%] rounded-[clamp(20px,3.8vw,26px)]"
+            ? "absolute right-0 top-0 z-[2] h-[44%] w-[49.55%] rounded-[clamp(20px,3.8vw,26px)]"
             : ""
       }
     />
@@ -1849,13 +1849,13 @@ function HomePageContent() {
             <svg aria-hidden="true" focusable="false" className="pointer-events-none absolute h-0 w-0">
               <defs>
                 <clipPath id="ride-mode-schedule-notch" clipPathUnits="objectBoundingBox">
-                  <path d="M0,0 H1 V0.43 C1,0.49 0.9,0.47 0.9,0.55 V0.66 C0.9,0.74 1,0.7 1,0.78 V1 H0 Z" />
+                  <path d="M0,0 H1 V0.47 C1,0.53 0.85,0.5 0.85,0.58 V0.69 C0.85,0.78 1,0.74 1,0.83 V1 H0 Z" />
                 </clipPath>
               </defs>
             </svg>
             {renderCategoryCard(oneOffCard)}
             {renderCategoryCard(recurringCard)}
-            <div className="absolute bottom-0 right-0 z-[3] grid h-[56.2%] w-[57.1%] grid-cols-[minmax(0,1.095fr)_minmax(0,1fr)] gap-[clamp(8px,1.7vw,13px)]">
+            <div className="absolute bottom-0 right-0 z-[3] grid h-[53%] w-[57.1%] grid-cols-[minmax(0,1.095fr)_minmax(0,1fr)] gap-[clamp(8px,1.7vw,13px)]">
               <CategoryCard
                 id={airportCard.id}
                 imageSrc={airportCard.imageSrc}
