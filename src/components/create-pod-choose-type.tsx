@@ -78,7 +78,7 @@ import { createUserNotificationOnce } from "@/lib/notifications/ridepod-notifica
 import type { HomeRide } from "@/lib/home-ride-mock";
 
 type PodType = "scheduled" | "airport" | "recurring";
-type CreateStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+type CreateStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 type AirportDirection = "to_airport" | "from_airport";
 type AirportDetailsSlice = "direction" | "flight" | "luggage";
 type AirportLuggageState = {
@@ -227,22 +227,33 @@ type TaxiTypeId =
   | "comfort"
   | "accessible";
 
-const baseCreateSteps = ["People & Vehicle", "Choose Type", "Route & Stops", "Date & Time", "Review", "Success"];
+const baseCreateSteps = ["People & Vehicle", "Choose Type", "Route & Stops", "Estimated Cost", "Date & Time", "Review", "Success"];
 const rideAppCreateSteps = [
   "People & Vehicle",
   "Choose Type",
   "Route & Stops",
+  "Estimated Cost",
   "Date & Time",
   "Booking & Payment Rules",
   "Review",
   "Success",
 ];
-const airportCreateSteps = ["People & Vehicle", "Choose Type", "Airport Details", "Route & Stops", "Date & Time", "Review", "Success"];
+const airportCreateSteps = [
+  "People & Vehicle",
+  "Choose Type",
+  "Airport Details",
+  "Route & Stops",
+  "Estimated Cost",
+  "Date & Time",
+  "Review",
+  "Success",
+];
 const airportRideAppCreateSteps = [
   "People & Vehicle",
   "Choose Type",
   "Airport Details",
   "Route & Stops",
+  "Estimated Cost",
   "Date & Time",
   "Booking & Payment Rules",
   "Review",
@@ -641,6 +652,27 @@ function formatMoney(value: number) {
     style: "currency",
     currency: "HKD",
   }).format(value);
+}
+
+function parseEstimatedCost(value: string) {
+  const normalizedValue = value.replace(/[^\d.]/g, "");
+  const amount = Number(normalizedValue);
+
+  return Number.isFinite(amount) ? amount : 0;
+}
+
+function sanitizeEstimatedCostInput(value: string) {
+  return value.replace(/[^\d.]/g, "");
+}
+
+function formatEstimatedCostDraft(value: number) {
+  return Number.isFinite(value) && value > 0 ? String(Math.round(value)) : "";
+}
+
+function formatEstimatedCostTextDraft(value: string) {
+  const amount = parseEstimatedCost(value);
+
+  return amount > 0 ? formatEstimatedCostDraft(amount) : "";
 }
 
 function dollarsToCents(value: number) {
@@ -3391,6 +3423,151 @@ function DateTimeStep({
         </div>
       </main>
 
+    </>
+  );
+}
+
+function EstimatedCostStep({
+  podType,
+  peopleVehicle,
+  pricing,
+  currentStep = 3,
+  stepLabels = baseCreateSteps,
+  onPeopleVehicleChange,
+  onPricingChange,
+  onBack,
+  onContinue,
+}: {
+  podType: PodType;
+  peopleVehicle: PeopleVehicleState;
+  pricing: PricingState;
+  currentStep?: CreateStep;
+  stepLabels?: string[];
+  onPeopleVehicleChange: (peopleVehicle: PeopleVehicleState) => void;
+  onPricingChange: (pricing: PricingState) => void;
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const isRideAppSelfSettle = normalizeRideOptionId(peopleVehicle.rideOption) === "ride_app_fixed_quote";
+  const seatCount = Math.max(1, peopleVehicle.seatsAvailable);
+  const [estimateDraft, setEstimateDraft] = useState(() =>
+    isRideAppSelfSettle
+      ? formatEstimatedCostTextDraft(peopleVehicle.estimatedRideAppFare)
+      : formatEstimatedCostDraft(pricing.estimatedFare),
+  );
+  const estimateAmount = parseEstimatedCost(estimateDraft);
+  const roundedEstimate = Math.round(estimateAmount);
+  const perRiderEstimate = Math.max(1, Math.ceil(roundedEstimate / seatCount));
+  const canContinue = roundedEstimate > 0;
+
+  function handleContinue() {
+    if (!canContinue) return;
+
+    if (isRideAppSelfSettle) {
+      onPeopleVehicleChange({
+        ...peopleVehicle,
+        estimatedRideAppFare: `HK$${roundedEstimate}`,
+      });
+    } else {
+      onPricingChange({
+        estimatedFare: roundedEstimate,
+        estimatedShare: perRiderEstimate,
+        maxFare: Math.max(roundedEstimate, Math.ceil(roundedEstimate * 1.15)),
+      });
+    }
+
+    onContinue();
+  }
+
+  return (
+    <>
+      <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
+
+      <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#020912] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-7 text-[#f8fafc]">
+        <section className="text-center">
+          <ScheduleTypeEyebrow podType={podType} />
+          <h1 className="mt-2 text-[31px] font-black leading-tight text-[var(--rp-text)]">
+            Estimated Cost
+          </h1>
+          <p className="mx-auto mt-2 max-w-[292px] text-base font-medium leading-6 text-[var(--rp-muted)]">
+            Add the total ride estimate before riders can review this pod.
+          </p>
+        </section>
+
+        <section className="mt-7 grid gap-5 rounded-[26px] border border-[#f6c453]/45 bg-[linear-gradient(180deg,rgba(246,196,83,0.14),rgba(15,27,39,0.74))] p-4 shadow-[0_22px_54px_rgba(0,0,0,0.32)]">
+          <div className="flex items-center gap-3">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#f6c453]/35 bg-[#f6c453]/16 text-[#f6c453]">
+              {isRideAppSelfSettle ? <Smartphone className="h-5 w-5" /> : <CarFront className="h-5 w-5" />}
+            </span>
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#f6c453]">
+                Required estimate
+              </p>
+              <h2 className="mt-1 text-xl font-black leading-tight text-[var(--rp-text)]">
+                {isRideAppSelfSettle ? "Ride app fare" : "Taxi fare"}
+              </h2>
+            </div>
+          </div>
+
+          <label className="grid gap-2 text-left">
+            <span className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
+              Total estimated cost
+            </span>
+            <div className="flex min-h-14 items-center rounded-[18px] border border-[var(--rp-border)] bg-[rgba(5,12,20,0.58)] px-4 focus-within:border-[var(--rp-primary)]">
+              <span className="mr-2 text-base font-black text-[#f6c453]">HK$</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={estimateDraft}
+                onChange={(event) => setEstimateDraft(sanitizeEstimatedCostInput(event.target.value))}
+                placeholder="84"
+                aria-invalid={!canContinue}
+                className="h-12 min-w-0 flex-1 bg-transparent text-[30px] font-black leading-none text-[var(--rp-text)] outline-none placeholder:text-[var(--rp-muted)]"
+              />
+            </div>
+            <span className={cn("text-xs font-semibold leading-5", canContinue ? "text-[var(--rp-muted-strong)]" : "text-[#f6c453]")}>
+              {canContinue
+                ? "Use the best total estimate you have right now. You can still review details later."
+                : "Estimated cost is compulsory. Enter a positive HKD amount to continue."}
+            </span>
+          </label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-[18px] border border-white/10 bg-black/20 p-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.13em] text-[var(--rp-muted-strong)]">
+                Total estimate
+              </p>
+              <p className="mt-2 text-xl font-black text-[var(--rp-text)]">
+                {canContinue ? formatMoney(roundedEstimate) : "Required"}
+              </p>
+            </div>
+            <div className="rounded-[18px] border border-white/10 bg-black/20 p-4">
+              <p className="text-[11px] font-black uppercase tracking-[0.13em] text-[var(--rp-muted-strong)]">
+                Per rider
+              </p>
+              <p className="mt-2 text-xl font-black text-[var(--rp-primary)]">
+                {canContinue ? formatMoney(perRiderEstimate) : "-"}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <p className="mt-4 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+          {isRideAppSelfSettle
+            ? "This estimate appears on the pod so riders know the external app fare before joining."
+            : `RidePod will show about ${seatCount} seat${seatCount === 1 ? "" : "s"} and the estimated share per rider.`}
+        </p>
+
+        <div className="mt-7">
+          <CreatePodStepActions
+            onBack={onBack}
+            onContinue={handleContinue}
+            continueLabel="Save estimate"
+            continueIcon={<ArrowRight className="h-5 w-5" />}
+            disabled={!canContinue}
+          />
+        </div>
+      </main>
     </>
   );
 }
@@ -7417,7 +7594,7 @@ export function CreatePodChooseType() {
   const [stopRequestPolicy, setStopRequestPolicy] = useState<StopRequestPolicy>("direct_only");
   const [stopRequestPolicyTouched, setStopRequestPolicyTouched] = useState(false);
   const [createdPodDetailHref, setCreatedPodDetailHref] = useState<string | null>(null);
-  const [pricing] = useState<PricingState>({
+  const [pricing, setPricing] = useState<PricingState>({
     estimatedFare: 84,
     estimatedShare: 21,
     maxFare: 96,
@@ -7443,10 +7620,11 @@ export function CreatePodChooseType() {
       ? rideAppCreateSteps
       : baseCreateSteps;
   const routeStepIndex: CreateStep = isAirportPod ? 3 : 2;
-  const dateTimeStepIndex: CreateStep = isAirportPod ? 4 : 3;
-  const bookingRulesStepIndex: CreateStep = isAirportPod ? 5 : 4;
-  const reviewStepIndex: CreateStep = isRideAppSelfSettle ? (isAirportPod ? 6 : 5) : isAirportPod ? 5 : 4;
-  const successStepIndex: CreateStep = isRideAppSelfSettle ? (isAirportPod ? 7 : 6) : isAirportPod ? 6 : 5;
+  const estimateCostStepIndex: CreateStep = isAirportPod ? 4 : 3;
+  const dateTimeStepIndex: CreateStep = isAirportPod ? 5 : 4;
+  const bookingRulesStepIndex: CreateStep = isAirportPod ? 6 : 5;
+  const reviewStepIndex: CreateStep = isRideAppSelfSettle ? (isAirportPod ? 7 : 6) : isAirportPod ? 6 : 5;
+  const successStepIndex: CreateStep = isRideAppSelfSettle ? (isAirportPod ? 8 : 7) : isAirportPod ? 7 : 6;
 
   function continueFromAirportDetails() {
     const terminalOrHall = getAirportTerminalHallValue(airportDetails);
@@ -7632,8 +7810,20 @@ export function CreatePodChooseType() {
           currentStep={dateTimeStepIndex}
           stepLabels={activeStepLabels}
           onDateTimeChange={setDateTime}
-          onBack={() => setStep(routeStepIndex)}
+          onBack={() => setStep(estimateCostStepIndex)}
           onContinue={() => continueToStep(isRideAppSelfSettle ? bookingRulesStepIndex : reviewStepIndex)}
+        />
+      ) : step === estimateCostStepIndex ? (
+        <EstimatedCostStep
+          podType={podType}
+          peopleVehicle={peopleVehicle}
+          pricing={pricing}
+          currentStep={estimateCostStepIndex}
+          stepLabels={activeStepLabels}
+          onPeopleVehicleChange={setPeopleVehicle}
+          onPricingChange={setPricing}
+          onBack={() => setStep(routeStepIndex)}
+          onContinue={() => continueToStep(dateTimeStepIndex)}
         />
       ) : step === routeStepIndex ? (
         <RouteStopsStep
@@ -7668,7 +7858,7 @@ export function CreatePodChooseType() {
             setStops((currentStops) => currentStops.filter((stop) => stop.id !== id));
           }}
           onStopRequestPolicyChange={handleStopRequestPolicyChange}
-          onContinue={() => continueToStep(dateTimeStepIndex)}
+          onContinue={() => continueToStep(estimateCostStepIndex)}
         />
       ) : step === 2 && isAirportPod ? (
         <AirportDetailsStep
