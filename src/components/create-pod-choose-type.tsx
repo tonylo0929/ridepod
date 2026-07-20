@@ -5153,7 +5153,7 @@ function PeopleVehicleStep({
             )}
           </div>
 
-          <div className={cn(isRideAppProviderPage ? "mt-6 pt-0" : "mt-auto pt-7")}>
+          <div className={cn(isRideCategoryPage || isRideAppProviderPage ? "mt-6 pt-0" : "mt-auto pt-7")}>
             {isRideAppSelfSettle && rideAppAccessNotice ? (
               <p className="mb-3 rounded-[16px] border border-blue-300/20 bg-blue-400/10 px-3 py-2 text-center text-xs font-bold leading-5 text-blue-100">
                 {rideAppAccessNotice.message}
