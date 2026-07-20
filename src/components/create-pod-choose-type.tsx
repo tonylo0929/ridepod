@@ -7683,8 +7683,8 @@ export function CreatePodChooseType() {
         <>
           <CreatePodTopBar currentStep={1} stepLabels={activeStepLabels} />
 
-          <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-5 pt-6">
-            <section className="flex min-w-0 flex-1 flex-col justify-center">
+          <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
+            <section className="flex min-w-0 flex-col">
               <div className="text-center">
                 <h1 className="mx-auto max-w-none whitespace-nowrap text-center text-[28px] font-black leading-[1.08] text-[var(--rp-text)] min-[390px]:text-[30px]">
                   Trip Type
@@ -7713,12 +7713,12 @@ export function CreatePodChooseType() {
                   />
                 ))}
               </div>
+
+              <div className="mt-6">
+                <CreatePodStepActions onBack={() => setStep(0)} onContinue={() => continueToStep(2)} />
+              </div>
             </section>
           </main>
-
-          <footer className="px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4">
-            <CreatePodStepActions onBack={() => setStep(0)} onContinue={() => continueToStep(2)} />
-          </footer>
         </>
       ) : (
         <PeopleVehicleStep
