@@ -32,7 +32,7 @@ export const GENDER_MODES = ["MIXED", "WOMEN_ONLY"] as const;
 export type GenderMode = (typeof GENDER_MODES)[number];
 
 export const GENDER_MODE_LABELS: Record<GenderMode, string> = {
-  MIXED: "Open pod",
+  MIXED: "Mixed pod",
   WOMEN_ONLY: "Women-only",
 };
 
@@ -766,7 +766,7 @@ export function checkPodEligibility(
 
     reasons.push("Women-only eligibility passed.");
   } else {
-    reasons.push("Open pod.");
+    reasons.push("Mixed pod.");
   }
 
   if (pod.accessMode === "VERIFIED_ONLY" && verifiedRank[user.verificationStatus] < verifiedRank.PHONE_VERIFIED) {

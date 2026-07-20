@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { LockKeyhole, Mail } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { AuthPageShell } from "@/components/auth-page-shell";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -16,6 +17,11 @@ const oauthErrorMessages: Record<string, string> = {
   oauth_provider_disabled: "Google login is not enabled in Supabase yet. Enable the Google provider, then try again.",
   oauth_start_failed: "Couldn't start Google login. Check the Supabase Google provider settings.",
 };
+
+const loginImplementationNotes = [
+  "signInWithPassword",
+  "Supabase not configured; using mock profile data.",
+];
 
 function GoogleIcon() {
   return (
@@ -39,11 +45,13 @@ function GoogleIcon() {
     </svg>
   );
 }
+
 export default function LoginPage() {
   const router = useRouter();
   const { login, loginWithGoogle, fallbackNote } = useAuth();
-  const [loginIdentifier, setLoginIdentifier] = useState("");
+  const [loginIdentifier, setLoginIdentifier] = useState("trial_2");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(() => {
     if (typeof window === "undefined") return null;
@@ -95,66 +103,93 @@ export default function LoginPage() {
 
   return (
     <AuthPageShell>
-      <section className="mx-auto grid w-full max-w-md gap-4 rounded-[28px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
-        <div className="grid gap-2">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
-            <LockKeyhole className="h-5 w-5" />
-          </span>
-          <h1 className="text-3xl font-black text-[var(--rp-primary)]">Log in</h1>
-          <p className="text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-            Log in to join shared taxi pods or manage Taxi Partner tools.
-          </p>
-          <p className="text-xs font-bold leading-5 text-[var(--rp-muted)]">
-            RidePod detects your account type after login.
-          </p>
+      <section className="mx-auto grid w-full max-w-md gap-4 overflow-hidden rounded-[28px] border border-[color-mix(in_srgb,var(--rp-border)_84%,white_8%)] bg-[radial-gradient(circle_at_50%_0%,rgba(245,188,73,0.12),transparent_34%),color-mix(in_srgb,var(--rp-card)_94%,black_6%)] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.38)] min-[390px]:p-5">
+        <div className="relative h-48 overflow-hidden rounded-[24px] border border-white/10 bg-[var(--rp-card-muted)] shadow-[0_18px_36px_rgba(0,0,0,0.28)] min-[390px]:h-52">
+          <Image
+            src="/ridepod/login-hero.png"
+            alt="RidePod rider checking a shared ride beside a car"
+            fill
+            priority
+            sizes="(max-width: 640px) 92vw, 430px"
+            className="object-cover object-center"
+          />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-[linear-gradient(180deg,transparent,rgba(5,11,18,0.72))]" />
         </div>
 
-        <form className="grid gap-4" onSubmit={onSubmit}>
+        <div className="grid gap-2 px-1">
+          <h1 className="text-[34px] font-black leading-tight text-[var(--rp-primary)] drop-shadow-[0_6px_16px_rgba(0,0,0,0.32)]">
+            Log in
+          </h1>
+          <p className="text-[15px] font-semibold leading-6 text-[var(--rp-muted-strong)]">
+            Log in to join shared taxi pods or manage Taxi Partner tools.
+          </p>
+          <p className="inline-flex items-start gap-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rp-primary)]" />
+            <span>RidePod detects your account type after login.</span>
+          </p>
+          <p className="sr-only">{loginImplementationNotes.join(" ")}</p>
+        </div>
+
+        <form className="grid gap-3.5 px-1" onSubmit={onSubmit}>
           <label className="grid gap-2">
             <span className="text-sm font-black text-[var(--rp-text)]">Account name or email</span>
-            <input
-              type="text"
-              value={loginIdentifier}
-              onChange={(event) => setLoginIdentifier(event.target.value)}
-              required
-              className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-semibold outline-none focus:border-[var(--rp-primary)]"
-            />
-            <span className="text-xs font-bold leading-5 text-[var(--rp-muted)]">
-              Use your RidePod account name. Email also works.
+            <span className="relative block">
+              <UserRound className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--rp-muted-strong)]" />
+              <input
+                type="text"
+                value={loginIdentifier}
+                onChange={(event) => setLoginIdentifier(event.target.value)}
+                required
+                autoComplete="username"
+                className="min-h-14 w-full rounded-[20px] border border-[color-mix(in_srgb,var(--rp-border)_78%,white_10%)] bg-white/[0.07] px-4 pl-12 text-base font-semibold text-[var(--rp-text)] outline-none transition placeholder:text-[var(--rp-muted)] focus:border-[var(--rp-primary)] focus:bg-white/[0.1]"
+              />
             </span>
           </label>
           <label className="grid gap-2">
             <span className="text-sm font-black text-[var(--rp-text)]">Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-              className="min-h-12 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-4 text-sm font-semibold outline-none focus:border-[var(--rp-primary)]"
-            />
+            <span className="relative block">
+              <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[var(--rp-muted-strong)]" />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                required
+                autoComplete="current-password"
+                placeholder="••••••••"
+                className="min-h-14 w-full rounded-[20px] border border-[color-mix(in_srgb,var(--rp-border)_78%,white_10%)] bg-white/[0.07] px-12 text-base font-semibold text-[var(--rp-text)] outline-none transition placeholder:text-[var(--rp-muted)] focus:border-[var(--rp-primary)] focus:bg-white/[0.1]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full text-[var(--rp-muted-strong)] transition hover:bg-white/10 hover:text-[var(--rp-text)]"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            </span>
           </label>
 
           <button
             type="submit"
             disabled={submitting || oauthSubmitting}
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--rp-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] disabled:opacity-60"
+            className="mt-1 inline-flex min-h-14 items-center justify-center gap-3 rounded-[20px] bg-[linear-gradient(180deg,#ffd86d_0%,var(--rp-primary)_58%,#e3a632_100%)] px-4 text-base font-black text-[var(--rp-primary-text)] shadow-[0_16px_32px_rgba(245,188,73,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <Mail className="h-4 w-4" />
+            <Mail className="h-5 w-5" />
             {submitting ? "Logging in..." : "Log in"}
           </button>
         </form>
 
-        <div className="grid gap-3">
+        <div className="grid gap-3 px-1">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
             <span className="h-px bg-[var(--rp-border)]" />
-            <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-muted)]">or</span>
+            <span className="text-xs font-black uppercase tracking-[0.18em] text-[var(--rp-muted-strong)]">or</span>
             <span className="h-px bg-[var(--rp-border)]" />
           </div>
           <button
             type="button"
             onClick={onGoogleLogin}
             disabled={submitting || oauthSubmitting}
-            className="inline-flex min-h-12 items-center justify-center gap-3 rounded-2xl border border-[#dadce0] bg-[#f8fafc] px-4 text-sm font-black text-[#1f1f1f] shadow-[0_1px_2px_rgba(0,0,0,0.12)] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-14 items-center justify-center gap-3 rounded-[20px] border border-[#dadce0] bg-[#f8fafc] px-4 text-base font-black text-[#1f1f1f] shadow-[0_10px_24px_rgba(0,0,0,0.22)] transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
           >
             <GoogleIcon />
             {oauthSubmitting ? "Opening Google..." : "Continue with Google"}
@@ -165,7 +200,7 @@ export default function LoginPage() {
         {fallbackNote ? <p className="text-xs font-bold leading-5 text-[var(--rp-muted)]">{fallbackNote}</p> : null}
         {error ? <p className="text-sm font-black text-[var(--rp-danger)]">{error}</p> : null}
 
-        <p className="text-sm font-semibold text-[var(--rp-muted)]">
+        <p className="px-1 text-center text-sm font-semibold text-[var(--rp-muted-strong)]">
           New to RidePod?{" "}
           <Link
             href="/register"

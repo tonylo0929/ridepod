@@ -492,11 +492,11 @@ function SettlementDetailsScreen({
             <dd className="font-black text-[var(--rp-text)]">{formatHkdCents(fareShareCents)}</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-[var(--rp-muted-strong)]">RidePod fee</dt>
+            <dt className="text-[var(--rp-muted-strong)]">Platform fee</dt>
             <dd className="font-black text-[var(--rp-text)]">10% of fare share</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-[var(--rp-muted-strong)]">RidePod fee total</dt>
+            <dt className="text-[var(--rp-muted-strong)]">Platform fee total</dt>
             <dd className="font-black text-[var(--rp-text)]">{formatHkdCents(platformFeeCents)}</dd>
           </div>
           <div className="flex justify-between gap-4">
@@ -519,7 +519,7 @@ function SettlementDetailsScreen({
             <dd className="font-black text-[var(--rp-text)]">{formatHkdCents(fareShareCents)}</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-[var(--rp-muted-strong)]">RidePod fee</dt>
+            <dt className="text-[var(--rp-muted-strong)]">Platform fee</dt>
             <dd className="font-black text-[var(--rp-text)]">{formatHkdCents(guestPlatformFeeCents)}</dd>
           </div>
           <div className="flex justify-between gap-4 border-t border-[var(--rp-border)] pt-3">
@@ -801,7 +801,7 @@ function RecurringInstanceSettlementTimeline({
           </div>
           <div className="flex items-center justify-between gap-4">
             <dt className="flex items-center gap-2 font-semibold text-[var(--rp-muted-strong)]">
-              <ShieldCheck className="h-4 w-4 text-[var(--rp-primary)]" /> RidePod fee
+              <ShieldCheck className="h-4 w-4 text-[var(--rp-primary)]" /> Platform fee
             </dt>
             <dd className="font-black text-[var(--rp-text)]">-{formatHkdCents(platformFeeCents)}</dd>
           </div>

@@ -301,7 +301,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
             Taxi partner quote
           </h2>
           <p className="mt-2 max-w-2xl text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
-            Taxi partner quote is separate from the RidePod fee.
+            Taxi partner quote is separate from the platform fee.
           </p>
         </div>
         <Badge className={allAccepted ? "bg-emerald-400/10 text-emerald-300 ring-emerald-400/25" : "bg-sky-400/10 text-sky-300 ring-sky-400/25"}>
@@ -361,7 +361,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
         <MoneyRow label="Taxi type" value={`${taxiPartnerTaxiTypeLabels[baseRequest.requestedTaxiType]} taxi`} />
         <MoneyRow label="Taxi partner quote" value={formatHkdCents(moneyDisplay.quoteAmountCents)} />
         <MoneyRow label="Fare share" value={formatHkdCents(moneyDisplay.fareShareCents)} />
-        <MoneyRow label="RidePod fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
+        <MoneyRow label="Platform fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
         <MoneyRow label="Your total" value={totalLabel} strong />
         <MoneyRow label="Quote expiry" value={formatQuoteExpiry(baseRequest.quoteExpiresAt)} />
       </dl>
@@ -438,11 +438,11 @@ export function TaxiPartnerQuoteAcceptanceCard({
         <dl className="mt-3 rounded-[16px] border border-sky-400/20 bg-sky-400/10 p-3">
           <MoneyRow label="Taxi partner quote" value={formatHkdCents(moneyDisplay.quoteAmountCents)} />
           <MoneyRow label="Fare share" value={formatHkdCents(moneyDisplay.fareShareCents)} />
-          <MoneyRow label="RidePod fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
+          <MoneyRow label="Platform fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
           <MoneyRow label="Your total" value={totalLabel} strong />
         </dl>
         <p className="mt-2 text-xs font-bold leading-5 text-sky-100">
-          {ridePodPricingCopy.taxiQuoteSeparate} RidePod fee is shown separately.
+          {ridePodPricingCopy.taxiQuoteSeparate} Platform fee is shown separately.
         </p>
 
         {paymentMode === "stripe_test" ? (
@@ -554,7 +554,7 @@ export function TaxiPartnerQuoteAcceptanceCard({
         >
           <dl className="rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3">
             <MoneyRow label="Fare share" value={formatHkdCents(moneyDisplay.fareShareCents)} />
-            <MoneyRow label="RidePod fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
+            <MoneyRow label="Platform fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
             <MoneyRow label="Total" value={totalLabel} strong />
             <MoneyRow label="Taxi partner" value={baseRequest.quotedByPartnerName ?? "Demo Taxi Partner"} />
             <MoneyRow label="Quote expiry" value={formatQuoteExpiry(baseRequest.quoteExpiresAt)} />

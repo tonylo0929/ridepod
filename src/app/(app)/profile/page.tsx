@@ -629,6 +629,12 @@ function TrustStatusCard({ profile }: { profile: RidePodProfileRow | null }) {
               ? "These counts come from completed RidePod activity."
               : "No no-shows or late cancellations recorded yet."}
         </p>
+        <div className="mt-4 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card)] p-3">
+          <p className="text-sm font-black text-[var(--rp-text)]">Public pod preview</p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
+            Private details are used for eligibility and safety checks. They are not shown publicly.
+          </p>
+        </div>
         <div className="mt-4 grid grid-cols-2 gap-2">
           <MiniTrustMetric label="No-shows" value={String(noShows)} />
           <MiniTrustMetric label="Late cancels" value={String(lateCancels)} />

@@ -616,7 +616,7 @@ function TaxiPartnerQuoteDetailSections({ reviewCase }: { reviewCase: AdminRevie
           <KeyValue label="Quote expiry" value="Quote expiry unavailable" />
           <KeyValue label="Taxi partner" value={reviewCase.taxiPartnerName ?? "Taxi partner pending"} />
           <KeyValue label="Fare share" value={typeof reviewCase.taxiPartnerFareSharePerGuestCents === "number" ? `${formatAdminHkd(reviewCase.taxiPartnerFareSharePerGuestCents)} / guest` : "Not available"} />
-          <KeyValue label="RidePod fee" value={typeof reviewCase.taxiPartnerPlatformFeePerGuestCents === "number" ? `${formatAdminHkd(reviewCase.taxiPartnerPlatformFeePerGuestCents)} / guest` : "Not available"} />
+          <KeyValue label="Platform fee" value={typeof reviewCase.taxiPartnerPlatformFeePerGuestCents === "number" ? `${formatAdminHkd(reviewCase.taxiPartnerPlatformFeePerGuestCents)} / guest` : "Not available"} />
           <KeyValue label="Guest charge" value={optionalAdminHkd(reviewCase.taxiPartnerGuestChargeCents)} />
           <KeyValue label="Taxi partner payout" value={optionalAdminHkd(reviewCase.taxiPartnerDriverPayoutCents)} />
         </dl>

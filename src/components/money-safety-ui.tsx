@@ -64,7 +64,7 @@ function getDisplayMoneyStatus({
 
 export function SafetyBadgeRow({ podId, className }: { podId: string; className?: string }) {
   const protectedPod = getProtectedPod(podId);
-  const badges = protectedPod ? getSafetyBadges(protectedPod) : ["Open pod", "Open"];
+  const badges = protectedPod ? getSafetyBadges(protectedPod) : ["Mixed pod", "Open"];
 
   return (
     <div className={cn("flex flex-wrap gap-1.5", className)}>
@@ -231,7 +231,7 @@ function getHostQuoteState(pod: RidePod) {
     const snapshot = getMoneySafetySnapshot(protectedPod);
     const latestQuote = permission.latestQuote;
     const aboveMax = !taxiMeter && Boolean(latestQuote && latestQuote.quotedFareCents > protectedPod.approvedMaxTotalFareCents);
-    const routeLabel = `${protectedPod.originGeneral} ??${protectedPod.destinationGeneral}`;
+    const routeLabel = `${protectedPod.originGeneral} → ${protectedPod.destinationGeneral}`;
     const quotedFareCents = latestQuote?.quotedFareCents ?? protectedPod.estimatedTotalFareCents;
 
     return {
@@ -270,7 +270,7 @@ function getHostQuoteState(pod: RidePod) {
     required,
     approvedMax: formatMoney(pod.maxFare),
     approvedMaxCents: Math.round(pod.maxFare * 100),
-    routeLabel: `${pod.fromLabel} ??${pod.toLabel}`,
+    routeLabel: `${pod.fromLabel} → ${pod.toLabel}`,
     departureLabel: `${pod.date}, ${pod.time}`,
     quoteUploaded,
     quoteReviewState: aboveMax ? "NEEDS_APPROVAL" : "AUTO_APPROVED",
@@ -355,7 +355,7 @@ function getHostQuoteActionState(state: ReturnType<typeof getHostQuoteState>) {
 
   return {
     title: "Waiting for guests to lock",
-    body: `${state.confirmed} / ${state.required} guests locked. You?�ll upload a fresh quote once the minimum guests are locked.`,
+    body: `${state.confirmed} / ${state.required} guests locked. You’ll upload a fresh quote once the minimum guests are locked.`,
     badge: "Quote not needed yet",
     cta: null,
     tone: "info" as const,
@@ -539,7 +539,7 @@ export function HostQuoteUploadPanel({ pod }: { pod: RidePod }) {
         <section className="rounded-[22px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
           <QuoteStepHeader icon={<Upload className="h-5 w-5" />} title="1. Booking proof">
             {state.confirmed < state.required
-              ? "Quote not needed yet. You?�ll upload a fresh quote once the minimum guests are locked."
+              ? "Quote not needed yet. You’ll upload a fresh quote once the minimum guests are locked."
               : "Upload a fresh quote screenshot before booking."}
           </QuoteStepHeader>
           <div className="mt-4 grid gap-3">
@@ -751,7 +751,7 @@ export function HostBookingProtectionPanel({ podId }: { podId: string }) {
           }
         : {
             title: "Waiting for guests to lock",
-            body: `${snapshot.confirmedSeats} / ${pod.minSeatsToBook} guests locked. You?�ll upload a fresh quote once the minimum guests are locked.`,
+            body: `${snapshot.confirmedSeats} / ${pod.minSeatsToBook} guests locked. You’ll upload a fresh quote once the minimum guests are locked.`,
             badge: "Quote not needed yet",
             cta: "Upload quote screenshot",
             canAct: false,
@@ -847,7 +847,7 @@ export function HostReplacementModePanel({ podId }: { podId: string }) {
   return (
     <HostReplacementActionsScreen
       backHref={`/pods/${podId}`}
-      routeLabel="USC ??LAX"
+      routeLabel="USC → LAX"
       departureTime="Today ??4:30 PM"
       riderCount={riderCount}
       riderCapacity={pod.maxSeats}
@@ -860,7 +860,7 @@ export function HostReplacementModePanel({ podId }: { podId: string }) {
 
 export function HostReplacementActiveScreen({
   backHref = "/pods",
-  routeLabel = "USC ??LAX",
+  routeLabel = "USC → LAX",
   departureTime = "Today, 4:30 PM",
   riderCount = 3,
   riderCapacity = 4,
@@ -877,7 +877,7 @@ export function HostReplacementActiveScreen({
   lifecycleState?: string;
   paymentAuthorizationSafe?: boolean;
 }) {
-  const genderLabel = genderMode === "WOMEN_ONLY" ? "Women-only" : "Open pod";
+  const genderLabel = genderMode === "WOMEN_ONLY" ? "Women-only" : "Mixed pod";
   const replacementNeeded = lifecycleState === "HOST_REPLACEMENT_NEEDED";
 
   return (

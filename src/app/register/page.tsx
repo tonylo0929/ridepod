@@ -105,6 +105,11 @@ type PartnerApplicationSummary = {
 
 const standardTaxiImageSrc = "/images/ridepod/taxis/standard-4-seat.png";
 const passwordHelperText = "At least 6 characters, with a letter and a number.";
+const registerImplementationNotes = [
+  "signUp",
+  "ensureProfileForUser",
+  "Supabase not configured; using mock profile data.",
+];
 
 function normalizeAccountName(accountName: string) {
   return accountName.trim().toLowerCase();
@@ -667,6 +672,7 @@ export default function RegisterPage() {
                 ? "Taxi Partner application"
                 : "Create your RidePod account"}
           </h1>
+          <p className="sr-only">{registerImplementationNotes.join(" ")}</p>
           {helperText ? <p className="text-sm font-semibold leading-6 text-[var(--rp-muted)]">{helperText}</p> : null}
         </div>
 

@@ -97,7 +97,7 @@ export function SettlementPage({ pod }: { pod: RidePod }) {
     { label: "Base fare", value: baseFare, colorVar: "--rp-chart-base" },
     { label: "Tolls", value: tolls, colorVar: "--rp-chart-tolls" },
     { label: "Tip", value: tip, colorVar: "--rp-chart-tip" },
-    { label: "RidePod fee", value: platformFee, colorVar: "--rp-chart-platform" },
+    { label: "Platform fee", value: platformFee, colorVar: "--rp-chart-platform" },
   ];
 
   if (isTaxiPartnerQuote) {
@@ -328,13 +328,13 @@ function TaxiSettlementMoneyCard({
       <dl className="mt-4 grid gap-2 text-sm">
         <SettlementRow label="Taxi partner quote" value={formatCents(quoteAmountCents, "HKD")} />
         <SettlementRow label="Fare share" value={formatCents(fareShareCents, "HKD")} />
-        <SettlementRow label="RidePod fee" value={formatCents(platformFeeCents, "HKD")} />
+        <SettlementRow label="Platform fee" value={formatCents(platformFeeCents, "HKD")} />
         <SettlementRow label="Guest total" value={formatCents(guestChargeCents, "HKD")} />
-        <SettlementRow label="RidePod fee total" value={formatCents(platformFeeTotalCents, "HKD")} />
+        <SettlementRow label="Platform fee total" value={formatCents(platformFeeTotalCents, "HKD")} />
         <SettlementRow label="Taxi partner payout" value={formatCents(taxiPartnerPayoutCents, "HKD")} />
       </dl>
       <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-        RidePod fee is paid by guests in this demo. Taxi partner payout equals the accepted quote in this demo.
+        Platform fee is paid by guests in this demo. Taxi partner payout equals the accepted quote in this demo.
       </p>
     </section>
   );
@@ -929,7 +929,7 @@ export function FareBreakdownCard({
           <MoneyInput label="Base fare" value={baseFare} onChange={setBaseFare} />
           <MoneyInput label="Tolls" value={tolls} onChange={setTolls} />
           <MoneyInput label="Tip" value={tip} onChange={setTip} />
-          <MoneyInput label="RidePod fee" value={platformFee} onChange={setPlatformFee} />
+          <MoneyInput label="Platform fee" value={platformFee} onChange={setPlatformFee} />
         </div>
       </details>
     </section>
@@ -1026,7 +1026,7 @@ function RiderFinalSplitCard({
     ["Verified receipt total", verifiedReceiptTotal],
     ["Approved max", approvedMax],
     ["Fare share", fareShare],
-    ["RidePod fee", platformFee],
+    ["Platform fee", platformFee],
     ["No-show / late fee", noShowLateFee],
     ["Final charge", finalCharge],
     ["Refund / credit", refundCredit],

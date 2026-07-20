@@ -26,7 +26,7 @@ const inputClass =
 
 const genderModeOptions: Array<{ value: PodGenderMode; label: string }> = [
   { value: "women_only", label: "Women-only" },
-  { value: "mixed", label: "Open pod" },
+  { value: "mixed", label: "Mixed pod" },
 ];
 
 const accessModeOptions: Array<{ value: PodAccessMode; label: string }> = [
@@ -94,7 +94,7 @@ function MoneySafetyFields({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Estimated total fare (cents)">
+        <Field label="Current estimate (cents)">
           <input
             className={inputClass}
             type="number"
@@ -103,7 +103,7 @@ function MoneySafetyFields({
             onChange={(event) => updateMoney("estimatedTotalFareCents", Number(event.target.value))}
           />
         </Field>
-        <Field label="Approved max total fare (cents)">
+        <Field label="Booking fare cap (cents)">
           <input
             className={inputClass}
             type="number"
@@ -130,7 +130,7 @@ function MoneySafetyFields({
             onChange={(event) => updateMoney("minSeatsToBook", Number(event.target.value))}
           />
         </Field>
-        <Field label="RidePod fee note">
+        <Field label="Platform fee note">
           <div className={cn(inputClass, "flex items-center font-semibold text-zinc-950")}>
             {money.ridepodFeeCents}
           </div>
@@ -154,6 +154,11 @@ function MoneySafetyFields({
                 </OptionButton>
               ))}
             </div>
+            {genderMode === "women_only" ? (
+              <p className="mt-2 text-xs font-semibold leading-5 text-zinc-600">
+                Women-only controls who can join the shared pod. It does not guarantee a female taxi driver unless supported by the taxi partner.
+              </p>
+            ) : null}
           </div>
 
           <div>

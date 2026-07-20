@@ -357,7 +357,7 @@ export function TaxiPartnerQuoteRequestCard({
                 ["Quote", formatHkdCents(moneyDisplay.quoteAmountCents)],
                 ["Guests", String(moneyDisplay.guestCount)],
                 ["Fare share", `${formatHkdCents(moneyDisplay.fareShareCents)} / guest`],
-                ["RidePod fee", `${formatHkdCents(moneyDisplay.platformFeeCents)} / guest`],
+                ["Platform fee", `${formatHkdCents(moneyDisplay.platformFeeCents)} / guest`],
                 ["Guest charge", formatHkdCents(moneyDisplay.guestChargeCents)],
                 ["Taxi partner payout", formatHkdCents(moneyDisplay.driverPayoutCents)],
               ].map(([label, value]) => (

@@ -171,9 +171,9 @@ export function TaxiPartnerCompletionCard({
             <SummaryRow label="Taxi partner quote" value={formatHkdCents(moneyDisplay.quoteAmountCents)} />
             <SummaryRow label="Guests" value={`${moneyDisplay.guestCount} guests`} />
             <SummaryRow label="Fare share" value={formatHkdCents(moneyDisplay.fareShareCents)} />
-            <SummaryRow label="RidePod fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
+            <SummaryRow label="Platform fee" value={formatHkdCents(moneyDisplay.platformFeeCents)} />
             <SummaryRow label="Guest charge" value={formatHkdCents(moneyDisplay.guestChargeCents)} />
-            <SummaryRow label="RidePod fee total" value={formatHkdCents(moneyDisplay.platformFeeTotalCents)} />
+            <SummaryRow label="Platform fee total" value={formatHkdCents(moneyDisplay.platformFeeTotalCents)} />
             <SummaryRow label="Taxi partner payout" value={formatHkdCents(moneyDisplay.driverPayoutCents)} />
             <SummaryRow label="Dispute window" value="24h" />
           </dl>
