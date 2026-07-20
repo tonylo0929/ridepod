@@ -170,14 +170,14 @@ const homeHeroBackgrounds: Record<
   ride_app: {
     image: "/images/ridepod/home-ride-app-warm-pickup.jpg",
     mobilePosition: "center center",
-    mobileSize: "cover",
+    mobileSize: "115% auto",
     mobileBackdropPosition: "center center",
-    mobileBackdropSize: "cover",
+    mobileBackdropSize: "115% auto",
     mobileBackdropOpacity: 0,
     desktopPosition: "center center",
-    desktopSize: "cover",
+    desktopSize: "115% auto",
     overlay:
-      "linear-gradient(180deg,rgba(5,11,18,0.02) 0%,rgba(5,11,18,0.02) 58%,rgba(5,11,18,0.5) 100%)",
+      "linear-gradient(180deg,rgba(5,11,18,0) 0%,rgba(5,11,18,0) 56%,rgba(5,11,18,0.24) 82%,var(--rp-bg) 100%)",
   },
   taxi: {
     image: "/images/ridepod/home-taxi-harbor-night.png",
