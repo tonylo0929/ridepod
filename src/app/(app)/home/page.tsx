@@ -1894,9 +1894,7 @@ function HomePageContent() {
         <div
           className={cn(
             "relative z-0 mx-auto mt-1 w-full max-w-[680px] overflow-hidden rounded-[30px] border border-white/10 bg-[#071018] shadow-[0_28px_64px_rgba(0,0,0,0.38)]",
-            activeHeroBackgroundMode === "taxi"
-              ? "aspect-[1.45/1]"
-              : "h-[286px] min-[390px]:h-[300px] min-[720px]:h-[340px]",
+            "aspect-[1.45/1]",
           )}
         >
           {heroBackgroundModes.map((mode) => {
@@ -1949,7 +1947,7 @@ function HomePageContent() {
           <div
             className={cn(
               "pointer-events-none absolute inset-x-0 bottom-0 bg-[linear-gradient(180deg,transparent,rgba(3,9,15,0.42))]",
-              activeHeroBackgroundMode === "taxi" ? "h-10 opacity-55" : "h-20",
+              "h-10 opacity-55",
             )}
           />
           <div className="absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,rgba(3,9,15,0.38),transparent)]" />
