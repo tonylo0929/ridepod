@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRightLeft,
+  Bell,
   CalendarDays,
   CarFront,
   ChevronDown,
@@ -22,7 +23,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { Suspense, type CSSProperties, type ReactNode, type RefObject, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, type CSSProperties, type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RidePodAvatar, useRidePodAvatarPreference, type RidePodAvatarPreference } from "@/components/animal-avatar";
 import { cn } from "@/components/ui";
 import {
@@ -56,7 +57,8 @@ type DeadlineFilter = "any" | "joining_now" | "expiring_soon" | "minimum_reached
 type SeatFilter = "any" | "one_left" | "two_plus_available" | "minimum_not_reached" | "minimum_reached";
 type OwnershipFilter = "all" | "mine" | "joined";
 type ScheduleRideQuickFilter = "recommended" | "today" | "tomorrow" | "this_week";
-type CategoryScreenPhase = "closed" | "entering" | "open" | "exiting";
+type SelectedCategory = "schedule";
+type CategoryTransitionPhase = "idle" | "entering" | "open" | "exiting";
 
 type CurrentUserAvatar = {
   avatarPreference: RidePodAvatarPreference;
@@ -1310,17 +1312,23 @@ function ScheduleRideResultsScreen({
   onFilterChange,
   onBack,
   onFindRide,
+  onOpenTransitionEnd,
+  onExitTransitionEnd,
   resultsRef,
+  currentUserAvatar,
   isAuthenticated,
 }: {
-  phase: CategoryScreenPhase;
+  phase: CategoryTransitionPhase;
   rides: HomeRide[];
   totalRideCount: number;
   activeFilter: ScheduleRideQuickFilter;
   onFilterChange: (filter: ScheduleRideQuickFilter) => void;
   onBack: () => void;
   onFindRide: () => void;
+  onOpenTransitionEnd: () => void;
+  onExitTransitionEnd: () => void;
   resultsRef: RefObject<HTMLDivElement | null>;
+  currentUserAvatar: CurrentUserAvatar;
   isAuthenticated: boolean;
 }) {
   const screenOpen = phase === "open";
@@ -1328,17 +1336,25 @@ function ScheduleRideResultsScreen({
   return (
     <section
       aria-label="Schedule Ride results"
+      onTransitionEnd={(event) => {
+        if (event.currentTarget !== event.target || event.propertyName !== "transform") return;
+        if (phase === "open") onOpenTransitionEnd();
+        if (phase === "exiting") onExitTransitionEnd();
+      }}
+      style={{
+        transform: screenOpen ? "translate3d(0, 0, 0)" : "translate3d(0, -100dvh, 0)",
+        opacity: screenOpen ? 1 : 0.98,
+      }}
       className={cn(
-        "fixed inset-0 z-[140] overflow-y-auto overflow-x-hidden bg-[#04101a] px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-[max(env(safe-area-inset-top),0.75rem)] text-[var(--rp-text)] shadow-[0_-18px_80px_rgba(0,0,0,0.58)] will-change-transform motion-safe:transition-[transform,opacity] motion-safe:duration-[220ms] motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none sm:px-6 lg:px-10",
-        screenOpen ? "translate-y-0 opacity-100" : "-translate-y-full opacity-[0.85]",
+        "fixed inset-0 z-[140] h-[100dvh] overflow-y-auto overflow-x-hidden bg-[#04101a] px-4 pb-[calc(6.75rem+env(safe-area-inset-bottom))] text-[var(--rp-text)] shadow-[0_-18px_80px_rgba(0,0,0,0.58)] will-change-[transform,opacity] motion-safe:transition-[transform,opacity] motion-safe:duration-[220ms] motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none sm:px-6 lg:px-10",
       )}
     >
-      <div className="sticky top-0 z-30 -mx-4 border-b border-white/10 bg-[#04101a]/96 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+      <div className="sticky top-0 z-30 -mx-4 border-b border-white/10 bg-[#04101a]/96 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
         <div className="mx-auto grid w-full max-w-[680px] grid-cols-[44px_minmax(0,1fr)_44px] items-center">
           <button
             type="button"
             onClick={onBack}
-            className="grid h-11 w-11 place-items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_48%,transparent)] bg-[rgba(13,24,35,0.92)] text-[var(--rp-primary)] shadow-[0_14px_32px_rgba(0,0,0,0.3)] transition hover:border-[var(--rp-primary)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]"
+            className="my-2 grid h-11 w-11 place-items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_48%,transparent)] bg-[rgba(13,24,35,0.92)] text-[var(--rp-primary)] shadow-[0_14px_32px_rgba(0,0,0,0.3)] transition hover:border-[var(--rp-primary)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]"
             aria-label="Back to home"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -1346,25 +1362,43 @@ function ScheduleRideResultsScreen({
           <div className="min-w-0 justify-self-center text-center text-2xl font-black tracking-tight">
             Ride<span className="text-[var(--rp-primary)]">Pod</span>
           </div>
-          <span aria-hidden="true" />
+          <Link
+            href="/notifications"
+            className="relative my-2 grid h-11 w-11 place-items-center justify-self-end rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_36%,transparent)] bg-[rgba(13,24,35,0.92)] text-white shadow-[0_14px_32px_rgba(0,0,0,0.3)] transition hover:border-[var(--rp-primary)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]"
+            aria-label="Notifications"
+          >
+            <Bell className="h-5 w-5 stroke-[2.2]" />
+            <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-[var(--rp-primary)] shadow-[0_0_0_2px_#04101a]" />
+          </Link>
         </div>
       </div>
 
       <div className="mx-auto mt-3 w-full max-w-[680px]">
-        <div className="grid min-h-[92px] grid-cols-[52px_minmax(0,1fr)_auto] items-center gap-3 rounded-[24px] border border-[rgba(255,198,80,0.86)] bg-[linear-gradient(135deg,#ffd85a,#f4b72e_58%,#bf8420)] px-4 py-3 text-[#071018] shadow-[0_24px_58px_rgba(244,183,46,0.22)]">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl border border-black/15 bg-white/18 text-[#071018] shadow-[inset_0_1px_0_rgba(255,255,255,0.34)]">
-            <CalendarDays className="h-6 w-6 stroke-[2.4]" />
-          </span>
-          <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-black/72">One-off</p>
-            <h1 className="mt-0.5 truncate text-[25px] font-black leading-none tracking-tight">Schedule Ride</h1>
-            <p className="mt-1 line-clamp-2 text-sm font-bold leading-5 text-black/72">
-              Plan ahead, pick your time & split the cost.
-            </p>
+        <div className="relative isolate min-h-[158px] overflow-hidden rounded-[24px] border border-[rgba(255,198,80,0.86)] bg-[linear-gradient(135deg,#ffe06f_0%,#ffc941_45%,#d89a21_100%)] text-[#071018] shadow-[0_24px_58px_rgba(244,183,46,0.22)]">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 z-0 bg-cover bg-center opacity-55 mix-blend-multiply"
+            style={{
+              backgroundImage: "url('/images/ridepod/home-ride-app-warm-pickup.jpg')",
+            }}
+          />
+          <div aria-hidden="true" className="absolute inset-0 z-0 bg-[linear-gradient(90deg,rgba(255,220,91,0.98)_0%,rgba(255,207,64,0.9)_42%,rgba(255,207,64,0.66)_72%,rgba(255,207,64,0.42)_100%)]" />
+          <div aria-hidden="true" className="absolute -right-10 top-5 z-0 h-24 w-24 rounded-full border border-white/38 bg-white/18" />
+          <div className="relative z-10 grid min-h-[158px] grid-cols-[54px_minmax(0,1fr)_auto] gap-3 px-4 py-4">
+            <span className="grid h-12 w-12 place-items-center rounded-2xl border border-black/15 bg-white/24 text-[#071018] shadow-[inset_0_1px_0_rgba(255,255,255,0.34)]">
+              <CalendarDays className="h-6 w-6 stroke-[2.4]" />
+            </span>
+            <div className="min-w-0 pt-1">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-black/72">One-off</p>
+              <h1 className="mt-1 text-[27px] font-black leading-none tracking-tight">Schedule Ride</h1>
+              <p className="mt-2 max-w-[15rem] text-sm font-bold leading-5 text-black/72">
+                Plan ahead, pick your time & split the cost.
+              </p>
+            </div>
+            <span className="inline-flex h-9 shrink-0 items-center self-start rounded-full border border-black/15 bg-black/12 px-3 text-xs font-black text-[#071018]">
+              {totalRideCount} {totalRideCount === 1 ? "ride" : "rides"}
+            </span>
           </div>
-          <span className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-black/15 bg-black/12 px-3 text-xs font-black text-[#071018]">
-            {totalRideCount} {totalRideCount === 1 ? "ride" : "rides"}
-          </span>
         </div>
 
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -1392,13 +1426,17 @@ function ScheduleRideResultsScreen({
         <div ref={resultsRef} className="mt-3 grid scroll-mt-28 gap-2.5">
           {rides.length > 0 ? (
             rides.map((ride) => (
-              <ScheduleRideCompactResultCard key={ride.id} ride={ride} isAuthenticated={isAuthenticated} />
+              <ScheduleRideCompactResultCard
+                key={ride.id}
+                ride={ride}
+                currentUserAvatar={currentUserAvatar}
+                isAuthenticated={isAuthenticated}
+              />
             ))
           ) : (
-            <div className="rounded-[18px] border border-[var(--rp-border)] bg-[rgba(18,31,44,0.72)] p-4 text-sm font-bold text-[var(--rp-muted-strong)]">
-              No Schedule Ride results for this filter yet.
-            </div>
+            <ScheduleRideLowResultsPanel onAdjustFilters={() => onFilterChange("recommended")} />
           )}
+          {rides.length === 1 ? <ScheduleRideLowResultsPanel onAdjustFilters={() => onFilterChange("recommended")} /> : null}
         </div>
       </div>
 
@@ -1417,9 +1455,11 @@ function ScheduleRideResultsScreen({
 
 function ScheduleRideCompactResultCard({
   ride,
+  currentUserAvatar,
   isAuthenticated,
 }: {
   ride: HomeRide;
+  currentUserAvatar: CurrentUserAvatar;
   isAuthenticated: boolean;
 }) {
   const podHref = `/pods/${ride.id}?fromTab=${encodeURIComponent(getRideDetailSourceTab(ride, "one_off"))}`;
@@ -1430,24 +1470,97 @@ function ScheduleRideCompactResultCard({
   return (
     <Link
       href={cardHref}
-      className="grid min-h-[78px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[color-mix(in_srgb,var(--rp-primary)_52%,var(--rp-border))] bg-[linear-gradient(145deg,rgba(7,16,24,0.98),rgba(18,31,44,0.92))] px-4 py-3 shadow-[0_16px_34px_rgba(0,0,0,0.28)] transition hover:border-[var(--rp-primary)] hover:shadow-[0_18px_40px_color-mix(in_srgb,var(--rp-primary)_14%,transparent)]"
+      className="grid min-h-[82px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[color-mix(in_srgb,var(--rp-primary)_52%,var(--rp-border))] bg-[linear-gradient(145deg,rgba(7,16,24,0.98),rgba(18,31,44,0.92))] px-4 py-3 shadow-[0_16px_34px_rgba(0,0,0,0.28)] transition hover:border-[var(--rp-primary)] hover:shadow-[0_18px_40px_color-mix(in_srgb,var(--rp-primary)_14%,transparent)]"
     >
       <div className="min-w-0">
-        <h2 className="truncate text-base font-black leading-5 text-[var(--rp-text)]">
+        <h2 className="truncate text-[15px] font-black leading-5 text-[var(--rp-text)] min-[390px]:text-base">
           {ride.fromLabel} <span className="text-[var(--rp-primary)]">{"\u2192"}</span> {ride.toLabel}
         </h2>
-        <p className="mt-1 truncate text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
-          {ride.dateLabel} · {ride.timeLabel}
+        <p className="mt-1 truncate text-xs font-bold leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-sm">
+          {ride.dateLabel} - {ride.timeLabel}
         </p>
-        <p className="mt-0.5 text-sm font-black leading-5 text-sky-300">HK${ride.pricePerPerson} / seat</p>
+        <div className="mt-1.5 flex min-w-0 items-center gap-2">
+          <ScheduleRideParticipantStack ride={ride} currentUserAvatar={currentUserAvatar} />
+          <span className="truncate text-xs font-black leading-4 text-sky-300 min-[390px]:text-sm">
+            HK${ride.pricePerPerson} / seat
+          </span>
+        </div>
       </div>
-      <div className="grid shrink-0 justify-items-end gap-2">
+      <div className="grid shrink-0 justify-items-end gap-2 border-l border-white/10 pl-3">
         <span className="inline-flex min-h-8 items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_52%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] px-3 text-xs font-black text-[var(--rp-primary)]">
           {seatLabel}
         </span>
         <ChevronRight className="h-4 w-4 text-[var(--rp-muted-strong)]" />
       </div>
     </Link>
+  );
+}
+
+function ScheduleRideParticipantStack({
+  ride,
+  currentUserAvatar,
+}: {
+  ride: HomeRide;
+  currentUserAvatar: CurrentUserAvatar;
+}) {
+  const hostDisplayName = getRideHostDisplayName(ride);
+  const showCurrentUserAvatar = ride.currentUserRole === "host";
+  const avatarPreference = showCurrentUserAvatar ? currentUserAvatar.avatarPreference : ride.hostAvatarPreference;
+  const avatarUrl = showCurrentUserAvatar ? currentUserAvatar.avatarUrl : ride.hostAvatarUrl;
+  const avatarDisplayName = showCurrentUserAvatar ? currentUserAvatar.displayName : hostDisplayName;
+  const extraRiders = ride.joinedRiders.slice(0, 2);
+
+  return (
+    <span className="flex shrink-0 items-center">
+      <span className="relative z-[3] grid h-6 w-6 place-items-center overflow-hidden rounded-full border border-[#04101a] bg-[var(--rp-card-muted)] text-[9px] font-black text-[var(--rp-primary)]">
+        {avatarPreference ? (
+          <RidePodAvatar
+            avatarUrl={avatarUrl}
+            avatarPreference={avatarPreference}
+            initials={getProfileInitials(avatarDisplayName)}
+            displayName={avatarDisplayName}
+            className="h-full w-full rounded-full text-[9px]"
+          />
+        ) : (
+          getProfileInitial(hostDisplayName)
+        )}
+      </span>
+      {extraRiders.map((rider, index) => (
+        <span
+          key={`${ride.id}-${rider}-${index}`}
+          className="relative grid h-6 w-6 place-items-center rounded-full border border-[#04101a] bg-[color-mix(in_srgb,var(--rp-primary)_24%,var(--rp-card-muted))] text-[9px] font-black text-[var(--rp-text)]"
+          style={{ marginLeft: "-0.45rem", zIndex: 2 - index }}
+        >
+          {getProfileInitial(rider)}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function ScheduleRideLowResultsPanel({ onAdjustFilters }: { onAdjustFilters: () => void }) {
+  return (
+    <div className="rounded-[18px] border border-[var(--rp-border)] bg-[linear-gradient(145deg,rgba(18,31,44,0.9),rgba(9,20,31,0.86))] p-4 shadow-[0_16px_34px_rgba(0,0,0,0.22)]">
+      <p className="text-sm font-black text-[var(--rp-text)]">No more scheduled rides match this filter.</p>
+      <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+        Try another date window or start a new one-off ride for your route.
+      </p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={onAdjustFilters}
+          className="inline-flex min-h-10 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 text-xs font-black text-[var(--rp-primary)]"
+        >
+          Adjust filters
+        </button>
+        <Link
+          href="/create"
+          className="inline-flex min-h-10 items-center justify-center rounded-full bg-[linear-gradient(180deg,#ffdc6b,#f2ae35)] px-3 text-center text-xs font-black text-[#071018]"
+        >
+          Create a Schedule Ride
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -1765,6 +1878,7 @@ function HomePageContent() {
   const recommendationsRef = useRef<HTMLElement | null>(null);
   const scheduleTransitionTimerRef = useRef<number | null>(null);
   const scheduleTransitionLockedRef = useRef(false);
+  const scheduleHistoryEntryActiveRef = useRef(false);
   const savedHomeScrollYRef = useRef(0);
   const scheduleResultsRef = useRef<HTMLDivElement | null>(null);
   const tabSearchParam = searchParams.get("tab");
@@ -1823,7 +1937,8 @@ function HomePageContent() {
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [rideTypesVisible, setRideTypesVisible] = useState(true);
-  const [scheduleScreenPhase, setScheduleScreenPhase] = useState<CategoryScreenPhase>("closed");
+  const [selectedCategory, setSelectedCategory] = useState<SelectedCategory | null>(null);
+  const [categoryTransitionPhase, setCategoryTransitionPhase] = useState<CategoryTransitionPhase>("idle");
   const [scheduleRideQuickFilter, setScheduleRideQuickFilter] = useState<ScheduleRideQuickFilter>("recommended");
   const today = useMemo(() => new Date(), []);
   const activeHeroBackgroundMode = rideModeFilter === "ride_app" ? "ride_app" : "taxi";
@@ -1876,7 +1991,7 @@ function HomePageContent() {
     };
   }, []);
 
-  const scheduleScreenVisible = scheduleScreenPhase !== "closed";
+  const scheduleScreenVisible = selectedCategory === "schedule";
 
   useEffect(() => {
     return () => {
@@ -1984,58 +2099,96 @@ function HomePageContent() {
     router.replace(nextUrl, { scroll: false });
   }
 
+  const clearScheduleTransitionTimer = useCallback(() => {
+    if (!scheduleTransitionTimerRef.current) return;
+    window.clearTimeout(scheduleTransitionTimerRef.current);
+    scheduleTransitionTimerRef.current = null;
+  }, []);
+
+  function pushScheduleHistoryEntry() {
+    if (scheduleHistoryEntryActiveRef.current) return;
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("category", "schedule");
+    window.history.pushState({ ...(window.history.state ?? {}), ridepodCategoryLayer: "schedule" }, "", url);
+    scheduleHistoryEntryActiveRef.current = true;
+  }
+
+  function finalizeScheduleOpen() {
+    clearScheduleTransitionTimer();
+    scheduleTransitionLockedRef.current = false;
+    pushScheduleHistoryEntry();
+  }
+
+  const finishScheduleClose = useCallback(() => {
+    clearScheduleTransitionTimer();
+    setSelectedCategory(null);
+    setCategoryTransitionPhase("idle");
+    window.scrollTo({ top: savedHomeScrollYRef.current, behavior: "auto" });
+    scheduleTransitionLockedRef.current = false;
+  }, [clearScheduleTransitionTimer]);
+
+  const beginScheduleClose = useCallback(() => {
+    if (selectedCategory !== "schedule" || categoryTransitionPhase === "idle" || categoryTransitionPhase === "exiting") return;
+
+    scheduleTransitionLockedRef.current = true;
+    clearScheduleTransitionTimer();
+
+    if (prefersReducedMotion()) {
+      finishScheduleClose();
+      return;
+    }
+
+    setCategoryTransitionPhase("exiting");
+    scheduleTransitionTimerRef.current = window.setTimeout(finishScheduleClose, 300);
+  }, [categoryTransitionPhase, clearScheduleTransitionTimer, finishScheduleClose, selectedCategory]);
+
+  useEffect(() => {
+    function handlePopState() {
+      if (!scheduleHistoryEntryActiveRef.current || selectedCategory !== "schedule") return;
+      scheduleHistoryEntryActiveRef.current = false;
+      beginScheduleClose();
+    }
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [beginScheduleClose, selectedCategory]);
+
   function openScheduleRideScreen() {
-    if (scheduleScreenPhase !== "closed" || scheduleTransitionLockedRef.current) return;
+    if (selectedCategory !== null || categoryTransitionPhase !== "idle" || scheduleTransitionLockedRef.current) return;
 
     scheduleTransitionLockedRef.current = true;
     savedHomeScrollYRef.current = window.scrollY;
     setScheduleRideQuickFilter("recommended");
+    setSelectedCategory("schedule");
 
     if (prefersReducedMotion()) {
-      setScheduleScreenPhase("open");
-      window.setTimeout(() => {
-        scheduleTransitionLockedRef.current = false;
-      }, 0);
+      setCategoryTransitionPhase("open");
+      window.setTimeout(finalizeScheduleOpen, 0);
       return;
     }
 
-    setScheduleScreenPhase("entering");
+    setCategoryTransitionPhase("entering");
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
-        setScheduleScreenPhase("open");
-        scheduleTransitionLockedRef.current = false;
+        setCategoryTransitionPhase("open");
+        scheduleTransitionTimerRef.current = window.setTimeout(finalizeScheduleOpen, 300);
       });
     });
   }
 
   function closeScheduleRideScreen() {
-    if (scheduleScreenPhase === "closed" || scheduleScreenPhase === "exiting" || scheduleTransitionLockedRef.current) return;
+    if (scheduleTransitionLockedRef.current) return;
 
-    scheduleTransitionLockedRef.current = true;
-    const restoreScroll = () => {
-      window.scrollTo({ top: savedHomeScrollYRef.current, behavior: "auto" });
-    };
-
-    if (scheduleTransitionTimerRef.current) {
-      window.clearTimeout(scheduleTransitionTimerRef.current);
-    }
-
-    if (prefersReducedMotion()) {
-      setScheduleScreenPhase("closed");
-      restoreScroll();
-      window.setTimeout(() => {
-        scheduleTransitionLockedRef.current = false;
-      }, 0);
+    if (scheduleHistoryEntryActiveRef.current) {
+      window.history.back();
       return;
     }
 
-    setScheduleScreenPhase("exiting");
-    scheduleTransitionTimerRef.current = window.setTimeout(() => {
-      setScheduleScreenPhase("closed");
-      restoreScroll();
-      scheduleTransitionTimerRef.current = null;
-      scheduleTransitionLockedRef.current = false;
-    }, 230);
+    beginScheduleClose();
   }
 
   function handleScheduleFindRide() {
@@ -2196,14 +2349,14 @@ function HomePageContent() {
       }
     />
   );
-  const homepageExitingForSchedule = scheduleScreenPhase === "entering" || scheduleScreenPhase === "open";
+  const homepageExitingForSchedule = selectedCategory === "schedule" && categoryTransitionPhase !== "exiting";
 
   return (
     <>
     <div
       className={cn(
         "relative -mx-4 -mt-5 min-h-[calc(100vh-1.25rem)] overflow-x-hidden bg-[#04101a] pb-[calc(9rem+env(safe-area-inset-bottom))] transition-[transform,opacity] duration-[180ms] ease-out motion-reduce:transition-none sm:-mx-6 lg:-mx-10 lg:-mt-8 lg:pb-8",
-        homepageExitingForSchedule ? "pointer-events-none translate-y-[10%] opacity-0" : "translate-y-0 opacity-100",
+        homepageExitingForSchedule ? "pointer-events-none translate-y-[6dvh] scale-[0.985] opacity-[0.35]" : "translate-y-0 scale-100 opacity-100",
       )}
     >
       <section className="relative overflow-hidden px-4 pb-2 pt-7 sm:px-6 lg:px-10">
@@ -2418,14 +2571,17 @@ function HomePageContent() {
     </div>
     {scheduleScreenVisible ? (
       <ScheduleRideResultsScreen
-        phase={scheduleScreenPhase}
+        phase={categoryTransitionPhase}
         rides={scheduleRideVisibleRides}
         totalRideCount={scheduleRideRides.length}
         activeFilter={scheduleRideQuickFilter}
         onFilterChange={setScheduleRideQuickFilter}
         onBack={closeScheduleRideScreen}
         onFindRide={handleScheduleFindRide}
+        onOpenTransitionEnd={finalizeScheduleOpen}
+        onExitTransitionEnd={finishScheduleClose}
         resultsRef={scheduleResultsRef}
+        currentUserAvatar={currentUserAvatar}
         isAuthenticated={isAuthenticated}
       />
     ) : null}
