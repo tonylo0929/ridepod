@@ -2373,6 +2373,9 @@ function HomePageContent() {
       }
     />
   );
+  const optionsFrameIsRideApp = rideModeFilter === "ride_app";
+  const OptionsFrameIcon = optionsFrameIsRideApp ? Smartphone : CarFront;
+  const optionsFrameLabel = optionsFrameIsRideApp ? "Ride app options" : "Taxi options";
   const homepageExitingForSchedule = selectedCategory === "schedule" && categoryTransitionPhase !== "exiting";
 
   return (
@@ -2477,33 +2480,53 @@ function HomePageContent() {
           </div>
         ) : null}
 
-        <div ref={rideTypesRef} className="relative z-10 mt-6 scroll-mt-[88px]">
-          <div className="relative isolate mx-auto aspect-[1.6/1] w-full max-w-[680px] overflow-visible pb-1">
-            {renderCategoryCard(oneOffCard)}
-            {renderCategoryCard(recurringCard)}
-            <div className="absolute bottom-0 right-0 z-[3] grid h-[53%] w-[57.1%] grid-cols-[minmax(0,1.095fr)_minmax(0,1fr)] gap-[clamp(8px,1.7vw,13px)]">
-              <div className="relative isolate h-full w-full min-w-0 before:pointer-events-none before:absolute before:-inset-[clamp(6px,1.35vw,10px)] before:z-0 before:rounded-[clamp(23px,4vw,29px)] before:bg-[#04101a]">
+        <div ref={rideTypesRef} className="relative z-10 mt-6 scroll-mt-[88px] px-0.5">
+          <div
+            className={cn(
+              "relative mx-auto w-full max-w-[704px] rounded-[28px] border px-[clamp(10px,2.2vw,14px)] pb-[clamp(10px,2.2vw,14px)] pt-[clamp(24px,4.6vw,31px)] shadow-[0_22px_58px_rgba(0,0,0,0.32)] transition-colors duration-200",
+              optionsFrameIsRideApp
+                ? "border-sky-300/80 bg-[linear-gradient(145deg,rgba(6,24,42,0.36),rgba(15,91,166,0.11))] shadow-[0_0_34px_rgba(56,189,248,0.12)]"
+                : "border-[color-mix(in_srgb,var(--rp-primary)_88%,transparent)] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-primary)_10%,transparent),rgba(4,16,26,0.34))] shadow-[0_0_34px_color-mix(in_srgb,var(--rp-primary)_17%,transparent)]",
+            )}
+          >
+            <span
+              className={cn(
+                "absolute left-[clamp(14px,3.3vw,24px)] top-0 z-20 inline-flex min-h-8 -translate-y-1/2 items-center gap-1.5 rounded-full border px-3 text-xs font-black shadow-[0_10px_22px_rgba(0,0,0,0.24)]",
+                optionsFrameIsRideApp
+                  ? "border-sky-200/55 bg-[linear-gradient(180deg,#44b7ff,#1672d8)] text-white"
+                  : "border-[color-mix(in_srgb,var(--rp-primary)_86%,white_14%)] bg-[linear-gradient(180deg,#ffe178,#ffc844)] text-[#07111a]",
+              )}
+            >
+              <OptionsFrameIcon className="h-4 w-4" />
+              {optionsFrameLabel}
+            </span>
+            <div className="relative isolate mx-auto aspect-[1.6/1] w-full overflow-visible pb-1">
+              {renderCategoryCard(oneOffCard)}
+              {renderCategoryCard(recurringCard)}
+              <div className="absolute bottom-0 right-0 z-[3] grid h-[53%] w-[57.1%] grid-cols-[minmax(0,1.095fr)_minmax(0,1fr)] gap-[clamp(8px,1.7vw,13px)]">
+                <div className="relative isolate h-full w-full min-w-0 before:pointer-events-none before:absolute before:-inset-[clamp(6px,1.35vw,10px)] before:z-0 before:rounded-[clamp(23px,4vw,29px)] before:bg-[#04101a]">
+                  <CategoryCard
+                    id={airportCard.id}
+                    imageSrc={airportCard.imageSrc}
+                    imageAlt={airportCard.imageAlt}
+                    href={airportCard.href}
+                    rideCount={categoryRideCounts[airportCard.id]}
+                    selected={activeTab === airportCard.id}
+                    onClick={handleCategoryCardSelect}
+                    className="relative z-10 h-full w-full min-w-0 rounded-[clamp(19px,3.5vw,24px)]"
+                  />
+                </div>
                 <CategoryCard
-                  id={airportCard.id}
-                  imageSrc={airportCard.imageSrc}
-                  imageAlt={airportCard.imageAlt}
-                  href={airportCard.href}
-                  rideCount={categoryRideCounts[airportCard.id]}
-                  selected={activeTab === airportCard.id}
+                  id={allRidesCard.id}
+                  imageSrc={allRidesCard.imageSrc}
+                  imageAlt={allRidesCard.imageAlt}
+                  href={allRidesCard.href}
+                  rideCount={categoryRideCounts[allRidesCard.id]}
+                  selected={activeTab === allRidesCard.id}
                   onClick={handleCategoryCardSelect}
-                  className="relative z-10 h-full w-full min-w-0 rounded-[clamp(19px,3.5vw,24px)]"
+                  className="relative h-full w-full min-w-0 rounded-[clamp(19px,3.5vw,24px)]"
                 />
               </div>
-              <CategoryCard
-                id={allRidesCard.id}
-                imageSrc={allRidesCard.imageSrc}
-                imageAlt={allRidesCard.imageAlt}
-                href={allRidesCard.href}
-                rideCount={categoryRideCounts[allRidesCard.id]}
-                selected={activeTab === allRidesCard.id}
-                onClick={handleCategoryCardSelect}
-                className="relative h-full w-full min-w-0 rounded-[clamp(19px,3.5vw,24px)]"
-              />
             </div>
           </div>
         </div>
