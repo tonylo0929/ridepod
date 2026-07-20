@@ -3511,7 +3511,7 @@ function EstimatedCostStep({
 
           <label className="grid gap-2 text-left">
             <span className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
-              Total estimated cost
+              {isRideAppSelfSettle ? "Total estimated cost by Ride App" : "Total estimated cost"}
             </span>
             <div className="flex min-h-14 items-center rounded-[18px] border border-[var(--rp-border)] bg-[rgba(5,12,20,0.58)] px-4 focus-within:border-[var(--rp-primary)]">
               <span className="mr-2 text-base font-black text-[#f6c453]">HK$</span>
@@ -3525,31 +3525,35 @@ function EstimatedCostStep({
                 className="h-12 min-w-0 flex-1 bg-transparent text-[30px] font-black leading-none text-[var(--rp-text)] outline-none placeholder:text-[var(--rp-muted)]"
               />
             </div>
-            <span className={cn("text-xs font-semibold leading-5", canContinue ? "text-[var(--rp-muted-strong)]" : "text-[#f6c453]")}>
-              {canContinue
-                ? "Use the best total estimate you have right now. You can still review details later."
-                : "Estimated cost is compulsory. Enter a positive HKD amount to continue."}
-            </span>
+            {!isRideAppSelfSettle ? (
+              <span className={cn("text-xs font-semibold leading-5", canContinue ? "text-[var(--rp-muted-strong)]" : "text-[#f6c453]")}>
+                {canContinue
+                  ? "Use the best total estimate you have right now. You can still review details later."
+                  : "Estimated cost is compulsory. Enter a positive HKD amount to continue."}
+              </span>
+            ) : null}
           </label>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-[18px] border border-white/10 bg-black/20 p-4">
-              <p className="text-[11px] font-black uppercase tracking-[0.13em] text-[var(--rp-muted-strong)]">
-                Total estimate
-              </p>
-              <p className="mt-2 text-xl font-black text-[var(--rp-text)]">
-                {canContinue ? formatMoney(roundedEstimate) : "Required"}
-              </p>
+          {!isRideAppSelfSettle ? (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-[18px] border border-white/10 bg-black/20 p-4">
+                <p className="text-[11px] font-black uppercase tracking-[0.13em] text-[var(--rp-muted-strong)]">
+                  Total estimate
+                </p>
+                <p className="mt-2 text-xl font-black text-[var(--rp-text)]">
+                  {canContinue ? formatMoney(roundedEstimate) : "Required"}
+                </p>
+              </div>
+              <div className="rounded-[18px] border border-white/10 bg-black/20 p-4">
+                <p className="text-[11px] font-black uppercase tracking-[0.13em] text-[var(--rp-muted-strong)]">
+                  Per rider
+                </p>
+                <p className="mt-2 text-xl font-black text-[var(--rp-primary)]">
+                  {canContinue ? formatMoney(perRiderEstimate) : "-"}
+                </p>
+              </div>
             </div>
-            <div className="rounded-[18px] border border-white/10 bg-black/20 p-4">
-              <p className="text-[11px] font-black uppercase tracking-[0.13em] text-[var(--rp-muted-strong)]">
-                Per rider
-              </p>
-              <p className="mt-2 text-xl font-black text-[var(--rp-primary)]">
-                {canContinue ? formatMoney(perRiderEstimate) : "-"}
-              </p>
-            </div>
-          </div>
+          ) : null}
         </section>
 
         <p className="mt-4 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
