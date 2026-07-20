@@ -922,8 +922,10 @@ function getRideHostDisplayName(ride: HomeRide) {
 
 function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; currentUserAvatar?: CurrentUserAvatar | null }) {
   const isRideApp = isRideAppSelfSettle(ride);
-  const showCurrentUserAvatar = ride.currentUserRole === "host" && Boolean(currentUserAvatar);
-  const showHostAvatar = !showCurrentUserAvatar && Boolean(ride.hostAvatarPreference);
+  const isRecurring = ride.rideKind === "recurring" || ride.is_recurring === true;
+  const showRecurringIcon = isRecurring && !isRideApp;
+  const showCurrentUserAvatar = !showRecurringIcon && ride.currentUserRole === "host" && Boolean(currentUserAvatar);
+  const showHostAvatar = !showRecurringIcon && !showCurrentUserAvatar && Boolean(ride.hostAvatarPreference);
   const hostDisplayName = getRideHostDisplayName(ride);
   const Icon = isRideApp
     ? Smartphone
@@ -931,21 +933,25 @@ function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; curren
     ? CircleDollarSign
     : ride.rideKind === "airport"
       ? Plane
-      : ride.rideKind === "recurring"
+      : isRecurring
         ? RefreshCcw
         : CarFront;
 
   return (
     <div
-      aria-label={`${hostDisplayName} profile`}
+      aria-label={showRecurringIcon ? "Recurring ride" : `${hostDisplayName} profile`}
       className={cn(
         "relative grid h-11 w-11 shrink-0 place-items-center overflow-visible rounded-full border text-xl font-black shadow-[0_14px_30px_rgba(0,0,0,0.28)] min-[560px]:h-12 min-[560px]:w-12 min-[560px]:text-2xl",
         isRideApp
           ? "border-sky-300/50 bg-[radial-gradient(circle_at_35%_28%,rgba(56,189,248,0.2),var(--rp-card-muted)_74%)] text-sky-300"
+          : showRecurringIcon
+            ? "border-emerald-200/55 bg-[radial-gradient(circle_at_35%_28%,rgba(110,231,183,0.24),var(--rp-card-muted)_74%)] text-emerald-200"
           : "border-[color-mix(in_srgb,var(--rp-primary)_46%,var(--rp-border))] bg-[radial-gradient(circle_at_35%_28%,color-mix(in_srgb,var(--rp-primary)_20%,transparent),var(--rp-card-muted)_74%)] text-[var(--rp-primary)]",
       )}
     >
-      {showCurrentUserAvatar && currentUserAvatar ? (
+      {showRecurringIcon ? (
+        <Icon className="h-6 w-6 stroke-[2.3] min-[560px]:h-7 min-[560px]:w-7" />
+      ) : showCurrentUserAvatar && currentUserAvatar ? (
         <RidePodAvatar
           avatarUrl={currentUserAvatar.avatarUrl}
           avatarPreference={currentUserAvatar.avatarPreference}
@@ -967,7 +973,11 @@ function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; curren
       <span
         className={cn(
           "absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full border bg-[var(--rp-shell)] shadow-[0_8px_16px_rgba(0,0,0,0.24)] min-[560px]:h-6 min-[560px]:w-6",
-          isRideApp ? "border-sky-300/40 text-sky-300" : "border-[var(--rp-border-strong)] text-[var(--rp-primary)]",
+          isRideApp
+            ? "border-sky-300/40 text-sky-300"
+            : showRecurringIcon
+              ? "border-emerald-200/35 text-emerald-200"
+              : "border-[var(--rp-border-strong)] text-[var(--rp-primary)]",
         )}
       >
         <Icon className="h-3 w-3 min-[560px]:h-3.5 min-[560px]:w-3.5" />
