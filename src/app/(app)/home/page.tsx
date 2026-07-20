@@ -1295,7 +1295,7 @@ function RideSearchResultCard(props: {
   isAuthenticated: boolean;
   sourceTab: HomeTab;
 }) {
-  if (isRideAppSelfSettle(props.ride) && (props.ride.rideKind === "recurring" || props.ride.is_recurring)) {
+  if (props.ride.rideKind === "recurring" || props.ride.is_recurring) {
     return <RecurringRideResultCard {...props} />;
   }
 
