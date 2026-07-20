@@ -627,6 +627,11 @@ function getRideCountLabel(count: number) {
   return `${count} ${count === 1 ? "ride" : "rides"}`;
 }
 
+function getCompactRideCountLabel(count: number) {
+  if (count >= 30) return "30+";
+  return `${count}+`;
+}
+
 function getInterestedLabel(count: number) {
   return `${count} interested`;
 }
@@ -745,7 +750,7 @@ function RideBoardCategoryCard({
             : "border-[#65E6D0]/38 bg-[rgba(5,18,26,0.72)] text-[#98FBCB]",
         )}
       >
-        {getRideCountLabel(count)}
+        {getCompactRideCountLabel(count)}
       </span>
     </Link>
   );
@@ -800,7 +805,7 @@ function RideBoardFilters({
                 )}
                 aria-label={`${count} ${count === 1 ? "ride" : "rides"}`}
               >
-                {count}
+                {getCompactRideCountLabel(count)}
               </span>
             </button>
           );
