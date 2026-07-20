@@ -654,8 +654,8 @@ function RideModeSwitch({
 
   return (
     <div className="grid justify-items-center">
-      <div className="w-full max-w-[590px] rounded-[32px] border border-[color-mix(in_srgb,var(--rp-primary)_42%,rgba(255,255,255,0.12))] bg-[linear-gradient(180deg,rgba(14,31,46,0.98),rgba(4,12,20,0.98))] p-2.5 shadow-[0_22px_54px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.09)] backdrop-blur-md">
-        <div className="relative grid grid-cols-2 gap-2 overflow-hidden rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(1,8,14,0.78),rgba(5,15,25,0.92))] p-1.5 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
+      <div className="w-full max-w-[560px]">
+        <div className="relative grid grid-cols-2 gap-1.5 overflow-hidden rounded-[22px] bg-black/10 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
         {options.map((option) => {
           const selected = value === option.id;
           const Icon = option.icon;
@@ -666,7 +666,7 @@ function RideModeSwitch({
               type="button"
               onClick={() => onChange(option.id)}
               className={cn(
-                "inline-flex min-h-[54px] items-center justify-center gap-2.5 rounded-[21px] px-4 text-base font-black transition min-[420px]:text-lg",
+                "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] px-4 text-base font-black transition min-[420px]:text-lg",
                 selected
                   ? option.id === "ride_app"
                     ? "bg-[linear-gradient(180deg,#1d7de4_0%,#0d56ab_100%)] text-white shadow-[0_14px_28px_rgba(14,79,158,0.34)]"
@@ -684,7 +684,7 @@ function RideModeSwitch({
         <span
           aria-hidden="true"
           className={cn(
-            "pointer-events-none absolute left-1/2 top-1/2 z-10 grid h-10 w-10 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border-2 bg-[#07111a]/98 text-xs font-black tracking-[0.12em] shadow-[0_10px_22px_rgba(0,0,0,0.36),0_0_0_5px_rgba(7,17,26,0.86)]",
+            "pointer-events-none absolute left-1/2 top-1/2 z-10 grid h-8 w-8 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border bg-[#07111a]/95 text-xs font-black tracking-[0.12em] shadow-[0_8px_18px_rgba(0,0,0,0.28)]",
             value === "ride_app" ? "border-blue-300/40 text-blue-200" : "border-amber-300/45 text-amber-200",
           )}
         >
