@@ -753,9 +753,11 @@ function RideBoardCategoryCard({
 
 function RideBoardFilters({
   activeFilter,
+  categoryCounts,
   onFilterChange,
 }: {
   activeFilter: RideBoardFilter;
+  categoryCounts: Record<RideBoardCategory, number>;
   onFilterChange: (filter: RideBoardFilter) => void;
 }) {
   return (
@@ -765,6 +767,10 @@ function RideBoardFilters({
           const active = activeFilter === chip.id;
           const Icon = chip.icon;
           const isOthers = chip.id === "others";
+          const count =
+            chip.id === "all"
+              ? Object.values(categoryCounts).reduce((total, categoryCount) => total + categoryCount, 0)
+              : categoryCounts[chip.id];
 
           return (
             <button
@@ -783,6 +789,19 @@ function RideBoardFilters({
             >
               <Icon className="h-4 w-4 stroke-[2.2]" />
               {chip.label}
+              <span
+                className={cn(
+                  "ml-0.5 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-black",
+                  active
+                    ? "bg-black/24 text-current"
+                    : isOthers
+                      ? "bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]"
+                      : "bg-white/[0.075] text-white/72",
+                )}
+                aria-label={`${count} ${count === 1 ? "ride" : "rides"}`}
+              >
+                {count}
+              </span>
             </button>
           );
         })}
