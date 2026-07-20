@@ -604,6 +604,29 @@ function getVisibleRequests(requests: RideRequest[], filter: RideBoardFilter) {
   });
 }
 
+function getRideBoardCategoryCounts(requests: RideRequest[]) {
+  return requests.reduce<Record<RideBoardCategory, number>>(
+    (counts, request) => {
+      if (request.status === "expired") return counts;
+
+      const boardCategory = getRequestBoardCategory(request);
+      counts[boardCategory] += 1;
+      return counts;
+    },
+    {
+      today: 0,
+      commute: 0,
+      events: 0,
+      late_night: 0,
+      others: 0,
+    },
+  );
+}
+
+function getRideCountLabel(count: number) {
+  return `${count} ${count === 1 ? "ride" : "rides"}`;
+}
+
 function getInterestedLabel(count: number) {
   return `${count} interested`;
 }
@@ -641,8 +664,10 @@ function PostRideRequestButton({
 
 function RideBoardCategoryArtwork({
   activeFilter,
+  categoryCounts,
 }: {
   activeFilter: RideBoardFilter;
+  categoryCounts: Record<RideBoardCategory, number>;
 }) {
   const featuredCategory = rideBoardCategories.find((category) => category.featured);
   const secondaryCategories = rideBoardCategories.filter((category) => !category.featured);
@@ -653,6 +678,7 @@ function RideBoardCategoryArtwork({
         <RideBoardCategoryCard
           category={featuredCategory}
           active={activeFilter === featuredCategory.filter}
+          count={categoryCounts[featuredCategory.filter]}
           priority
         />
       ) : null}
@@ -663,6 +689,7 @@ function RideBoardCategoryArtwork({
             key={category.id}
             category={category}
             active={activeFilter === category.filter}
+            count={categoryCounts[category.filter]}
           />
         ))}
       </div>
@@ -673,13 +700,16 @@ function RideBoardCategoryArtwork({
 function RideBoardCategoryCard({
   category,
   active,
+  count,
   priority = false,
 }: {
   category: (typeof rideBoardCategories)[number];
   active: boolean;
+  count: number;
   priority?: boolean;
 }) {
   const isFeatured = category.featured === true;
+  const isGold = category.tone === "gold";
 
   return (
     <Link
@@ -704,7 +734,18 @@ function RideBoardCategoryCard({
         className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-[1.012]"
       />
       <span className="sr-only">
-        {category.label}. {category.subtitle}
+        {category.label}. {category.subtitle} {getRideCountLabel(count)}.
+      </span>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "absolute right-3 top-3 z-10 inline-flex min-h-7 items-center rounded-full border px-2.5 text-[10px] font-black uppercase tracking-[0.08em] shadow-[0_10px_22px_rgba(0,0,0,0.36)] backdrop-blur-md min-[390px]:right-4 min-[390px]:top-4 min-[390px]:text-[11px]",
+          isGold
+            ? "border-[var(--rp-primary)]/42 bg-[rgba(21,24,20,0.72)] text-[var(--rp-primary)]"
+            : "border-[#65E6D0]/38 bg-[rgba(5,18,26,0.72)] text-[#98FBCB]",
+        )}
+      >
+        {getRideCountLabel(count)}
       </span>
     </Link>
   );
@@ -1357,6 +1398,7 @@ export default function RideBoardPage() {
   const requestListHeadingRef = useRef<HTMLHeadingElement | null>(null);
 
   const visibleRequests = useMemo(() => getVisibleRequests(requests, activeFilter), [requests, activeFilter]);
+  const categoryCounts = useMemo(() => getRideBoardCategoryCounts(requests), [requests]);
   const selectedRequest = selectedRequestId ? requests.find((request) => request.id === selectedRequestId) ?? null : null;
   const requestSectionCopy = getRideBoardSectionCopy(activeFilter);
   const isCategoryPage = activeFilter !== "all";
@@ -1519,9 +1561,9 @@ export default function RideBoardPage() {
           </section>
         )}
 
-        <RideBoardFilters activeFilter={activeFilter} onFilterChange={handleFilterChange} />
+        <RideBoardFilters activeFilter={activeFilter} categoryCounts={categoryCounts} onFilterChange={handleFilterChange} />
 
-        {isCategoryPage ? null : <RideBoardCategoryArtwork activeFilter={activeFilter} />}
+        {isCategoryPage ? null : <RideBoardCategoryArtwork activeFilter={activeFilter} categoryCounts={categoryCounts} />}
 
         <PostRideRequestButton onClick={() => openPostForm()} compact />
 

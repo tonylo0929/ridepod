@@ -1,11 +1,16 @@
 import type { Metadata } from "next";
-import { WhisperFlowPage } from "@/components/whisperlink/flow-pages";
+import { AppShell } from "@/components/app-shell";
+import { CreatePodChooseType } from "@/components/create-pod-choose-type";
 
 export const metadata: Metadata = {
-  title: "Create Room | WhisperLink",
-  description: "Create a temporary private room by link.",
+  title: "Create Ride | RidePod",
+  description: "Create a RidePod shared ride.",
 };
 
 export default function CreatePage() {
-  return <WhisperFlowPage step="pricing" />;
+  return (
+    <AppShell>
+      <CreatePodChooseType />
+    </AppShell>
+  );
 }
