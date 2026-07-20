@@ -1372,57 +1372,29 @@ function ScheduleRideResultsScreen({
       </div>
 
       <div className="mx-auto mt-3 w-full max-w-[680px]">
-        <div className="relative isolate h-[430px] overflow-hidden rounded-[28px] border border-[rgba(255,198,80,0.86)] bg-[#ffc738] text-[#071018] shadow-[0_24px_58px_rgba(244,183,46,0.22)] max-[380px]:h-[402px] min-[560px]:h-[520px]">
+        <div className="relative overflow-hidden rounded-[28px] border border-[rgba(255,198,80,0.86)] bg-[#ffc738] shadow-[0_24px_58px_rgba(244,183,46,0.22)]">
           <Image
-            src="/images/ridepod/home-ride-app-warm-pickup.jpg"
-            alt=""
-            fill
+            src="/images/ridepod/schedule-ride-headliner-cropped.png"
+            alt="Schedule Ride. Plan ahead, ride together."
+            width={396}
+            height={430}
             sizes="(max-width: 720px) calc(100vw - 32px), 680px"
-            className="z-0 object-cover object-[47%_50%] opacity-95 saturate-[0.92] sepia-[0.18]"
+            className="block h-auto w-full"
             priority={false}
           />
-          <div aria-hidden="true" className="absolute inset-0 z-10 bg-[linear-gradient(180deg,rgba(255,207,61,0.93)_0%,rgba(255,197,45,0.7)_37%,rgba(255,190,39,0.28)_62%,rgba(255,190,39,0.08)_100%)]" />
-          <div aria-hidden="true" className="absolute inset-x-0 top-0 z-10 h-[38%] bg-[linear-gradient(180deg,rgba(255,213,75,0.98),rgba(255,205,58,0.76),rgba(255,205,58,0))]" />
-          <div aria-hidden="true" className="absolute inset-x-0 bottom-0 z-10 h-[45%] bg-[linear-gradient(180deg,rgba(255,205,58,0),rgba(255,194,48,0.12)_36%,rgba(4,16,26,0.14)_100%)]" />
-
-          <div className="relative z-20 grid grid-cols-[60px_minmax(0,1fr)] gap-3 px-5 pt-7 max-[380px]:grid-cols-[54px_minmax(0,1fr)] max-[380px]:px-4 max-[380px]:pt-6 min-[430px]:grid-cols-[68px_minmax(0,1fr)] min-[430px]:gap-4">
-            <span className="grid h-14 w-14 place-items-center rounded-full border border-white/55 bg-white/20 text-[#071018] shadow-[inset_0_1px_0_rgba(255,255,255,0.38)] max-[380px]:h-12 max-[380px]:w-12 min-[430px]:h-16 min-[430px]:w-16">
-              <CalendarDays className="h-6 w-6 stroke-[2.4]" />
-            </span>
-            <div className="min-w-0 pt-1">
-              <p className="text-base font-black leading-none text-black/80 max-[380px]:text-sm">One-off</p>
-              <h1 className="mt-2 text-[30px] font-black leading-none tracking-tight max-[380px]:text-[28px] min-[430px]:text-[34px]">
-                Schedule Ride
-              </h1>
-              <p className="mt-3 max-w-[13rem] text-[16px] font-semibold leading-6 text-black/76 max-[380px]:text-[15px] max-[380px]:leading-5 min-[430px]:max-w-[18rem] min-[430px]:text-[17px]">
-                Plan ahead, ride together.
-              </p>
-            </div>
-          </div>
-
-          <span className="absolute right-5 top-[170px] z-20 grid h-20 w-20 place-items-center rounded-full border border-white/72 bg-white/18 text-[#8c6712] shadow-[inset_0_1px_0_rgba(255,255,255,0.32)] max-[380px]:right-4 max-[380px]:top-[158px] max-[380px]:h-[72px] max-[380px]:w-[72px] min-[430px]:right-9 min-[430px]:top-[122px] min-[430px]:h-[86px] min-[430px]:w-[86px]">
-            <CalendarDays className="h-9 w-9 stroke-[2.3]" />
-          </span>
-
-          <div className="absolute inset-x-1.5 bottom-1.5 z-30 rounded-[24px] border border-white/10 bg-[linear-gradient(145deg,rgba(9,21,34,0.96),rgba(20,35,50,0.94))] p-5 shadow-[0_-16px_42px_rgba(4,16,26,0.34)] backdrop-blur-[2px] max-[380px]:p-4">
-            <div className="grid gap-3 text-[19px] font-medium leading-6 text-white/92 max-[380px]:gap-2.5 max-[380px]:text-[16px]">
-              <span className="flex items-center gap-3">
-                <CheckCircle2 className="h-4.5 w-4.5 shrink-0 text-[var(--rp-primary)]" />
-                Plan your trip in advance
-              </span>
-              <span className="flex items-center gap-3">
-                <CheckCircle2 className="h-4.5 w-4.5 shrink-0 text-[var(--rp-primary)]" />
-                Choose your time and route
-              </span>
-              <span className="flex items-center gap-3">
-                <CheckCircle2 className="h-4.5 w-4.5 shrink-0 text-[var(--rp-primary)]" />
-                Ride with others, split the cost
-              </span>
-            </div>
+          <div className="sr-only">
+            <p>One-off</p>
+            <h1>Schedule Ride</h1>
+            <p>Plan ahead, ride together.</p>
+            <ul>
+              <li>Plan your trip in advance</li>
+              <li>Choose your time and route</li>
+              <li>Ride with others, split the cost</li>
+            </ul>
           </div>
         </div>
 
-        <div className="mt-5">
+        <div className="mt-4">
           <h2 className="text-base font-black leading-none text-[var(--rp-text)]">Recommended for you</h2>
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {scheduleRideQuickFilters.map((filter) => {
