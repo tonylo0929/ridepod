@@ -852,6 +852,30 @@ function formatRecurringWeekdays(ride: HomeRide) {
   return "RECURRING";
 }
 
+function formatRecurringWeekdaysForCard(ride: HomeRide) {
+  const weekdays = ride.weekdays?.map((day) => day.trim()).filter(Boolean) ?? [];
+  if (weekdays.length > 0) {
+    return weekdays
+      .map((day) => {
+        const normalized = day.toLowerCase();
+        if (normalized.startsWith("tue")) return "Tues";
+        if (normalized.startsWith("thu")) return "Thurs";
+        return `${day.slice(0, 1).toUpperCase()}${day.slice(1, 3).toLowerCase()}`;
+      })
+      .join(", ");
+  }
+
+  if (ride.repeatsPattern?.trim()) return ride.repeatsPattern.trim();
+  if (ride.scheduleLabel?.trim()) return ride.scheduleLabel.trim();
+  return formatRecurringWeekdays(ride);
+}
+
+function formatRecurringStartLabel(ride: HomeRide) {
+  const startLabel = ride.startLabel?.trim();
+  if (startLabel) return startLabel.replace(/^Starts\s+/i, "");
+  return formatNextOccurrence(ride);
+}
+
 function getRecurringPeriodLabel(timeLabel: string) {
   const match = timeLabel.match(/(\d{1,2})(?::\d{2})?\s*(AM|PM)/i);
   if (!match) return "Scheduled";
@@ -886,6 +910,8 @@ function getRecurringRideResultData(ride: HomeRide) {
 
   return {
     recurrenceLabel: formatRecurringWeekdays(ride),
+    weekdaysLabel: formatRecurringWeekdaysForCard(ride),
+    startLabel: formatRecurringStartLabel(ride),
     time,
     periodLabel: ride.period_label?.trim() || getRecurringPeriodLabel(time),
     nextOccurrenceLabel: formatNextOccurrence(ride),
@@ -1028,16 +1054,16 @@ function RecurringRideResultCard({
       className="block overflow-hidden rounded-[10px] border border-[color-mix(in_srgb,var(--rp-primary)_48%,var(--rp-border))] bg-[linear-gradient(135deg,#071018_0%,#0b1824_58%,#07111a_100%)] shadow-[0_16px_34px_rgba(0,0,0,0.3)] transition hover:border-[var(--rp-primary)] hover:shadow-[0_0_30px_color-mix(in_srgb,var(--rp-primary)_15%,transparent)]"
     >
       <div className="grid min-h-[106px] grid-cols-[78px_minmax(0,1fr)_70px] min-[390px]:grid-cols-[92px_minmax(0,1fr)_80px]">
-        <div className="grid min-w-0 content-center gap-1.5 px-2.5 py-3 min-[390px]:px-3">
-          <p className="flex min-w-0 items-start gap-1 text-[8px] font-black uppercase leading-[1.15] tracking-[0.06em] text-emerald-300 min-[390px]:text-[9px]">
+        <div className="grid min-w-0 content-center gap-1 px-2.5 py-3 min-[390px]:px-3">
+          <p className="flex min-w-0 items-center gap-1 text-[8px] font-black uppercase leading-none tracking-[0.06em] text-emerald-300 min-[390px]:text-[9px]">
             <RefreshCcw className="h-3 w-3 shrink-0" />
-            <span className="line-clamp-2 break-words">{data.recurrenceLabel}</span>
+            <span>Starts</span>
           </p>
-          <p className="text-xl font-black leading-none text-[var(--rp-text)] min-[390px]:text-[22px]">
+          <p className="text-sm font-black leading-tight text-[var(--rp-text)] min-[390px]:text-base">
+            {data.startLabel}
+          </p>
+          <p className="text-[11px] font-black leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-xs">
             {data.time}
-          </p>
-          <p className="text-[11px] font-black leading-none text-[var(--rp-muted-strong)] min-[390px]:text-xs">
-            {data.periodLabel}
           </p>
         </div>
 
@@ -1046,9 +1072,13 @@ function RecurringRideResultCard({
             {ride.fromLabel} {"\u2192"} {ride.toLabel}
           </h2>
           <p className="truncate text-[11px] font-black leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-xs">
-            Next: {data.nextOccurrenceLabel}
+            Host: {hostDisplayName}
           </p>
           <div className="grid min-w-0 gap-0.5">
+            <p className="flex min-w-0 items-center gap-1 text-[10px] font-black leading-4 text-emerald-300 min-[390px]:text-[11px]">
+              <RefreshCcw className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{data.weekdaysLabel}</span>
+            </p>
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
               <RideResultMetaItem icon={<UsersRound className="h-3.5 w-3.5" />}>
                 {data.regularCount}/{data.maxRegulars} regulars
