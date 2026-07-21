@@ -14,7 +14,6 @@ import {
   LogIn,
   Plane,
   RefreshCcw,
-  ShieldCheck,
   SlidersHorizontal,
   Smartphone,
   UserPlus,
@@ -119,10 +118,6 @@ function GuestMyRideIntro() {
             </Link>
           </p>
 
-          <div className="mt-1 flex items-start gap-2 rounded-[18px] border border-white/10 bg-white/[0.045] p-3 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rp-primary)]" />
-            <span>Your private ride calendar appears after you log in.</span>
-          </div>
         </div>
       </div>
     </section>
