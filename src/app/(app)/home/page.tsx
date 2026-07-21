@@ -2239,6 +2239,7 @@ function HomePageContent() {
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [rideTypesVisible, setRideTypesVisible] = useState(true);
+  const [selectedCategoryCard, setSelectedCategoryCard] = useState<HomeCategoryCardId | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<SelectedCategory | null>(null);
   const [categoryTransitionPhase, setCategoryTransitionPhase] = useState<CategoryTransitionPhase>("idle");
   const [scheduleRideQuickFilter, setScheduleRideQuickFilter] = useState<ScheduleRideQuickFilter>("recommended");
@@ -2297,6 +2298,24 @@ function HomePageContent() {
       win.removeEventListener("resize", updateVisibility);
     };
   }, []);
+
+  useEffect(() => {
+    if (selectedCategoryCard === null) return;
+
+    function handlePointerDown(event: PointerEvent) {
+      const rideTypesElement = rideTypesRef.current;
+      if (!rideTypesElement || !(event.target instanceof Node)) return;
+      if (rideTypesElement.contains(event.target)) return;
+
+      setSelectedCategoryCard(null);
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown, { capture: true });
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, { capture: true });
+    };
+  }, [selectedCategoryCard]);
 
   const categoryScreenVisible = selectedCategory !== null;
 
@@ -2542,6 +2561,8 @@ function HomePageContent() {
   }
 
   function handleCategoryCardSelect(tab: HomeCategoryCardId) {
+    setSelectedCategoryCard(tab);
+
     if (tab === "airport") {
       if (airportDirectionFilter === "all") {
         handleAirportDirectionChange("to_airport");
@@ -2710,7 +2731,7 @@ function HomePageContent() {
       imageAlt={card.imageAlt}
       href={card.href}
       rideCount={categoryRideCounts[card.id]}
-      selected={activeTab === card.id}
+      selected={selectedCategoryCard === card.id}
       onClick={handleCategoryCardSelect}
       className={
         card.id === "one_off"
@@ -2859,7 +2880,7 @@ function HomePageContent() {
                     imageAlt={airportCard.imageAlt}
                     href={airportCard.href}
                     rideCount={categoryRideCounts[airportCard.id]}
-                    selected={activeTab === airportCard.id}
+                    selected={selectedCategoryCard === airportCard.id}
                     onClick={handleCategoryCardSelect}
                     className="relative z-10 h-full w-full min-w-0 rounded-[clamp(19px,3.5vw,24px)]"
                   />
@@ -2870,7 +2891,7 @@ function HomePageContent() {
                   imageAlt={allRidesCard.imageAlt}
                   href={allRidesCard.href}
                   rideCount={categoryRideCounts[allRidesCard.id]}
-                  selected={activeTab === allRidesCard.id}
+                  selected={selectedCategoryCard === allRidesCard.id}
                   onClick={handleCategoryCardSelect}
                   className="relative h-full w-full min-w-0 rounded-[clamp(19px,3.5vw,24px)]"
                 />
