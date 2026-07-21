@@ -32,6 +32,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type MouseEvent,
+  type RefObject,
 } from "react";
 import { cn } from "@/components/ui";
 
@@ -347,6 +348,60 @@ const initialRideRequests: RideRequest[] = [
     extraLabel: "Request type",
   },
   {
+    id: "board-tst-sha-tin-today",
+    from: "Tsim Sha Tsui",
+    to: "Sha Tin",
+    dateLabel: "Today",
+    timeLabel: "6:45 PM",
+    departureDate: "2026-07-21",
+    departureTime: "18:45",
+    category: "today_requests",
+    rideBoardCategory: "today",
+    sameDay: true,
+    detailLine: "After work",
+    maxPeople: 4,
+    interestedCount: 2,
+    status: "open",
+    host: {
+      name: "Nora P.",
+      rating: 4.8,
+      rideCount: 16,
+      trustLabel: "RidePod member",
+    },
+    note: "Leaving after work and happy to meet around TST station.",
+    chatAllowed: false,
+    expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Request type",
+  },
+  {
+    id: "board-quarry-bay-tko-today",
+    from: "Quarry Bay",
+    to: "Tseung Kwan O",
+    dateLabel: "Today",
+    timeLabel: "8:10 PM",
+    departureDate: "2026-07-21",
+    departureTime: "20:10",
+    category: "today_requests",
+    rideBoardCategory: "today",
+    sameDay: true,
+    detailLine: "Same-day ride",
+    maxPeople: 3,
+    interestedCount: 1,
+    status: "open",
+    host: {
+      name: "Calvin H.",
+      rating: 4.7,
+      rideCount: 11,
+      trustLabel: "RidePod member",
+    },
+    note: "Can leave a little earlier if riders are ready.",
+    chatAllowed: false,
+    expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Request type",
+  },
+  {
     id: "board-tko-central",
     from: "Tseung Kwan O",
     to: "Central",
@@ -369,6 +424,62 @@ const initialRideRequests: RideRequest[] = [
       trustLabel: "Trusted commute rider",
     },
     note: "Regular morning route on weekdays. Looking for riders with a similar schedule.",
+    chatAllowed: false,
+    expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Commute pattern",
+  },
+  {
+    id: "board-tuen-mun-central-commute",
+    from: "Tuen Mun",
+    to: "Central",
+    dateLabel: "Weekdays",
+    timeLabel: "8:00 AM",
+    departureDate: "2026-07-22",
+    departureTime: "08:00",
+    category: "commute",
+    rideBoardCategory: "commute",
+    scheduleType: "recurring",
+    commuteLabel: "weekday commute",
+    detailLine: "Weekday commute",
+    maxPeople: 4,
+    interestedCount: 3,
+    status: "open",
+    host: {
+      name: "Elaine T.",
+      rating: 4.9,
+      rideCount: 31,
+      trustLabel: "Trusted commute rider",
+    },
+    note: "Regular weekday ride toward Central with a stable morning pickup.",
+    chatAllowed: false,
+    expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Commute pattern",
+  },
+  {
+    id: "board-yuen-long-kowloon-bay-commute",
+    from: "Yuen Long",
+    to: "Kowloon Bay",
+    dateLabel: "Mon, Wed, Fri",
+    timeLabel: "7:50 AM",
+    departureDate: "2026-07-22",
+    departureTime: "07:50",
+    category: "commute",
+    rideBoardCategory: "commute",
+    scheduleType: "recurring",
+    commuteLabel: "office commute",
+    detailLine: "Regular routine",
+    maxPeople: 4,
+    interestedCount: 2,
+    status: "open",
+    host: {
+      name: "Marco S.",
+      rating: 4.8,
+      rideCount: 22,
+      trustLabel: "Trusted commute rider",
+    },
+    note: "Looking for regular riders with a similar office schedule.",
     chatAllowed: false,
     expiryLabel: "After departure",
     visibilityLabel: "Public",
@@ -406,6 +517,64 @@ const initialRideRequests: RideRequest[] = [
     extraLabel: "Event details",
   },
   {
+    id: "board-hku-concert-central",
+    from: "HKU",
+    to: "Central",
+    dateLabel: "After show",
+    timeLabel: "10:20 PM",
+    departureDate: "2026-07-25",
+    departureTime: "22:20",
+    category: "events",
+    rideBoardCategory: "events",
+    eventName: "Campus concert",
+    eventVenue: "HKU",
+    purpose: "event ride",
+    detailLine: "After-show ride",
+    maxPeople: 4,
+    interestedCount: 2,
+    status: "open",
+    host: {
+      name: "Chloe N.",
+      rating: 4.9,
+      rideCount: 19,
+      trustLabel: "Event ride regular",
+    },
+    note: "Meeting after the show near the main exit.",
+    chatAllowed: true,
+    expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Event details",
+  },
+  {
+    id: "board-stadium-tko-events",
+    from: "Kai Tak Stadium",
+    to: "Tseung Kwan O",
+    dateLabel: "Game night",
+    timeLabel: "11:00 PM",
+    departureDate: "2026-07-26",
+    departureTime: "23:00",
+    category: "events",
+    rideBoardCategory: "events",
+    eventName: "Match",
+    eventVenue: "Kai Tak Stadium",
+    purpose: "event ride",
+    detailLine: "After-game ride",
+    maxPeople: 4,
+    interestedCount: 3,
+    status: "open",
+    host: {
+      name: "Ken Y.",
+      rating: 4.8,
+      rideCount: 27,
+      trustLabel: "Event ride regular",
+    },
+    note: "Leaving after the match, pickup can be around the north gate.",
+    chatAllowed: true,
+    expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Event details",
+  },
+  {
     id: "board-lkf-taipo",
     from: "Lan Kwai Fong",
     to: "Tai Po",
@@ -427,6 +596,60 @@ const initialRideRequests: RideRequest[] = [
       trustLabel: "Fast response host",
     },
     note: "Looking for a clear pickup point and confirmation before leaving.",
+    chatAllowed: false,
+    expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Pickup flexibility",
+  },
+  {
+    id: "board-central-midnight-tuen-mun",
+    from: "Central",
+    to: "Tuen Mun",
+    dateLabel: "Tonight",
+    timeLabel: "1:10 AM",
+    departureDate: "2026-07-22",
+    departureTime: "01:10",
+    category: "late_night",
+    rideBoardCategory: "late_night",
+    lateNight: true,
+    detailLine: "Late-night ride",
+    maxPeople: 4,
+    interestedCount: 2,
+    status: "open",
+    host: {
+      name: "Ivy M.",
+      rating: 4.8,
+      rideCount: 29,
+      trustLabel: "Fast response host",
+    },
+    note: "Looking for riders heading west after midnight.",
+    chatAllowed: false,
+    expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Pickup flexibility",
+  },
+  {
+    id: "board-mong-kok-late-night-yuen-long",
+    from: "Mong Kok",
+    to: "Yuen Long",
+    dateLabel: "Late night",
+    timeLabel: "12:50 AM",
+    departureDate: "2026-07-23",
+    departureTime: "00:50",
+    category: "late_night",
+    rideBoardCategory: "late_night",
+    lateNight: true,
+    detailLine: "After last train",
+    maxPeople: 3,
+    interestedCount: 1,
+    status: "open",
+    host: {
+      name: "Oscar D.",
+      rating: 4.7,
+      rideCount: 14,
+      trustLabel: "RidePod member",
+    },
+    note: "Planning ahead for a late route after the last train.",
     chatAllowed: false,
     expiryLabel: "After departure",
     visibilityLabel: "Public",
@@ -455,6 +678,58 @@ const initialRideRequests: RideRequest[] = [
     note: "Flexible destination and timing. Share your route if it is nearby.",
     chatAllowed: false,
     saved: true,
+    expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Request type",
+  },
+  {
+    id: "board-pet-friendly-flex",
+    from: "Wan Chai",
+    to: "Flexible East Kowloon",
+    dateLabel: "Flexible",
+    timeLabel: "4:00 PM",
+    departureDate: "2026-07-24",
+    departureTime: "16:00",
+    category: "others",
+    rideBoardCategory: "others",
+    detailLine: "Flexible pickup",
+    maxPeople: 3,
+    interestedCount: 2,
+    status: "open",
+    host: {
+      name: "Tara W.",
+      rating: 4.9,
+      rideCount: 20,
+      trustLabel: "RidePod member",
+    },
+    note: "Flexible route for riders heading toward East Kowloon.",
+    chatAllowed: false,
+    expiryLabel: "After departure",
+    visibilityLabel: "Public",
+    extraLabel: "Request type",
+  },
+  {
+    id: "board-shopping-flex-route",
+    from: "K11 Musea",
+    to: "Flexible New Territories",
+    dateLabel: "Weekend",
+    timeLabel: "3:15 PM",
+    departureDate: "2026-07-25",
+    departureTime: "15:15",
+    category: "others",
+    rideBoardCategory: "others",
+    detailLine: "Flexible destination",
+    maxPeople: 4,
+    interestedCount: 2,
+    status: "open",
+    host: {
+      name: "Ben F.",
+      rating: 4.7,
+      rideCount: 13,
+      trustLabel: "RidePod member",
+    },
+    note: "Open to nearby destinations if routes match.",
+    chatAllowed: false,
     expiryLabel: "After departure",
     visibilityLabel: "Public",
     extraLabel: "Request type",
@@ -668,11 +943,13 @@ function PostRideRequestButton({
 }
 
 function RideBoardCategoryArtwork({
-  activeFilter,
+  selectedCategory,
   categoryCounts,
+  onCategorySelect,
 }: {
-  activeFilter: RideBoardFilter;
+  selectedCategory: RideBoardCategory;
   categoryCounts: Record<RideBoardCategory, number>;
+  onCategorySelect: (category: RideBoardCategory) => void;
 }) {
   const featuredCategory = rideBoardCategories.find((category) => category.featured);
   const secondaryCategories = rideBoardCategories.filter((category) => !category.featured);
@@ -682,8 +959,9 @@ function RideBoardCategoryArtwork({
       {featuredCategory ? (
         <RideBoardCategoryCard
           category={featuredCategory}
-          active={activeFilter === featuredCategory.filter}
+          active={selectedCategory === featuredCategory.filter}
           count={categoryCounts[featuredCategory.filter]}
+          onClick={onCategorySelect}
           priority
         />
       ) : null}
@@ -693,8 +971,9 @@ function RideBoardCategoryArtwork({
           <RideBoardCategoryCard
             key={category.id}
             category={category}
-            active={activeFilter === category.filter}
+            active={selectedCategory === category.filter}
             count={categoryCounts[category.filter]}
+            onClick={onCategorySelect}
           />
         ))}
       </div>
@@ -706,27 +985,30 @@ function RideBoardCategoryCard({
   category,
   active,
   count,
+  onClick,
   priority = false,
 }: {
   category: (typeof rideBoardCategories)[number];
   active: boolean;
   count: number;
+  onClick: (category: RideBoardCategory) => void;
   priority?: boolean;
 }) {
   const isFeatured = category.featured === true;
   const isGold = category.tone === "gold";
 
   return (
-    <Link
-      href={getRideBoardHref(category.filter)}
-      aria-current={active ? "page" : undefined}
-      aria-label={`Open ${category.label} ride requests`}
+    <button
+      type="button"
+      onClick={() => onClick(category.filter)}
+      aria-pressed={active}
+      aria-label={`Show ${category.label} ride requests preview`}
       className={cn(
-        "group relative block w-full overflow-hidden border bg-[#030b12] text-left outline-none ring-1 ring-inset transition duration-200 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
+        "group relative block w-full overflow-hidden border bg-[#030b12] text-left outline-none ring-1 ring-inset transition-[transform,box-shadow,border-color,filter] duration-200 ease-out hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
         isFeatured ? "aspect-[875/443] rounded-[24px]" : "aspect-[430/395] rounded-[18px]",
         active
-          ? "border-[#65E6D0]/70 ring-2 ring-[#65E6D0]/70 shadow-[0_22px_54px_rgba(0,0,0,0.38),0_0_34px_rgba(101,230,208,0.18)]"
-          : "border-[rgba(101,230,208,0.18)] ring-white/10 shadow-[0_18px_42px_rgba(0,0,0,0.28)]",
+          ? "z-10 scale-[1.025] border-[#65E6D0]/80 brightness-[1.04] ring-2 ring-[#65E6D0]/70 shadow-[0_22px_54px_rgba(0,0,0,0.38),0_0_34px_rgba(101,230,208,0.24)]"
+          : "scale-100 border-[rgba(101,230,208,0.18)] ring-white/10 shadow-[0_18px_42px_rgba(0,0,0,0.28)]",
       )}
     >
       <Image
@@ -752,7 +1034,7 @@ function RideBoardCategoryCard({
       >
         {getCompactRideCountLabel(count)}
       </span>
-    </Link>
+    </button>
   );
 }
 
@@ -962,6 +1244,117 @@ function RideRequestCard({
             {actionState.label}
           </button>
         </div>
+      </div>
+    </article>
+  );
+}
+
+function RideBoardPreviewSection({
+  selectedCategory,
+  requests,
+  totalCount,
+  onOpen,
+  seeMoreHref,
+  sectionRef,
+}: {
+  selectedCategory: RideBoardCategory;
+  requests: RideRequest[];
+  totalCount: number;
+  onOpen: (id: string) => void;
+  seeMoreHref: string;
+  sectionRef: RefObject<HTMLElement | null>;
+}) {
+  const copy = rideBoardCategoryCopy[selectedCategory];
+
+  return (
+    <section ref={sectionRef} className="grid scroll-mt-24 gap-3 rounded-[24px] border border-[rgba(101,230,208,0.18)] bg-[rgba(7,17,26,0.72)] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.24)]">
+      <div className="flex items-start justify-between gap-3 px-1">
+        <div className="min-w-0 text-left">
+          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#65E6D0]">Top posts</p>
+          <h2 className="mt-1 text-xl font-black leading-tight text-[var(--rp-text)]">{copy.heading}</h2>
+          <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{copy.helper}</p>
+        </div>
+        <span className="inline-flex min-h-8 shrink-0 items-center rounded-full border border-[#65E6D0]/35 bg-[#65E6D0]/10 px-3 text-xs font-black text-[#98FBCB]">
+          {Math.min(3, totalCount)} / {totalCount}
+        </span>
+      </div>
+
+      {requests.length > 0 ? (
+        <div className="grid gap-2.5">
+          {requests.map((request) => (
+            <RideBoardPreviewPostCard key={request.id} request={request} onOpen={onOpen} />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-[18px] border border-white/10 bg-white/[0.045] px-4 py-4 text-left">
+          <p className="text-sm font-black text-[var(--rp-text)]">{copy.emptyHeading}</p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{copy.emptyBody}</p>
+        </div>
+      )}
+
+      <Link
+        href={seeMoreHref}
+        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[18px] border border-[#65E6D0]/42 bg-[#65E6D0]/10 px-4 text-sm font-black text-[#98FBCB] shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition hover:border-[#65E6D0]/70 hover:bg-[#65E6D0]/16 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[#65E6D0]"
+      >
+        See more
+        <ChevronRight className="h-4 w-4" />
+      </Link>
+    </section>
+  );
+}
+
+function RideBoardPreviewPostCard({
+  request,
+  onOpen,
+}: {
+  request: RideRequest;
+  onOpen: (id: string) => void;
+}) {
+  const status = statusCopy[request.status];
+
+  const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onOpen(request.id);
+    }
+  };
+
+  return (
+    <article
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(request.id)}
+      onKeyDown={handleCardKeyDown}
+      className="group grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[rgba(152,251,203,0.22)] bg-[linear-gradient(145deg,rgba(8,27,39,0.94),rgba(5,16,25,0.98))] px-3 py-3 text-left shadow-[0_14px_34px_rgba(0,0,0,0.24)] outline-none transition hover:border-[#65E6D0]/54 focus-visible:ring-2 focus-visible:ring-[#65E6D0]"
+    >
+      <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#34e9ce]/35 bg-[#34e9ce]/12 text-xs font-black text-[#98FBCB]">
+            {request.host.name.charAt(0).toUpperCase()}
+          </span>
+          <div className="min-w-0">
+            <h3 className="truncate text-base font-black leading-5 text-[var(--rp-text)]">
+              {request.from} <span className="text-[#34e9ce]">-&gt;</span> {request.to}
+            </h3>
+            <p className="mt-0.5 truncate text-xs font-bold leading-4 text-[var(--rp-muted-strong)]">
+              {request.dateLabel}, {request.timeLabel} - {request.detailLine.replace(/^~/, "")}
+            </p>
+          </div>
+        </div>
+        <div className="mt-2 flex min-w-0 items-center gap-2">
+          <span className={cn("inline-flex min-h-7 items-center gap-1 rounded-full border px-2.5 text-[11px] font-black", status.className)}>
+            <Clock3 className="h-3.5 w-3.5" />
+            {status.label}
+          </span>
+          <span className="truncate text-xs font-bold text-[var(--rp-muted-strong)]">Host: {request.host.name}</span>
+        </div>
+      </div>
+      <div className="grid shrink-0 justify-items-end gap-2 border-l border-white/10 pl-3">
+        <div className="rounded-[13px] border border-white/10 bg-white/[0.055] px-2.5 py-2 text-center">
+          <p className="text-lg font-black leading-none text-[#34e9ce]">{request.interestedCount}</p>
+          <p className="mt-0.5 text-[10px] font-bold leading-3 text-[var(--rp-muted-strong)]">interested</p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-[#98FBCB] transition group-hover:translate-x-0.5" />
       </div>
     </article>
   );
@@ -1414,14 +1807,18 @@ export default function RideBoardPage() {
   const activeFilter = routeFilter;
   const [requests, setRequests] = useState<RideRequest[]>(initialRideRequests);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [previewCategory, setPreviewCategory] = useState<RideBoardCategory>("today");
   const [showPostForm, setShowPostForm] = useState(false);
   const [postFormCategory, setPostFormCategory] = useState<RideRequestCategory>(defaultFormValues.category);
   const [toastMessage, setToastMessage] = useState("");
   const toastTimerRef = useRef<number | null>(null);
+  const previewListRef = useRef<HTMLElement | null>(null);
   const requestListRef = useRef<HTMLElement | null>(null);
   const requestListHeadingRef = useRef<HTMLHeadingElement | null>(null);
 
   const visibleRequests = useMemo(() => getVisibleRequests(requests, activeFilter), [requests, activeFilter]);
+  const previewRequests = useMemo(() => getVisibleRequests(requests, previewCategory), [previewCategory, requests]);
+  const previewTopRequests = useMemo(() => previewRequests.slice(0, 3), [previewRequests]);
   const categoryCounts = useMemo(() => getRideBoardCategoryCounts(requests), [requests]);
   const selectedRequest = selectedRequestId ? requests.find((request) => request.id === selectedRequestId) ?? null : null;
   const requestSectionCopy = getRideBoardSectionCopy(activeFilter);
@@ -1451,6 +1848,13 @@ export default function RideBoardPage() {
     if (filter !== "all") {
       focusRideList();
     }
+  };
+
+  const handlePreviewCategorySelect = (category: RideBoardCategory) => {
+    setPreviewCategory(category);
+    window.requestAnimationFrame(() => {
+      previewListRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
   };
 
   const openPostForm = (category?: RideRequestCategory) => {
@@ -1587,7 +1991,23 @@ export default function RideBoardPage() {
 
         <RideBoardFilters activeFilter={activeFilter} categoryCounts={categoryCounts} onFilterChange={handleFilterChange} />
 
-        {isCategoryPage ? null : <RideBoardCategoryArtwork activeFilter={activeFilter} categoryCounts={categoryCounts} />}
+        {isCategoryPage ? null : (
+          <>
+            <RideBoardCategoryArtwork
+              selectedCategory={previewCategory}
+              categoryCounts={categoryCounts}
+              onCategorySelect={handlePreviewCategorySelect}
+            />
+            <RideBoardPreviewSection
+              selectedCategory={previewCategory}
+              requests={previewTopRequests}
+              totalCount={previewRequests.length}
+              onOpen={setSelectedRequestId}
+              seeMoreHref={getRideBoardHref(previewCategory)}
+              sectionRef={previewListRef}
+            />
+          </>
+        )}
 
         <PostRideRequestButton onClick={() => openPostForm()} compact />
 
