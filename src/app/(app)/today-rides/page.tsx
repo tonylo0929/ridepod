@@ -1317,7 +1317,7 @@ function RideBoardPreviewSection({
         href={seeMoreHref}
         className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[18px] border border-[#65E6D0]/42 bg-[#65E6D0]/10 px-4 text-sm font-black text-[#98FBCB] shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition hover:border-[#65E6D0]/70 hover:bg-[#65E6D0]/16 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[#65E6D0]"
       >
-        See more
+        View All Requests
         <ChevronRight className="h-4 w-4" />
       </Link>
     </section>
