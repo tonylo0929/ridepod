@@ -104,6 +104,7 @@ type PartnerApplicationSummary = {
 };
 
 const standardTaxiImageSrc = "/images/ridepod/taxis/standard-4-seat.png";
+const taxiPartnerRegisterCardImageSrc = "/images/ridepod/taxi-partner-register-card.png";
 const passwordHelperText = "At least 6 characters, with a letter and a number.";
 const registerImplementationNotes = [
   "signUp",
@@ -684,6 +685,8 @@ export default function RegisterPage() {
               {accountTypeCards.map((card) => {
                 const Icon = card.icon;
                 const selected = accountType === card.id;
+                const isTaxiPartnerCard = card.id === "taxi_partner";
+
                 return (
                   <button
                     key={card.id}
@@ -691,18 +694,36 @@ export default function RegisterPage() {
                     onClick={() => setAccountType(card.id)}
                     className={cn(
                       "grid gap-3 rounded-[22px] border p-4 text-left transition",
+                      isTaxiPartnerCard && "overflow-hidden p-0",
                       selected
                         ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,var(--rp-card-soft))]"
                         : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] hover:border-[var(--rp-border-strong)]",
                     )}
                   >
-                    <span className="flex items-center justify-between gap-3">
-                      <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
-                        <Icon className="h-5 w-5" />
+                    {isTaxiPartnerCard ? (
+                      <span className="relative block aspect-[1368/1150] overflow-hidden rounded-[21px] bg-[#06111b]">
+                        <Image
+                          src={taxiPartnerRegisterCardImageSrc}
+                          alt="Taxi Partner driver beside a RidePod taxi"
+                          fill
+                          sizes="(max-width: 640px) calc(100vw - 56px), 320px"
+                          className="object-cover"
+                        />
+                        {selected ? (
+                          <span className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full border border-[var(--rp-primary)] bg-[#08141f]/88 text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(0,0,0,0.34)]">
+                            <CheckCircle2 className="h-5 w-5" />
+                          </span>
+                        ) : null}
                       </span>
-                      {selected ? <CheckCircle2 className="h-5 w-5 text-[var(--rp-primary)]" /> : null}
-                    </span>
-                    <span>
+                    ) : (
+                      <span className="flex items-center justify-between gap-3">
+                        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
+                          <Icon className="h-5 w-5" />
+                        </span>
+                        {selected ? <CheckCircle2 className="h-5 w-5 text-[var(--rp-primary)]" /> : null}
+                      </span>
+                    )}
+                    <span className={cn(isTaxiPartnerCard && "block px-4 pb-4")}>
                       <span className="block text-lg font-black text-[var(--rp-text)]">{card.title}</span>
                       <span className="mt-1 block text-sm font-bold leading-6 text-[var(--rp-muted)]">
                         {card.description}
