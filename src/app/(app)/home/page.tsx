@@ -2381,7 +2381,47 @@ function HomePageContent() {
     [activeTab, airportDirectionFilter, airportFlightQuery, airportTerminalFilter, filteredRides],
   );
 
-  const visibleRides = tabFilteredRides;
+  const airportRecommendationFallbackRides = useMemo(() => {
+    if (activeTab !== "airport" || tabFilteredRides.length > 0) return [];
+
+    return allHomeRides.filter(
+      (ride) =>
+        isRideStillVisible(ride, today) &&
+        rideMatchesTab("airport", ride) &&
+        matchesRideModeFilter(ride, rideModeFilter) &&
+        matchesSettlementFilter(ride, settlementFilter) &&
+        matchesFareEstimateFilter(ride, fareEstimateFilter) &&
+        matchesDeadlineFilter(ride, deadlineFilter) &&
+        matchesSeatFilter(ride, seatFilter) &&
+        matchesOwnershipFilter(ride, ownershipFilter) &&
+        (podPreferenceFilter === "all" ||
+          (podPreferenceFilter === "open" && ride.podType === "Open pod") ||
+          (podPreferenceFilter === "women_only" && ride.podType === "Women-only") ||
+          (podPreferenceFilter === "verified_only" && ride.podType === "Verified-only") ||
+          (podPreferenceFilter === "invite_only" && ride.podType === "Invite-only")) &&
+        (taxiDriverFilter === "all" ||
+          isRideAppSelfSettle(ride) ||
+          (taxiDriverFilter === "accepted" && ride.driverAssignmentStatus === "PARTNER_ACCEPTED") ||
+          (taxiDriverFilter === "waiting" && ride.driverAssignmentStatus !== "PARTNER_ACCEPTED")) &&
+        (taxiTypeFilter === "all" || isRideAppSelfSettle(ride) || ride.taxiType === taxiTypeFilter),
+    );
+  }, [
+    activeTab,
+    allHomeRides,
+    deadlineFilter,
+    fareEstimateFilter,
+    ownershipFilter,
+    podPreferenceFilter,
+    rideModeFilter,
+    seatFilter,
+    settlementFilter,
+    tabFilteredRides.length,
+    taxiDriverFilter,
+    taxiTypeFilter,
+    today,
+  ]);
+
+  const visibleRides = tabFilteredRides.length > 0 ? tabFilteredRides : airportRecommendationFallbackRides;
   const scheduleRideRides = useMemo(
     () => filteredRides.filter((ride) => rideMatchesTab("one_off", ride)),
     [filteredRides],
@@ -2397,15 +2437,57 @@ function HomePageContent() {
     if (!selectedCategory) return [];
     if (selectedCategory === "schedule") return scheduleRideVisibleRides;
     if (selectedCategory === "airport") {
-      return filteredRides
+      const exactAirportRides = filteredRides
         .filter((ride) => rideMatchesTab("airport", ride))
         .filter((ride) => matchesAirportDirectionFilter(ride, airportDirectionFilter))
         .filter((ride) => matchesAirportFlightQuery(ride, airportFlightQuery))
         .filter((ride) => matchesAirportTerminalFilter(ride, airportTerminalFilter));
+
+      if (exactAirportRides.length > 0) return exactAirportRides;
+
+      return allHomeRides.filter(
+        (ride) =>
+          isRideStillVisible(ride, today) &&
+          rideMatchesTab("airport", ride) &&
+          matchesRideModeFilter(ride, rideModeFilter) &&
+          matchesSettlementFilter(ride, settlementFilter) &&
+          matchesFareEstimateFilter(ride, fareEstimateFilter) &&
+          matchesDeadlineFilter(ride, deadlineFilter) &&
+          matchesSeatFilter(ride, seatFilter) &&
+          matchesOwnershipFilter(ride, ownershipFilter) &&
+          (podPreferenceFilter === "all" ||
+            (podPreferenceFilter === "open" && ride.podType === "Open pod") ||
+            (podPreferenceFilter === "women_only" && ride.podType === "Women-only") ||
+            (podPreferenceFilter === "verified_only" && ride.podType === "Verified-only") ||
+            (podPreferenceFilter === "invite_only" && ride.podType === "Invite-only")) &&
+          (taxiDriverFilter === "all" ||
+            isRideAppSelfSettle(ride) ||
+            (taxiDriverFilter === "accepted" && ride.driverAssignmentStatus === "PARTNER_ACCEPTED") ||
+            (taxiDriverFilter === "waiting" && ride.driverAssignmentStatus !== "PARTNER_ACCEPTED")) &&
+          (taxiTypeFilter === "all" || isRideAppSelfSettle(ride) || ride.taxiType === taxiTypeFilter),
+      );
     }
 
     return filteredRides.filter((ride) => rideMatchesTab(categoryResultsScreenConfigs[selectedCategory].tab, ride));
-  }, [airportDirectionFilter, airportFlightQuery, airportTerminalFilter, filteredRides, scheduleRideVisibleRides, selectedCategory]);
+  }, [
+    airportDirectionFilter,
+    airportFlightQuery,
+    airportTerminalFilter,
+    allHomeRides,
+    deadlineFilter,
+    fareEstimateFilter,
+    filteredRides,
+    ownershipFilter,
+    podPreferenceFilter,
+    rideModeFilter,
+    scheduleRideVisibleRides,
+    seatFilter,
+    selectedCategory,
+    settlementFilter,
+    taxiDriverFilter,
+    taxiTypeFilter,
+    today,
+  ]);
   const categoryRideCounts = useMemo<Record<HomeCategoryCardId, number>>(
     () => ({
       all: filteredRides.length,
