@@ -183,7 +183,7 @@ const categoryResultsScreenConfigs: Record<
       { id: "low_price", label: "Low Price" },
     ],
     resultTitle: "Nearby rides",
-    ctaLabel: "Browse all rides",
+    ctaLabel: "Open RideBoard",
     borderClassName: "border-blue-300/58",
     shadowClassName: "shadow-[0_24px_58px_rgba(37,99,235,0.2)]",
     selectedFilterClassName: "border-blue-200/45 bg-blue-600 text-white shadow-[0_12px_30px_rgba(37,99,235,0.26)]",
@@ -1605,17 +1605,40 @@ function CategoryResultsScreen({
         </div>
       </div>
 
-      <div className="sticky bottom-0 z-20 -mx-4 mt-4 bg-[linear-gradient(180deg,rgba(4,16,26,0),#04101a_32%)] px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
-        <button
-          type="button"
-          onClick={onFindRide}
-          className={cn(
-            "mx-auto flex min-h-14 w-full max-w-[680px] items-center justify-center rounded-full px-5 text-base font-black transition hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]",
-            config.ctaClassName,
-          )}
-        >
-          {config.ctaLabel}
-        </button>
+      <div
+        className={cn(
+          "-mx-4 mt-4 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10",
+          screen === "all"
+            ? "relative"
+            : "sticky bottom-0 z-20 bg-[linear-gradient(180deg,rgba(4,16,26,0),#04101a_32%)]",
+        )}
+      >
+        {screen === "all" ? (
+          <Link
+            href="/today-rides"
+            className="mx-auto block w-full max-w-[680px] overflow-hidden rounded-[28px] border border-blue-400/70 bg-[#020d18] shadow-[0_22px_58px_rgba(37,99,235,0.28)] transition hover:border-blue-300 hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300"
+          >
+            <Image
+              src="/images/ride-board/rideboard-request-cta.png"
+              alt="RideBoard. Can't find the right ride? Post your route and let others join."
+              width={1791}
+              height={878}
+              sizes="(max-width: 720px) calc(100vw - 32px), 680px"
+              className="block h-auto w-full"
+            />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={onFindRide}
+            className={cn(
+              "mx-auto flex min-h-14 w-full max-w-[680px] items-center justify-center rounded-full px-5 text-base font-black transition hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]",
+              config.ctaClassName,
+            )}
+          >
+            {config.ctaLabel}
+          </button>
+        )}
       </div>
     </section>
   );
