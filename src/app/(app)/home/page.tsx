@@ -1374,10 +1374,10 @@ function ScheduleRideResultsScreen({
       <div className="mx-auto mt-3 w-full max-w-[680px]">
         <div className="relative overflow-hidden rounded-[28px] border border-[rgba(255,198,80,0.86)] bg-[#ffc738] shadow-[0_24px_58px_rgba(244,183,46,0.22)]">
           <Image
-            src="/images/ridepod/schedule-ride-headliner-cropped.png"
+            src="/images/ridepod/schedule-ride-headliner-wide.png"
             alt="Schedule Ride. Plan ahead, ride together."
-            width={396}
-            height={430}
+            width={1448}
+            height={1086}
             sizes="(max-width: 720px) calc(100vw - 32px), 680px"
             className="block h-auto w-full"
             priority={false}
@@ -2455,10 +2455,10 @@ function HomePageContent() {
         <div ref={rideTypesRef} className="relative z-10 mt-6 scroll-mt-[88px] px-0.5">
           <div
             className={cn(
-              "relative mx-auto w-full max-w-[704px] rounded-[28px] border px-[clamp(10px,2.2vw,14px)] pb-[clamp(10px,2.2vw,14px)] pt-[clamp(24px,4.6vw,31px)] shadow-[0_22px_58px_rgba(0,0,0,0.32)] transition-colors duration-200",
+              "relative mx-auto w-full max-w-[704px] rounded-[30px] border-2 px-[clamp(10px,2.2vw,14px)] pb-[clamp(10px,2.2vw,14px)] pt-[clamp(24px,4.6vw,31px)] shadow-[0_22px_58px_rgba(0,0,0,0.32)] transition-colors duration-200",
               optionsFrameIsRideApp
-                ? "border-sky-300/80 bg-[linear-gradient(145deg,rgba(6,24,42,0.36),rgba(15,91,166,0.11))] shadow-[0_0_34px_rgba(56,189,248,0.12)]"
-                : "border-[color-mix(in_srgb,var(--rp-primary)_88%,transparent)] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-primary)_10%,transparent),rgba(4,16,26,0.34))] shadow-[0_0_34px_color-mix(in_srgb,var(--rp-primary)_17%,transparent)]",
+                ? "border-sky-300 bg-[linear-gradient(145deg,rgba(6,24,42,0.4),rgba(15,91,166,0.14))] shadow-[0_0_0_1px_rgba(186,230,253,0.28),0_0_42px_rgba(56,189,248,0.24)]"
+                : "border-[color-mix(in_srgb,var(--rp-primary)_96%,white_4%)] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-primary)_12%,transparent),rgba(4,16,26,0.36))] shadow-[0_0_0_1px_color-mix(in_srgb,var(--rp-primary)_26%,transparent),0_0_42px_color-mix(in_srgb,var(--rp-primary)_28%,transparent)]",
             )}
           >
             <span
