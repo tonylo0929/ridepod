@@ -682,7 +682,7 @@ export default function RegisterPage() {
 
         {step === "account_type" ? (
           <div className="grid gap-4">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3">
               {accountTypeCards.map((card) => {
                 const Icon = card.icon;
                 const selected = accountType === card.id;
@@ -716,7 +716,7 @@ export default function RegisterPage() {
                           src={artworkSrc}
                           alt={isRiderCard ? "Rider beside a shared ride car" : "Taxi Partner driver beside a RidePod taxi"}
                           fill
-                          sizes="(max-width: 640px) calc(100vw - 56px), 320px"
+                          sizes="(max-width: 768px) calc(100vw - 56px), 648px"
                           className="object-cover"
                         />
                         {selected ? (
