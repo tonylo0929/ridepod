@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Eye, EyeOff, LockKeyhole, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { Eye, EyeOff, LockKeyhole, Mail, UserRound } from "lucide-react";
 import { AuthPageShell } from "@/components/auth-page-shell";
 import { useAuth } from "@/providers/AuthProvider";
 
@@ -120,13 +120,6 @@ export default function LoginPage() {
           <h1 className="text-[34px] font-black leading-tight text-[var(--rp-primary)] drop-shadow-[0_6px_16px_rgba(0,0,0,0.32)]">
             Log in
           </h1>
-          <p className="text-[15px] font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            Log in to join shared taxi pods or manage Taxi Partner tools.
-          </p>
-          <p className="inline-flex items-start gap-2 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[var(--rp-primary)]" />
-            <span>RidePod detects your account type after login.</span>
-          </p>
           <p className="sr-only">{loginImplementationNotes.join(" ")}</p>
         </div>
 
