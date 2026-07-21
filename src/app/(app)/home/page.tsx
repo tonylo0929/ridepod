@@ -2521,10 +2521,6 @@ function HomePageContent() {
     setCategoryResultFilters((current) => ({ ...current, [selectedCategory]: filter }));
   }
 
-  function handleBackToRideTypes() {
-    scrollElementToTop(rideTypesRef.current);
-  }
-
   function handleRideModeChange(value: Extract<RideModeFilter, "taxi" | "ride_app">) {
     setRideModeFilter(value);
     if (value === "taxi") {
@@ -2871,17 +2867,6 @@ function HomePageContent() {
           <RideTypeInfoStrip />
           <RideAppCommunityPanel />
         </section>
-      ) : null}
-
-      {showRideRecommendations && !rideTypesVisible ? (
-        <button
-          type="button"
-          onClick={handleBackToRideTypes}
-          className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-40 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_42%,transparent)] bg-[rgba(4,16,26,0.92)] px-3.5 text-xs font-black text-[var(--rp-primary)] shadow-[0_18px_42px_rgba(0,0,0,0.42)] backdrop-blur-md transition hover:border-[var(--rp-primary)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)] min-[720px]:bottom-8 min-[720px]:right-8"
-        >
-          <span aria-hidden="true">^</span>
-          Back to ride types
-        </button>
       ) : null}
 
       <DistrictFilterSheet
