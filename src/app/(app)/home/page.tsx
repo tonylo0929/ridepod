@@ -2721,6 +2721,8 @@ function HomePageContent() {
       : tabLabels[activeTab];
   const recommendationPreviewLimit = 3;
   const previewRecommendationRides = visibleRides.slice(0, recommendationPreviewLimit);
+  const hiddenRecommendationRideCount = Math.max(0, visibleRides.length - recommendationPreviewLimit);
+  const seeMoreRideBadgeCount = hiddenRecommendationRideCount > 0 ? hiddenRecommendationRideCount : visibleRides.length;
   const canSeeMoreRecommendations = activeCategoryTab !== null && visibleRides.length > 0;
   const [oneOffCard, recurringCard, airportCard, allRidesCard] = categoryCards;
   const renderCategoryCard = (card: (typeof categoryCards)[number]) => (
@@ -2922,8 +2924,8 @@ function HomePageContent() {
                 {activeRecommendationLabel}
               </span>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {hasActiveFilters ? (
+            {hasActiveFilters ? (
+              <div className="flex shrink-0 items-center gap-2">
                 <button
                   type="button"
                   onClick={resetRouteFilters}
@@ -2931,21 +2933,8 @@ function HomePageContent() {
                 >
                   Clear
                 </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => setFiltersOpen(true)}
-                className={cn(
-                  "inline-flex min-h-10 items-center gap-2 rounded-full border px-4 text-xs font-black transition",
-                  hasActiveFilters
-                    ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_16%,transparent)] text-[var(--rp-primary)]"
-                    : "border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-[var(--rp-primary)]",
-                )}
-              >
-                <SlidersHorizontal className="h-4 w-4" />
-                Filters
-              </button>
-            </div>
+              </div>
+            ) : null}
           </div>
 
           <div className="grid gap-3">
@@ -2965,22 +2954,17 @@ function HomePageContent() {
           </div>
           {canSeeMoreRecommendations ? (
             <div className="mt-3 grid gap-2">
-              <div className="flex items-center justify-between gap-3 rounded-[18px] border border-[var(--rp-border)] bg-[rgba(12,24,34,0.74)] px-4 py-3">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-black uppercase text-[var(--rp-muted)]">Showing top rides</p>
-                  <p className="mt-0.5 text-sm font-black text-[var(--rp-text)]">
-                    {Math.min(recommendationPreviewLimit, visibleRides.length)} of {visibleRides.length} {activeRecommendationLabel}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleRecommendationSeeMore}
-                  className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_55%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_15%,transparent)] px-4 text-xs font-black text-[var(--rp-primary)] shadow-[0_12px_28px_rgba(0,0,0,0.24)] transition hover:border-[var(--rp-primary)] hover:bg-[color-mix(in_srgb,var(--rp-primary)_22%,transparent)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]"
-                >
-                  See more
-                  <ChevronRight className="h-4 w-4" />
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleRecommendationSeeMore}
+                className="group inline-flex min-h-[58px] w-full items-center justify-center gap-5 rounded-[24px] border border-[color-mix(in_srgb,var(--rp-primary)_68%,transparent)] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.012)),rgba(5,16,27,0.86)] px-5 text-lg font-black text-[var(--rp-primary)] shadow-[0_18px_48px_rgba(0,0,0,0.34),inset_0_0_0_1px_rgba(255,255,255,0.035)] transition hover:border-[var(--rp-primary)] hover:bg-[linear-gradient(180deg,rgba(245,188,73,0.1),rgba(255,255,255,0.012)),rgba(5,16,27,0.9)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]"
+              >
+                <span>See more rides</span>
+                <span className="inline-flex min-h-8 min-w-11 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_28%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 text-base font-black text-[var(--rp-primary)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
+                  +{seeMoreRideBadgeCount}
+                </span>
+                <ChevronRight className="h-6 w-6 transition group-hover:translate-x-0.5" />
+              </button>
             </div>
           ) : null}
           <RideTypeInfoStrip />
