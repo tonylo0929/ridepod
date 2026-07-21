@@ -4,9 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  ArrowLeft,
   ArrowRightLeft,
-  Bell,
   CalendarDays,
   CarFront,
   ChevronDown,
@@ -1439,34 +1437,17 @@ function CategoryResultsScreen({
         opacity: screenOpen ? 1 : 0.98,
       }}
       className={cn(
-        "fixed inset-0 z-[140] h-[100dvh] overflow-y-auto overflow-x-hidden bg-[#04101a] px-4 pb-[calc(6.75rem+env(safe-area-inset-bottom))] text-[var(--rp-text)] shadow-[0_-18px_80px_rgba(0,0,0,0.58)] will-change-[transform,opacity] motion-safe:transition-[transform,opacity] motion-safe:duration-[220ms] motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none sm:px-6 lg:px-10",
+        "fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom))] top-[73px] z-30 overflow-y-auto overflow-x-hidden bg-[#04101a] px-4 pb-6 text-[var(--rp-text)] shadow-[0_-18px_80px_rgba(0,0,0,0.58)] will-change-[transform,opacity] motion-safe:transition-[transform,opacity] motion-safe:duration-[220ms] motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none sm:px-6 lg:bottom-0 lg:left-72 lg:top-0 lg:px-10",
       )}
     >
-      <div className="sticky top-0 z-30 -mx-4 border-b border-white/10 bg-[#04101a]/96 px-4 pt-[env(safe-area-inset-top)] backdrop-blur-md sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
-        <div className="mx-auto grid w-full max-w-[680px] grid-cols-[44px_minmax(0,1fr)_44px] items-center">
-          <button
-            type="button"
-            onClick={onBack}
-            className="my-2 grid h-11 w-11 place-items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_48%,transparent)] bg-[rgba(13,24,35,0.92)] text-[var(--rp-primary)] shadow-[0_14px_32px_rgba(0,0,0,0.3)] transition hover:border-[var(--rp-primary)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]"
-            aria-label="Back to home"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div className="min-w-0 justify-self-center text-center text-2xl font-black tracking-tight">
-            Ride<span className="text-[var(--rp-primary)]">Pod</span>
-          </div>
-          <Link
-            href="/notifications"
-            className="relative my-2 grid h-11 w-11 place-items-center justify-self-end rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_36%,transparent)] bg-[rgba(13,24,35,0.92)] text-white shadow-[0_14px_32px_rgba(0,0,0,0.3)] transition hover:border-[var(--rp-primary)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]"
-            aria-label="Notifications"
-          >
-            <Bell className="h-5 w-5 stroke-[2.2]" />
-            <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-[var(--rp-primary)] shadow-[0_0_0_2px_#04101a]" />
-          </Link>
-        </div>
-      </div>
-
-      <div className="mx-auto mt-3 w-full max-w-[680px]">
+      <div className="mx-auto mt-4 w-full max-w-[680px] lg:mt-6">
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-3 inline-flex min-h-10 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_48%,transparent)] bg-[rgba(13,24,35,0.92)] px-4 text-xs font-black text-[var(--rp-primary)] shadow-[0_14px_32px_rgba(0,0,0,0.3)] transition hover:border-[var(--rp-primary)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]"
+        >
+          Back to Search
+        </button>
         <div className={cn("relative overflow-hidden rounded-[28px] border bg-[#06111b]", config.borderClassName, config.shadowClassName)}>
           <Image
             src={config.imageSrc}
