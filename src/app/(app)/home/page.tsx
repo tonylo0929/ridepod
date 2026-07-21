@@ -3033,7 +3033,7 @@ function HomePageContent() {
                 onClick={handleRecommendationSeeMore}
                 className="group inline-flex min-h-[58px] w-full items-center justify-center gap-5 rounded-[24px] border border-[color-mix(in_srgb,var(--rp-primary)_68%,transparent)] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.012)),rgba(5,16,27,0.86)] px-5 text-lg font-black text-[var(--rp-primary)] shadow-[0_18px_48px_rgba(0,0,0,0.34),inset_0_0_0_1px_rgba(255,255,255,0.035)] transition hover:border-[var(--rp-primary)] hover:bg-[linear-gradient(180deg,rgba(245,188,73,0.1),rgba(255,255,255,0.012)),rgba(5,16,27,0.9)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]"
               >
-                <span>See more rides</span>
+                <span>View All Rides</span>
                 <span className="inline-flex min-h-8 min-w-11 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_28%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 text-base font-black text-[var(--rp-primary)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
                   +{seeMoreRideBadgeCount}
                 </span>
