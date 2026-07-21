@@ -2455,10 +2455,10 @@ function HomePageContent() {
         <div ref={rideTypesRef} className="relative z-10 mt-6 scroll-mt-[88px] px-0.5">
           <div
             className={cn(
-              "relative mx-auto w-full max-w-[704px] rounded-[30px] border-2 px-[clamp(10px,2.2vw,14px)] pb-[clamp(10px,2.2vw,14px)] pt-[clamp(24px,4.6vw,31px)] shadow-[0_22px_58px_rgba(0,0,0,0.32)] transition-colors duration-200",
+              "relative mx-auto w-full max-w-[704px] rounded-[31px] border-[3px] px-[clamp(10px,2.2vw,14px)] pb-[clamp(10px,2.2vw,14px)] pt-[clamp(24px,4.6vw,31px)] shadow-[0_22px_58px_rgba(0,0,0,0.32)] transition-colors duration-200",
               optionsFrameIsRideApp
-                ? "border-sky-300 bg-[linear-gradient(145deg,rgba(6,24,42,0.4),rgba(15,91,166,0.14))] shadow-[0_0_0_1px_rgba(186,230,253,0.28),0_0_42px_rgba(56,189,248,0.24)]"
-                : "border-[color-mix(in_srgb,var(--rp-primary)_96%,white_4%)] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-primary)_12%,transparent),rgba(4,16,26,0.36))] shadow-[0_0_0_1px_color-mix(in_srgb,var(--rp-primary)_26%,transparent),0_0_42px_color-mix(in_srgb,var(--rp-primary)_28%,transparent)]",
+                ? "border-sky-200 bg-[linear-gradient(145deg,rgba(6,24,42,0.42),rgba(15,91,166,0.16))] shadow-[0_0_0_2px_rgba(56,189,248,0.22),0_0_52px_rgba(56,189,248,0.32)]"
+                : "border-[color-mix(in_srgb,var(--rp-primary)_100%,white_8%)] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-primary)_14%,transparent),rgba(4,16,26,0.38))] shadow-[0_0_0_2px_color-mix(in_srgb,var(--rp-primary)_30%,transparent),0_0_52px_color-mix(in_srgb,var(--rp-primary)_38%,transparent)]",
             )}
           >
             <span
