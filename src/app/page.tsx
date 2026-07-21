@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import { WhisperLanding } from "@/components/whisperlink/landing";
+import { redirect } from "next/navigation";
 
 export const metadata: Metadata = {
-  title: "WhisperLink | Private chat by link",
-  description: "No app. No phone number. Auto-expiring private chat rooms by link.",
+  title: "RidePod",
+  description: "Find and coordinate shared taxi and ride app pods.",
 };
 
 export default function RootPage() {
-  return <WhisperLanding />;
+  redirect("/home?tab=one_off");
 }
