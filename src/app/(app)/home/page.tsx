@@ -14,6 +14,7 @@ import {
   Gift,
   Plane,
   RefreshCcw,
+  Search,
   ShieldCheck,
   SlidersHorizontal,
   Smartphone,
@@ -45,6 +46,7 @@ import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
 import { useAuth } from "@/providers/AuthProvider";
 
 type AirportDirectionFilter = "all" | "to_airport" | "from_airport";
+type AirportTerminalFilter = "terminal_1" | "terminal_2";
 type PodPreferenceFilter = "all" | "open" | "women_only" | "verified_only" | "invite_only";
 type TaxiDriverFilter = "all" | "accepted" | "waiting";
 type TaxiTypeFilter = "all" | string;
@@ -897,6 +899,35 @@ function matchesSeatFilter(ride: HomeRide, filter: SeatFilter) {
   return true;
 }
 
+function normalizeFlightSearch(value: string) {
+  return value.replace(/[^a-z0-9]/gi, "").toLowerCase();
+}
+
+function matchesAirportFlightQuery(ride: HomeRide, query: string) {
+  const normalizedQuery = normalizeFlightSearch(query);
+  if (!normalizedQuery) return true;
+
+  return [
+    ride.flightNumber,
+    ride.flightFrom,
+    ride.flightTo,
+    ride.fromLabel,
+    ride.toLabel,
+  ].some((value) => normalizeFlightSearch(value ?? "").includes(normalizedQuery));
+}
+
+function matchesAirportTerminalFilter(ride: HomeRide, terminal: AirportTerminalFilter) {
+  if (!ride.airportTerminal) return true;
+
+  const terminalNumber = terminal === "terminal_1" ? "1" : "2";
+  return normalizeFlightSearch(ride.airportTerminal).includes(`terminal${terminalNumber}`);
+}
+
+function matchesAirportDirectionFilter(ride: HomeRide, direction: AirportDirectionFilter) {
+  const effectiveDirection = direction === "all" ? "to_airport" : direction;
+  return ride.airportDirection === effectiveDirection;
+}
+
 function matchesOwnershipFilter(ride: HomeRide, filter: OwnershipFilter) {
   if (filter === "mine") return ride.currentUserRole === "host";
   if (filter === "joined") return ride.currentUserJoined === true || ride.currentUserRole === "joined_rider";
@@ -1410,6 +1441,12 @@ function CategoryResultsScreen({
   resultsRef,
   currentUserAvatar,
   isAuthenticated,
+  airportDirection,
+  onAirportDirectionChange,
+  airportFlightQuery,
+  onAirportFlightQueryChange,
+  airportTerminal,
+  onAirportTerminalChange,
 }: {
   screen: CategoryResultsScreenId;
   phase: CategoryTransitionPhase;
@@ -1423,6 +1460,12 @@ function CategoryResultsScreen({
   resultsRef: RefObject<HTMLDivElement | null>;
   currentUserAvatar: CurrentUserAvatar;
   isAuthenticated: boolean;
+  airportDirection: AirportDirectionFilter;
+  onAirportDirectionChange: (direction: AirportDirectionFilter) => void;
+  airportFlightQuery: string;
+  onAirportFlightQueryChange: (value: string) => void;
+  airportTerminal: AirportTerminalFilter;
+  onAirportTerminalChange: (value: AirportTerminalFilter) => void;
 }) {
   const screenOpen = phase === "open";
   const config = categoryResultsScreenConfigs[screen];
@@ -1494,6 +1537,17 @@ function CategoryResultsScreen({
               ))}
             </ul>
           </div>
+        ) : null}
+
+        {screen === "airport" ? (
+          <AirportRideSearchPanel
+            direction={airportDirection}
+            onDirectionChange={onAirportDirectionChange}
+            flightQuery={airportFlightQuery}
+            onFlightQueryChange={onAirportFlightQueryChange}
+            terminal={airportTerminal}
+            onTerminalChange={onAirportTerminalChange}
+          />
         ) : null}
 
         <div className="mt-4">
@@ -1609,6 +1663,135 @@ function CategoryCompactResultCard({
         <ChevronRight className="h-4 w-4 text-[var(--rp-muted-strong)]" />
       </div>
     </Link>
+  );
+}
+
+function AirportRideSearchPanel({
+  direction,
+  onDirectionChange,
+  flightQuery,
+  onFlightQueryChange,
+  terminal,
+  onTerminalChange,
+}: {
+  direction: AirportDirectionFilter;
+  onDirectionChange: (direction: AirportDirectionFilter) => void;
+  flightQuery: string;
+  onFlightQueryChange: (value: string) => void;
+  terminal: AirportTerminalFilter;
+  onTerminalChange: (value: AirportTerminalFilter) => void;
+}) {
+  const directionOptions: Array<{
+    id: Extract<AirportDirectionFilter, "to_airport" | "from_airport">;
+    title: string;
+    helper: string;
+    iconClassName: string;
+  }> = [
+    {
+      id: "to_airport",
+      title: "To airport",
+      helper: "I'm going to the airport",
+      iconClassName: "-rotate-12",
+    },
+    {
+      id: "from_airport",
+      title: "From airport",
+      helper: "I'm arriving from a flight",
+      iconClassName: "rotate-[18deg]",
+    },
+  ];
+
+  return (
+    <section className="mt-4 overflow-hidden rounded-[24px] border border-[#f6d7ad]/26 bg-[linear-gradient(145deg,rgba(8,24,37,0.96),rgba(4,14,24,0.92))] shadow-[0_18px_46px_rgba(0,0,0,0.26)]">
+      <div className="grid grid-cols-2 border-b border-white/10">
+        {directionOptions.map((option) => {
+          const active = direction === option.id || (direction === "all" && option.id === "to_airport");
+
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onDirectionChange(option.id)}
+              aria-pressed={active}
+              className={cn(
+                "grid min-h-[86px] grid-cols-[44px_minmax(0,1fr)] items-center gap-3 px-3 py-3 text-left transition min-[430px]:px-5",
+                active
+                  ? "bg-[linear-gradient(135deg,#ffe5c1,#ffd29b)] text-[#111923] shadow-[0_16px_34px_rgba(246,215,173,0.18)]"
+                  : "bg-transparent text-white/74 hover:bg-white/[0.045] hover:text-white",
+              )}
+            >
+              <span
+                className={cn(
+                  "grid h-11 w-11 place-items-center rounded-full border",
+                  active ? "border-[#111923]/12 bg-white/35 text-[#111923]" : "border-[#f6d7ad]/22 bg-[#f6d7ad]/10 text-[#f6d7ad]",
+                )}
+              >
+                <Plane className={cn("h-5 w-5", option.iconClassName)} />
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-base font-black leading-5">{option.title}</span>
+                <span className={cn("mt-1 block truncate text-xs font-semibold", active ? "text-[#111923]/70" : "text-white/48")}>
+                  {option.helper}
+                </span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="grid min-[560px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] min-[560px]:divide-x min-[560px]:divide-white/10">
+        <label className="grid min-h-[92px] grid-cols-[48px_minmax(0,1fr)] items-center gap-3 px-4 py-4">
+          <span className="grid h-12 w-12 place-items-center rounded-full bg-[#f6d7ad] text-[#111923] shadow-[0_12px_28px_rgba(246,215,173,0.2)]">
+            <Search className="h-5 w-5" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold text-white/58">Flight number search</span>
+            <input
+              value={flightQuery}
+              onChange={(event) => onFlightQueryChange(event.target.value.toUpperCase())}
+              inputMode="text"
+              autoCapitalize="characters"
+              placeholder="e.g. CX 701"
+              className="mt-1 w-full min-w-0 bg-transparent text-lg font-black uppercase tracking-[0.02em] text-white outline-none placeholder:text-white/26"
+            />
+          </span>
+        </label>
+
+        <div className="grid min-h-[92px] grid-cols-[48px_minmax(0,1fr)] items-center gap-3 border-t border-white/10 px-4 py-4 min-[560px]:border-t-0">
+          <span className="grid h-12 w-12 place-items-center rounded-full border border-[#f6d7ad]/22 bg-white/[0.045] text-[#f6d7ad]">
+            <CalendarDays className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-white/58">HK Airport terminal</p>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              {[
+                { id: "terminal_1" as const, label: "Terminal 1" },
+                { id: "terminal_2" as const, label: "Terminal 2" },
+              ].map((option) => {
+                const active = terminal === option.id;
+
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => onTerminalChange(option.id)}
+                    aria-pressed={active}
+                    className={cn(
+                      "min-h-10 rounded-full border px-2 text-xs font-black transition",
+                      active
+                        ? "border-[#f6d7ad] bg-[#f6d7ad] text-[#111923]"
+                        : "border-[#f6d7ad]/24 bg-[#f6d7ad]/8 text-[#f6d7ad] hover:border-[#f6d7ad]/50",
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -2046,6 +2229,8 @@ function HomePageContent() {
   const [taxiDriverFilter, setTaxiDriverFilter] = useState<TaxiDriverFilter>("all");
   const [taxiTypeFilter, setTaxiTypeFilter] = useState<TaxiTypeFilter>("all");
   const [airportDirectionFilter, setAirportDirectionFilter] = useState<AirportDirectionFilter>("all");
+  const [airportFlightQuery, setAirportFlightQuery] = useState("");
+  const [airportTerminalFilter, setAirportTerminalFilter] = useState<AirportTerminalFilter>("terminal_1");
   const [rideModeFilter, setRideModeFilter] = useState<RideModeFilter>(initialRideModeFilter);
   const [settlementFilter, setSettlementFilter] = useState<SettlementFilter>(initialSettlementFilter);
   const [fareEstimateFilter, setFareEstimateFilter] = useState<FareEstimateFilter>("any");
@@ -2186,8 +2371,13 @@ function HomePageContent() {
   );
 
   const tabFilteredRides = useMemo(
-    () => filteredRides.filter((ride) => rideMatchesTab(activeTab, ride)),
-    [activeTab, filteredRides],
+    () =>
+      filteredRides
+        .filter((ride) => rideMatchesTab(activeTab, ride))
+        .filter((ride) => activeTab !== "airport" || matchesAirportDirectionFilter(ride, airportDirectionFilter))
+        .filter((ride) => activeTab !== "airport" || matchesAirportFlightQuery(ride, airportFlightQuery))
+        .filter((ride) => activeTab !== "airport" || matchesAirportTerminalFilter(ride, airportTerminalFilter)),
+    [activeTab, airportDirectionFilter, airportFlightQuery, airportTerminalFilter, filteredRides],
   );
 
   const visibleRides = tabFilteredRides;
@@ -2205,9 +2395,16 @@ function HomePageContent() {
   const categoryScreenRides = useMemo(() => {
     if (!selectedCategory) return [];
     if (selectedCategory === "schedule") return scheduleRideVisibleRides;
+    if (selectedCategory === "airport") {
+      return filteredRides
+        .filter((ride) => rideMatchesTab("airport", ride))
+        .filter((ride) => matchesAirportDirectionFilter(ride, airportDirectionFilter))
+        .filter((ride) => matchesAirportFlightQuery(ride, airportFlightQuery))
+        .filter((ride) => matchesAirportTerminalFilter(ride, airportTerminalFilter));
+    }
 
     return filteredRides.filter((ride) => rideMatchesTab(categoryResultsScreenConfigs[selectedCategory].tab, ride));
-  }, [filteredRides, scheduleRideVisibleRides, selectedCategory]);
+  }, [airportDirectionFilter, airportFlightQuery, airportTerminalFilter, filteredRides, scheduleRideVisibleRides, selectedCategory]);
   const categoryRideCounts = useMemo<Record<HomeCategoryCardId, number>>(
     () => ({
       all: filteredRides.length,
@@ -2300,6 +2497,9 @@ function HomePageContent() {
     } else {
       const defaultFilter = categoryResultsScreenConfigs[screen].filters[0]?.id ?? categoryResultFilters[screen];
       setCategoryResultFilters((current) => ({ ...current, [screen]: defaultFilter }));
+      if (screen === "airport" && airportDirectionFilter === "all") {
+        handleAirportDirectionChange("to_airport");
+      }
     }
     setSelectedCategory(screen);
 
@@ -2342,6 +2542,18 @@ function HomePageContent() {
   }
 
   function handleCategoryCardSelect(tab: HomeCategoryCardId) {
+    if (tab === "airport") {
+      if (airportDirectionFilter === "all") {
+        handleAirportDirectionChange("to_airport");
+      }
+    } else if (airportDirectionFilter !== "all" || airportFlightQuery || airportTerminalFilter !== "terminal_1") {
+      setAirportDirectionFilter("all");
+      setAirportFlightQuery("");
+      setAirportTerminalFilter("terminal_1");
+      setFromDistrict("All districts");
+      setToDistrict("All districts");
+    }
+
     handleTabChange(tab);
     window.requestAnimationFrame(() => {
       scrollElementToTop(recommendationsRef.current);
@@ -2403,6 +2615,8 @@ function HomePageContent() {
     setTaxiDriverFilter("all");
     setTaxiTypeFilter("all");
     setAirportDirectionFilter("all");
+    setAirportFlightQuery("");
+    setAirportTerminalFilter("terminal_1");
     setSettlementFilter(rideModeFilter === "ride_app" ? "self_settle" : "protected");
     setFareEstimateFilter("any");
     setDeadlineFilter("any");
@@ -2470,6 +2684,8 @@ function HomePageContent() {
     taxiDriverFilter !== "all" ||
     taxiTypeFilter !== "all" ||
     airportDirectionFilter !== "all" ||
+    airportFlightQuery !== "" ||
+    airportTerminalFilter !== "terminal_1" ||
     settlementFilter !== baselineSettlementFilter ||
     fareEstimateFilter !== "any" ||
     deadlineFilter !== "any" ||
@@ -2666,6 +2882,18 @@ function HomePageContent() {
 
       {showRideRecommendations ? (
         <section ref={recommendationsRef} className="relative mx-auto mt-4 w-full max-w-[712px] scroll-mt-[88px] px-4 pb-4 sm:px-6 lg:px-4 min-[720px]:pb-64">
+          {activeTab === "airport" ? (
+            <div className="mb-4">
+              <AirportRideSearchPanel
+                direction={airportDirectionFilter}
+                onDirectionChange={handleAirportDirectionChange}
+                flightQuery={airportFlightQuery}
+                onFlightQueryChange={setAirportFlightQuery}
+                terminal={airportTerminalFilter}
+                onTerminalChange={setAirportTerminalFilter}
+              />
+            </div>
+          ) : null}
           <div className="mb-4 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <h1 className="whitespace-nowrap text-base font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
@@ -2745,7 +2973,7 @@ function HomePageContent() {
           onClick={handleBackToRideTypes}
           className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-40 inline-flex min-h-10 items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_42%,transparent)] bg-[rgba(4,16,26,0.92)] px-3.5 text-xs font-black text-[var(--rp-primary)] shadow-[0_18px_42px_rgba(0,0,0,0.42)] backdrop-blur-md transition hover:border-[var(--rp-primary)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)] min-[720px]:bottom-8 min-[720px]:right-8"
         >
-          <span aria-hidden="true">↑</span>
+          <span aria-hidden="true">^</span>
           Back to ride types
         </button>
       ) : null}
@@ -2782,6 +3010,12 @@ function HomePageContent() {
         resultsRef={scheduleResultsRef}
         currentUserAvatar={currentUserAvatar}
         isAuthenticated={isAuthenticated}
+        airportDirection={airportDirectionFilter}
+        onAirportDirectionChange={handleAirportDirectionChange}
+        airportFlightQuery={airportFlightQuery}
+        onAirportFlightQueryChange={setAirportFlightQuery}
+        airportTerminal={airportTerminalFilter}
+        onAirportTerminalChange={setAirportTerminalFilter}
       />
     ) : null}
     </>

@@ -445,6 +445,9 @@ const recurringRideAppSearchRides: HomeRide[] = [
     rideAppEstimatedFarePerPerson: 45,
     rideAppEstimatedFareCurrency: "HKD",
     airportDirection: "to_airport",
+    flightNumber: "CX 841",
+    flightTo: "Hong Kong Airport",
+    airportTerminal: "Terminal 1",
     status: "available",
     quoteStatus: "quote_pending",
     taxiType: "Ride app",
@@ -593,7 +596,7 @@ const taxiSearchRides: HomeRide[] = [
     id: "taxi-airport-hkia-central",
     fromDistrict: "Airport",
     toDistrict: "Central",
-    fromLabel: "HKIA Arrival Hall A",
+    fromLabel: "HKIA Arrival Hall B",
     toLabel: "Central",
     dateLabel: "Fri, Jul 24",
     timeLabel: "8:15 PM",
@@ -605,8 +608,9 @@ const taxiSearchRides: HomeRide[] = [
     rideCategory: "taxi_partner_quote",
     airportDirection: "from_airport",
     flightNumber: "CX 701",
-    airportTerminal: "Terminal 1",
-    airportHall: "Arrival Hall A",
+    flightFrom: "Singapore",
+    airportTerminal: "Terminal 2",
+    airportHall: "Arrival Hall B",
     airportLuggage: { largeSuitcases: 2, cabinBags: 2, specialItems: [] },
     status: "available",
     quoteStatus: "quote_pending",
@@ -622,7 +626,7 @@ const taxiSearchRides: HomeRide[] = [
     hostAvatarPreference: { avatarType: "animal", animalAvatarId: "frog" },
     hostDisplayName: "May",
     joinedRiders: ["May", "Ken"],
-    pickupLabel: "HKIA Arrival Hall A",
+    pickupLabel: "HKIA Arrival Hall B",
     pickupTime: "8:05 PM",
     dropoffLabel: "Central",
     stopRequestPolicy: "direct_only",
@@ -749,7 +753,7 @@ export function matchesDistrict(selectedDistrict: string, rideDistrict: string) 
 
 export function rideMatchesTab(tab: HomeTab, ride: HomeRide) {
   if (tab === "all") return true;
-  if (tab === "airport") return ride.rideKind === "airport";
+  if (tab === "airport") return ride.rideKind === "airport" || Boolean(ride.airportDirection);
   if (tab === "quote_ready") {
     return ride.quoteStatus === "quote_ready" && ride.currentUserQuoteAccepted !== true;
   }
