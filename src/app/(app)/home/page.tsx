@@ -681,12 +681,13 @@ function CategoryCard({
   style?: CSSProperties;
 }) {
   const cardClassName = cn(
-    "group block overflow-hidden text-left shadow-[0_22px_46px_rgba(0,0,0,0.26)] outline-none transition-[transform,box-shadow,filter] duration-200 ease-out active:scale-[0.99] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]",
+    "group block origin-center overflow-hidden text-left shadow-[0_22px_46px_rgba(0,0,0,0.26)] outline-none transition-[transform,box-shadow,filter,opacity] duration-[220ms] ease-out active:scale-[0.99] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]",
     selected
-      ? "scale-[1.035] ring-1 ring-white/30 shadow-[0_26px_58px_rgba(0,0,0,0.34),0_0_32px_color-mix(in_srgb,var(--rp-primary)_30%,transparent)] brightness-[1.04]"
-      : "scale-100 hover:scale-[1.015]",
+      ? "scale-[1.11] opacity-100 ring-2 ring-white/42 shadow-[0_34px_78px_rgba(0,0,0,0.48),0_0_46px_color-mix(in_srgb,var(--rp-primary)_42%,transparent)] brightness-[1.08] saturate-[1.08]"
+      : "scale-[0.965] opacity-[0.72] saturate-[0.88] hover:scale-[0.985] hover:opacity-90",
     className,
   );
+  const cardStyle: CSSProperties | undefined = selected ? { ...style, zIndex: 30 } : style;
   const rideCountLabel = typeof rideCount === "number" ? `${rideCount} ${rideCount === 1 ? "ride" : "rides"}` : "";
   const cardLabel = rideCountLabel
     ? `Show ${categoryRecommendationLabels[id]} recommendations, ${rideCountLabel}`
@@ -699,7 +700,10 @@ function CategoryCard({
         fill
         priority
         sizes="(max-width: 720px) 55vw, 320px"
-        className="pointer-events-none object-cover object-center transition-transform duration-200 ease-out group-active:scale-[0.985]"
+        className={cn(
+          "pointer-events-none object-cover object-center transition-transform duration-[220ms] ease-out group-active:scale-[0.985]",
+          selected ? "scale-[1.025]" : "scale-100",
+        )}
       />
       {typeof rideCount === "number" ? (
         <span className="pointer-events-none absolute right-[clamp(10px,2.3vw,16px)] top-[clamp(10px,2.3vw,16px)] z-20 inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-[rgba(3,9,15,0.68)] px-[clamp(8px,1.7vw,11px)] py-[clamp(4px,1vw,6px)] text-white shadow-[0_10px_24px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-md">
@@ -714,14 +718,14 @@ function CategoryCard({
 
   if (href) {
     return (
-      <Link href={href} className={cardClassName} style={style} aria-label={cardLabel} aria-current={selected ? "page" : undefined}>
+      <Link href={href} className={cardClassName} style={cardStyle} aria-label={cardLabel} aria-current={selected ? "page" : undefined}>
         {content}
       </Link>
     );
   }
 
   return (
-    <button type="button" onClick={() => onClick(id)} className={cardClassName} style={style} aria-label={cardLabel} aria-pressed={selected}>
+    <button type="button" onClick={() => onClick(id)} className={cardClassName} style={cardStyle} aria-label={cardLabel} aria-pressed={selected}>
       {content}
     </button>
   );
