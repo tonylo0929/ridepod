@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WhisperLink",
-  description: "Private chat by link. No app, no phone number, auto-expiring rooms.",
+  title: "RidePod",
+  description: "Find and coordinate shared taxi and ride app pods.",
 };
 
 export default function RootLayout({
