@@ -2841,6 +2841,8 @@ function HomePageContent() {
 
         <div ref={rideTypesRef} className="relative z-10 mt-6 scroll-mt-[88px] px-0.5">
           <div
+            data-testid="ride-category-board"
+            onClick={handleCategoryBoardClick}
             className={cn(
               "relative mx-auto w-full max-w-[704px] rounded-[31px] border-[3px] px-[clamp(10px,2.2vw,14px)] pb-[clamp(10px,2.2vw,14px)] pt-[clamp(24px,4.6vw,31px)] shadow-[0_22px_58px_rgba(0,0,0,0.32)] transition-colors duration-200",
               optionsFrameIsRideApp
@@ -2860,8 +2862,6 @@ function HomePageContent() {
               {optionsFrameLabel}
             </span>
             <div
-              data-testid="ride-category-board"
-              onClick={handleCategoryBoardClick}
               className="relative isolate mx-auto aspect-[1.6/1] w-full overflow-visible pb-1"
             >
               {renderCategoryCard(oneOffCard)}
