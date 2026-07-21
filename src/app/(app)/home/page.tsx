@@ -2624,6 +2624,7 @@ function HomePageContent() {
     activeCategoryTab
       ? categoryRecommendationLabels[activeCategoryTab]
       : tabLabels[activeTab];
+  const showScheduleRecommendationHeader = activeTab === "one_off";
   const recommendationPreviewLimit = 3;
   const previewRecommendationRides = visibleRides.slice(0, recommendationPreviewLimit);
   const hiddenRecommendationRideCount = Math.max(0, visibleRides.length - recommendationPreviewLimit);
@@ -2815,12 +2816,24 @@ function HomePageContent() {
       {showRideRecommendations ? (
         <section ref={recommendationsRef} className="relative mx-auto mt-4 w-full max-w-[712px] scroll-mt-[88px] px-4 pb-4 sm:px-6 lg:px-4 min-[720px]:pb-64">
           <div className="mb-4 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h1 className="whitespace-nowrap text-base font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
-              <span className="mt-1 inline-flex max-w-full items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 py-1 text-[11px] font-black text-[var(--rp-primary)]">
-                {activeRecommendationLabel}
-              </span>
-            </div>
+            {showScheduleRecommendationHeader ? (
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] border border-[color-mix(in_srgb,var(--rp-primary)_42%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_10%,transparent)] text-[var(--rp-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+                  <CalendarDays className="h-5 w-5" />
+                </span>
+                <span className="min-w-0">
+                  <h1 className="truncate text-base font-black tracking-tight text-[var(--rp-text)]">Schedule rides for you</h1>
+                  <span className="mt-0.5 block truncate text-xs font-bold text-[var(--rp-muted-strong)]">One-off trips ready to join</span>
+                </span>
+              </div>
+            ) : (
+              <div className="min-w-0">
+                <h1 className="whitespace-nowrap text-base font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
+                <span className="mt-1 inline-flex max-w-full items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 py-1 text-[11px] font-black text-[var(--rp-primary)]">
+                  {activeRecommendationLabel}
+                </span>
+              </div>
+            )}
             {hasActiveFilters ? (
               <div className="flex shrink-0 items-center gap-2">
                 <button
