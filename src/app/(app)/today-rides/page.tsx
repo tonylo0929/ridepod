@@ -5,9 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
-  Bookmark,
   CalendarDays,
-  CarFront,
   CheckCircle2,
   ChevronRight,
   Clock3,
@@ -31,7 +29,6 @@ import {
   useState,
   type FormEvent,
   type KeyboardEvent,
-  type MouseEvent,
   type RefObject,
 } from "react";
 import { cn } from "@/components/ui";
@@ -161,12 +158,10 @@ function getRideBoardFilterFromParam(param: string | string[] | undefined): Ride
   return slug in rideBoardSlugToCategory ? rideBoardSlugToCategory[slug as RideBoardCategorySlug] : "all";
 }
 
-const allRideBoardCopy = {
-  heading: "Ride Board requests",
-  helper: "Browse active ride requests across every category.",
-  emptyHeading: "No ride requests yet.",
-  emptyBody: "Create a ride request and see who is going the same way.",
-  emptyCtaLabel: "Create ride",
+type RideBoardEmptyCopy = {
+  emptyHeading: string;
+  emptyBody: string;
+  emptyCtaLabel: string;
 };
 
 const rideBoardCategoryCopy: Record<
@@ -213,6 +208,135 @@ const rideBoardCategoryCopy: Record<
     emptyHeading: "No other rides yet.",
     emptyBody: "Create a flexible ride request.",
     emptyCtaLabel: "Create ride",
+  },
+};
+
+type RideBoardCategoryDetail = {
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  image: string;
+  icon: typeof MapPin;
+  chips: string[];
+  listHeading: string;
+  ctaLabel: string;
+  accent: "teal" | "green" | "purple" | "indigo" | "gold";
+};
+
+const rideBoardCategoryDetails: Record<RideBoardCategory, RideBoardCategoryDetail> = {
+  today: {
+    eyebrow: "Featured - Today",
+    title: "Today Requests",
+    subtitle: "See who needs a ride near you today.",
+    image: "/images/ride-board/today-requests.png",
+    icon: UserRound,
+    chips: ["Nearby", "Leaving Soon", "This Afternoon", "Tonight"],
+    listHeading: "Requests happening today",
+    ctaLabel: "Post Ride Request",
+    accent: "teal",
+  },
+  commute: {
+    eyebrow: "Daily Routes",
+    title: "Commute Rides",
+    subtitle: "Share your everyday route and split the cost.",
+    image: "/images/ride-board/commute.png",
+    icon: Route,
+    chips: ["Morning", "Evening", "Weekdays", "Recurring"],
+    listHeading: "Popular commute routes",
+    ctaLabel: "Post Ride Request",
+    accent: "green",
+  },
+  events: {
+    eyebrow: "Event Travel",
+    title: "Event Rides",
+    subtitle: "Go together. Arrive together.",
+    image: "/images/ride-board/events.png",
+    icon: CalendarDays,
+    chips: ["Concerts", "University", "Sports", "Weekend"],
+    listHeading: "Upcoming event rides",
+    ctaLabel: "Post Ride Request",
+    accent: "purple",
+  },
+  late_night: {
+    eyebrow: "After Dark",
+    title: "Late Night Rides",
+    subtitle: "A safer way to travel home together.",
+    image: "/images/ride-board/late-night.png",
+    icon: Moon,
+    chips: ["Leaving Soon", "Tonight", "HK Island", "Kowloon"],
+    listHeading: "Late-night rides near you",
+    ctaLabel: "Post Ride Request",
+    accent: "indigo",
+  },
+  others: {
+    eyebrow: "Flexible Trips",
+    title: "Other Rides",
+    subtitle: "Flexible requests for every trip in between.",
+    image: "/images/ride-board/others.png",
+    icon: Send,
+    chips: ["Shopping", "Errands", "Custom Route", "One-way"],
+    listHeading: "Flexible ride requests",
+    ctaLabel: "Post Ride Request",
+    accent: "gold",
+  },
+};
+
+const rideBoardAccentStyles: Record<
+  RideBoardCategoryDetail["accent"],
+  {
+    heroBorder: string;
+    countPill: string;
+    activeChip: string;
+    linkText: string;
+    rowBorder: string;
+    priceText: string;
+    avatarRing: string;
+  }
+> = {
+  teal: {
+    heroBorder: "border-[#34e9ce]/42 shadow-[0_24px_64px_rgba(52,233,206,0.12)]",
+    countPill: "border-[#34e9ce]/34 bg-[#092c34]/78 text-[#7df7ea]",
+    activeChip: "border-[#34e9ce]/42 bg-[#34e9ce] text-[#032023]",
+    linkText: "text-[#53f5dc]",
+    rowBorder: "border-[#34e9ce]/26 hover:border-[#34e9ce]/46",
+    priceText: "text-[#53f5dc]",
+    avatarRing: "border-[#34e9ce]/38 bg-[#34e9ce]/14 text-[#9dfff3]",
+  },
+  green: {
+    heroBorder: "border-[#62e48a]/38 shadow-[0_24px_64px_rgba(98,228,138,0.10)]",
+    countPill: "border-[#62e48a]/34 bg-[#12331f]/78 text-[#9ff7b6]",
+    activeChip: "border-[#62e48a]/42 bg-[#62e48a] text-[#032111]",
+    linkText: "text-[#9ff7b6]",
+    rowBorder: "border-[#62e48a]/24 hover:border-[#62e48a]/44",
+    priceText: "text-[#9ff7b6]",
+    avatarRing: "border-[#62e48a]/36 bg-[#62e48a]/14 text-[#b9ffca]",
+  },
+  purple: {
+    heroBorder: "border-[#a673ff]/40 shadow-[0_24px_64px_rgba(166,115,255,0.12)]",
+    countPill: "border-[#a673ff]/36 bg-[#241543]/78 text-[#d9c4ff]",
+    activeChip: "border-[#a673ff]/46 bg-[#7c4fd9] text-white",
+    linkText: "text-[#c8a9ff]",
+    rowBorder: "border-[#a673ff]/24 hover:border-[#a673ff]/46",
+    priceText: "text-[#c8a9ff]",
+    avatarRing: "border-[#a673ff]/36 bg-[#a673ff]/14 text-[#eadfff]",
+  },
+  indigo: {
+    heroBorder: "border-[#7691ff]/38 shadow-[0_24px_64px_rgba(118,145,255,0.12)]",
+    countPill: "border-[#7691ff]/36 bg-[#121b45]/80 text-[#ccd6ff]",
+    activeChip: "border-[#7691ff]/44 bg-[#3d63d9] text-white",
+    linkText: "text-[#bfcaff]",
+    rowBorder: "border-[#7691ff]/24 hover:border-[#7691ff]/46",
+    priceText: "text-[#bfcaff]",
+    avatarRing: "border-[#7691ff]/36 bg-[#7691ff]/14 text-[#e2e7ff]",
+  },
+  gold: {
+    heroBorder: "border-[var(--rp-primary)]/46 shadow-[0_24px_64px_rgba(242,193,91,0.12)]",
+    countPill: "border-[var(--rp-primary)]/42 bg-[#3a2a0b]/82 text-[var(--rp-primary)]",
+    activeChip: "border-[var(--rp-primary)]/52 bg-[var(--rp-primary)] text-[#12120a]",
+    linkText: "text-[var(--rp-primary)]",
+    rowBorder: "border-[var(--rp-primary)]/30 hover:border-[var(--rp-primary)]/54",
+    priceText: "text-[var(--rp-primary)]",
+    avatarRing: "border-[var(--rp-primary)]/38 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]",
   },
 };
 
@@ -800,10 +924,6 @@ function getRequestStatus(dateValue: string, timeValue: string): RideRequestStat
   return "open";
 }
 
-function getRideBoardSectionCopy(filter: RideBoardFilter) {
-  return filter === "all" ? allRideBoardCopy : rideBoardCategoryCopy[filter];
-}
-
 function getRequestBoardCategory(request: RideRequest): RideBoardCategory {
   return request.rideBoardCategory ?? rideRequestCategoryToBoardCategory[request.category] ?? "others";
 }
@@ -911,6 +1031,59 @@ function getInterestedLabel(count: number) {
   return `${count} interested`;
 }
 
+const rideRequestSeatPrices: Record<string, number> = {
+  "board-causeway-central": 45,
+  "board-tst-sha-tin-today": 48,
+  "board-quarry-bay-tko-today": 42,
+  "board-tko-central": 34,
+  "board-tuen-mun-central-commute": 38,
+  "board-yuen-long-kowloon-bay-commute": 36,
+  "board-asiaworld-mongkok": 55,
+  "board-hku-concert-central": 25,
+  "board-stadium-tko-events": 30,
+  "board-lkf-taipo": 48,
+  "board-wan-chai-tuen-mun-late": 55,
+  "board-mong-kok-tko-late": 50,
+  "board-yuen-long-ikea": 28,
+  "board-shatin-outlet": 26,
+  "board-central-repulse-bay": 30,
+};
+
+function getRideRequestSeatPrice(request: RideRequest) {
+  if (rideRequestSeatPrices[request.id]) return rideRequestSeatPrices[request.id];
+
+  const boardCategory = getRequestBoardCategory(request);
+  if (boardCategory === "events") return 55;
+  if (boardCategory === "late_night") return 48;
+  if (boardCategory === "commute") return 38;
+  if (boardCategory === "others") return 30;
+  return 45;
+}
+
+function getRideRequestSeatLabel(request: RideRequest) {
+  const availableSeats = Math.max(request.maxPeople - request.interestedCount, 1);
+  return `${availableSeats} ${availableSeats === 1 ? "seat" : "seats"}`;
+}
+
+function getRideRequestPeople(request: RideRequest) {
+  const fallbackInitials = ["A", "K", "M", "J"];
+  const hostInitial =
+    request.host.name
+      .split(/\s+/)
+      .map((part) => part[0])
+      .filter(Boolean)
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "RP";
+  const avatarCount = Math.max(1, Math.min(3, request.interestedCount));
+  const initials = Array.from({ length: avatarCount }, (_, index) => (index === 0 ? hostInitial : fallbackInitials[index] ?? "R"));
+
+  return {
+    initials,
+    extraCount: Math.max(request.interestedCount - avatarCount, 0),
+  };
+}
+
 function getActionState(request: RideRequest) {
   if (request.status === "closed") return { label: "Closed", disabled: true, icon: Lock };
   if (request.status === "expired") return { label: "Expired", disabled: true, icon: Clock3 };
@@ -1007,7 +1180,7 @@ function RideBoardCategoryCard({
         "group relative block w-full overflow-hidden border bg-[#030b12] text-left outline-none ring-1 ring-inset transition-[transform,box-shadow,border-color,filter] duration-200 ease-out hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
         isFeatured ? "aspect-[875/443] rounded-[24px]" : "aspect-[430/395] rounded-[18px]",
         active
-          ? "z-10 scale-[1.025] border-[#65E6D0]/80 brightness-[1.04] ring-2 ring-[#65E6D0]/70 shadow-[0_22px_54px_rgba(0,0,0,0.38),0_0_34px_rgba(101,230,208,0.24)]"
+          ? "z-10 scale-[1.055] border-[#65E6D0]/90 brightness-[1.07] ring-2 ring-[#65E6D0]/80 shadow-[0_28px_68px_rgba(0,0,0,0.44),0_0_44px_rgba(101,230,208,0.28)]"
           : "scale-100 border-[rgba(101,230,208,0.18)] ring-white/10 shadow-[0_18px_42px_rgba(0,0,0,0.28)]",
       )}
     >
@@ -1094,158 +1267,6 @@ function RideBoardFilters({
         })}
       </div>
     </section>
-  );
-}
-
-function RideRequestCard({
-  request,
-  onOpen,
-  onInterested,
-}: {
-  request: RideRequest;
-  onOpen: (id: string) => void;
-  onInterested: (id: string) => void;
-}) {
-  const status = statusCopy[request.status];
-  const actionState = getActionState(request);
-  const ActionIcon = actionState.icon;
-  const hostInitials = request.host.name
-    .split(/\s+/)
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
-  const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onOpen(request.id);
-    }
-  };
-
-  const handleInterestClick = (event: MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-    if (!actionState.disabled) onInterested(request.id);
-  };
-
-  return (
-    <article
-      role="button"
-      tabIndex={0}
-      onClick={() => onOpen(request.id)}
-      onKeyDown={handleCardKeyDown}
-      className={cn(
-        "group relative cursor-pointer overflow-hidden rounded-[22px] border border-[rgba(152,251,203,0.24)] bg-[linear-gradient(145deg,rgba(8,27,39,0.98),rgba(5,16,25,0.98))] p-4 shadow-[0_18px_42px_rgba(0,0,0,0.32),0_0_30px_rgba(52,211,183,0.08)] outline-none transition focus-visible:ring-2 focus-visible:ring-[#98FBCB]",
-        request.status === "closed" && "border-white/10 opacity-80",
-      )}
-    >
-      <div className="grid gap-4">
-        <div className="flex items-start justify-between gap-3">
-          <span
-            className={cn(
-              "inline-flex min-h-9 items-center gap-2 rounded-full border px-3 text-[12px] font-black uppercase tracking-[0.12em]",
-              request.category === "others"
-                ? "border-white/12 bg-white/[0.06] text-[var(--rp-muted-strong)]"
-                : "border-[#34e9ce]/55 bg-[#34e9ce]/10 text-[#34e9ce]",
-            )}
-          >
-            <Star className="h-4 w-4" />
-            {categoryLabels[request.category]}
-          </span>
-          <span
-            className={cn(
-              "grid h-9 w-9 shrink-0 place-items-center rounded-full text-[var(--rp-muted-strong)]",
-              request.saved && "text-[#98FBCB]",
-            )}
-            aria-label={request.saved ? "Saved ride request" : "Save ride request"}
-          >
-            <Bookmark className={cn("h-6 w-6", request.saved && "fill-[#98FBCB]/20")} />
-          </span>
-        </div>
-
-        <h2 className="text-left text-[22px] font-black leading-tight tracking-tight text-[var(--rp-text)] min-[430px]:text-[24px]">
-          <span className="break-words">{request.from}</span>
-          <span className="mx-2 inline-flex text-[#34e9ce]">-&gt;</span>
-          <span className="break-words">{request.to}</span>
-        </h2>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.055] px-3 text-xs font-bold text-[var(--rp-muted-strong)]">
-            <CalendarDays className="h-4 w-4" />
-            {request.dateLabel}, {request.timeLabel}
-          </span>
-          <span className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.055] px-3 text-xs font-bold text-[var(--rp-muted-strong)]">
-            <CarFront className="h-4 w-4" />
-            {request.detailLine.replace(/^~/, "")}
-          </span>
-          <span className={cn("inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-black", status.className)}>
-            <Clock3 className="h-4 w-4" />
-            {status.label}
-          </span>
-        </div>
-
-        <div className="border-t border-white/10 pt-4">
-          <div className="grid grid-cols-[minmax(0,1fr)_76px] items-center gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-[rgba(52,233,206,0.45)] bg-[linear-gradient(145deg,rgba(52,233,206,0.20),rgba(8,25,31,0.92))] text-lg font-black text-[#34e9ce]">
-              {hostInitials || <UserRound className="h-5 w-5" />}
-            </span>
-              <div className="min-w-0">
-                <p className="truncate text-left text-base font-black leading-5 text-[var(--rp-text)]">Host: {request.host.name}</p>
-                <p className="mt-1 flex items-center gap-1 text-left text-sm font-bold leading-4 text-[var(--rp-muted-strong)]">
-                <Star className="h-4 w-4 shrink-0 fill-[var(--rp-primary)] text-[var(--rp-primary)]" />
-                {request.host.rating.toFixed(1)} ({request.host.rideCount} rides)
-              </p>
-              </div>
-            </div>
-            <div className="rounded-[14px] border border-white/10 bg-white/[0.055] px-2 py-2 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-              <p className="text-2xl font-black leading-none text-[#34e9ce]">{request.interestedCount}</p>
-              <p className="mt-1 text-[11px] font-semibold leading-3 text-[var(--rp-muted-strong)]">interested</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid min-h-[72px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[14px] border border-white/10 bg-[#06111d]/75 px-3 py-3">
-          <div className="flex min-w-0 items-center gap-3">
-            <MessageCircle className="h-8 w-8 shrink-0 text-[#34e9ce]" />
-            <p className="min-w-0 overflow-hidden text-left text-sm font-semibold leading-5 text-[var(--rp-muted-strong)] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
-              {request.note}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOpen(request.id);
-            }}
-            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-1 rounded-[12px] border border-[#34e9ce]/60 bg-[#34e9ce]/5 px-3 text-xs font-black text-[#34e9ce] transition hover:bg-[#34e9ce]/12"
-          >
-            View details
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div>
-          <button
-            type="button"
-            onClick={handleInterestClick}
-            disabled={actionState.disabled}
-            className={cn(
-              "inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-[14px] px-4 text-base font-black transition",
-              request.userInterested
-                ? "border border-[#34e9ce]/45 bg-[#34e9ce]/12 text-[#34e9ce]"
-                : actionState.disabled
-                  ? "cursor-not-allowed border border-white/10 bg-white/[0.05] text-[var(--rp-muted)]"
-                  : "bg-[linear-gradient(180deg,#53f5dc_0%,#34e9ce_55%,#21c5b0_100%)] text-[#041016] shadow-[0_18px_36px_rgba(52,233,206,0.20)] hover:brightness-105",
-            )}
-          >
-            <ActionIcon className="h-5 w-5" />
-            {actionState.label}
-          </button>
-        </div>
-      </div>
-    </article>
   );
 }
 
@@ -1355,6 +1376,198 @@ function RideBoardPreviewPostCard({
           <p className="mt-0.5 text-[10px] font-bold leading-3 text-[var(--rp-muted-strong)]">interested</p>
         </div>
         <ChevronRight className="h-4 w-4 text-[#98FBCB] transition group-hover:translate-x-0.5" />
+      </div>
+    </article>
+  );
+}
+
+function RideBoardCategoryDetailView({
+  category,
+  requests,
+  totalCount,
+  onOpen,
+  onPostClick,
+  sectionRef,
+  headingRef,
+}: {
+  category: RideBoardCategory;
+  requests: RideRequest[];
+  totalCount: number;
+  onOpen: (id: string) => void;
+  onPostClick: () => void;
+  sectionRef: RefObject<HTMLElement | null>;
+  headingRef: RefObject<HTMLHeadingElement | null>;
+}) {
+  const detail = rideBoardCategoryDetails[category];
+  const styles = rideBoardAccentStyles[detail.accent];
+  const emptyCopy = rideBoardCategoryCopy[category];
+
+  return (
+    <section className="grid gap-4">
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href="/today-rides"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--rp-primary)]/42 bg-white/[0.055] px-3.5 text-xs font-black text-[var(--rp-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:bg-[var(--rp-primary)]/10"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Ride Board
+        </Link>
+
+        <button
+          type="button"
+          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.055] px-3.5 text-xs font-black text-[var(--rp-text)] transition hover:border-[var(--rp-border-strong)]"
+        >
+          <SlidersHorizontal className="h-4 w-4 text-[#65E6D0]" />
+          Filters
+        </button>
+      </div>
+
+      <div className={cn("relative overflow-hidden rounded-[28px] border bg-[#071018]", styles.heroBorder)}>
+        <div className="relative aspect-[16/10] min-h-[238px] w-full max-[380px]:min-h-[218px] min-[520px]:min-h-[286px]">
+          <Image
+            src={detail.image}
+            alt={`${detail.title} illustration`}
+            fill
+            priority
+            quality={75}
+            sizes="(max-width: 768px) calc(100vw - 32px), 720px"
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,10,16,0.02),rgba(4,10,16,0.06)_62%,rgba(4,10,16,0.18))]" aria-hidden="true" />
+          <span className={cn("absolute right-4 top-4 inline-flex min-h-9 items-center rounded-full border px-3 text-xs font-black shadow-[0_12px_26px_rgba(0,0,0,0.32)] backdrop-blur-md", styles.countPill)}>
+            {getRideCountLabel(totalCount)}
+          </span>
+          <span className="sr-only">
+            {detail.eyebrow}. {detail.title}. {detail.subtitle}
+          </span>
+        </div>
+      </div>
+
+      <div className="scrollbar-hide -mx-4 overflow-x-auto px-4" aria-label={`${detail.title} filters`}>
+        <div className="flex min-w-max gap-2.5">
+          {detail.chips.map((chip, index) => (
+            <button
+              key={chip}
+              type="button"
+              className={cn(
+                "inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-black shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition",
+                index === 0
+                  ? styles.activeChip
+                  : "border-white/10 bg-white/[0.075] text-[var(--rp-text)] hover:border-white/20",
+              )}
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <section ref={sectionRef} className="grid scroll-mt-24 gap-3" aria-labelledby="ride-board-results-heading">
+        <div className="flex items-center justify-between gap-3">
+          <h1
+            ref={headingRef}
+            id="ride-board-results-heading"
+            tabIndex={-1}
+            className="text-left text-[24px] font-black leading-tight text-[var(--rp-text)] outline-none"
+          >
+            {detail.listHeading}
+          </h1>
+          <Link
+            href={getRideBoardHref(category)}
+            className={cn("inline-flex min-h-9 shrink-0 items-center gap-1 rounded-full px-2 text-sm font-black transition hover:brightness-110", styles.linkText)}
+          >
+            View all
+            <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+
+        {requests.length > 0 ? (
+          <div className="grid gap-2.5">
+            {requests.map((request) => (
+              <RideBoardCategoryResultRow
+                key={request.id}
+                request={request}
+                accent={detail.accent}
+                onOpen={onOpen}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyRideBoard copy={emptyCopy} onPostClick={onPostClick} />
+        )}
+      </section>
+
+      <PostRideRequestButton onClick={onPostClick} compact label={detail.ctaLabel} />
+    </section>
+  );
+}
+
+function RideBoardCategoryResultRow({
+  request,
+  accent,
+  onOpen,
+}: {
+  request: RideRequest;
+  accent: RideBoardCategoryDetail["accent"];
+  onOpen: (id: string) => void;
+}) {
+  const styles = rideBoardAccentStyles[accent];
+  const people = getRideRequestPeople(request);
+  const seatPrice = getRideRequestSeatPrice(request);
+
+  const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onOpen(request.id);
+    }
+  };
+
+  return (
+    <article
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(request.id)}
+      onKeyDown={handleCardKeyDown}
+      className={cn(
+        "group grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[22px] border bg-[linear-gradient(145deg,rgba(16,30,42,0.96),rgba(7,17,26,0.98))] px-4 py-3.5 text-left shadow-[0_16px_38px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.04)] outline-none transition hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#65E6D0]",
+        styles.rowBorder,
+      )}
+    >
+      <div className="min-w-0">
+        <h2 className="truncate text-[20px] font-black leading-6 text-[var(--rp-text)] min-[430px]:text-[21px]">
+          {request.from} <span className={styles.priceText}>-&gt;</span> {request.to}
+        </h2>
+        <p className="mt-1 truncate text-[15px] font-semibold leading-5 text-white/68">
+          {request.dateLabel}, {request.timeLabel}
+        </p>
+        <p className={cn("mt-1 text-[15px] font-bold leading-5", styles.priceText)}>HK${seatPrice} / seat</p>
+      </div>
+
+      <div className="grid min-w-[136px] shrink-0 grid-cols-[1fr_auto] items-center gap-2 border-l border-white/10 pl-3 max-[380px]:min-w-[112px] max-[380px]:pl-2">
+        <div className="grid justify-items-end gap-2">
+          <span className="inline-flex min-h-9 items-center rounded-full border border-[var(--rp-primary)]/32 bg-[var(--rp-primary)]/13 px-3 text-sm font-black text-[var(--rp-primary)]">
+            {getRideRequestSeatLabel(request)}
+          </span>
+          <div className="flex items-center justify-end">
+            {people.initials.map((initial, index) => (
+              <span
+                key={`${request.id}-${initial}-${index}`}
+                className={cn(
+                  "-ml-1.5 grid h-8 w-8 place-items-center rounded-full border bg-[#0d1822] text-[10px] font-black first:ml-0",
+                  styles.avatarRing,
+                )}
+              >
+                {initial}
+              </span>
+            ))}
+            {people.extraCount > 0 ? (
+              <span className="-ml-1.5 grid h-8 min-w-8 place-items-center rounded-full border border-white/10 bg-black/30 px-2 text-[11px] font-black text-white/82">
+                +{people.extraCount}
+              </span>
+            ) : null}
+          </div>
+        </div>
+        <ChevronRight className="h-5 w-5 text-white/70 transition group-hover:translate-x-0.5 group-hover:text-white" />
       </div>
     </article>
   );
@@ -1770,7 +1983,7 @@ function EmptyRideBoard({
   copy,
   onPostClick,
 }: {
-  copy: typeof allRideBoardCopy;
+  copy: RideBoardEmptyCopy;
   onPostClick: () => void;
 }) {
   return (
@@ -1821,8 +2034,8 @@ export default function RideBoardPage() {
   const previewTopRequests = useMemo(() => previewRequests.slice(0, 3), [previewRequests]);
   const categoryCounts = useMemo(() => getRideBoardCategoryCounts(requests), [requests]);
   const selectedRequest = selectedRequestId ? requests.find((request) => request.id === selectedRequestId) ?? null : null;
-  const requestSectionCopy = getRideBoardSectionCopy(activeFilter);
   const isCategoryPage = activeFilter !== "all";
+  const activeCategory = isCategoryPage ? (activeFilter as RideBoardCategory) : null;
 
   useEffect(() => {
     return () => {
@@ -1942,31 +2155,16 @@ export default function RideBoardPage() {
         aria-hidden="true"
       />
       <div className="relative z-10 mx-auto grid w-full max-w-[560px] gap-5 px-4 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-6 sm:px-6 lg:max-w-3xl lg:pb-8 lg:pt-8">
-        {isCategoryPage ? (
-          <section className="grid gap-3">
-            <Link
-              href="/today-rides"
-              className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/[0.055] px-3.5 py-2 text-xs font-black text-[var(--rp-muted-strong)] transition hover:border-[#65E6D0]/45 hover:text-[#65E6D0]"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Ride Board
-            </Link>
-
-            <div className="flex items-start justify-between gap-3 rounded-[22px] border border-[#65E6D0]/24 bg-[linear-gradient(145deg,rgba(101,230,208,0.105),rgba(255,255,255,0.035))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_18px_44px_rgba(0,0,0,0.28)]">
-              <div className="min-w-0 text-left">
-                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#65E6D0]">Ride requests</p>
-                <h1 className="mt-1 text-[28px] font-black leading-tight text-[var(--rp-text)] min-[390px]:text-[32px]">
-                  {requestSectionCopy.heading}
-                </h1>
-                <p className="mt-1.5 text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                  {requestSectionCopy.helper}
-                </p>
-              </div>
-              <span className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-[#34e9ce]/35 bg-[#34e9ce]/10 px-3 text-xs font-black text-[#34e9ce]">
-                {visibleRequests.length} {visibleRequests.length === 1 ? "ride" : "rides"}
-              </span>
-            </div>
-          </section>
+        {activeCategory ? (
+          <RideBoardCategoryDetailView
+            category={activeCategory}
+            requests={visibleRequests}
+            totalCount={visibleRequests.length}
+            onOpen={setSelectedRequestId}
+            onPostClick={() => openPostForm()}
+            sectionRef={requestListRef}
+            headingRef={requestListHeadingRef}
+          />
         ) : (
           <section className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -1989,10 +2187,9 @@ export default function RideBoardPage() {
           </section>
         )}
 
-        <RideBoardFilters activeFilter={activeFilter} categoryCounts={categoryCounts} onFilterChange={handleFilterChange} />
-
-        {isCategoryPage ? null : (
+        {activeCategory ? null : (
           <>
+            <RideBoardFilters activeFilter={activeFilter} categoryCounts={categoryCounts} onFilterChange={handleFilterChange} />
             <RideBoardCategoryArtwork
               selectedCategory={previewCategory}
               categoryCounts={categoryCounts}
@@ -2006,36 +2203,9 @@ export default function RideBoardPage() {
               seeMoreHref={getRideBoardHref(previewCategory)}
               sectionRef={previewListRef}
             />
+            <PostRideRequestButton onClick={() => openPostForm()} compact />
           </>
         )}
-
-        <PostRideRequestButton onClick={() => openPostForm()} compact />
-
-        {isCategoryPage ? (
-          <section ref={requestListRef} className="grid scroll-mt-24 gap-4" aria-labelledby="ride-board-results-heading">
-            <h2
-              ref={requestListHeadingRef}
-              id="ride-board-results-heading"
-              tabIndex={-1}
-              className="sr-only outline-none"
-            >
-              {requestSectionCopy.heading}
-            </h2>
-
-            {visibleRequests.length > 0 ? (
-              visibleRequests.map((request) => (
-                <RideRequestCard
-                  key={request.id}
-                  request={request}
-                  onOpen={setSelectedRequestId}
-                  onInterested={handleInterested}
-                />
-              ))
-            ) : (
-              <EmptyRideBoard copy={requestSectionCopy} onPostClick={() => openPostForm()} />
-            )}
-          </section>
-        ) : null}
       </div>
 
       {selectedRequest ? (
