@@ -104,6 +104,7 @@ type PartnerApplicationSummary = {
 };
 
 const standardTaxiImageSrc = "/images/ridepod/taxis/standard-4-seat.png";
+const riderRegisterCardImageSrc = "/images/ridepod/rider-register-card.png";
 const taxiPartnerRegisterCardImageSrc = "/images/ridepod/taxi-partner-register-card.png";
 const passwordHelperText = "At least 6 characters, with a letter and a number.";
 const registerImplementationNotes = [
@@ -685,7 +686,13 @@ export default function RegisterPage() {
               {accountTypeCards.map((card) => {
                 const Icon = card.icon;
                 const selected = accountType === card.id;
+                const isRiderCard = card.id === "rider";
                 const isTaxiPartnerCard = card.id === "taxi_partner";
+                const artworkSrc = isRiderCard
+                  ? riderRegisterCardImageSrc
+                  : isTaxiPartnerCard
+                    ? taxiPartnerRegisterCardImageSrc
+                    : null;
 
                 return (
                   <button
@@ -694,17 +701,20 @@ export default function RegisterPage() {
                     onClick={() => setAccountType(card.id)}
                     className={cn(
                       "grid gap-3 rounded-[22px] border p-4 text-left transition",
-                      isTaxiPartnerCard && "overflow-hidden p-0",
+                      artworkSrc && "overflow-hidden p-0",
                       selected
                         ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,var(--rp-card-soft))]"
                         : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] hover:border-[var(--rp-border-strong)]",
                     )}
                   >
-                    {isTaxiPartnerCard ? (
-                      <span className="relative block aspect-[1368/1150] overflow-hidden rounded-[21px] bg-[#06111b]">
+                    {artworkSrc ? (
+                      <span className={cn(
+                        "relative block overflow-hidden rounded-[21px] bg-[#06111b]",
+                        isRiderCard ? "aspect-square" : "aspect-[1368/1150]",
+                      )}>
                         <Image
-                          src={taxiPartnerRegisterCardImageSrc}
-                          alt="Taxi Partner driver beside a RidePod taxi"
+                          src={artworkSrc}
+                          alt={isRiderCard ? "Rider beside a shared ride car" : "Taxi Partner driver beside a RidePod taxi"}
                           fill
                           sizes="(max-width: 640px) calc(100vw - 56px), 320px"
                           className="object-cover"
@@ -723,7 +733,7 @@ export default function RegisterPage() {
                         {selected ? <CheckCircle2 className="h-5 w-5 text-[var(--rp-primary)]" /> : null}
                       </span>
                     )}
-                    <span className={cn(isTaxiPartnerCard && "block px-4 pb-4")}>
+                    <span className={cn(artworkSrc && "block px-4 pb-4")}>
                       <span className="block text-lg font-black text-[var(--rp-text)]">{card.title}</span>
                       <span className="mt-1 block text-sm font-bold leading-6 text-[var(--rp-muted)]">
                         {card.description}
