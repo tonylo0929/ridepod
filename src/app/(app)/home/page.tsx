@@ -22,7 +22,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { Suspense, type CSSProperties, type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, type CSSProperties, type MouseEvent, type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RidePodAvatar, useRidePodAvatarPreference, type RidePodAvatarPreference } from "@/components/animal-avatar";
 import { cn } from "@/components/ui";
 import {
@@ -2239,7 +2239,7 @@ function HomePageContent() {
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [rideTypesVisible, setRideTypesVisible] = useState(true);
-  const [selectedCategoryCard, setSelectedCategoryCard] = useState<HomeCategoryCardId | null>(null);
+  const [expandedCategoryId, setExpandedCategoryId] = useState<HomeCategoryCardId | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<SelectedCategory | null>(null);
   const [categoryTransitionPhase, setCategoryTransitionPhase] = useState<CategoryTransitionPhase>("idle");
   const [scheduleRideQuickFilter, setScheduleRideQuickFilter] = useState<ScheduleRideQuickFilter>("recommended");
@@ -2298,24 +2298,6 @@ function HomePageContent() {
       win.removeEventListener("resize", updateVisibility);
     };
   }, []);
-
-  useEffect(() => {
-    if (selectedCategoryCard === null) return;
-
-    function handlePointerDown(event: PointerEvent) {
-      const rideTypesElement = rideTypesRef.current;
-      if (!rideTypesElement || !(event.target instanceof Node)) return;
-      if (rideTypesElement.contains(event.target)) return;
-
-      setSelectedCategoryCard(null);
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown, { capture: true });
-
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown, { capture: true });
-    };
-  }, [selectedCategoryCard]);
 
   const categoryScreenVisible = selectedCategory !== null;
 
@@ -2561,7 +2543,7 @@ function HomePageContent() {
   }
 
   function handleCategoryCardSelect(tab: HomeCategoryCardId) {
-    setSelectedCategoryCard(tab);
+    setExpandedCategoryId((current) => (current === tab ? null : tab));
 
     if (tab === "airport") {
       if (airportDirectionFilter === "all") {
@@ -2579,6 +2561,12 @@ function HomePageContent() {
     window.requestAnimationFrame(() => {
       scrollElementToTop(recommendationsRef.current);
     });
+  }
+
+  function handleCategoryBoardClick(event: MouseEvent<HTMLDivElement>) {
+    if (event.target === event.currentTarget) {
+      setExpandedCategoryId(null);
+    }
   }
 
   function handleRecommendationSeeMore() {
@@ -2733,7 +2721,7 @@ function HomePageContent() {
       imageAlt={card.imageAlt}
       href={card.href}
       rideCount={categoryRideCounts[card.id]}
-      selected={selectedCategoryCard === card.id}
+      selected={expandedCategoryId === card.id}
       onClick={handleCategoryCardSelect}
       className={
         card.id === "one_off"
@@ -2871,7 +2859,11 @@ function HomePageContent() {
               <OptionsFrameIcon className="h-4 w-4" />
               {optionsFrameLabel}
             </span>
-            <div className="relative isolate mx-auto aspect-[1.6/1] w-full overflow-visible pb-1">
+            <div
+              data-testid="ride-category-board"
+              onClick={handleCategoryBoardClick}
+              className="relative isolate mx-auto aspect-[1.6/1] w-full overflow-visible pb-1"
+            >
               {renderCategoryCard(oneOffCard)}
               {renderCategoryCard(recurringCard)}
               <div className="absolute bottom-0 right-0 z-[3] grid h-[53%] w-[57.1%] grid-cols-[minmax(0,1.095fr)_minmax(0,1fr)] gap-[clamp(8px,1.7vw,13px)]">
@@ -2882,7 +2874,7 @@ function HomePageContent() {
                     imageAlt={airportCard.imageAlt}
                     href={airportCard.href}
                     rideCount={categoryRideCounts[airportCard.id]}
-                    selected={selectedCategoryCard === airportCard.id}
+                    selected={expandedCategoryId === airportCard.id}
                     onClick={handleCategoryCardSelect}
                     className="relative z-10 h-full w-full min-w-0 rounded-[clamp(19px,3.5vw,24px)]"
                   />
@@ -2893,7 +2885,7 @@ function HomePageContent() {
                   imageAlt={allRidesCard.imageAlt}
                   href={allRidesCard.href}
                   rideCount={categoryRideCounts[allRidesCard.id]}
-                  selected={selectedCategoryCard === allRidesCard.id}
+                  selected={expandedCategoryId === allRidesCard.id}
                   onClick={handleCategoryCardSelect}
                   className="relative h-full w-full min-w-0 rounded-[clamp(19px,3.5vw,24px)]"
                 />
