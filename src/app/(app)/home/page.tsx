@@ -59,6 +59,7 @@ type OwnershipFilter = "all" | "mine" | "joined";
 type ScheduleRideQuickFilter = "recommended" | "today" | "tomorrow" | "this_week";
 type SelectedCategory = "schedule";
 type CategoryTransitionPhase = "idle" | "entering" | "open" | "exiting";
+type RecommendationPreviewTab = HomeCategoryCardId;
 
 type CurrentUserAvatar = {
   avatarPreference: RidePodAvatarPreference;
@@ -594,8 +595,10 @@ function CategoryCard({
   style?: CSSProperties;
 }) {
   const cardClassName = cn(
-    "group block overflow-hidden text-left shadow-[0_22px_46px_rgba(0,0,0,0.26)] outline-none transition active:scale-[0.99] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]",
-    selected ? "ring-1 ring-white/20" : "",
+    "group block overflow-hidden text-left shadow-[0_22px_46px_rgba(0,0,0,0.26)] outline-none transition-[transform,box-shadow,filter] duration-200 ease-out active:scale-[0.99] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]",
+    selected
+      ? "scale-[1.035] ring-1 ring-white/30 shadow-[0_26px_58px_rgba(0,0,0,0.34),0_0_32px_color-mix(in_srgb,var(--rp-primary)_30%,transparent)] brightness-[1.04]"
+      : "scale-100 hover:scale-[1.015]",
     className,
   );
   const rideCountLabel = typeof rideCount === "number" ? `${rideCount} ${rideCount === 1 ? "ride" : "rides"}` : "";
@@ -1936,6 +1939,7 @@ function HomePageContent() {
   const [selectedCategory, setSelectedCategory] = useState<SelectedCategory | null>(null);
   const [categoryTransitionPhase, setCategoryTransitionPhase] = useState<CategoryTransitionPhase>("idle");
   const [scheduleRideQuickFilter, setScheduleRideQuickFilter] = useState<ScheduleRideQuickFilter>("recommended");
+  const [expandedRecommendationTab, setExpandedRecommendationTab] = useState<RecommendationPreviewTab | null>(null);
   const today = useMemo(() => new Date(), []);
   const activeHeroBackgroundMode = rideModeFilter === "ride_app" ? "ride_app" : "taxi";
   const heroGreeting = useMemo(() => getTimeOfDayGreeting(), []);
@@ -2198,12 +2202,22 @@ function HomePageContent() {
   }
 
   function handleCategoryCardSelect(tab: HomeCategoryCardId) {
-    if (tab === "one_off") {
+    setExpandedRecommendationTab(null);
+    handleTabChange(tab);
+    window.requestAnimationFrame(() => {
+      scrollElementToTop(recommendationsRef.current);
+    });
+  }
+
+  function handleRecommendationSeeMore() {
+    if (activeTab !== "all" && activeTab !== "airport" && activeTab !== "one_off" && activeTab !== "recurring") return;
+
+    if (activeTab === "one_off") {
       openScheduleRideScreen();
       return;
     }
 
-    handleTabChange(tab);
+    setExpandedRecommendationTab(activeTab);
     window.requestAnimationFrame(() => {
       scrollElementToTop(recommendationsRef.current);
     });
@@ -2321,10 +2335,16 @@ function HomePageContent() {
     seatFilter !== "any" ||
     ownershipFilter !== "all";
   const showRideRecommendations = true;
+  const activeCategoryTab =
+    activeTab === "all" || activeTab === "airport" || activeTab === "one_off" || activeTab === "recurring" ? activeTab : null;
   const activeRecommendationLabel =
-    activeTab === "all" || activeTab === "airport" || activeTab === "one_off" || activeTab === "recurring"
-      ? categoryRecommendationLabels[activeTab]
+    activeCategoryTab
+      ? categoryRecommendationLabels[activeCategoryTab]
       : tabLabels[activeTab];
+  const recommendationPreviewLimit = 3;
+  const recommendationsExpanded = activeCategoryTab !== null && expandedRecommendationTab === activeCategoryTab;
+  const previewRecommendationRides = recommendationsExpanded ? visibleRides : visibleRides.slice(0, recommendationPreviewLimit);
+  const canSeeMoreRecommendations = activeCategoryTab !== null && !recommendationsExpanded && visibleRides.length > 0;
   const [oneOffCard, recurringCard, airportCard, allRidesCard] = categoryCards;
   const renderCategoryCard = (card: (typeof categoryCards)[number]) => (
     <CategoryCard
@@ -2541,7 +2561,7 @@ function HomePageContent() {
 
           <div className="grid gap-3">
             {visibleRides.length > 0 ? (
-              visibleRides.map((ride) => (
+              previewRecommendationRides.map((ride) => (
                 <RideSearchResultCard
                   key={ride.id}
                   ride={ride}
@@ -2554,6 +2574,26 @@ function HomePageContent() {
               <EmptyRides tab={activeTab} rideModeFilter={rideModeFilter} hasAnyRides={filteredRides.length > 0} />
             )}
           </div>
+          {canSeeMoreRecommendations ? (
+            <div className="mt-3 grid gap-2">
+              <div className="flex items-center justify-between gap-3 rounded-[18px] border border-[var(--rp-border)] bg-[rgba(12,24,34,0.74)] px-4 py-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-black uppercase text-[var(--rp-muted)]">Showing top rides</p>
+                  <p className="mt-0.5 text-sm font-black text-[var(--rp-text)]">
+                    {Math.min(recommendationPreviewLimit, visibleRides.length)} of {visibleRides.length} {activeRecommendationLabel}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRecommendationSeeMore}
+                  className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_55%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_15%,transparent)] px-4 text-xs font-black text-[var(--rp-primary)] shadow-[0_12px_28px_rgba(0,0,0,0.24)] transition hover:border-[var(--rp-primary)] hover:bg-[color-mix(in_srgb,var(--rp-primary)_22%,transparent)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]"
+                >
+                  See more
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          ) : null}
           <RideTypeInfoStrip />
           <RideAppCommunityPanel />
         </section>
