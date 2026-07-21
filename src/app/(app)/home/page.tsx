@@ -1659,6 +1659,12 @@ function CategoryCompactResultCard({
   const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
   const openSeats = getOpenSeatCount(ride);
   const seatLabel = `${openSeats} ${openSeats === 1 ? "seat" : "seats"} left`;
+  const airportDirectionLabel =
+    ride.airportDirection === "to_airport"
+      ? "To airport"
+      : ride.airportDirection === "from_airport"
+        ? "From airport"
+        : null;
 
   return (
     <Link
@@ -1666,9 +1672,16 @@ function CategoryCompactResultCard({
       className="grid min-h-[82px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[color-mix(in_srgb,var(--rp-primary)_52%,var(--rp-border))] bg-[linear-gradient(145deg,rgba(7,16,24,0.98),rgba(18,31,44,0.92))] px-4 py-3 shadow-[0_16px_34px_rgba(0,0,0,0.28)] transition hover:border-[var(--rp-primary)] hover:shadow-[0_18px_40px_color-mix(in_srgb,var(--rp-primary)_14%,transparent)]"
     >
       <div className="min-w-0">
-        <h2 className="truncate text-[15px] font-black leading-5 text-[var(--rp-text)] min-[390px]:text-base">
-          {ride.fromLabel} <span className="text-[var(--rp-primary)]">{"\u2192"}</span> {ride.toLabel}
-        </h2>
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          {airportDirectionLabel ? (
+            <span className="inline-flex min-h-6 shrink-0 items-center rounded-full border border-[#f6d7ad]/38 bg-[#f6d7ad]/14 px-2.5 text-[11px] font-black text-[#ffd8a6]">
+              {airportDirectionLabel}
+            </span>
+          ) : null}
+          <h2 className="min-w-0 flex-1 truncate text-[15px] font-black leading-5 text-[var(--rp-text)] min-[390px]:text-base">
+            {ride.fromLabel} <span className="text-[var(--rp-primary)]">{"\u2192"}</span> {ride.toLabel}
+          </h2>
+        </div>
         <p className="mt-1 truncate text-xs font-bold leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-sm">
           {ride.dateLabel} - {ride.timeLabel}
         </p>
