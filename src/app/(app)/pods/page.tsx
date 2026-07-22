@@ -102,14 +102,14 @@ function GuestMyRideIntro() {
           </div>
         </div>
 
-        <div className="relative -mx-6 mt-3 min-h-44 flex-1 min-[390px]:-mx-8 min-[390px]:mt-5 min-[390px]:min-h-56">
+        <div className="relative -mx-6 mt-4 h-[clamp(250px,58vw,360px)] min-[390px]:-mx-8 min-[390px]:mt-5">
           <Image
             src="/images/ridepod/my-ride-guest-car-city.png"
             alt="RidePod city car illustration"
             fill
             priority
             sizes="(max-width: 768px) 92vw, 560px"
-            className="object-contain object-bottom opacity-95"
+            className="object-contain object-top opacity-95"
           />
           <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-[linear-gradient(180deg,#06101a,rgba(6,16,26,0))]" />
         </div>
