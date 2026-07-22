@@ -8148,7 +8148,7 @@ export function CreatePodChooseType() {
   }
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[430px] flex-col overflow-hidden md:min-h-[760px]">
+    <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[430px] flex-col overflow-hidden rounded-[34px] border border-[var(--rp-border)] bg-[var(--rp-bg)] shadow-[var(--rp-shadow-soft)] md:min-h-[760px]">
       {step === successStepIndex ? (
         <SuccessStep
           podType={podType}
