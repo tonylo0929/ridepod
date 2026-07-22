@@ -3822,7 +3822,7 @@ function SeatCounter({
 
   return (
     <section>
-      <h2 className="text-[17px] font-black leading-6 text-[var(--rp-text)]">Seats available</h2>
+      <h2 className="text-[17px] font-black leading-6 text-[var(--rp-text)]">Total rider</h2>
       <div className="mt-4 rounded-[22px] border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_40px_rgba(0,0,0,0.22)]">
         <div className="grid grid-cols-[52px_1fr_52px] items-center gap-3">
           <button
