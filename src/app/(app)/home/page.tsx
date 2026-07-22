@@ -786,65 +786,6 @@ function RideModeSwitch({
   );
 }
 
-function RideNetworkStatusPanel({
-  rides,
-  rideMode,
-}: {
-  rides: HomeRide[];
-  rideMode: Extract<RideModeFilter, "taxi" | "ride_app">;
-}) {
-  const openSeatCount = rides.reduce((total, ride) => total + availableSeats(ride), 0);
-  const quoteReadyCount = rides.filter((ride) => ride.quoteStatus === "quote_ready" && ride.currentUserQuoteAccepted !== true).length;
-  const airportRideCount = rides.filter((ride) => ride.rideKind === "airport" || Boolean(ride.airportDirection)).length;
-  const minimumReachedCount = rides.filter(minimumReached).length;
-  const headline =
-    rideMode === "ride_app"
-      ? "Ride app pods ready for self-settle planning"
-      : "Taxi pods forming around Hong Kong today";
-  const supportingCopy =
-    rideMode === "ride_app"
-      ? "Compare active pods with fare estimates, rider confirmations, and host booking details before you commit."
-      : "Scan open seats, quote-ready pods, and airport matches before picking the shared taxi that fits your route.";
-  const stats = [
-    { label: "Visible pods", value: rides.length },
-    { label: "Open seats", value: openSeatCount },
-    { label: "Quote ready", value: quoteReadyCount },
-    { label: "Airport rides", value: airportRideCount },
-  ];
-
-  return (
-    <section className="ridepod-status-dashboard mb-4 overflow-hidden rounded-[24px] border border-[color-mix(in_srgb,var(--rp-primary)_28%,transparent)] bg-[linear-gradient(145deg,rgba(255,255,255,0.075),rgba(255,255,255,0.025)),rgba(7,17,26,0.82)] p-4 text-left shadow-[0_18px_46px_rgba(0,0,0,0.28)]">
-      <div className="flex items-start gap-3">
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] border border-[color-mix(in_srgb,var(--rp-primary)_38%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_13%,transparent)] text-[var(--rp-primary)]">
-          <ShieldCheck className="h-5 w-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-black leading-5 text-[var(--rp-text)]">{headline}</p>
-          <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{supportingCopy}</p>
-        </div>
-      </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-2 min-[520px]:grid-cols-4">
-        {stats.map((stat) => (
-          <div key={stat.label} className="rounded-[16px] border border-[var(--rp-border)] bg-[rgba(255,255,255,0.045)] px-3 py-2">
-            <p className="text-[11px] font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">{stat.label}</p>
-            <p className="mt-1 text-xl font-black text-[var(--rp-text)]">{stat.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {minimumReachedCount > 0 ? (
-        <div className="mt-3 inline-flex max-w-full items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1.5 text-xs font-black text-emerald-200">
-          <CheckCircle2 className="h-4 w-4 shrink-0" />
-          <span className="min-w-0 truncate">
-            {minimumReachedCount} {minimumReachedCount === 1 ? "pod has" : "pods have"} enough riders to move forward
-          </span>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
 function getProfileInitial(name: string | null | undefined) {
   return name?.trim().charAt(0).toUpperCase() || "B";
 }
@@ -2888,11 +2829,6 @@ function HomePageContent() {
 
       {showRideRecommendations ? (
         <section ref={recommendationsRef} className="relative mx-auto mt-4 w-full max-w-[712px] scroll-mt-[88px] px-4 pb-4 sm:px-6 lg:px-4 min-[720px]:pb-64">
-          <RideNetworkStatusPanel
-            rides={visibleRides}
-            rideMode={rideModeFilter === "ride_app" ? "ride_app" : "taxi"}
-          />
-
           <div className="mb-4 flex items-center justify-between gap-3">
             {showScheduleRecommendationHeader ? (
               <div className="flex min-w-0 items-center gap-3">
