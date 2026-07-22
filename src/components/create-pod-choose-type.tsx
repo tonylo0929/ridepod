@@ -3888,7 +3888,7 @@ const rideCategories: Array<{
   {
     id: "ride_app",
     title: "Ride App",
-    modeLabel: "Ride app",
+    modeLabel: "Self-settle",
     statusLabel: "Ride app",
     priceLabel: defaultRideAppCreateFeeLabel,
     priceHelper: defaultRideAppHostCreateFeeCents > 0 ? "create fee" : "to create",
