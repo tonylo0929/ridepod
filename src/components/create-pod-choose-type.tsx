@@ -8318,7 +8318,7 @@ export function CreatePodChooseType() {
                   Trip Type
                 </h1>
                 <p className="mx-auto mt-3 max-w-[260px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]">
-                  You&apos;ll be the host and book the ride.
+                  You host and book the ride.
                 </p>
               </div>
 
