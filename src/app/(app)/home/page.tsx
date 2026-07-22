@@ -2643,7 +2643,7 @@ function HomePageContent() {
     seatFilter !== "any" ||
     ownershipFilter !== "all";
   const hasChosenRideMode = rideModeFilter === "taxi" || rideModeFilter === "ride_app";
-  const showRideOptions = hasChosenRideMode;
+  const showRideOptionsFrame = hasChosenRideMode;
   const showRideRecommendations = hasChosenRideMode && expandedCategoryId !== null;
   const activeCategoryTab =
     activeTab === "all" || activeTab === "airport" || activeTab === "one_off" || activeTab === "recurring" ? activeTab : null;
@@ -2785,29 +2785,35 @@ function HomePageContent() {
           />
         </div>
 
-        {showRideOptions ? (
         <div ref={rideTypesRef} className="relative z-10 mt-6 scroll-mt-[88px] px-0.5">
           <div
             data-testid="ride-category-board"
             onClick={handleCategoryBoardClick}
             className={cn(
-              "relative mx-auto w-full max-w-[704px] rounded-[31px] border-[3px] px-[clamp(10px,2.2vw,14px)] pb-[clamp(10px,2.2vw,14px)] pt-[clamp(24px,4.6vw,31px)] shadow-[0_22px_58px_rgba(0,0,0,0.32)] transition-colors duration-200",
-              optionsFrameIsRideApp
-                ? "border-sky-200 bg-[linear-gradient(145deg,rgba(6,24,42,0.42),rgba(15,91,166,0.16))] shadow-[0_0_0_2px_rgba(56,189,248,0.22),0_0_52px_rgba(56,189,248,0.32)]"
-                : "border-[color-mix(in_srgb,var(--rp-primary)_100%,white_8%)] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-primary)_14%,transparent),rgba(4,16,26,0.38))] shadow-[0_0_0_2px_color-mix(in_srgb,var(--rp-primary)_30%,transparent),0_0_52px_color-mix(in_srgb,var(--rp-primary)_38%,transparent)]",
+              "relative mx-auto w-full max-w-[704px] rounded-[31px] px-[clamp(10px,2.2vw,14px)] pb-[clamp(10px,2.2vw,14px)] transition-colors duration-200",
+              showRideOptionsFrame
+                ? cn(
+                    "border-[3px] pt-[clamp(24px,4.6vw,31px)] shadow-[0_22px_58px_rgba(0,0,0,0.32)]",
+                    optionsFrameIsRideApp
+                      ? "border-sky-200 bg-[linear-gradient(145deg,rgba(6,24,42,0.42),rgba(15,91,166,0.16))] shadow-[0_0_0_2px_rgba(56,189,248,0.22),0_0_52px_rgba(56,189,248,0.32)]"
+                      : "border-[color-mix(in_srgb,var(--rp-primary)_100%,white_8%)] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-primary)_14%,transparent),rgba(4,16,26,0.38))] shadow-[0_0_0_2px_color-mix(in_srgb,var(--rp-primary)_30%,transparent),0_0_52px_color-mix(in_srgb,var(--rp-primary)_38%,transparent)]",
+                  )
+                : "pt-0",
             )}
           >
-            <span
-              className={cn(
-                "absolute left-[clamp(14px,3.3vw,24px)] top-0 z-20 inline-flex min-h-8 -translate-y-1/2 items-center gap-1.5 rounded-full border px-3 text-xs font-black shadow-[0_10px_22px_rgba(0,0,0,0.24)]",
-                optionsFrameIsRideApp
-                  ? "border-sky-200/55 bg-[linear-gradient(180deg,#44b7ff,#1672d8)] text-white"
-                  : "border-[color-mix(in_srgb,var(--rp-primary)_86%,white_14%)] bg-[linear-gradient(180deg,#ffe178,#ffc844)] text-[#07111a]",
-              )}
-            >
-              <OptionsFrameIcon className="h-4 w-4" />
-              {optionsFrameLabel}
-            </span>
+            {showRideOptionsFrame ? (
+              <span
+                className={cn(
+                  "absolute left-[clamp(14px,3.3vw,24px)] top-0 z-20 inline-flex min-h-8 -translate-y-1/2 items-center gap-1.5 rounded-full border px-3 text-xs font-black shadow-[0_10px_22px_rgba(0,0,0,0.24)]",
+                  optionsFrameIsRideApp
+                    ? "border-sky-200/55 bg-[linear-gradient(180deg,#44b7ff,#1672d8)] text-white"
+                    : "border-[color-mix(in_srgb,var(--rp-primary)_86%,white_14%)] bg-[linear-gradient(180deg,#ffe178,#ffc844)] text-[#07111a]",
+                )}
+              >
+                <OptionsFrameIcon className="h-4 w-4" />
+                {optionsFrameLabel}
+              </span>
+            ) : null}
             <div
               className="relative isolate mx-auto aspect-[1.6/1] w-full overflow-visible pb-1"
             >
@@ -2840,7 +2846,6 @@ function HomePageContent() {
             </div>
           </div>
         </div>
-        ) : null}
       </section>
 
       {showRideRecommendations ? (
