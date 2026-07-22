@@ -897,8 +897,8 @@ function defaultLegForDay({
     dayOfWeek,
     legType,
     departureTime: existing?.departureTime ?? (isReturn ? "18:00" : "08:00"),
-    originLabel: existing?.originLabel || (isReturn ? baseDestination : baseOrigin),
-    destinationLabel: existing?.destinationLabel || (isReturn ? baseOrigin : baseDestination),
+    originLabel: isReturn ? baseDestination : baseOrigin,
+    destinationLabel: isReturn ? baseOrigin : baseDestination,
   };
 }
 
@@ -3515,12 +3515,14 @@ function RecurringLegEditor({
           icon={<MapPin className="h-4 w-4" />}
           label="From"
           value={leg.originLabel}
+          readOnly
           onChange={(value) => onChange({ originLabel: value })}
         />
         <RecurringRideTimeRow
           icon={<ArrowRight className="h-4 w-4" />}
           label="To"
           value={leg.destinationLabel}
+          readOnly
           onChange={(value) => onChange({ destinationLabel: value })}
         />
       </div>
@@ -3534,6 +3536,7 @@ function RecurringRideTimeRow({
   value,
   displayValue,
   type = "text",
+  readOnly = false,
   onChange,
 }: {
   icon: ReactNode;
@@ -3541,6 +3544,7 @@ function RecurringRideTimeRow({
   value: string;
   displayValue?: string;
   type?: "text" | "time";
+  readOnly?: boolean;
   onChange: (value: string) => void;
 }) {
   const visibleValue = type === "time" ? displayValue || formatLocalTimeLabel(value) : value;
@@ -3563,6 +3567,13 @@ function RecurringRideTimeRow({
           <span aria-hidden="true" className="block truncate px-1 text-base font-black leading-9 text-[var(--rp-text)]">
             {visibleValue}
           </span>
+        </span>
+      ) : readOnly ? (
+        <span
+          aria-label={`${label}: ${visibleValue}`}
+          className="block h-9 min-w-0 truncate rounded-lg border border-transparent px-1 text-right text-base font-black leading-9 text-[var(--rp-text)]"
+        >
+          {visibleValue}
         </span>
       ) : (
         <input
