@@ -1200,14 +1200,11 @@ function RideBoardCategoryCard({
   priority?: boolean;
 }) {
   const isGold = category.tone === "gold";
+  const isScheduleLater = category.id === "schedule-later";
   const showWholeArtwork = category.id === "today-requests" || category.id === "schedule-later";
-  const hideInactiveScheduleFrame = category.id === "schedule-later" && !active;
-  const cardAspectClass =
-    category.id === "today-requests"
-      ? "aspect-[1792/1092]"
-      : category.id === "schedule-later"
-        ? "aspect-[1983/793]"
-        : "aspect-[430/220] min-[720px]:aspect-[680/245]";
+  const cardAspectClass = showWholeArtwork
+    ? "aspect-[1792/1092]"
+    : "aspect-[430/220] min-[720px]:aspect-[680/245]";
 
   return (
     <button
@@ -1222,7 +1219,10 @@ function RideBoardCategoryCard({
         "rounded-[18px]",
         active
           ? cn(
-              "z-10 brightness-[1.06] shadow-[0_26px_60px_rgba(0,0,0,0.44),0_0_42px_rgba(101,230,208,0.3)] after:border-transparent",
+              "z-10 brightness-[1.06]",
+              isScheduleLater
+                ? "shadow-[0_26px_60px_rgba(0,0,0,0.44),0_0_0_1px_rgba(242,193,91,0.35),0_0_42px_rgba(242,193,91,0.32)] after:border-2 after:border-[var(--rp-primary)]"
+                : "shadow-[0_26px_60px_rgba(0,0,0,0.44),0_0_42px_rgba(101,230,208,0.3)] after:border-transparent",
               showWholeArtwork ? "scale-100" : "-translate-y-0.5 scale-[1.015]",
             )
           : cn(
@@ -1241,9 +1241,7 @@ function RideBoardCategoryCard({
         style={{ objectPosition: category.objectPosition }}
         className={cn(
           "absolute inset-0 h-full w-full transition duration-500",
-          showWholeArtwork
-            ? cn("object-cover", hideInactiveScheduleFrame ? "scale-[1.04]" : "scale-100")
-            : "object-cover",
+          showWholeArtwork ? "object-cover scale-100" : "object-cover",
           showWholeArtwork ? "" : active ? "scale-[1.015]" : "scale-100 group-hover:scale-[1.02]",
         )}
       />
