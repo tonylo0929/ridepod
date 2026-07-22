@@ -1666,13 +1666,11 @@ function CategoryResultsScreen({
           ) : (
             <CategoryLowResultsPanel
               categoryLabel={categoryRecommendationLabels[config.tab]}
-              onAdjustFilters={() => onFilterChange(config.filters[0]?.id ?? "recommended")}
             />
           )}
           {isScheduleScreen && rides.length === 1 ? (
             <CategoryLowResultsPanel
               categoryLabel={categoryRecommendationLabels[config.tab]}
-              onAdjustFilters={() => onFilterChange(config.filters[0]?.id ?? "recommended")}
             />
           ) : null}
         </div>
@@ -1845,28 +1843,13 @@ function ScheduleRideParticipantStack({
   );
 }
 
-function CategoryLowResultsPanel({ categoryLabel, onAdjustFilters }: { categoryLabel: string; onAdjustFilters: () => void }) {
+function CategoryLowResultsPanel({ categoryLabel }: { categoryLabel: string }) {
   return (
     <div className="rounded-[18px] border border-[var(--rp-border)] bg-[linear-gradient(145deg,rgba(18,31,44,0.9),rgba(9,20,31,0.86))] p-4 shadow-[0_16px_34px_rgba(0,0,0,0.22)]">
       <p className="text-sm font-black text-[var(--rp-text)]">No more {categoryLabel} rides match this filter.</p>
       <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
-        Try another filter or start a new ride for your route.
+        Try posting a request or create your own ride.
       </p>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={onAdjustFilters}
-          className="inline-flex min-h-10 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 text-xs font-black text-[var(--rp-primary)]"
-        >
-          Adjust filters
-        </button>
-        <Link
-          href="/create"
-          className="inline-flex min-h-10 items-center justify-center rounded-full bg-[linear-gradient(180deg,#ffdc6b,#f2ae35)] px-3 text-center text-xs font-black text-[#071018]"
-        >
-          Create a ride
-        </Link>
-      </div>
     </div>
   );
 }
