@@ -3784,8 +3784,8 @@ function EstimatedCostStep({
           </p>
         </section>
 
-        <section className="mt-7 grid gap-5 rounded-[26px] border border-[#f6c453]/45 bg-[linear-gradient(180deg,rgba(246,196,83,0.14),rgba(15,27,39,0.74))] p-4 shadow-[0_22px_54px_rgba(0,0,0,0.32)]">
-          <div className="flex items-center gap-3">
+        <section className="mt-7 grid justify-items-center gap-5 rounded-[26px] border border-[#f6c453]/45 bg-[linear-gradient(180deg,rgba(246,196,83,0.14),rgba(15,27,39,0.74))] p-4 shadow-[0_22px_54px_rgba(0,0,0,0.32)]">
+          <div className="flex items-center justify-center gap-3 text-center">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#f6c453]/35 bg-[#f6c453]/16 text-[#f6c453]">
               {isRideAppSelfSettle ? <Smartphone className="h-5 w-5" /> : <CarFront className="h-5 w-5" />}
             </span>
@@ -3799,8 +3799,8 @@ function EstimatedCostStep({
             </div>
           </div>
 
-          <label className="grid gap-2 text-left">
-            <span className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
+          <label className="grid w-full justify-items-center gap-2 text-center">
+            <span className="text-center text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
               {isRideAppSelfSettle ? `Total estimated ${rideAppProviderLabel} fare` : "Total estimated cost"}
             </span>
             <div className="inline-flex min-h-14 w-fit max-w-full items-center rounded-[18px] border border-[var(--rp-border)] bg-[rgba(5,12,20,0.58)] px-4 focus-within:border-[var(--rp-primary)]">
