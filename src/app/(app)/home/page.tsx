@@ -2829,7 +2829,7 @@ function HomePageContent() {
         </div>
         <div className="relative z-10 mx-auto mt-3 w-full max-w-[680px] px-4 min-[420px]:px-8">
           <p className="mb-2 text-center text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-muted-strong)]">
-            Choose your mode
+            Choose your mode first
           </p>
           <RideModeSwitch
             value={selectedRideMode}
