@@ -2118,9 +2118,13 @@ export default function RideBoardPage() {
     const searchParams = new URLSearchParams(window.location.search);
     if (searchParams.get("post") !== "request") return;
 
-    setPostFormCategory(defaultFormValues.category);
-    setShowPostForm(true);
-    router.replace("/today-rides", { scroll: false });
+    const openPostRequest = window.setTimeout(() => {
+      setPostFormCategory(defaultFormValues.category);
+      setShowPostForm(true);
+      router.replace("/today-rides", { scroll: false });
+    }, 0);
+
+    return () => window.clearTimeout(openPostRequest);
   }, [router]);
 
   const showToast = (message: string) => {

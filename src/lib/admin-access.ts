@@ -6,7 +6,7 @@ type AdminCheckUser = {
   user_metadata?: Record<string, unknown>;
 };
 
-const adminAccountNames = new Set(["admin", "trial_2"]);
+const adminAccountNames = new Set(["admin"]);
 const adminEmails = new Set(["admin@ridepod.local"]);
 
 function normalize(value: string | null | undefined) {
