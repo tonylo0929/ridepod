@@ -1120,57 +1120,16 @@ function getInterestedLabel(count: number) {
   return `${count} interested`;
 }
 
-const rideRequestSeatPrices: Record<string, number> = {
-  "board-causeway-central": 45,
-  "board-tst-sha-tin-today": 48,
-  "board-quarry-bay-tko-today": 42,
-  "board-tko-central": 34,
-  "board-tuen-mun-central-commute": 38,
-  "board-yuen-long-kowloon-bay-commute": 36,
-  "board-asiaworld-mongkok": 55,
-  "board-hku-concert-central": 25,
-  "board-stadium-tko-events": 30,
-  "board-lkf-taipo": 48,
-  "board-wan-chai-tuen-mun-late": 55,
-  "board-mong-kok-tko-late": 50,
-  "board-yuen-long-ikea": 28,
-  "board-shatin-outlet": 26,
-  "board-central-repulse-bay": 30,
-};
-
-function getRideRequestSeatPrice(request: RideRequest) {
-  if (rideRequestSeatPrices[request.id]) return rideRequestSeatPrices[request.id];
-
-  const boardCategory = getRequestBoardCategory(request);
-  if (boardCategory === "events") return 55;
-  if (boardCategory === "late_night") return 48;
-  if (boardCategory === "commute") return 38;
-  if (boardCategory === "others") return 30;
-  return 45;
+function requestTagLabel(value: string) {
+  return `#${value.replace(/[^a-z0-9]+/gi, "")}`;
 }
 
-function getRideRequestSeatLabel(request: RideRequest) {
-  const availableSeats = Math.max(request.maxPeople - request.interestedCount, 1);
-  return `${availableSeats} ${availableSeats === 1 ? "seat" : "seats"}`;
-}
-
-function getRideRequestPeople(request: RideRequest) {
-  const fallbackInitials = ["A", "K", "M", "J"];
-  const hostInitial =
-    request.host.name
-      .split(/\s+/)
-      .map((part) => part[0])
-      .filter(Boolean)
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "RP";
-  const avatarCount = Math.max(1, Math.min(3, request.interestedCount));
-  const initials = Array.from({ length: avatarCount }, (_, index) => (index === 0 ? hostInitial : fallbackInitials[index] ?? "R"));
-
-  return {
-    initials,
-    extraCount: Math.max(request.interestedCount - avatarCount, 0),
-  };
+function getRideRequestTags(request: RideRequest) {
+  return [
+    requestTagLabel(request.from),
+    requestTagLabel(request.to),
+    request.sameDay ? "#Today" : requestTagLabel(request.detailLine.replace(/^~/, "")),
+  ].filter((tag, index, tags) => tag.length > 1 && tags.indexOf(tag) === index);
 }
 
 function getActionState(request: RideRequest) {
@@ -1659,8 +1618,9 @@ function RideBoardCategoryResultRow({
   onOpen: (id: string) => void;
 }) {
   const styles = rideBoardAccentStyles[accent];
-  const people = getRideRequestPeople(request);
-  const seatPrice = getRideRequestSeatPrice(request);
+  const status = statusCopy[request.status];
+  const tags = getRideRequestTags(request);
+  const interestedProgressDegrees = Math.max(34, Math.min(340, Math.round((request.interestedCount / request.maxPeople) * 360)));
 
   const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -1676,45 +1636,55 @@ function RideBoardCategoryResultRow({
       onClick={() => onOpen(request.id)}
       onKeyDown={handleCardKeyDown}
       className={cn(
-        "group grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[22px] border bg-[linear-gradient(145deg,rgba(16,30,42,0.96),rgba(7,17,26,0.98))] px-4 py-3.5 text-left shadow-[0_16px_38px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.04)] outline-none transition hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#65E6D0]",
+        "group grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border bg-[linear-gradient(145deg,rgba(8,27,39,0.94),rgba(5,16,25,0.98))] px-3 py-3 text-left shadow-[0_14px_34px_rgba(0,0,0,0.24)] outline-none transition hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[#65E6D0]",
         styles.rowBorder,
       )}
     >
       <div className="min-w-0">
-        <h2 className="text-base font-black leading-5 text-[var(--rp-text)] min-[430px]:text-lg">
-          {request.from} <span className={styles.priceText}>-&gt;</span> {request.to}
-        </h2>
-        <p className="mt-1 truncate text-[15px] font-semibold leading-5 text-white/68">
-          {request.dateLabel}, {request.timeLabel}
-        </p>
-        <p className={cn("mt-1 text-[15px] font-bold leading-5", styles.priceText)}>HK${seatPrice} / seat</p>
-      </div>
-
-      <div className="grid min-w-[136px] shrink-0 grid-cols-[1fr_auto] items-center gap-2 border-l border-white/10 pl-3 max-[380px]:min-w-[112px] max-[380px]:pl-2">
-        <div className="grid justify-items-end gap-2">
-          <span className="inline-flex min-h-9 items-center rounded-full border border-[var(--rp-primary)]/32 bg-[var(--rp-primary)]/13 px-3 text-sm font-black text-[var(--rp-primary)]">
-            {getRideRequestSeatLabel(request)}
+        <div className="flex min-w-0 items-start gap-2.5">
+          <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-full border text-xs font-black", styles.avatarRing)}>
+            {request.host.name.charAt(0).toUpperCase()}
           </span>
-          <div className="flex items-center justify-end">
-            {people.initials.map((initial, index) => (
-              <span
-                key={`${request.id}-${initial}-${index}`}
-                className={cn(
-                  "-ml-1.5 grid h-8 w-8 place-items-center rounded-full border bg-[#0d1822] text-[10px] font-black first:ml-0",
-                  styles.avatarRing,
-                )}
-              >
-                {initial}
+          <div className="min-w-0">
+            <h2 className="truncate text-[15px] font-black leading-5 text-[var(--rp-text)]">
+              {request.from} <span className={styles.priceText}>-&gt;</span> {request.to}
+            </h2>
+            <p className="truncate text-xs font-bold leading-4 text-[var(--rp-muted-strong)]">
+              {request.dateLabel}, {request.timeLabel} - {request.detailLine.replace(/^~/, "")}
+            </p>
+            <div className="mt-2 flex min-w-0 items-center gap-2">
+              <span className={cn("inline-flex min-h-6 items-center gap-1 rounded-full border px-2 text-[11px] font-black", status.className)}>
+                <Clock3 className="h-3 w-3" />
+                {status.label}
               </span>
-            ))}
-            {people.extraCount > 0 ? (
-              <span className="-ml-1.5 grid h-8 min-w-8 place-items-center rounded-full border border-white/10 bg-black/30 px-2 text-[11px] font-black text-white/82">
-                +{people.extraCount}
-              </span>
-            ) : null}
+              <span className="truncate text-xs font-bold text-[var(--rp-muted-strong)]">Host: {request.host.name}</span>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {tags.map((tag) => (
+                <span key={`${request.id}-${tag}`} className={cn("inline-flex min-h-6 items-center rounded-full border px-2 text-[10px] font-black", styles.avatarRing)}>
+                  {tag}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
-        <ChevronRight className="h-5 w-5 text-white/70 transition group-hover:translate-x-0.5 group-hover:text-white" />
+      </div>
+
+      <div className="grid shrink-0 justify-items-end gap-2 border-l border-white/10 pl-3">
+        <div className="grid justify-items-center gap-1">
+          <div
+            className="grid h-12 w-12 place-items-center rounded-full p-[3px] shadow-[0_0_18px_rgba(52,233,206,0.14)]"
+            style={{
+              background: `conic-gradient(#34e9ce 0deg ${interestedProgressDegrees}deg, rgba(52,233,206,0.18) ${interestedProgressDegrees}deg 360deg)`,
+            }}
+          >
+            <div className="grid h-full w-full place-items-center rounded-full bg-[#06141f]">
+              <span className="text-lg font-black leading-none text-[#34e9ce]">{request.interestedCount}</span>
+            </div>
+          </div>
+          <p className="text-[10px] font-bold leading-none text-[var(--rp-muted-strong)]">interested</p>
+        </div>
+        <ChevronRight className="h-4 w-4 text-[#98FBCB] transition group-hover:translate-x-0.5" />
       </div>
     </article>
   );
