@@ -1357,7 +1357,7 @@ function RideBoardPreviewPostCard({
             {request.host.name.charAt(0).toUpperCase()}
           </span>
           <div className="min-w-0">
-            <h3 className="truncate text-base font-black leading-5 text-[var(--rp-text)]">
+            <h3 className="text-[13px] font-black leading-4 text-[var(--rp-text)] min-[390px]:text-sm">
               {request.from} <span className="text-[#34e9ce]">-&gt;</span> {request.to}
             </h3>
             <p className="mt-0.5 truncate text-xs font-bold leading-4 text-[var(--rp-muted-strong)]">
@@ -1537,7 +1537,7 @@ function RideBoardCategoryResultRow({
       )}
     >
       <div className="min-w-0">
-        <h2 className="truncate text-[20px] font-black leading-6 text-[var(--rp-text)] min-[430px]:text-[21px]">
+        <h2 className="text-base font-black leading-5 text-[var(--rp-text)] min-[430px]:text-lg">
           {request.from} <span className={styles.priceText}>-&gt;</span> {request.to}
         </h2>
         <p className="mt-1 truncate text-[15px] font-semibold leading-5 text-white/68">
