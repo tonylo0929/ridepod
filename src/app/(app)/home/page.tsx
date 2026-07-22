@@ -1728,8 +1728,13 @@ function CategoryLowResultsPanel({ categoryLabel, onAdjustFilters }: { categoryL
   );
 }
 
-function RideAppCommunityPanel() {
-  const [offerOpen, setOfferOpen] = useState(true);
+function RideAppCommunityPanel({
+  offerOpen,
+  onOfferOpenChange,
+}: {
+  offerOpen: boolean;
+  onOfferOpenChange: (open: boolean) => void;
+}) {
   const [claimModalOpen, setClaimModalOpen] = useState(false);
   const rideAppWaiver = useRideAppWaiverState();
   const waiverClaimed = rideAppWaiver.claimed && !rideAppWaiver.used;
@@ -1753,7 +1758,7 @@ function RideAppCommunityPanel() {
             <button
               type="button"
               aria-label="Close launch offer"
-              onClick={() => setOfferOpen(false)}
+              onClick={() => onOfferOpenChange(false)}
               className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full border border-cyan-900/10 bg-white/72 text-cyan-950 shadow-[0_10px_22px_rgba(8,47,73,0.14)] transition hover:bg-white"
             >
               <X className="h-5 w-5" />
@@ -1771,7 +1776,7 @@ function RideAppCommunityPanel() {
               <button
                 type="button"
                 onClick={() => {
-                  setOfferOpen(false);
+                  onOfferOpenChange(false);
                   setClaimModalOpen(true);
                 }}
                 disabled={waiverClaimed || waiverUsed}
@@ -2123,6 +2128,7 @@ function HomePageContent() {
   const [seatFilter, setSeatFilter] = useState<SeatFilter>("any");
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [rideAppLaunchOfferOpen, setRideAppLaunchOfferOpen] = useState(true);
   const [rideTypesVisible, setRideTypesVisible] = useState(true);
   const [expandedCategoryId, setExpandedCategoryId] = useState<HomeCategoryCardId | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<SelectedCategory | null>(null);
@@ -2930,7 +2936,10 @@ function HomePageContent() {
             </div>
           ) : null}
           <RideTypeInfoStrip />
-          <RideAppCommunityPanel />
+          <RideAppCommunityPanel
+            offerOpen={rideAppLaunchOfferOpen}
+            onOfferOpenChange={setRideAppLaunchOfferOpen}
+          />
         </section>
       ) : null}
 
