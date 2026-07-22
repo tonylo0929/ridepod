@@ -2379,15 +2379,15 @@ function AirportLuggageStepper({
   return (
     <div className="min-w-0 rounded-[18px] border border-cyan-300/18 bg-[rgba(5,12,20,0.42)] p-3">
       <p className="flex min-h-8 items-start text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">{label}</p>
-      <div className="mt-3 grid grid-cols-[40px_minmax(32px,1fr)_40px] items-center justify-items-center gap-2">
+      <div className="mt-3 grid grid-cols-[34px_minmax(28px,1fr)_34px] items-center justify-items-center gap-1.5">
         <button
           type="button"
           aria-label={`Decrease ${label}`}
           disabled={value <= 0}
           onClick={() => onChange(Math.max(0, value - 1))}
-          className="grid h-10 w-10 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/8 text-cyan-100 transition hover:bg-cyan-300/14 disabled:opacity-35"
+          className="grid h-[34px] w-[34px] place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/8 text-cyan-100 transition hover:bg-cyan-300/14 disabled:opacity-35"
         >
-          <Minus className="h-4 w-4" />
+          <Minus className="h-3.5 w-3.5" />
         </button>
         <span className="min-w-8 text-center text-3xl font-black leading-none text-[var(--rp-text)] tabular-nums">{value}</span>
         <button
@@ -2395,9 +2395,9 @@ function AirportLuggageStepper({
           aria-label={`Increase ${label}`}
           disabled={value >= 8}
           onClick={() => onChange(Math.min(8, value + 1))}
-          className="grid h-10 w-10 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/8 text-cyan-100 transition hover:bg-cyan-300/14 disabled:opacity-35"
+          className="grid h-[34px] w-[34px] place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/8 text-cyan-100 transition hover:bg-cyan-300/14 disabled:opacity-35"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
     </div>
