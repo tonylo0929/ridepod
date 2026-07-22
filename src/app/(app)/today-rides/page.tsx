@@ -403,11 +403,11 @@ const rideBoardCategories: Array<{
     id: "schedule-later",
     label: "Schedule later",
     subtitle: "Plan tomorrow, commute, events, or flexible routes.",
-    image: "/images/ride-board/commute-card.webp",
+    image: "/images/ride-board/schedule-later-card.png",
     filter: "schedule_later",
     eyebrow: "Plan ahead",
     ctaLabel: "Browse Later",
-    objectPosition: "center bottom",
+    objectPosition: "center center",
   },
 ];
 
@@ -1225,7 +1225,13 @@ function RideBoardCategoryCard({
   priority?: boolean;
 }) {
   const isGold = category.tone === "gold";
-  const showWholeArtwork = category.id === "today-requests";
+  const showWholeArtwork = category.id === "today-requests" || category.id === "schedule-later";
+  const cardAspectClass =
+    category.id === "today-requests"
+      ? "aspect-[1792/1092]"
+      : category.id === "schedule-later"
+        ? "aspect-[1983/793]"
+        : "aspect-[430/220] min-[720px]:aspect-[680/245]";
 
   return (
     <button
@@ -1236,7 +1242,7 @@ function RideBoardCategoryCard({
       className={cn(
         "group relative block w-full overflow-hidden border bg-[#030b12] text-left outline-none ring-1 ring-inset transition-[transform,box-shadow,border-color,filter] duration-300 ease-out focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
         showWholeArtwork ? "" : "hover:-translate-y-0.5 hover:scale-[1.01]",
-        showWholeArtwork ? "aspect-[1792/1092]" : "aspect-[430/220] min-[720px]:aspect-[680/245]",
+        cardAspectClass,
         "rounded-[18px]",
         active
           ? cn(
