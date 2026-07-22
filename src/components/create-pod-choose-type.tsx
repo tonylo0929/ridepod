@@ -495,7 +495,7 @@ const whoCanJoinOptions: Array<{
     id: "women_only",
     title: "Women-only pod",
     description: "Only eligible women can join this pod, including the host.",
-    helper: "This controls riders joining the pod. It does not guarantee a female taxi driver.",
+    helper: "Rider eligibility only.",
   },
   {
     id: "mixed",
@@ -6078,7 +6078,7 @@ function TaxiReviewSummaryCard({
         </p>
         {genderMode === "women_only" ? (
           <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted)]">
-            This controls riders joining the pod. It does not guarantee a female taxi driver.
+            Rider eligibility only.
           </p>
         ) : null}
       </section>
@@ -7052,7 +7052,7 @@ function RecurringPodReview({
             </p>
             {genderMode === "women_only" ? (
               <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                This controls riders joining the pod. It does not guarantee a female taxi driver.
+                Rider eligibility only.
               </p>
             ) : null}
           </div>
