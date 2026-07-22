@@ -2325,44 +2325,43 @@ function AirportDirectionCard({
   onSelect: () => void;
 }) {
   const isToAirport = direction === "to_airport";
+  const imageSrc = isToAirport
+    ? "/images/ridepod/create/to-airport-direction-card.png"
+    : "/images/ridepod/create/from-airport-direction-card.png";
+  const label = isToAirport ? "To airport" : "From airport";
+  const helper = isToAirport ? "Ride to the airport before your flight." : "Ride from the airport after landing.";
 
   return (
     <button
       type="button"
       role="radio"
       aria-checked={selected}
+      aria-label={`${label}. ${helper}`}
       onClick={onSelect}
       className={cn(
-        "grid min-h-[146px] gap-3 rounded-[20px] border p-4 text-left transition",
+        "group relative block aspect-[894/701] w-full overflow-hidden rounded-[24px] border bg-[#06111b] p-0 text-left shadow-[0_18px_44px_rgba(0,0,0,0.32)] transition",
         selected
-          ? "border-cyan-200 bg-[linear-gradient(135deg,rgba(34,211,238,0.16),rgba(124,58,237,0.13),rgba(8,17,29,0.86))] shadow-[0_0_30px_rgba(34,211,238,0.16)]"
-          : "border-cyan-300/18 bg-[rgba(15,27,39,0.74)] hover:border-cyan-300/45",
+          ? "border-cyan-200 shadow-[0_0_0_2px_rgba(103,232,249,0.22),0_20px_54px_rgba(34,211,238,0.22)]"
+          : "border-cyan-300/18 hover:border-cyan-300/45 hover:brightness-105",
       )}
     >
-      <span className="flex items-start justify-between gap-3">
-        <span className="grid h-12 w-12 place-items-center rounded-[16px] border border-cyan-300/24 bg-cyan-300/10 text-cyan-100">
-          <Plane className={cn("h-7 w-7", isToAirport ? "-rotate-12" : "rotate-[18deg]")} />
-        </span>
-        <span
-          className={cn(
-            "grid h-7 w-7 shrink-0 place-items-center rounded-full border transition",
-            selected ? "border-cyan-200 bg-cyan-300 text-[#06111d]" : "border-[var(--rp-muted)]",
-          )}
-        >
-          {selected ? <Check className="h-4 w-4" /> : null}
-        </span>
+      <Image
+        src={imageSrc}
+        alt=""
+        fill
+        quality={92}
+        sizes="(max-width: 720px) calc(100vw - 40px), 388px"
+        className="object-cover"
+      />
+      <span
+        className={cn(
+          "absolute left-3 top-3 z-10 grid h-8 w-8 shrink-0 place-items-center rounded-full border bg-[#06111d]/82 text-cyan-100 shadow-[0_10px_22px_rgba(0,0,0,0.28)] backdrop-blur-sm transition",
+          selected ? "border-cyan-200 bg-cyan-300 text-[#06111d]" : "border-cyan-200/32 group-hover:border-cyan-200/65",
+        )}
+      >
+        {selected ? <Check className="h-4 w-4" /> : null}
       </span>
-      <span>
-        <span className="block text-lg font-black leading-6 text-[var(--rp-primary)]">
-          {isToAirport ? "To airport" : "From airport"}
-        </span>
-        <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
-          {isToAirport ? "Ride to the airport before your flight." : "Ride from the airport after landing."}
-        </span>
-      </span>
-      <span className="rounded-[14px] border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black text-cyan-100">
-        {isToAirport ? "Central -> Hong Kong Airport" : "Hong Kong Airport -> Mong Kok"}
-      </span>
+      <span className="sr-only">{label}</span>
     </button>
   );
 }
