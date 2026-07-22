@@ -2955,6 +2955,10 @@ function HomePageContent() {
           </div>
         </div>
         ) : null}
+
+        <div className="relative z-10 mx-auto mt-3 w-full max-w-[704px] px-4 sm:px-6 lg:px-0">
+          <RideTypeInfoStrip />
+        </div>
       </section>
 
       {showRideRecommendations ? (
@@ -3021,7 +3025,6 @@ function HomePageContent() {
               </button>
             </div>
           ) : null}
-          <RideTypeInfoStrip />
         </section>
       ) : null}
 
