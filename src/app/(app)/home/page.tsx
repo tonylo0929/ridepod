@@ -1245,7 +1245,7 @@ function HomeBottomActionCards() {
         className="group relative aspect-[4/5] overflow-hidden rounded-[22px] border border-blue-500/80 bg-[#03101f] shadow-[0_18px_44px_rgba(37,99,235,0.2)] transition hover:border-blue-300 hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300"
       >
         <Image
-          src="/images/ride-board/post-request-option1-20260722.png"
+          src="/images/ride-board/rideboard-cta-request-illustration.png"
           alt=""
           fill
           quality={92}
