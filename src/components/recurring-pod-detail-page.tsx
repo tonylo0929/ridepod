@@ -526,7 +526,7 @@ function RecurringPodSummaryHero({
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),transparent_38%)]" />
       <div className="relative grid grid-cols-[64px_minmax(0,1fr)_auto] gap-3">
         <span
-          className="grid h-16 w-16 place-items-center overflow-hidden rounded-full border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/8 bg-cover bg-center text-xl font-black text-[var(--rp-primary)] shadow-[0_14px_32px_rgba(0,0,0,0.28)]"
+          className="grid h-16 w-16 place-items-center overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_68%,white_18%)] bg-[linear-gradient(180deg,#ffe59a,#f2c15b)] bg-cover bg-center text-xl font-black text-[#07111a] shadow-[0_14px_32px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.55)]"
           style={!hostAvatarPreference && hostProfileImageUrl ? { backgroundImage: `url(${hostProfileImageUrl})` } : undefined}
           aria-label={`${hostAvatarDisplayName} profile`}
         >

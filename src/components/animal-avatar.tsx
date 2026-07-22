@@ -225,7 +225,7 @@ export function RidePodAvatar({
   return (
     <span
       className={cn(
-        "grid place-items-center rounded-full bg-[var(--rp-gradient-primary)] text-center font-black text-[var(--rp-primary-text)]",
+        "grid place-items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_68%,white_18%)] bg-[linear-gradient(180deg,#ffe59a,#f2c15b)] text-center font-black text-[#07111a] shadow-[0_10px_24px_rgba(242,193,91,0.24),inset_0_1px_0_rgba(255,255,255,0.55)]",
         className,
       )}
     >
