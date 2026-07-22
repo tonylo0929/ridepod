@@ -730,7 +730,7 @@ function RideModeSwitch({
   value,
   onChange,
 }: {
-  value: Extract<RideModeFilter, "taxi" | "ride_app">;
+  value: Extract<RideModeFilter, "taxi" | "ride_app"> | null;
   onChange: (value: Extract<RideModeFilter, "taxi" | "ride_app">) => void;
 }) {
   const options: Array<{
@@ -775,7 +775,11 @@ function RideModeSwitch({
           aria-hidden="true"
           className={cn(
             "pointer-events-none absolute left-1/2 top-1/2 z-10 grid h-8 w-8 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border bg-[#07111a]/95 text-xs font-black tracking-[0.12em] shadow-[0_8px_18px_rgba(0,0,0,0.28)]",
-            value === "ride_app" ? "border-blue-300/40 text-blue-200" : "border-amber-300/45 text-amber-200",
+            value === "ride_app"
+              ? "border-blue-300/40 text-blue-200"
+              : value === "taxi"
+                ? "border-amber-300/45 text-amber-200"
+                : "border-white/18 text-white/58",
           )}
         >
           <ArrowRightLeft className="h-4 w-4" />
@@ -1730,8 +1734,11 @@ function RideAppCommunityPanel() {
   const rideAppWaiver = useRideAppWaiverState();
   const waiverClaimed = rideAppWaiver.claimed && !rideAppWaiver.used;
   const waiverUsed = rideAppWaiver.claimed && rideAppWaiver.used;
-  const ctaLabel = waiverUsed ? "Waiver used" : waiverClaimed ? "Waiver claimed" : "Claim HK$5 waiver";
-  const helper = waiverUsed ? "Thanks for trying RidePod." : waiverClaimed ? "Use it on your next self-settle join." : null;
+  const claimedCount = waiverClaimed || waiverUsed ? 1 : 0;
+  const claimedPercent = Math.max(1, claimedCount);
+  const leftCount = 100 - claimedCount;
+  const ctaLabel = waiverUsed ? "Offer used" : waiverClaimed ? "Offer claimed" : "Claim HK$5 waiver";
+  const helper = waiverUsed ? "Thanks for trying Share Ride App." : waiverClaimed ? "Use it on your next Share Ride App join." : null;
 
   return (
     <>
@@ -1753,9 +1760,9 @@ function RideAppCommunityPanel() {
             </button>
 
             <div className="pr-10">
-              <p className="text-sm font-black uppercase tracking-[0.18em] text-cyan-700">RIDE APP LAUNCH OFFER</p>
+              <p className="text-sm font-black uppercase tracking-[0.18em] text-cyan-700">SHARE RIDE APP LAUNCH OFFER</p>
               <h2 id="ride-app-launch-offer-title" className="mt-2 text-2xl font-black leading-tight text-[#10212a]">
-                First 100 joining members
+                First 100 registered members
               </h2>
               <p className="mt-1 text-left text-lg font-black leading-6 text-[#10212a]">HK$5 RidePod fee waived.</p>
             </div>
@@ -1784,11 +1791,14 @@ function RideAppCommunityPanel() {
             </div>
 
             <div className="mt-5 flex items-center justify-between text-xs font-black uppercase tracking-[0.14em] text-cyan-800">
-              <span>0 / 100 claimed</span>
-              <span>100 left</span>
+              <span>{claimedCount} / 100 claimed</span>
+              <span>{leftCount} left</span>
             </div>
             <div className="mt-2 h-3 overflow-hidden rounded-full bg-cyan-900/10">
-              <div className="h-full w-[2%] rounded-full bg-[linear-gradient(90deg,#5eead4,#2563eb)]" />
+              <div
+                className="h-full rounded-full bg-[linear-gradient(90deg,#2563eb,#13d8cb)] transition-[width] duration-300"
+                style={{ width: `${claimedPercent}%` }}
+              />
             </div>
           </section>
         </div>
@@ -1815,6 +1825,7 @@ function RideAppWaiverClaimModal({
   onClaim: () => void;
 }) {
   const offerItems = [
+    "First 100 registered Share Ride App members only.",
     `${ridePodJoinFeeWaiverCopy.appliesTo} waived.`,
     ridePodJoinFeeWaiverCopy.excludes,
     ridePodJoinFeeWaiverCopy.demoNote,
@@ -1835,9 +1846,9 @@ function RideAppWaiverClaimModal({
       >
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">Ride app launch offer</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">Share Ride App launch offer</p>
             <h2 id="ride-app-waiver-title" className="mt-2 text-2xl font-black leading-tight">
-              {claimed ? "Waiver claimed" : "Claim HK$5 waiver?"}
+              {claimed ? "Launch offer claimed" : "Join the first 100?"}
             </h2>
           </div>
           <button
@@ -1852,8 +1863,8 @@ function RideAppWaiverClaimModal({
 
         <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
           {claimed
-            ? "We'll apply it to your next eligible self-settle join."
-            : "Use this waiver on your next eligible Ride app self-settle join."}
+            ? "We'll apply it to your next eligible Share Ride App self-settle join."
+            : "Register your launch offer and use this HK$5 waiver on your next eligible Share Ride App self-settle join."}
         </p>
 
         <div className="mt-5 grid gap-3">
@@ -1893,7 +1904,7 @@ function RideAppWaiverClaimModal({
                 onClick={onCancel}
                 className="inline-flex min-h-12 items-center justify-center rounded-full bg-[linear-gradient(135deg,#2563eb,#13d8cb)] px-4 text-sm font-black text-white"
               >
-                Use on Ride app pod
+                Use on Share Ride App pod
               </Link>
             </>
           ) : (
@@ -1910,7 +1921,7 @@ function RideAppWaiverClaimModal({
                 onClick={onClaim}
                 className="min-h-12 rounded-full bg-[var(--rp-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)]"
               >
-                Claim waiver
+                Claim launch offer
               </button>
             </>
           )}
@@ -1986,9 +1997,8 @@ function EmptyRides({ tab, rideModeFilter, hasAnyRides }: { tab: HomeTab; rideMo
   );
 }
 
-const startsWithRideAppOnly = homeRides.length > 0 && homeRides.every((ride) => ride.rideCategory === "ride_app_self_settle" || ride.rideService === "ride_app");
-const initialRideModeFilter: RideModeFilter = startsWithRideAppOnly ? "ride_app" : "taxi";
-const initialSettlementFilter: SettlementFilter = startsWithRideAppOnly ? "self_settle" : "protected";
+const initialRideModeFilter: RideModeFilter = "all";
+const initialSettlementFilter: SettlementFilter = "all";
 const initialFromDistrict = "All districts";
 const initialToDistrict = "All districts";
 
@@ -2537,6 +2547,7 @@ function HomePageContent() {
 
   function handleRideModeChange(value: Extract<RideModeFilter, "taxi" | "ride_app">) {
     setRideModeFilter(value);
+    setExpandedCategoryId(null);
     if (value === "taxi") {
       setSettlementFilter("protected");
       setFareEstimateFilter("any");
@@ -2557,7 +2568,7 @@ function HomePageContent() {
     setAirportDirectionFilter("all");
     setAirportFlightQuery("");
     setAirportTerminalFilter("terminal_1");
-    setSettlementFilter(rideModeFilter === "ride_app" ? "self_settle" : "protected");
+    setSettlementFilter(rideModeFilter === "ride_app" ? "self_settle" : rideModeFilter === "taxi" ? "protected" : "all");
     setFareEstimateFilter("any");
     setDeadlineFilter("any");
     setSeatFilter("any");
@@ -2631,7 +2642,9 @@ function HomePageContent() {
     deadlineFilter !== "any" ||
     seatFilter !== "any" ||
     ownershipFilter !== "all";
-  const showRideRecommendations = true;
+  const hasChosenRideMode = rideModeFilter === "taxi" || rideModeFilter === "ride_app";
+  const showRideOptions = hasChosenRideMode;
+  const showRideRecommendations = hasChosenRideMode && expandedCategoryId !== null;
   const activeCategoryTab =
     activeTab === "all" || activeTab === "airport" || activeTab === "one_off" || activeTab === "recurring" ? activeTab : null;
   const activeRecommendationLabel =
@@ -2762,15 +2775,17 @@ function HomePageContent() {
           />
           <div className="absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,rgba(3,9,15,0.38),transparent)]" />
         </div>
-        {showRideRecommendations ? (
-          <div className="relative z-10 mx-auto mt-3 w-full max-w-[680px] px-4 min-[420px]:px-8">
-            <RideModeSwitch
-              value={rideModeFilter === "ride_app" ? "ride_app" : "taxi"}
-              onChange={handleRideModeChange}
-            />
-          </div>
-        ) : null}
+        <div className="relative z-10 mx-auto mt-3 w-full max-w-[680px] px-4 min-[420px]:px-8">
+          <p className="mb-2 text-center text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-muted-strong)]">
+            Choose your mode
+          </p>
+          <RideModeSwitch
+            value={rideModeFilter === "ride_app" || rideModeFilter === "taxi" ? rideModeFilter : null}
+            onChange={handleRideModeChange}
+          />
+        </div>
 
+        {showRideOptions ? (
         <div ref={rideTypesRef} className="relative z-10 mt-6 scroll-mt-[88px] px-0.5">
           <div
             data-testid="ride-category-board"
@@ -2825,6 +2840,7 @@ function HomePageContent() {
             </div>
           </div>
         </div>
+        ) : null}
       </section>
 
       {showRideRecommendations ? (
