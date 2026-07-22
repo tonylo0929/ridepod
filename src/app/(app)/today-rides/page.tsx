@@ -2110,7 +2110,7 @@ function PostRideRequestForm({
             </div>
 
             <label className="grid gap-2 text-left">
-              <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Expiry setting</span>
+              <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Expiry setting if not enough interested people</span>
               <select value={values.expiryTime} onChange={(event) => updateValue("expiryTime", event.target.value)} className={inputClass}>
                 <option value="departure">After ride time</option>
                 <option value="thirty_before">30 minutes before ride time</option>
