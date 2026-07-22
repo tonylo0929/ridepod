@@ -503,16 +503,6 @@ const whoCanJoinOptions: Array<{
     description: "All eligible riders are welcome.",
     helper: "Anyone who matches the pod rules can join.",
   },
-  {
-    id: "verified_only",
-    title: "Verified-only",
-    description: "Only RidePod verified users can join this pod.",
-  },
-  {
-    id: "invite_only",
-    title: "Invite-only",
-    description: "Only riders you invite will be able to join.",
-  },
 ];
 
 const taxiPartnerPreferenceOptions: Array<{
