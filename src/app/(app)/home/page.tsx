@@ -2645,6 +2645,7 @@ function HomePageContent() {
   const hasChosenRideMode = rideModeFilter === "taxi" || rideModeFilter === "ride_app";
   const showRideOptionsFrame = hasChosenRideMode;
   const showRideRecommendations = hasChosenRideMode && expandedCategoryId !== null;
+  const showNeutralRideBoardCta = !hasChosenRideMode && expandedCategoryId === null;
   const activeCategoryTab =
     activeTab === "all" || activeTab === "airport" || activeTab === "one_off" || activeTab === "recurring" ? activeTab : null;
   const activeRecommendationLabel =
@@ -2846,6 +2847,22 @@ function HomePageContent() {
             </div>
           </div>
         </div>
+
+        {showNeutralRideBoardCta ? (
+          <Link
+            href="/today-rides"
+            className="relative z-10 mx-auto mt-3 block w-full max-w-[704px] overflow-hidden rounded-[22px] border border-[var(--rp-primary)]/55 bg-[#020d18] shadow-[0_18px_44px_rgba(0,0,0,0.26)] transition hover:border-[var(--rp-primary)] hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
+          >
+            <Image
+              src="/images/ride-board/post-ride-request-in-seconds.png"
+              alt="Post a ride request in seconds. Add your route, time, and destination."
+              width={1792}
+              height={1314}
+              sizes="(max-width: 720px) calc(100vw - 32px), 704px"
+              className="block h-auto w-full"
+            />
+          </Link>
+        ) : null}
       </section>
 
       {showRideRecommendations ? (
