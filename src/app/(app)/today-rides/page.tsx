@@ -32,7 +32,7 @@ import {
 } from "react";
 import { cn } from "@/components/ui";
 
-type RideRequestCategory = "today_requests" | "commute" | "events" | "late_night" | "others";
+type RideRequestCategory = "today_requests" | "schedule_later" | "commute" | "events" | "late_night" | "others";
 type RideBoardCategory = "today" | "commute" | "events" | "late_night" | "others";
 type RideBoardFilter = "all" | RideBoardCategory;
 type RideBoardPreviewCategory = "today" | "schedule_later";
@@ -129,6 +129,7 @@ const hkDistrictFilters: Array<{ id: RideBoardDistrictFilter; label: string; ali
 
 const rideRequestCategoryToBoardCategory: Record<RideRequestCategory, RideBoardCategory> = {
   today_requests: "today",
+  schedule_later: "others",
   commute: "commute",
   events: "events",
   late_night: "late_night",
@@ -408,14 +409,12 @@ const rideBoardCategories: Array<{
 
 const postTypeOptions: Array<{ id: RideRequestCategory; label: string; description: string }> = [
   { id: "today_requests", label: "Today Requests", description: "For quick ride matching today, tonight, or soon." },
-  { id: "commute", label: "Commute", description: "For regular work, school, or repeated routes." },
-  { id: "events", label: "Events", description: "For concerts, shows, matches, exhibitions, or big venue trips." },
-  { id: "late_night", label: "Late Night", description: "For safer ride sharing after dinner, drinks, overtime, or last train." },
-  { id: "others", label: "Others", description: "For anything that does not fit the categories above." },
+  { id: "schedule_later", label: "Schedule later", description: "For future ride requests planned ahead." },
 ];
 
 const categoryLabels: Record<RideRequestCategory, string> = {
   today_requests: "Today Requests",
+  schedule_later: "Schedule later",
   commute: "Commute",
   events: "Events",
   late_night: "Late Night",
@@ -891,6 +890,13 @@ function getTodayInputValue() {
   const now = new Date();
   const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
   return localNow.toISOString().slice(0, 10);
+}
+
+function getTomorrowInputValue() {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const localTomorrow = new Date(tomorrow.getTime() - tomorrow.getTimezoneOffset() * 60000);
+  return localTomorrow.toISOString().slice(0, 10);
 }
 
 function formatDateLabel(dateValue: string) {
@@ -1827,6 +1833,19 @@ function PostRideRequestForm({
     setValues((current) => ({ ...current, [key]: value }));
   };
 
+  const handlePostTypeSelect = (category: RideRequestCategory) => {
+    setValues((current) => ({
+      ...current,
+      category,
+      date:
+        category === "schedule_later" && (!current.date || current.date === getTodayInputValue())
+          ? getTomorrowInputValue()
+          : category === "today_requests"
+            ? getTodayInputValue()
+            : current.date,
+    }));
+  };
+
   return (
     <div className="fixed inset-0 z-[90] overflow-y-auto bg-black/72 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-10 backdrop-blur-sm sm:grid sm:place-items-center sm:py-8">
       <button type="button" aria-label="Close post ride request form" className="fixed inset-0 cursor-default" onClick={onClose} />
@@ -1863,7 +1882,7 @@ function PostRideRequestForm({
                 <button
                   key={option.id}
                   type="button"
-                  onClick={() => updateValue("category", option.id)}
+                  onClick={() => handlePostTypeSelect(option.id)}
                   className={cn(
                     "grid gap-1 rounded-[18px] border p-4 text-left transition",
                     selected
@@ -2193,6 +2212,7 @@ export default function RideBoardPage() {
   const handlePostSubmit = (values: RideRequestFormValues) => {
     const detailLineByCategory: Record<RideRequestCategory, string> = {
       today_requests: values.timeFlexibility,
+      schedule_later: "Planned ahead",
       commute: values.repeatPattern.trim() || values.recurrenceType,
       events: values.eventName.trim() || values.eventTiming,
       late_night: values.pickupFlexibility,
@@ -2200,6 +2220,7 @@ export default function RideBoardPage() {
     };
     const extraLabelByCategory: Record<RideRequestCategory, string> = {
       today_requests: "Time flexibility",
+      schedule_later: "Schedule type",
       commute: "Commute pattern",
       events: "Event details",
       late_night: "Pickup flexibility",
