@@ -1245,7 +1245,6 @@ function RideBoardCategoryCard({
   priority?: boolean;
 }) {
   const isGold = category.tone === "gold";
-  const isScheduleLater = category.id === "schedule-later";
   const showWholeArtwork = category.id === "today-requests" || category.id === "schedule-later";
   const cardAspectClass = showWholeArtwork
     ? "aspect-[1792/1092]"
@@ -1265,7 +1264,7 @@ function RideBoardCategoryCard({
         active
           ? cn(
               "z-10 brightness-[1.06]",
-              isScheduleLater
+              showWholeArtwork
                 ? "shadow-[0_26px_60px_rgba(0,0,0,0.44),0_0_0_1px_rgba(242,193,91,0.35),0_0_42px_rgba(242,193,91,0.32)] after:border-2 after:border-[var(--rp-primary)]"
                 : "shadow-[0_18px_42px_rgba(0,0,0,0.28)] after:border-transparent",
               showWholeArtwork ? "scale-100" : "-translate-y-0.5 scale-[1.015]",
