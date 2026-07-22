@@ -1552,12 +1552,29 @@ function CategoryCompactResultCard({
       : ride.airportDirection === "from_airport"
         ? "From airport"
         : null;
+  const isAirportRide = ride.rideKind === "airport" || Boolean(ride.airportDirection);
+  const isRecurringRide = ride.rideKind === "recurring" || ride.is_recurring === true;
+  const TypeIcon = isAirportRide ? Plane : isRecurringRide ? RefreshCcw : CarFront;
+  const typeIconLabel = isAirportRide ? "Airport ride" : isRecurringRide ? "Recurring ride" : "Ride";
 
   return (
     <Link
       href={cardHref}
-      className="grid min-h-[82px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[color-mix(in_srgb,var(--rp-primary)_52%,var(--rp-border))] bg-[linear-gradient(145deg,rgba(7,16,24,0.98),rgba(18,31,44,0.92))] px-4 py-3 shadow-[0_16px_34px_rgba(0,0,0,0.28)] transition hover:border-[var(--rp-primary)] hover:shadow-[0_18px_40px_color-mix(in_srgb,var(--rp-primary)_14%,transparent)]"
+      className="grid min-h-[82px] grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[color-mix(in_srgb,var(--rp-primary)_52%,var(--rp-border))] bg-[linear-gradient(145deg,rgba(7,16,24,0.98),rgba(18,31,44,0.92))] px-3 py-3 shadow-[0_16px_34px_rgba(0,0,0,0.28)] transition hover:border-[var(--rp-primary)] hover:shadow-[0_18px_40px_color-mix(in_srgb,var(--rp-primary)_14%,transparent)] min-[390px]:grid-cols-[44px_minmax(0,1fr)_auto] min-[390px]:px-4"
     >
+      <span
+        aria-label={typeIconLabel}
+        className={cn(
+          "grid h-9 w-9 shrink-0 place-items-center rounded-full border shadow-[0_10px_22px_rgba(0,0,0,0.24)] min-[390px]:h-10 min-[390px]:w-10",
+          isAirportRide
+            ? "border-[#f6d7ad]/55 bg-[#f6d7ad]/18 text-[#ffe5bd]"
+            : isRecurringRide
+              ? "border-emerald-200/55 bg-emerald-400/16 text-emerald-200"
+              : "border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]",
+        )}
+      >
+        <TypeIcon className="h-5 w-5 stroke-[2.3]" />
+      </span>
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {airportDirectionLabel ? (
