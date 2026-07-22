@@ -384,7 +384,7 @@ const rideBoardCategories: Array<{
     id: "today-requests",
     label: "Today's request",
     subtitle: "Find same-day ride requests near you.",
-    image: "/images/ride-board/today-requests-card.webp",
+    image: "/images/ride-board/today-requests-card-20260722.png",
     filter: "today",
     eyebrow: "Now",
     ctaLabel: "Browse Today",
@@ -394,7 +394,7 @@ const rideBoardCategories: Array<{
     id: "schedule-later",
     label: "Schedule later",
     subtitle: "Plan tomorrow, commute, events, or flexible routes.",
-    image: "/images/ride-board/schedule-later-card.png",
+    image: "/images/ride-board/schedule-later-card-20260722.png",
     filter: "schedule_later",
     eyebrow: "Plan ahead",
     ctaLabel: "Browse Later",
@@ -1233,7 +1233,7 @@ function RideBoardCategoryCard({
         style={{ objectPosition: category.objectPosition }}
         className={cn(
           "absolute inset-0 h-full w-full transition duration-500",
-          showWholeArtwork ? "object-contain scale-100" : "object-cover",
+          showWholeArtwork ? "object-cover scale-100" : "object-cover",
           showWholeArtwork ? "" : active ? "scale-[1.015]" : "scale-100 group-hover:scale-[1.02]",
         )}
       />
