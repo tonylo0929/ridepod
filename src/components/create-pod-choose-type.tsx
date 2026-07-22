@@ -2629,6 +2629,15 @@ function RouteStopsStep({
                   onChange={onPickupChange}
                   onPlaceSelect={onPickupPlaceSelect}
                 />
+                {!isRideAppSelfSettle ? (
+                  <SelfSettleTextField
+                    label="Gather point"
+                    value={pickupVenue}
+                    placeholder="MTR exit, lobby, gate, or landmark"
+                    helper="Optional. Where riders meet before pickup."
+                    onChange={onPickupVenueChange}
+                  />
+                ) : null}
                 {stops.map((stop, index) => (
                   <AddressField
                     key={stop.id}
@@ -5890,7 +5899,7 @@ function buildCreatedAirportTaxiHomeRide({
     hostAvatarUrl,
     hostDisplayName,
     joinedRiders: [],
-    pickupLabel: pickupAddress || getAirportTerminalHallValue(airportDetails),
+    pickupLabel: peopleVehicle.pickupVenue || pickupAddress || getAirportTerminalHallValue(airportDetails),
     pickupTime: getScheduleTimeSummary(dateTime),
     dropoffLabel: dropoffAddress || getAirportTerminalHallValue(airportDetails),
     stopRequestPolicy,
@@ -6024,10 +6033,11 @@ function TaxiReviewSummaryCard({
     ["Seats", `${peopleVehicle.seatsAvailable} seats total`],
     ...(dateTime.scheduleType === "RECURRING" ? [["Trip pattern", getRecurringWeekdaySummary(dateTime)]] : []),
   ];
-  const taxiNeeds = [
+  const taxiNeeds: Array<[string, string]> = [
     ["Taxi type", taxiType],
     ["Luggage", getLuggageNeedsSummary(peopleVehicle)],
     ["Pickup point", pickupAddress || "None"],
+    ...(peopleVehicle.pickupVenue.trim() ? ([["Gather point", peopleVehicle.pickupVenue.trim()]] as Array<[string, string]>) : []),
     ["Dropoff point", dropoffAddress || "None"],
   ];
   const taxiPartnerPreferenceLabel = getTaxiPartnerPreferenceLabel(taxiPartnerPreference);
@@ -6038,6 +6048,7 @@ function TaxiReviewSummaryCard({
         <h2 className="text-lg font-black text-[var(--rp-primary)]">Trip</h2>
         <dl className="mt-3 grid gap-2">
           <RouteSummaryLine label="Pickup" value={pickupAddress || "None"} />
+          {peopleVehicle.pickupVenue.trim() ? <RouteSummaryLine label="Gather" value={peopleVehicle.pickupVenue.trim()} /> : null}
           {stops.map((stop, index) => (
             <RouteSummaryLine key={stop.id} label={`Stop ${index + 1}`} value={stop.address || "Optional stop"} />
           ))}
