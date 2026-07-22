@@ -1438,6 +1438,9 @@ function CategoryResultsScreen({
   resultsRef,
   currentUserAvatar,
   isAuthenticated,
+  fromDistrict,
+  toDistrict,
+  onOpenFilters,
 }: {
   screen: CategoryResultsScreenId;
   phase: CategoryTransitionPhase;
@@ -1451,6 +1454,9 @@ function CategoryResultsScreen({
   resultsRef: RefObject<HTMLDivElement | null>;
   currentUserAvatar: CurrentUserAvatar;
   isAuthenticated: boolean;
+  fromDistrict: string;
+  toDistrict: string;
+  onOpenFilters: () => void;
 }) {
   const screenOpen = phase === "open";
   const config = categoryResultsScreenConfigs[screen];
@@ -1523,6 +1529,26 @@ function CategoryResultsScreen({
             </ul>
           </div>
         ) : null}
+
+        <button
+          type="button"
+          onClick={onOpenFilters}
+          className="mt-4 grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto] items-center gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[rgba(13,24,35,0.9)] p-3 text-left shadow-[0_14px_34px_rgba(0,0,0,0.26)] transition hover:border-[var(--rp-border-strong)]"
+        >
+          <span className="min-w-0">
+            <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-muted-strong)]">From</span>
+            <span className="mt-1 block truncate text-sm font-black text-[var(--rp-text)]">{fromDistrict}</span>
+          </span>
+          <ArrowRightLeft className="h-4 w-4 shrink-0 text-[var(--rp-primary)]" />
+          <span className="min-w-0">
+            <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-muted-strong)]">To</span>
+            <span className="mt-1 block truncate text-sm font-black text-[var(--rp-text)]">{toDistrict}</span>
+          </span>
+          <span className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_42%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 text-xs font-black text-[var(--rp-primary)]">
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            Filter
+          </span>
+        </button>
 
         <div className="mt-4">
           <h2 className="text-base font-black leading-none text-[var(--rp-text)]">Recommended for you</h2>
@@ -2651,7 +2677,6 @@ function HomePageContent() {
   const hasChosenRideMode = rideModeFilter === "taxi" || rideModeFilter === "ride_app";
   const showRideOptionsFrame = hasChosenRideMode;
   const showRideRecommendations = hasChosenRideMode && expandedCategoryId !== null;
-  const showNeutralRideBoardCta = !hasChosenRideMode && expandedCategoryId === null;
   const activeCategoryTab =
     activeTab === "all" || activeTab === "airport" || activeTab === "one_off" || activeTab === "recurring" ? activeTab : null;
   const activeRecommendationLabel =
@@ -2792,6 +2817,7 @@ function HomePageContent() {
           />
         </div>
 
+        {showRideOptionsFrame ? (
         <div ref={rideTypesRef} className="relative z-10 mt-6 scroll-mt-[88px] px-0.5">
           <div
             data-testid="ride-category-board"
@@ -2853,21 +2879,6 @@ function HomePageContent() {
             </div>
           </div>
         </div>
-
-        {showNeutralRideBoardCta ? (
-          <Link
-            href="/today-rides"
-            className="relative z-10 mx-auto mt-3 block w-full max-w-[704px] overflow-hidden rounded-[22px] border border-[var(--rp-primary)]/55 bg-[#020d18] shadow-[0_18px_44px_rgba(0,0,0,0.26)] transition hover:border-[var(--rp-primary)] hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
-          >
-            <Image
-              src="/images/ride-board/post-ride-request-in-seconds.png"
-              alt="Post a ride request in seconds. Add your route, time, and destination."
-              width={1792}
-              height={1314}
-              sizes="(max-width: 720px) calc(100vw - 32px), 704px"
-              className="block h-auto w-full"
-            />
-          </Link>
         ) : null}
       </section>
 
@@ -2975,6 +2986,9 @@ function HomePageContent() {
         resultsRef={scheduleResultsRef}
         currentUserAvatar={currentUserAvatar}
         isAuthenticated={isAuthenticated}
+        fromDistrict={fromDistrict}
+        toDistrict={toDistrict}
+        onOpenFilters={() => setFiltersOpen(true)}
       />
     ) : null}
     </>
