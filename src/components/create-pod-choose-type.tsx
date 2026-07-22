@@ -333,19 +333,19 @@ const podTypes: Array<{
     icon: "calendar",
   },
   {
+    id: "recurring",
+    title: "Recurring",
+    sublabel: "Repeat on specific days or a schedule.",
+    description: "",
+    icon: "repeat",
+  },
+  {
     id: "airport",
     title: "Airport",
     sublabel: "",
     description: "Match around airport trips, flights, and luggage.",
     icon: "airport",
     accent: "airport",
-  },
-  {
-    id: "recurring",
-    title: "Recurring",
-    sublabel: "Repeat on specific days or a schedule.",
-    description: "",
-    icon: "repeat",
   },
 ];
 
