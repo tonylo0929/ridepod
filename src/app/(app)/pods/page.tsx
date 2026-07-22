@@ -1,10 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   AlertCircle,
-  CalendarDays,
   CarFront,
   CheckCircle2,
   ChevronLeft,
@@ -78,46 +78,58 @@ function selectedDateLabel(date: string) {
 
 function GuestMyRideIntro() {
   return (
-    <section className="relative isolate overflow-hidden rounded-[30px] border border-[color-mix(in_srgb,var(--rp-border)_82%,white_8%)] bg-[radial-gradient(circle_at_22%_14%,rgba(245,188,73,0.22),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.018)),var(--rp-card)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.42)] min-[390px]:p-6">
-      <div className="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full bg-[color-mix(in_srgb,var(--rp-primary)_24%,transparent)] blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-20 left-6 h-44 w-44 rounded-full bg-cyan-300/12 blur-3xl" />
+    <section className="relative isolate flex min-h-[calc(100dvh-10.5rem)] flex-col overflow-hidden rounded-[36px] border border-[color-mix(in_srgb,var(--rp-primary)_58%,transparent)] bg-[radial-gradient(circle_at_88%_5%,rgba(245,188,73,0.22),transparent_30%),radial-gradient(circle_at_18%_82%,rgba(48,197,190,0.08),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.018)),#06101a] px-6 pb-7 pt-8 shadow-[0_34px_92px_rgba(0,0,0,0.48)] min-[390px]:px-8 min-[390px]:pb-8 min-[390px]:pt-10">
+      <div className="pointer-events-none absolute inset-0 rounded-[36px] border border-white/[0.035]" />
+      <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[color-mix(in_srgb,var(--rp-primary)_20%,transparent)] blur-3xl" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-[linear-gradient(180deg,transparent,rgba(1,10,17,0.42)_58%,rgba(1,10,17,0.84))]" />
 
-      <div className="relative z-10 grid gap-7">
-        <div className="grid gap-5 pt-1">
-          <span className="grid h-14 w-14 place-items-center rounded-[20px] border border-[color-mix(in_srgb,var(--rp-primary)_40%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] text-[var(--rp-primary)] shadow-[0_18px_34px_rgba(245,188,73,0.12)]">
-            <CalendarDays className="h-6 w-6" />
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+        <div className="grid gap-7">
+          <span className="grid h-20 w-20 place-items-center rounded-[24px] border border-[color-mix(in_srgb,var(--rp-primary)_58%,transparent)] bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02))] text-[var(--rp-primary)] shadow-[0_20px_46px_rgba(245,188,73,0.20)] min-[390px]:h-24 min-[390px]:w-24 min-[390px]:rounded-[28px]">
+            <CarFront className="h-9 w-9 min-[390px]:h-11 min-[390px]:w-11" />
           </span>
 
           <div>
-            <h1 className="max-w-[11ch] text-[36px] font-black leading-[0.98] tracking-[-0.02em] text-[var(--rp-text)] min-[390px]:text-[42px]">
-              Keep your rides{" "}
-              <span className="inline-flex rounded-full bg-[var(--rp-primary)] px-2.5 pb-1 pt-0.5 text-[0.82em] leading-none text-[var(--rp-primary-text)] shadow-[0_10px_24px_rgba(245,188,73,0.24)]">
-                organized
+            <h1 className="max-w-full text-[38px] font-black leading-[1.02] tracking-normal text-[var(--rp-text)] min-[390px]:text-[42px] min-[720px]:text-[58px]">
+              Share the ride.
+              <span className="mt-2 inline-flex max-w-full rounded-full bg-[linear-gradient(135deg,#f8d876,#f2bd42_54%,#f8d876)] px-3 pb-1.5 pt-0.5 text-[0.82em] leading-none text-[#06101a] shadow-[0_16px_34px_rgba(245,188,73,0.28)] min-[390px]:px-4">
+                Split the cost.
               </span>
             </h1>
-            <p className="mt-4 max-w-[28ch] text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              Save your RidePod calendar, track joined pods, and keep booking details in one place.
+            <p className="mt-5 max-w-[29ch] text-left text-base font-semibold leading-7 text-[color-mix(in_srgb,var(--rp-text)_78%,transparent)] min-[390px]:text-lg min-[390px]:leading-8">
+              Create or join RidePods, share your journey, and split the ride cost with other passengers.
             </p>
           </div>
         </div>
 
-        <div className="relative z-10 grid gap-3">
+        <div className="relative -mx-6 mt-3 min-h-44 flex-1 min-[390px]:-mx-8 min-[390px]:mt-5 min-[390px]:min-h-56">
+          <Image
+            src="/images/ridepod/my-ride-guest-car-city.png"
+            alt="RidePod city car illustration"
+            fill
+            priority
+            sizes="(max-width: 768px) 92vw, 560px"
+            className="object-contain object-bottom opacity-95"
+          />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-14 bg-[linear-gradient(180deg,#06101a,rgba(6,16,26,0))]" />
+        </div>
+
+        <div className="relative z-10 grid gap-5">
           <Link
             href="/register?next=/pods"
-            className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-[#f8f4ea] px-5 text-sm font-black text-[#101316] shadow-[0_18px_36px_rgba(0,0,0,0.28)] transition hover:bg-white"
+            className="inline-flex min-h-16 items-center justify-center gap-3 rounded-full bg-[#fbf6eb] px-6 text-base font-black text-[#07111a] shadow-[0_18px_42px_rgba(0,0,0,0.34)] transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rp-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#06101a] min-[390px]:text-lg"
           >
-            <UserPlus className="h-4 w-4" />
-            Create New Account
+            <UserPlus className="h-6 w-6" />
+            Create an Account
           </Link>
 
-          <p className="text-center text-xs font-semibold text-[var(--rp-muted-strong)]">
+          <p className="text-center text-base font-semibold text-[color-mix(in_srgb,var(--rp-text)_72%,transparent)] min-[390px]:text-lg">
             Already have an account?{" "}
-            <Link href="/login?next=/pods" className="inline-flex items-center gap-1 font-black text-[var(--rp-text)] underline decoration-[var(--rp-primary)] underline-offset-4">
+            <Link href="/login?next=/pods" className="inline-flex items-center gap-2 font-black text-[var(--rp-primary)] underline decoration-[var(--rp-primary)] underline-offset-4 transition hover:text-[var(--rp-text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rp-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#06101a]">
               Login
-              <LogIn className="h-3.5 w-3.5 text-[var(--rp-primary)]" />
+              <LogIn className="h-5 w-5" />
             </Link>
           </p>
-
         </div>
       </div>
     </section>
