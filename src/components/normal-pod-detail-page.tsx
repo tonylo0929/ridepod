@@ -3669,7 +3669,7 @@ function SelfSettlePodSummaryHero({
                   avatarPreference={hostAvatarPreference}
                   initials={getInitials(hostAvatarDisplayName) || hostAvatarLabel}
                   displayName={hostAvatarDisplayName}
-                  className="h-full w-full rounded-full text-xl"
+                  className="h-full w-full rounded-full text-xl !text-cyan-50"
                 />
               ) : hostProfileImageUrl ? null : (
                 hostAvatarLabel
