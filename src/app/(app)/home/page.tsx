@@ -2695,7 +2695,7 @@ function HomePageContent() {
     ownershipFilter !== "all";
   const hasChosenRideMode = selectedRideMode !== null;
   const showRideOptionsBoard = true;
-  const showRideOptionsFrame = hasChosenRideMode;
+  const showRideOptionsFrame = true;
   const showRideRecommendations = hasChosenRideMode && expandedCategoryId !== null;
   const activeCategoryTab =
     activeTab === "all" || activeTab === "airport" || activeTab === "one_off" || activeTab === "recurring" ? activeTab : null;
@@ -2710,6 +2710,7 @@ function HomePageContent() {
   const seeMoreRideBadgeCount = hiddenRecommendationRideCount > 0 ? hiddenRecommendationRideCount : visibleRides.length;
   const canSeeMoreRecommendations = activeCategoryTab !== null && visibleRides.length > 0;
   const [oneOffCard, recurringCard, airportCard, allRidesCard] = categoryCards;
+  const optionsFrameTone = selectedRideMode ?? "neutral";
   const renderCategoryCard = (card: (typeof categoryCards)[number]) => (
     <CategoryCard
       key={card.id}
@@ -2729,9 +2730,8 @@ function HomePageContent() {
       }
     />
   );
-  const optionsFrameIsRideApp = selectedRideMode === "ride_app";
-  const OptionsFrameIcon = optionsFrameIsRideApp ? Smartphone : CarFront;
-  const optionsFrameLabel = optionsFrameIsRideApp ? "Ride app options" : "Taxi options";
+  const OptionsFrameIcon = optionsFrameTone === "ride_app" ? Smartphone : optionsFrameTone === "taxi" ? CarFront : ArrowRightLeft;
+  const optionsFrameLabel = optionsFrameTone === "ride_app" ? "Ride app options" : optionsFrameTone === "taxi" ? "Taxi options" : "Ride options";
   const homepageExitingForSchedule = selectedCategory !== null && categoryTransitionPhase !== "exiting";
 
   return (
@@ -2847,9 +2847,11 @@ function HomePageContent() {
               showRideOptionsFrame
                 ? cn(
                     "border-[3px] pt-[clamp(24px,4.6vw,31px)] shadow-[0_22px_58px_rgba(0,0,0,0.32)]",
-                    optionsFrameIsRideApp
+                    optionsFrameTone === "ride_app"
                       ? "border-sky-200 bg-[linear-gradient(145deg,rgba(6,24,42,0.42),rgba(15,91,166,0.16))] shadow-[0_0_0_2px_rgba(56,189,248,0.22),0_0_52px_rgba(56,189,248,0.32)]"
-                      : "border-[color-mix(in_srgb,var(--rp-primary)_100%,white_8%)] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-primary)_14%,transparent),rgba(4,16,26,0.38))] shadow-[0_0_0_2px_color-mix(in_srgb,var(--rp-primary)_30%,transparent),0_0_52px_color-mix(in_srgb,var(--rp-primary)_38%,transparent)]",
+                      : optionsFrameTone === "taxi"
+                        ? "border-[color-mix(in_srgb,var(--rp-primary)_100%,white_8%)] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-primary)_14%,transparent),rgba(4,16,26,0.38))] shadow-[0_0_0_2px_color-mix(in_srgb,var(--rp-primary)_30%,transparent),0_0_52px_color-mix(in_srgb,var(--rp-primary)_38%,transparent)]"
+                        : "border-white/22 bg-[linear-gradient(145deg,rgba(255,255,255,0.045),rgba(4,16,26,0.32))] shadow-[0_0_0_2px_rgba(255,255,255,0.06),0_22px_58px_rgba(0,0,0,0.3)]",
                   )
                 : "border-[3px] border-transparent bg-transparent pt-[clamp(10px,2.2vw,14px)]",
             )}
@@ -2858,9 +2860,11 @@ function HomePageContent() {
               <span
                 className={cn(
                   "absolute left-[clamp(14px,3.3vw,24px)] top-0 z-20 inline-flex min-h-8 -translate-y-1/2 items-center gap-1.5 rounded-full border px-3 text-xs font-black shadow-[0_10px_22px_rgba(0,0,0,0.24)]",
-                  optionsFrameIsRideApp
+                  optionsFrameTone === "ride_app"
                     ? "border-sky-200/55 bg-[linear-gradient(180deg,#44b7ff,#1672d8)] text-white"
-                    : "border-[color-mix(in_srgb,var(--rp-primary)_86%,white_14%)] bg-[linear-gradient(180deg,#ffe178,#ffc844)] text-[#07111a]",
+                    : optionsFrameTone === "taxi"
+                      ? "border-[color-mix(in_srgb,var(--rp-primary)_86%,white_14%)] bg-[linear-gradient(180deg,#ffe178,#ffc844)] text-[#07111a]"
+                      : "border-white/18 bg-[#07111a]/92 text-white/76",
                 )}
               >
                 <OptionsFrameIcon className="h-4 w-4" />
