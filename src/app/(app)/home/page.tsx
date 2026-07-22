@@ -117,6 +117,9 @@ const categoryResultScreenByCardId: Record<HomeCategoryCardId, CategoryResultsSc
   recurring: "recurring",
 };
 
+const homeInitialAvatarClass =
+  "border border-[color-mix(in_srgb,var(--rp-primary)_68%,white_18%)] bg-[linear-gradient(180deg,#ffe59a,#f2c15b)] text-[#07111a] shadow-[0_10px_24px_rgba(242,193,91,0.24),inset_0_1px_0_rgba(255,255,255,0.55)]";
+
 const categoryResultsScreenConfigs: Record<
   CategoryResultsScreenId,
   {
@@ -1160,7 +1163,7 @@ function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; curren
           avatarPreference={currentUserAvatar.avatarPreference}
           initials={currentUserAvatar.initials}
           displayName={currentUserAvatar.displayName}
-          className="h-full w-full rounded-full text-lg min-[560px]:text-xl"
+          className={cn("h-full w-full rounded-full text-lg min-[560px]:text-xl", homeInitialAvatarClass)}
         />
       ) : showHostAvatar && ride.hostAvatarPreference ? (
         <RidePodAvatar
@@ -1168,7 +1171,7 @@ function RideProfileAvatar({ ride, currentUserAvatar }: { ride: HomeRide; curren
           avatarPreference={ride.hostAvatarPreference}
           initials={getProfileInitials(hostDisplayName)}
           displayName={hostDisplayName}
-          className="h-full w-full rounded-full text-lg min-[560px]:text-xl"
+          className={cn("h-full w-full rounded-full text-lg min-[560px]:text-xl", homeInitialAvatarClass)}
         />
       ) : (
         getProfileInitial(hostDisplayName)
@@ -1277,10 +1280,10 @@ function RecurringRideResultCard({
               avatarPreference={avatarPreference}
               initials={initials}
               displayName={hostDisplayName}
-              className="h-10 w-10 rounded-full text-base"
+              className={cn("h-10 w-10 rounded-full text-base", homeInitialAvatarClass)}
             />
           ) : (
-            <div className="grid h-10 w-10 place-items-center rounded-full border border-[var(--rp-border-strong)] bg-[var(--rp-card-muted)] text-base font-black text-[var(--rp-primary)]">
+            <div className={cn("grid h-10 w-10 place-items-center rounded-full text-base font-black", homeInitialAvatarClass)}>
               {initials}
             </div>
           )}
@@ -1821,7 +1824,7 @@ function ScheduleRideParticipantStack({
             avatarPreference={avatarPreference}
             initials={getProfileInitials(avatarDisplayName)}
             displayName={avatarDisplayName}
-            className="h-full w-full rounded-full text-[9px]"
+            className={cn("h-full w-full rounded-full text-[9px]", homeInitialAvatarClass)}
           />
         ) : (
           getProfileInitial(hostDisplayName)
