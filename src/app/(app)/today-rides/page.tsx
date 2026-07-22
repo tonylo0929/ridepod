@@ -1165,7 +1165,7 @@ function RideBoardCategoryArtwork({
 }) {
   return (
     <section aria-label="Post a Request categories" className="grid gap-2">
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 gap-3 p-px">
         {rideBoardCategories.map((category, index) => (
           <RideBoardCategoryCard
             key={category.id}
@@ -1210,16 +1210,16 @@ function RideBoardCategoryCard({
       aria-pressed={active}
       aria-label={`Show ${category.label} ride requests preview`}
       className={cn(
-        "group relative block w-full overflow-hidden border bg-[#030b12] text-left outline-none ring-1 ring-inset transition-[transform,box-shadow,border-color,filter] duration-300 ease-out focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
+        "group relative block w-full overflow-hidden bg-[#030b12] text-left outline-none transition-[transform,box-shadow,filter] duration-300 ease-out after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-[inherit] after:border after:transition-colors focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
         showWholeArtwork ? "" : "hover:-translate-y-0.5 hover:scale-[1.01]",
         cardAspectClass,
         "rounded-[18px]",
         active
           ? cn(
-              "z-10 border-[#65E6D0]/90 brightness-[1.06] ring-2 ring-[#65E6D0]/80 shadow-[0_26px_60px_rgba(0,0,0,0.44),0_0_42px_rgba(101,230,208,0.3)]",
+              "z-10 brightness-[1.06] shadow-[0_26px_60px_rgba(0,0,0,0.44),0_0_42px_rgba(101,230,208,0.3)] after:border-transparent",
               showWholeArtwork ? "scale-100" : "-translate-y-0.5 scale-[1.015]",
             )
-          : "scale-100 border-[rgba(101,230,208,0.18)] ring-white/10 shadow-[0_18px_42px_rgba(0,0,0,0.28)]",
+          : "scale-100 shadow-[0_18px_42px_rgba(0,0,0,0.28)] after:border-[rgba(101,230,208,0.22)]",
       )}
     >
       <Image
