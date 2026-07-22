@@ -3543,23 +3543,36 @@ function RecurringRideTimeRow({
   type?: "text" | "time";
   onChange: (value: string) => void;
 }) {
+  const visibleValue = type === "time" ? displayValue || formatLocalTimeLabel(value) : value;
+
   return (
     <label className="grid min-h-12 grid-cols-[1fr_minmax(0,48%)] items-center gap-3 py-2">
       <span className="flex min-w-0 items-center gap-2 text-sm font-semibold text-[var(--rp-muted-strong)]">
         <span className="text-[var(--rp-primary)]">{icon}</span>
         {label}
       </span>
-      <input
-        type={type}
-        value={value}
-        aria-label={label}
-        onChange={(event) => onChange(event.target.value)}
-        className={cn(
-          "h-9 min-w-0 rounded-lg border border-transparent bg-transparent px-1 text-right text-base font-black text-[var(--rp-text)] outline-none transition focus:border-[var(--rp-primary)] focus:bg-[var(--rp-input-bg)]",
-          type === "time" && "text-[var(--rp-primary)]",
-        )}
-      />
-      {type === "time" && displayValue ? <span className="sr-only">{displayValue}</span> : null}
+      {type === "time" ? (
+        <span className="relative block h-9 min-w-0 rounded-lg border border-transparent text-right transition focus-within:border-[var(--rp-primary)] focus-within:bg-[var(--rp-input-bg)]">
+          <input
+            type="time"
+            value={value}
+            aria-label={label}
+            onChange={(event) => onChange(event.target.value)}
+            className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+          />
+          <span aria-hidden="true" className="block truncate px-1 text-base font-black leading-9 text-[var(--rp-text)]">
+            {visibleValue}
+          </span>
+        </span>
+      ) : (
+        <input
+          type="text"
+          value={value}
+          aria-label={label}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-9 min-w-0 rounded-lg border border-transparent bg-transparent px-1 text-right text-base font-black text-[var(--rp-text)] outline-none transition focus:border-[var(--rp-primary)] focus:bg-[var(--rp-input-bg)]"
+        />
+      )}
     </label>
   );
 }
