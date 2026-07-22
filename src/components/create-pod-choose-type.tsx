@@ -1981,25 +1981,32 @@ function SelfSettleTextField({
   value,
   placeholder,
   helper,
+  required,
   onChange,
 }: {
   label: string;
   value: string;
   placeholder: string;
   helper?: string;
+  required?: boolean;
   onChange: (value: string) => void;
 }) {
   const fieldId = useId();
 
   return (
     <label htmlFor={fieldId} className="grid min-w-0 gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-left">
-      <span className="text-xs font-black uppercase tracking-[0.13em] text-[var(--rp-primary)]">{label}</span>
+      <span className="text-xs font-black uppercase tracking-[0.13em] text-[var(--rp-primary)]">
+        {label}
+        {required ? <span className="ml-1 text-[#f6c453]">*</span> : null}
+      </span>
       <input
         id={fieldId}
         type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
+        required={required}
+        aria-required={required}
         className="min-h-11 w-full min-w-0 rounded-xl border border-[var(--rp-border)] bg-[rgba(5,12,20,0.48)] px-3 text-base font-black text-[var(--rp-text)] outline-none placeholder:text-[var(--rp-muted)] focus:border-[var(--rp-primary)]"
       />
       {helper ? <span className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{helper}</span> : null}
@@ -2496,7 +2503,12 @@ function RouteStopsStep({
   onStopRequestPolicyChange: (value: StopRequestPolicy) => void;
   onContinue: () => void;
 }) {
-  const canContinue = pickupAddress.trim().length > 0 && dropoffAddress.trim().length > 0;
+  const gatherPointRequired = isRideAppSelfSettle;
+  const gatherPointProvided = pickupVenue.trim().length > 0;
+  const canContinue =
+    pickupAddress.trim().length > 0 &&
+    dropoffAddress.trim().length > 0 &&
+    (!gatherPointRequired || gatherPointProvided);
   const [routePanel, setRoutePanel] = useState<"route" | "requests">("route");
   const isRoutePanel = routePanel === "route";
   const routePanelCount = 2;
@@ -2651,8 +2663,9 @@ function RouteStopsStep({
                   <SelfSettleTextField
                     label={isAirport ? "Gather point" : "Gather point"}
                     value={pickupVenue}
-                    placeholder={isAirport && isFromAirport ? "Arrival Hall A pillar 4" : "None yet"}
-                    helper={isAirport ? "Where riders meet before the host books." : "Tell riders where to meet before the external ride app booking."}
+                    placeholder={isAirport && isFromAirport ? "Arrival Hall A pillar 4" : "Required"}
+                    helper={isAirport ? "Required. Where riders meet before the host books." : "Required. Tell riders where to meet before the external ride app booking."}
+                    required
                     onChange={onPickupVenueChange}
                   />
                 ) : null}
