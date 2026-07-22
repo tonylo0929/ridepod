@@ -1234,11 +1234,15 @@ function RideBoardCategoryCard({
       aria-pressed={active}
       aria-label={`Show ${category.label} ride requests preview`}
       className={cn(
-        "group relative block w-full overflow-hidden border bg-[#030b12] text-left outline-none ring-1 ring-inset transition-[transform,box-shadow,border-color,filter] duration-300 ease-out hover:-translate-y-0.5 hover:scale-[1.01] focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
+        "group relative block w-full overflow-hidden border bg-[#030b12] text-left outline-none ring-1 ring-inset transition-[transform,box-shadow,border-color,filter] duration-300 ease-out focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
+        showWholeArtwork ? "" : "hover:-translate-y-0.5 hover:scale-[1.01]",
         showWholeArtwork ? "aspect-[1792/1092]" : "aspect-[430/220] min-[720px]:aspect-[680/245]",
         "rounded-[18px]",
         active
-          ? "z-10 -translate-y-0.5 scale-[1.015] border-[#65E6D0]/90 brightness-[1.06] ring-2 ring-[#65E6D0]/80 shadow-[0_26px_60px_rgba(0,0,0,0.44),0_0_42px_rgba(101,230,208,0.3)]"
+          ? cn(
+              "z-10 border-[#65E6D0]/90 brightness-[1.06] ring-2 ring-[#65E6D0]/80 shadow-[0_26px_60px_rgba(0,0,0,0.44),0_0_42px_rgba(101,230,208,0.3)]",
+              showWholeArtwork ? "scale-100" : "-translate-y-0.5 scale-[1.015]",
+            )
           : "scale-100 border-[rgba(101,230,208,0.18)] ring-white/10 shadow-[0_18px_42px_rgba(0,0,0,0.28)]",
       )}
     >
@@ -1251,8 +1255,9 @@ function RideBoardCategoryCard({
         sizes="(max-width: 768px) calc(100vw - 32px), 680px"
         style={{ objectPosition: category.objectPosition }}
         className={cn(
-          "absolute inset-0 h-full w-full object-cover transition duration-500",
-          showWholeArtwork ? "scale-100" : active ? "scale-[1.015]" : "scale-100 group-hover:scale-[1.02]",
+          "absolute inset-0 h-full w-full transition duration-500",
+          showWholeArtwork ? "object-contain scale-100" : "object-cover",
+          showWholeArtwork ? "" : active ? "scale-[1.015]" : "scale-100 group-hover:scale-[1.02]",
         )}
       />
       <span className="sr-only">
