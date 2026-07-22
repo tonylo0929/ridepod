@@ -1899,8 +1899,8 @@ export function PodStatusPanel({
     {
       icon: Clock3,
       label: "Confirmation deadline",
-      value: detailsReady && confirmBySet ? confirmByLabel : "Not set",
-      set: detailsReady && confirmBySet,
+      value: confirmBySet ? confirmByLabel : "Not set",
+      set: confirmBySet,
       onClick: isHost ? openConfirmByModal : undefined,
       actionLabel: isHost ? "Edit" : undefined,
     },

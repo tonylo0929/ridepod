@@ -79,7 +79,7 @@ import { createUserNotificationOnce } from "@/lib/notifications/ridepod-notifica
 import type { HomeRide } from "@/lib/home-ride-mock";
 
 type PodType = "scheduled" | "airport" | "recurring";
-type CreateStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+type CreateStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 type AirportDirection = "to_airport" | "from_airport";
 type AirportDetailsSlice = "direction" | "flight" | "luggage";
 type AirportLuggageState = {
@@ -234,6 +234,10 @@ type DateTimeState = {
   recurringOccurrenceLimit: number;
   recurringEndDate: string;
 };
+type ConfirmationDeadlineState = {
+  date: string;
+  time: string;
+};
 type PeopleVehicleState = {
   seatsAvailable: number;
   bags: number;
@@ -293,6 +297,7 @@ const rideAppCreateSteps = [
   "Estimated Cost",
   "Date & Time",
   "Booking & Payment Rules",
+  "Confirmation Deadline",
   "Review",
   "Success",
 ];
@@ -314,6 +319,7 @@ const airportRideAppCreateSteps = [
   "Estimated Cost",
   "Date & Time",
   "Booking & Payment Rules",
+  "Confirmation Deadline",
   "Review",
   "Success",
 ];
@@ -1021,6 +1027,45 @@ function getScheduleTimeSummary(dateTime: DateTimeState) {
 
   const outbound = dateTime.recurringLegs.find((leg) => leg.legType === "OUTBOUND");
   return formatLocalTimeLabel(outbound?.departureTime ?? displayTimeToLocalTime(dateTime.time));
+}
+
+function getRidePickupDateTime(dateTime: DateTimeState) {
+  const dateValue = dateTime.scheduleType === "RECURRING" ? dateTime.recurringStartDate : dateTime.selectedDate;
+  const outbound = dateTime.recurringLegs.find((leg) => leg.legType === "OUTBOUND");
+  const timeValue = dateTime.scheduleType === "RECURRING"
+    ? outbound?.departureTime ?? displayTimeToLocalTime(dateTime.time)
+    : displayTimeToLocalTime(dateTime.time);
+  const [hour, minute] = timeValue.split(":").map(Number);
+  const pickupDate = parseIsoDateToLocalDate(dateValue);
+
+  pickupDate.setHours(hour || 0, minute || 0, 0, 0);
+  return pickupDate;
+}
+
+function getConfirmationDeadlineDate(deadline: ConfirmationDeadlineState) {
+  if (!deadline.date || !deadline.time) return null;
+  const parsed = new Date(`${deadline.date}T${deadline.time}:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function formatConfirmationDeadlineLabel(deadline: ConfirmationDeadlineState) {
+  const parsed = getConfirmationDeadlineDate(deadline);
+  if (!parsed) return "Not set";
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
+function getConfirmationDeadlineError(deadline: ConfirmationDeadlineState, dateTime: DateTimeState) {
+  const parsed = getConfirmationDeadlineDate(deadline);
+  if (!deadline.date || !deadline.time || !parsed) return "Choose both a confirm-by date and time.";
+  if (parsed.getTime() <= Date.now()) return "Choose a future confirmation deadline.";
+  if (parsed.getTime() >= getRidePickupDateTime(dateTime).getTime()) return "The deadline must be before pickup time.";
+  return null;
 }
 
 function getScheduleTypeLabel(dateTime: DateTimeState) {
@@ -5190,6 +5235,98 @@ function RideAppBookingRulesStep({
   );
 }
 
+function ConfirmationDeadlineStep({
+  deadline,
+  dateTime,
+  currentStep,
+  stepLabels,
+  onDeadlineChange,
+  onBack,
+  onContinue,
+}: {
+  deadline: ConfirmationDeadlineState;
+  dateTime: DateTimeState;
+  currentStep: CreateStep;
+  stepLabels: string[];
+  onDeadlineChange: (deadline: ConfirmationDeadlineState) => void;
+  onBack: () => void;
+  onContinue: () => void;
+}) {
+  const validationError = getConfirmationDeadlineError(deadline, dateTime);
+  const hasStarted = Boolean(deadline.date || deadline.time);
+  const deadlineLabel = formatConfirmationDeadlineLabel(deadline);
+  const pickupLabel = `${getScheduleDateSummary(dateTime)} at ${getScheduleTimeSummary(dateTime)}`;
+
+  return (
+    <>
+      <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
+
+      <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-7">
+        <section className="text-center">
+          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Ride app</p>
+          <h1 className="mt-2 text-[27px] font-black leading-tight text-[var(--rp-text)]">Rider confirmation deadline</h1>
+          <p className="mx-auto mt-2 max-w-[320px] text-sm font-medium leading-6 text-[var(--rp-muted)]">
+            Set when other riders must confirm so the pod can match with committed riders.
+          </p>
+        </section>
+
+        <section className="mt-6 rounded-[24px] border border-[var(--rp-primary)]/45 bg-[linear-gradient(145deg,rgba(246,196,83,0.12),rgba(15,23,42,0.82))] p-4 shadow-[0_20px_48px_rgba(0,0,0,0.28)]">
+          <div className="flex items-start gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[15px] border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]">
+              <Clock3 className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-lg font-black text-[var(--rp-primary)]">Confirm riders by</h2>
+              <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                Unconfirmed seats may be released after this deadline.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <label className="grid min-w-0 gap-2">
+              <span className="text-[11px] font-black uppercase tracking-[0.12em] text-cyan-100">Date</span>
+              <input
+                type="date"
+                min={getTodayIsoDate()}
+                value={deadline.date}
+                onChange={(event) => onDeadlineChange({ ...deadline, date: event.target.value })}
+                className="min-h-12 min-w-0 rounded-[15px] border border-[var(--rp-border)] bg-[rgba(5,12,20,0.76)] px-3 text-sm font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+              />
+            </label>
+            <label className="grid min-w-0 gap-2">
+              <span className="text-[11px] font-black uppercase tracking-[0.12em] text-cyan-100">Time</span>
+              <input
+                type="time"
+                step={300}
+                value={deadline.time}
+                onChange={(event) => onDeadlineChange({ ...deadline, time: event.target.value })}
+                className="min-h-12 min-w-0 rounded-[15px] border border-[var(--rp-border)] bg-[rgba(5,12,20,0.76)] px-3 text-sm font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+              />
+            </label>
+          </div>
+
+          {hasStarted && validationError ? (
+            <p className="mt-3 rounded-[14px] border border-[var(--rp-danger)]/35 bg-[var(--rp-danger)]/10 px-3 py-2 text-xs font-black leading-5 text-[var(--rp-danger)]">
+              {validationError}
+            </p>
+          ) : null}
+        </section>
+
+        <section className="mt-4 rounded-[22px] border border-cyan-300/35 bg-[rgba(8,25,34,0.72)] p-4">
+          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-cyan-200">Deadline preview</p>
+          <p className="mt-2 text-xl font-black text-[var(--rp-text)]">{deadlineLabel}</p>
+          <p className="mt-2 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">Ride pickup: {pickupLabel}</p>
+        </section>
+
+        <div className="mt-5">
+          <CreatePodStepActions onBack={onBack} onContinue={onContinue} disabled={Boolean(validationError)} />
+        </div>
+      </main>
+    </>
+  );
+}
+
 function HostChoiceConfirmationDialog({
   rideOption,
   checked,
@@ -6015,6 +6152,7 @@ function buildCreatedRideAppHomeRide({
   pickupAddress,
   dropoffAddress,
   dateTime,
+  confirmationDeadline,
   peopleVehicle,
   accessMode,
   stopRequestPolicy,
@@ -6026,6 +6164,7 @@ function buildCreatedRideAppHomeRide({
   pickupAddress: string;
   dropoffAddress: string;
   dateTime: DateTimeState;
+  confirmationDeadline: ConfirmationDeadlineState;
   peopleVehicle: PeopleVehicleState;
   accessMode: AccessMode;
   stopRequestPolicy: StopRequestPolicy;
@@ -6044,6 +6183,11 @@ function buildCreatedRideAppHomeRide({
   const splitMethod = getSelfSettleSplitMethodLabel(peopleVehicle.splitMethod);
   const estimatedFare = peopleVehicle.estimatedRideAppFare.trim();
   const luggageLabel = airportDetails ? getAirportLuggageSummary(airportDetails) : getLuggageLabel(peopleVehicle);
+  const confirmationDeadlineDate = getConfirmationDeadlineDate(confirmationDeadline);
+  const confirmationDeadlineAt = confirmationDeadlineDate?.toISOString() ?? null;
+  const confirmationDeadlineLabel = confirmationDeadlineDate
+    ? formatConfirmationDeadlineLabel(confirmationDeadline)
+    : "Not set yet";
 
   return {
     id,
@@ -6062,14 +6206,14 @@ function buildCreatedRideAppHomeRide({
     selfSettleRiskAccepted: true,
     bookingDetailsShared: false,
     rideAppBookingDetailsFinalized: false,
-    confirmationDeadlineLabel: "Not set yet",
-    confirmationDeadlineAt: null,
+    confirmationDeadlineLabel,
+    confirmationDeadlineAt,
     currentUserJoinIntentStatus: "not_joined",
     currentUserConfirmationExpired: false,
     bookingDetailsVersion: 1,
     bookingDetailsUpdated: false,
     currentUserConfirmedBookingDetailsVersion: null,
-    rideAppConfirmBy: null,
+    rideAppConfirmBy: confirmationDeadlineAt,
     rideAppChecklist: {
       pickupPoint: Boolean(peopleVehicle.pickupVenue),
       dropoffPoint: true,
@@ -6509,12 +6653,14 @@ function SelfSettleReviewSummaryCard({
   pickupAddress,
   dropoffAddress,
   dateTime,
+  confirmationDeadline,
   onEditDetails,
 }: {
   peopleVehicle: PeopleVehicleState;
   pickupAddress: string;
   dropoffAddress: string;
   dateTime: DateTimeState;
+  confirmationDeadline: ConfirmationDeadlineState;
   onEditDetails: () => void;
 }) {
   const rows: Array<{ icon: ReactNode; label: string; value: string }> = [
@@ -6525,6 +6671,7 @@ function SelfSettleReviewSummaryCard({
     { icon: <LocateFixed className="h-4 w-4" />, label: "Gather point", value: peopleVehicle.pickupVenue || "None" },
     { icon: <CarFront className="h-4 w-4" />, label: "Ride app", value: getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther) },
     { icon: <CalendarDays className="h-4 w-4" />, label: "Date/time", value: `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}` },
+    { icon: <Clock3 className="h-4 w-4" />, label: "Rider confirmation deadline", value: formatConfirmationDeadlineLabel(confirmationDeadline) },
     { icon: <UsersRound className="h-4 w-4" />, label: "Seats", value: `${peopleVehicle.seatsAvailable} seats total` },
   ];
 
@@ -7583,6 +7730,7 @@ function ReviewPodStep({
   pickupAddress,
   dropoffAddress,
   dateTime,
+  confirmationDeadline,
   peopleVehicle,
   airportDetails,
   pricing,
@@ -7603,6 +7751,7 @@ function ReviewPodStep({
   pickupAddress: string;
   dropoffAddress: string;
   dateTime: DateTimeState;
+  confirmationDeadline: ConfirmationDeadlineState;
   peopleVehicle: PeopleVehicleState;
   airportDetails?: AirportDetailsState | null;
   pricing: PricingState;
@@ -7760,6 +7909,7 @@ function ReviewPodStep({
                   pickupAddress={pickupAddress}
                   dropoffAddress={dropoffAddress}
                   dateTime={dateTime}
+                  confirmationDeadline={confirmationDeadline}
                   onEditDetails={onEditDetails}
                 />
               ) : (
@@ -7975,6 +8125,10 @@ export function CreatePodChooseType() {
     recurringOccurrenceLimit: 8,
     recurringEndDate: todayIsoDate,
   });
+  const [confirmationDeadline, setConfirmationDeadline] = useState<ConfirmationDeadlineState>({
+    date: "",
+    time: "",
+  });
   const [peopleVehicle, setPeopleVehicle] = useState<PeopleVehicleState>({
     seatsAvailable: 4,
     bags: 3,
@@ -8037,8 +8191,9 @@ export function CreatePodChooseType() {
   const estimateCostStepIndex: CreateStep = isAirportPod ? 4 : 3;
   const dateTimeStepIndex: CreateStep = isAirportPod ? 5 : 4;
   const bookingRulesStepIndex: CreateStep = isAirportPod ? 6 : 5;
-  const reviewStepIndex: CreateStep = isRideAppSelfSettle ? (isAirportPod ? 7 : 6) : isAirportPod ? 6 : 5;
-  const successStepIndex: CreateStep = isRideAppSelfSettle ? (isAirportPod ? 8 : 7) : isAirportPod ? 7 : 6;
+  const confirmationDeadlineStepIndex: CreateStep = isAirportPod ? 7 : 6;
+  const reviewStepIndex: CreateStep = isRideAppSelfSettle ? (isAirportPod ? 8 : 7) : isAirportPod ? 6 : 5;
+  const successStepIndex: CreateStep = isRideAppSelfSettle ? (isAirportPod ? 9 : 8) : isAirportPod ? 7 : 6;
 
   function continueFromAirportDetails() {
     const terminalOrHall = getAirportTerminalHallValue(airportDetails);
@@ -8146,6 +8301,7 @@ export function CreatePodChooseType() {
         pickupAddress,
         dropoffAddress,
         dateTime,
+        confirmationDeadline,
         peopleVehicle,
         accessMode,
         stopRequestPolicy: displayedStopRequestPolicy,
@@ -8229,6 +8385,7 @@ export function CreatePodChooseType() {
           pickupAddress={pickupAddress}
           dropoffAddress={dropoffAddress}
           dateTime={dateTime}
+          confirmationDeadline={confirmationDeadline}
           peopleVehicle={peopleVehicle}
           airportDetails={isAirportPod ? airportDetails : null}
           pricing={pricing}
@@ -8242,8 +8399,18 @@ export function CreatePodChooseType() {
           onGenderModeChange={setGenderMode}
           onAccessModeChange={setAccessMode}
           onEditDetails={() => setStep(routeStepIndex)}
-          onBack={() => setStep(isRideAppSelfSettle ? bookingRulesStepIndex : dateTimeStepIndex)}
+          onBack={() => setStep(isRideAppSelfSettle ? confirmationDeadlineStepIndex : dateTimeStepIndex)}
           onCreate={completeCreate}
+        />
+      ) : step === confirmationDeadlineStepIndex && isRideAppSelfSettle ? (
+        <ConfirmationDeadlineStep
+          deadline={confirmationDeadline}
+          dateTime={dateTime}
+          currentStep={confirmationDeadlineStepIndex}
+          stepLabels={activeStepLabels}
+          onDeadlineChange={setConfirmationDeadline}
+          onBack={() => setStep(bookingRulesStepIndex)}
+          onContinue={() => continueToStep(reviewStepIndex)}
         />
       ) : step === bookingRulesStepIndex && isRideAppSelfSettle ? (
         <RideAppBookingRulesStep
@@ -8252,7 +8419,7 @@ export function CreatePodChooseType() {
           stepLabels={activeStepLabels}
           onPeopleVehicleChange={setPeopleVehicle}
           onBack={() => setStep(dateTimeStepIndex)}
-          onContinue={() => continueToStep(reviewStepIndex)}
+          onContinue={() => continueToStep(confirmationDeadlineStepIndex)}
         />
       ) : step === dateTimeStepIndex ? (
         <DateTimeStep
