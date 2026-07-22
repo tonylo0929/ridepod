@@ -3871,7 +3871,7 @@ function EstimatedCostStep({
           <CreatePodStepActions
             onBack={onBack}
             onContinue={handleContinue}
-            continueLabel="Save estimate"
+            continueLabel="Continue"
             continueIcon={<ArrowRight className="h-5 w-5" />}
             disabled={!canContinue}
           />
