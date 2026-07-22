@@ -6047,6 +6047,87 @@ function buildCreatedRideAppHomeRide({
   };
 }
 
+function buildCreatedTaxiHomeRide({
+  pickupAddress,
+  dropoffAddress,
+  dateTime,
+  peopleVehicle,
+  pricing,
+  genderMode,
+  accessMode,
+  stopRequestPolicy,
+  hostAvatarPreference,
+  hostAvatarUrl,
+  hostDisplayName,
+}: {
+  pickupAddress: string;
+  dropoffAddress: string;
+  dateTime: DateTimeState;
+  peopleVehicle: PeopleVehicleState;
+  pricing: PricingState;
+  genderMode: GenderMode;
+  accessMode: AccessMode;
+  stopRequestPolicy: StopRequestPolicy;
+  hostAvatarPreference?: RidePodAvatarPreference;
+  hostAvatarUrl?: string | null;
+  hostDisplayName?: string | null;
+}): HomeRide {
+  const normalizedRideOption = normalizeRideOptionId(peopleVehicle.rideOption);
+  const normalRideFields = getAirportHomeRideFields(null);
+  const taxiType = normalizedRideOption === "taxi_partner_quote" ? getTaxiTypeLabel(peopleVehicle.taxiType) : "Taxi meter";
+
+  return {
+    id: crypto.randomUUID(),
+    fromDistrict: peopleVehicle.pickupDistrict || districtFromLabel(pickupAddress),
+    toDistrict: peopleVehicle.dropoffDistrict || districtFromLabel(dropoffAddress),
+    fromLabel: pickupAddress || "Pickup",
+    toLabel: dropoffAddress || "Drop-off",
+    dateLabel: getScheduleDateSummary(dateTime),
+    timeLabel: getScheduleTimeSummary(dateTime),
+    seatsUsed: 1,
+    seatsTotal: peopleVehicle.seatsAvailable,
+    pricePerPerson: pricing.estimatedShare,
+    rideKind: dateTime.scheduleType === "RECURRING" ? "recurring" : "one_off",
+    rideService: "taxi",
+    rideCategory: normalizedRideOption === "taxi_partner_quote" ? "taxi_partner_quote" : "taxi_meter",
+    currentUserQuoteAccepted: false,
+    acceptedGuestCount: 0,
+    requiredGuestCount: Math.max(1, peopleVehicle.seatsAvailable - 1),
+    ...normalRideFields,
+    airportDirection: null,
+    status: "available",
+    quoteStatus: "quote_pending",
+    currentUserRole: "host",
+    currentUserName: "You",
+    currentUserJoined: false,
+    currentUserBookingDetailsConfirmed: false,
+    confirmedRiderCount: 0,
+    joinedRiderCount: 0,
+    rideAppConfirmedRiderCount: 0,
+    riderConfirmations: [
+      { name: "You", role: "host", status: "host", confirmedBookingDetailsVersion: 1 },
+    ],
+    taxiType,
+    platformFee: 5,
+    luggage: getLuggageNeedsSummary(peopleVehicle),
+    accessibility: getAccessLabel(peopleVehicle),
+    podType: getCreatedPodTypeLabel(genderMode, accessMode),
+    hostName: "You",
+    hostAvatarPreference,
+    hostAvatarUrl,
+    hostDisplayName,
+    joinedRiders: [],
+    pickupLabel: peopleVehicle.pickupVenue || pickupAddress,
+    pickupTime: getScheduleTimeSummary(dateTime),
+    dropoffLabel: dropoffAddress,
+    bookingFareCapCents: dollarsToCents(pricing.maxFare),
+    stopRequestPolicy,
+    proposedStops: [],
+    approvedStops: [],
+    declinedStops: [],
+  };
+}
+
 function buildCreatedAirportTaxiHomeRide({
   pickupAddress,
   dropoffAddress,
@@ -8031,7 +8112,21 @@ export function CreatePodChooseType() {
       saveCreatedHomeRide(createdRide);
       setCreatedPodDetailHref(`/pods/${createdRide.id}`);
     } else {
-      setCreatedPodDetailHref(null);
+      const createdRide = buildCreatedTaxiHomeRide({
+        pickupAddress,
+        dropoffAddress,
+        dateTime,
+        peopleVehicle,
+        pricing,
+        genderMode,
+        accessMode,
+        stopRequestPolicy: displayedStopRequestPolicy,
+        hostAvatarPreference: avatarPreference,
+        hostAvatarUrl: profile?.avatar_url ?? null,
+        hostDisplayName,
+      });
+      saveCreatedHomeRide(createdRide);
+      setCreatedPodDetailHref(`/pods/${createdRide.id}`);
     }
 
     setStep(successStepIndex);
