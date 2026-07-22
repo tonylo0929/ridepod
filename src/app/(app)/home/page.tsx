@@ -2947,12 +2947,13 @@ function HomePageContent() {
             </div>
           ) : null}
           <RideTypeInfoStrip />
-          <RideAppCommunityPanel
-            offerOpen={rideAppLaunchOfferOpen}
-            onOfferOpenChange={setRideAppLaunchOfferOpen}
-          />
         </section>
       ) : null}
+
+      <RideAppCommunityPanel
+        offerOpen={rideAppLaunchOfferOpen}
+        onOfferOpenChange={setRideAppLaunchOfferOpen}
+      />
 
       <DistrictFilterSheet
         open={filtersOpen}
