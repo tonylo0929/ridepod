@@ -2148,6 +2148,7 @@ function HomePageContent() {
   const [airportFlightQuery, setAirportFlightQuery] = useState("");
   const [airportTerminalFilter, setAirportTerminalFilter] = useState<AirportTerminalFilter>("terminal_1");
   const [rideModeFilter, setRideModeFilter] = useState<RideModeFilter>(initialRideModeFilter);
+  const [selectedRideMode, setSelectedRideMode] = useState<Extract<RideModeFilter, "taxi" | "ride_app"> | null>(null);
   const [settlementFilter, setSettlementFilter] = useState<SettlementFilter>(initialSettlementFilter);
   const [fareEstimateFilter, setFareEstimateFilter] = useState<FareEstimateFilter>("any");
   const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>("any");
@@ -2166,7 +2167,7 @@ function HomePageContent() {
     recurring: "commute",
   });
   const today = useMemo(() => new Date(), []);
-  const activeHeroBackgroundMode = rideModeFilter === "ride_app" ? "ride_app" : "taxi";
+  const activeHeroBackgroundMode = selectedRideMode === "ride_app" ? "ride_app" : "taxi";
   const heroGreeting = useMemo(() => getTimeOfDayGreeting(), []);
 
   useEffect(() => {
@@ -2578,6 +2579,7 @@ function HomePageContent() {
   }
 
   function handleRideModeChange(value: Extract<RideModeFilter, "taxi" | "ride_app">) {
+    setSelectedRideMode(value);
     setRideModeFilter(value);
     setExpandedCategoryId(null);
     if (value === "taxi") {
@@ -2674,7 +2676,7 @@ function HomePageContent() {
     deadlineFilter !== "any" ||
     seatFilter !== "any" ||
     ownershipFilter !== "all";
-  const hasChosenRideMode = rideModeFilter === "taxi" || rideModeFilter === "ride_app";
+  const hasChosenRideMode = selectedRideMode !== null;
   const showRideOptionsBoard = true;
   const showRideOptionsFrame = hasChosenRideMode;
   const showRideRecommendations = hasChosenRideMode && expandedCategoryId !== null;
@@ -2710,7 +2712,7 @@ function HomePageContent() {
       }
     />
   );
-  const optionsFrameIsRideApp = rideModeFilter === "ride_app";
+  const optionsFrameIsRideApp = selectedRideMode === "ride_app";
   const OptionsFrameIcon = optionsFrameIsRideApp ? Smartphone : CarFront;
   const optionsFrameLabel = optionsFrameIsRideApp ? "Ride app options" : "Taxi options";
   const homepageExitingForSchedule = selectedCategory !== null && categoryTransitionPhase !== "exiting";
@@ -2813,7 +2815,7 @@ function HomePageContent() {
             Choose your mode
           </p>
           <RideModeSwitch
-            value={rideModeFilter === "ride_app" || rideModeFilter === "taxi" ? rideModeFilter : null}
+            value={selectedRideMode}
             onChange={handleRideModeChange}
           />
         </div>
