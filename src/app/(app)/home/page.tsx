@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   CircleDollarSign,
   Gift,
-  MessageCircle,
   Plane,
   RefreshCcw,
   ShieldCheck,
@@ -1237,6 +1236,42 @@ function RideSearchResultCard(props: {
   return <HomeRideCard {...props} />;
 }
 
+function HomeBottomActionCards() {
+  return (
+    <div className="mx-auto grid w-full max-w-[560px] grid-cols-2 gap-3 max-[389px]:grid-cols-1">
+      <Link
+        href="/today-rides?post=request"
+        aria-label="Post a ride request"
+        className="group relative aspect-[4/5] overflow-hidden rounded-[22px] border border-blue-500/80 bg-[#03101f] shadow-[0_18px_44px_rgba(37,99,235,0.2)] transition hover:border-blue-300 hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300"
+      >
+        <Image
+          src="/images/ride-board/post-request-option1-20260722.png"
+          alt=""
+          fill
+          quality={92}
+          sizes="(max-width: 389px) calc(100vw - 32px), 274px"
+          className="object-cover object-right transition duration-300 group-hover:scale-[1.03]"
+        />
+      </Link>
+
+      <Link
+        href="/create"
+        aria-label="Create your own ride"
+        className="group relative aspect-[4/5] overflow-hidden rounded-[22px] border border-[var(--rp-primary)]/82 bg-[#06101a] shadow-[0_18px_44px_rgba(242,193,91,0.16)] transition hover:border-[var(--rp-primary)] hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
+      >
+        <Image
+          src="/images/ride-board/rideboard-cta-create-illustration.png"
+          alt=""
+          fill
+          quality={92}
+          sizes="(max-width: 389px) calc(100vw - 32px), 274px"
+          className="object-cover object-right transition duration-300 group-hover:scale-[1.03]"
+        />
+      </Link>
+    </div>
+  );
+}
+
 function CategoryResultsScreen({
   screen,
   phase,
@@ -1471,63 +1506,7 @@ function CategoryResultsScreen({
           "-mx-4 mt-4 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10",
         )}
       >
-        <div className="mx-auto grid w-full max-w-[560px] grid-cols-2 gap-3 max-[389px]:grid-cols-1">
-          <Link
-            href="/today-rides?post=request"
-            className="group flex min-h-[274px] flex-col overflow-hidden rounded-[22px] border border-blue-500/80 bg-[linear-gradient(145deg,#06172c_0%,#03101f_58%,#020b16_100%)] p-3 shadow-[0_18px_44px_rgba(37,99,235,0.2)] transition hover:border-blue-300 hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300 min-[430px]:p-4"
-          >
-            <div className="relative z-10">
-              <h3 className="text-[19px] font-black leading-[1.05] text-white min-[430px]:text-[23px]">Post a ride request</h3>
-              <p className="mt-2 text-[12px] font-semibold leading-5 text-white/72 min-[430px]:text-sm">
-                Tell others where and when you need to go.
-              </p>
-            </div>
-            <div className="relative mt-2 h-[116px] overflow-hidden rounded-[16px] bg-[#03101f] min-[430px]:h-[132px]">
-              <Image
-                src="/images/ride-board/post-request-option1-20260722.png"
-                alt=""
-                fill
-                quality={92}
-                sizes="(max-width: 389px) calc(100vw - 32px), 274px"
-                className="object-cover object-center"
-              />
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,10,20,0.12),transparent_46%)]" />
-            </div>
-            <span className="mt-auto inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[16px] bg-[linear-gradient(180deg,#2d9cff,#126af3)] px-3 text-sm font-black text-white shadow-[0_14px_28px_rgba(18,106,243,0.32)] transition group-hover:brightness-110 min-[430px]:text-base">
-              <MessageCircle className="h-5 w-5" />
-              Post request
-              <ChevronRight className="h-5 w-5" />
-            </span>
-          </Link>
-
-          <Link
-            href="/create"
-            className="group flex min-h-[274px] flex-col overflow-hidden rounded-[22px] border border-[var(--rp-primary)]/82 bg-[linear-gradient(145deg,#08131f_0%,#04101b_58%,#020b13_100%)] p-3 shadow-[0_18px_44px_rgba(242,193,91,0.16)] transition hover:border-[var(--rp-primary)] hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)] min-[430px]:p-4"
-          >
-            <div className="relative z-10">
-              <h3 className="text-[19px] font-black leading-[1.05] text-white min-[430px]:text-[23px]">Create your own ride</h3>
-              <p className="mt-2 text-[12px] font-semibold leading-5 text-white/72 min-[430px]:text-sm">
-                Be the host. Invite others to join and ride together.
-              </p>
-            </div>
-            <div className="relative mt-2 h-[116px] overflow-hidden rounded-[16px] bg-[#06101a] min-[430px]:h-[132px]">
-              <Image
-                src="/images/ride-board/rideboard-cta-create-illustration.png"
-                alt=""
-                fill
-                quality={92}
-                sizes="(max-width: 389px) calc(100vw - 32px), 274px"
-                className="object-cover object-right"
-              />
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,10,18,0.08),transparent_48%)]" />
-            </div>
-            <span className="mt-auto inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[16px] bg-[linear-gradient(180deg,#ffdb6b,#f2bd42)] px-3 text-sm font-black text-[#07111a] shadow-[0_14px_28px_rgba(242,193,91,0.26)] transition group-hover:brightness-105 min-[430px]:text-base">
-              <CarFront className="h-5 w-5" />
-              Create ride
-              <ChevronRight className="h-5 w-5" />
-            </span>
-          </Link>
-        </div>
+        <HomeBottomActionCards />
       </div>
     </section>
   );
@@ -2890,6 +2869,10 @@ function HomePageContent() {
           ) : null}
         </section>
       ) : null}
+
+      <section className="relative z-10 mx-auto mt-5 w-full max-w-[712px] px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-4">
+        <HomeBottomActionCards />
+      </section>
 
       <RideAppCommunityPanel
         offerOpen={rideAppLaunchOfferOpen}
