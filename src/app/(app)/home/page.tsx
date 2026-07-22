@@ -8,6 +8,7 @@ import {
   CalendarDays,
   CarFront,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   CheckCircle2,
   CircleDollarSign,
@@ -1302,9 +1303,10 @@ function CategoryResultsScreen({
         <button
           type="button"
           onClick={onBack}
-          className="mb-3 inline-flex min-h-10 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_48%,transparent)] bg-[rgba(13,24,35,0.92)] px-4 text-xs font-black text-[var(--rp-primary)] shadow-[0_14px_32px_rgba(0,0,0,0.3)] transition hover:border-[var(--rp-primary)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]"
+          aria-label="Back to search"
+          className="mb-3 inline-grid h-10 w-10 place-items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_48%,transparent)] bg-[rgba(13,24,35,0.92)] text-[var(--rp-primary)] shadow-[0_14px_32px_rgba(0,0,0,0.3)] transition hover:border-[var(--rp-primary)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]"
         >
-          Back to Search
+          <ChevronLeft className="h-5 w-5 stroke-[2.6]" />
         </button>
         <div className={cn("relative overflow-hidden rounded-[28px]", config.shadowClassName)}>
           <Image
@@ -1482,12 +1484,12 @@ function CategoryResultsScreen({
             </div>
             <div className="relative mt-2 h-[116px] overflow-hidden rounded-[16px] bg-[#03101f] min-[430px]:h-[132px]">
               <Image
-                src="/images/ride-board/rideboard-cta-request-illustration.png"
+                src="/images/ride-board/post-request-option1-20260722.png"
                 alt=""
                 fill
                 quality={92}
                 sizes="(max-width: 389px) calc(100vw - 32px), 274px"
-                className="object-cover object-right"
+                className="object-cover object-center"
               />
               <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,10,20,0.12),transparent_46%)]" />
             </div>
