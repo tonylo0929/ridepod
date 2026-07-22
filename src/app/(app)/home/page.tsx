@@ -678,8 +678,8 @@ function CategoryCard({
   const cardClassName = cn(
     "group block origin-center overflow-hidden text-left shadow-[0_22px_46px_rgba(0,0,0,0.26)] outline-none transition-[transform,box-shadow,filter,opacity] duration-[220ms] ease-out active:scale-[0.99] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]",
     selected
-      ? "scale-[1.11] opacity-100 ring-2 ring-white/42 shadow-[0_34px_78px_rgba(0,0,0,0.48),0_0_46px_color-mix(in_srgb,var(--rp-primary)_42%,transparent)] brightness-[1.08] saturate-[1.08]"
-      : "scale-[0.965] opacity-[0.72] saturate-[0.88] hover:scale-[0.985] hover:opacity-90",
+      ? "scale-100 opacity-100 ring-[3px] ring-[color-mix(in_srgb,var(--rp-primary)_82%,white_18%)] shadow-[0_26px_58px_rgba(0,0,0,0.46),0_0_38px_color-mix(in_srgb,var(--rp-primary)_34%,transparent)] brightness-[1.05] saturate-[1.05]"
+      : "scale-100 opacity-[0.82] saturate-[0.9] hover:opacity-95",
     className,
   );
   const cardStyle: CSSProperties | undefined = selected ? { ...style, zIndex: 30 } : style;
@@ -2675,6 +2675,7 @@ function HomePageContent() {
     seatFilter !== "any" ||
     ownershipFilter !== "all";
   const hasChosenRideMode = rideModeFilter === "taxi" || rideModeFilter === "ride_app";
+  const showRideOptionsBoard = true;
   const showRideOptionsFrame = hasChosenRideMode;
   const showRideRecommendations = hasChosenRideMode && expandedCategoryId !== null;
   const activeCategoryTab =
@@ -2817,13 +2818,13 @@ function HomePageContent() {
           />
         </div>
 
-        {showRideOptionsFrame ? (
+        {showRideOptionsBoard ? (
         <div ref={rideTypesRef} className="relative z-10 mt-6 scroll-mt-[88px] px-0.5">
           <div
             data-testid="ride-category-board"
             onClick={handleCategoryBoardClick}
             className={cn(
-              "relative mx-auto w-full max-w-[704px] rounded-[31px] px-[clamp(10px,2.2vw,14px)] pb-[clamp(10px,2.2vw,14px)] transition-colors duration-200",
+              "relative mx-auto w-full max-w-[704px] rounded-[31px] px-[clamp(10px,2.2vw,14px)] pb-[clamp(10px,2.2vw,14px)] transition-[background,border-color,box-shadow,padding] duration-200",
               showRideOptionsFrame
                 ? cn(
                     "border-[3px] pt-[clamp(24px,4.6vw,31px)] shadow-[0_22px_58px_rgba(0,0,0,0.32)]",
@@ -2831,7 +2832,7 @@ function HomePageContent() {
                       ? "border-sky-200 bg-[linear-gradient(145deg,rgba(6,24,42,0.42),rgba(15,91,166,0.16))] shadow-[0_0_0_2px_rgba(56,189,248,0.22),0_0_52px_rgba(56,189,248,0.32)]"
                       : "border-[color-mix(in_srgb,var(--rp-primary)_100%,white_8%)] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-primary)_14%,transparent),rgba(4,16,26,0.38))] shadow-[0_0_0_2px_color-mix(in_srgb,var(--rp-primary)_30%,transparent),0_0_52px_color-mix(in_srgb,var(--rp-primary)_38%,transparent)]",
                   )
-                : "pt-0",
+                : "border-[3px] border-transparent bg-transparent pt-[clamp(10px,2.2vw,14px)]",
             )}
           >
             {showRideOptionsFrame ? (
