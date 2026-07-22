@@ -96,6 +96,7 @@ const authRequestTimeoutMs = 15_000;
 
 type MockStoredProfile = RidePodProfileRow & {
   account_type?: RidePodAccountType;
+  app_role?: "admin";
   taxi_partner_verification_status?: "manual_review_pending";
   partner_type?: string;
   service_areas?: string[];
@@ -181,6 +182,7 @@ function buildMockProfile(input: {
   partnerType?: string | null;
   serviceAreas?: string[];
   taxiCapabilities?: string[];
+  appRole?: "admin";
 }): MockStoredProfile {
   const displayName = input.displayName?.trim() || input.email.split("@")[0] || "RidePod user";
   const accountType = input.accountType ?? "rider";
@@ -195,6 +197,7 @@ function buildMockProfile(input: {
     phone: input.phone?.trim() || mockRidePodProfile.phone,
     home_district: input.homeDistrict?.trim() || mockRidePodProfile.home_district,
     account_type: accountType,
+    app_role: input.appRole,
     taxi_partner_verification_status: accountType === "taxi_partner" ? "manual_review_pending" : undefined,
     partner_type: input.partnerType ?? undefined,
     service_areas: input.serviceAreas,
@@ -214,6 +217,7 @@ function getRedirectForAccountType(accountType: RidePodAccountType) {
 
 function mockSessionFromProfile(profile: RidePodProfileRow | MockStoredProfile): MockSession {
   const accountType = getAccountTypeFromProfile(profile);
+  const appRole = (profile as MockStoredProfile).app_role;
 
   return {
     access_token: "mock-access-token",
@@ -223,10 +227,11 @@ function mockSessionFromProfile(profile: RidePodProfileRow | MockStoredProfile):
     user: {
       id: profile.id,
       email: profile.email ?? undefined,
-      app_metadata: { provider: "mock" },
+      app_metadata: { provider: "mock", role: appRole },
       user_metadata: {
         display_name: profile.display_name,
         account_type: accountType,
+        role: appRole,
         taxi_partner_verification_status:
           accountType === "taxi_partner" ? "manual_review_pending" : undefined,
       },
@@ -271,6 +276,20 @@ function writeMockRegistryProfile(profile: MockStoredProfile) {
   if (email) registry[email] = profile;
   if (accountName) registry[accountName] = profile;
   writeMockRegistry(registry);
+}
+
+function ensureMockAdminRegistryProfile() {
+  if (typeof window === "undefined") return;
+  if (getMockRegistryProfile("admin")) return;
+
+  writeMockRegistryProfile(buildMockProfile({
+    id: "mock-admin-ridepod",
+    accountName: "admin",
+    email: "admin@ridepod.local",
+    displayName: "RidePod Admin",
+    accountType: "rider",
+    appRole: "admin",
+  }));
 }
 
 function getMockRegistryProfile(loginIdentifier: string) {
@@ -568,6 +587,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const stored = readMockProfile();
+      ensureMockAdminRegistryProfile();
       const registered = getMockRegistryProfile(loginIdentifier);
       const email = isEmailLoginIdentifier(loginIdentifier)
         ? normalizeEmail(loginIdentifier)

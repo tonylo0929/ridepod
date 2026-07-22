@@ -65,6 +65,7 @@ import {
   type Weekday,
 } from "@/lib/pod-schedule";
 import { useAuth } from "@/providers/AuthProvider";
+import { isRidePodAdminUser } from "@/lib/admin-access";
 import { getRideAppAccessNotice, getRideAppTrustSummary } from "@/lib/ride-app-trust";
 import {
   calculateRideAppJoinFee,
@@ -4077,21 +4078,27 @@ function TaxiFareReferenceCard({
 function RideCategoryCard({
   category,
   selected,
+  disabled,
   onSelect,
 }: {
   category: (typeof rideCategories)[number];
   selected: boolean;
+  disabled?: boolean;
   onSelect: () => void;
 }) {
   const Icon = category.icon;
   const taxiCategory = category.id === "taxi";
   const rideAppCategory = category.id === "ride_app";
+  const displayTitle = disabled && taxiCategory ? "Taxi · Coming soon" : category.title;
+  const statusText = disabled && taxiCategory ? "Coming soon" : selected ? "Selected" : "Tap to choose";
 
   return (
     <button
       type="button"
       role="radio"
       aria-checked={selected}
+      aria-disabled={disabled}
+      disabled={disabled}
       onClick={onSelect}
       className={cn(
         "relative w-full rounded-[24px] border text-left shadow-[var(--rp-shadow-soft)] transition-[background,border-color,box-shadow,outline-color,transform] duration-200",
@@ -4106,6 +4113,7 @@ function RideCategoryCard({
           : rideAppCategory
             ? "border-blue-400/45 bg-[linear-gradient(135deg,rgba(15,23,42,0.82),rgba(3,7,18,0.66))] hover:border-blue-300/75"
             : "",
+        disabled && "cursor-not-allowed opacity-60 hover:border-[rgba(246,196,83,0.42)]",
       )}
     >
       <span className="grid min-w-0 grid-cols-[46px_minmax(0,1fr)] items-center gap-3 min-[390px]:grid-cols-[52px_minmax(0,1fr)]">
@@ -4138,7 +4146,7 @@ function RideCategoryCard({
         <span className="min-w-0">
           <span className="grid min-w-0 gap-2">
             <span className="min-w-0 whitespace-nowrap text-[18px] font-black leading-6 text-[var(--rp-text)] min-[390px]:text-[22px]">
-              {category.title}
+              {displayTitle}
             </span>
             <span
               className={cn(
@@ -4159,7 +4167,7 @@ function RideCategoryCard({
               !selected && "text-[var(--rp-muted)]",
             )}
           >
-            {selected ? "Selected" : "Tap to choose"}
+            {statusText}
           </span>
         </span>
       </span>
@@ -4170,10 +4178,12 @@ function RideCategoryCard({
 function RideOptionSelector({
   value,
   peopleVehicle,
+  taxiCreateUnlocked,
   onChange,
 }: {
   value: RideOptionId;
   peopleVehicle: PeopleVehicleState;
+  taxiCreateUnlocked: boolean;
   onChange: (value: RideOptionId) => void;
 }) {
   const selectedRideOption = normalizeRideOptionId(value);
@@ -4191,6 +4201,7 @@ function RideOptionSelector({
             key={category.id}
             category={category}
             selected={selectedCategory === category.id}
+            disabled={category.id === "taxi" && !taxiCreateUnlocked}
             onSelect={() => {
               onChange(category.id === "taxi" ? "taxi_partner_quote" : "ride_app_fixed_quote");
             }}
@@ -5276,6 +5287,7 @@ function PeopleVehicleStep({
   stepLabels = baseCreateSteps,
   onRequireAuth,
   rideAppAccessNotice,
+  taxiCreateUnlocked,
   showBackAction = true,
 }: {
   podType: PodType;
@@ -5296,6 +5308,7 @@ function PeopleVehicleStep({
   stepLabels?: string[];
   onRequireAuth?: () => boolean;
   rideAppAccessNotice?: { blocked: boolean; message: string } | null;
+  taxiCreateUnlocked: boolean;
   showBackAction?: boolean;
 }) {
   const selectedRideOptionId = normalizeRideOptionId(peopleVehicle.rideOption);
@@ -5547,6 +5560,7 @@ function PeopleVehicleStep({
                 <RideOptionSelector
                   value={peopleVehicle.rideOption}
                   peopleVehicle={peopleVehicle}
+                  taxiCreateUnlocked={taxiCreateUnlocked}
                   onChange={(rideOption) =>
                     {
                       setTaxiDetailsPage("category");
@@ -7903,9 +7917,9 @@ export function CreatePodChooseType() {
     extraSpaceNeeded: false,
     wheelchairAccessibleRequested: false,
     stepFreeSupportRequested: false,
-    rideOption: "taxi_partner_quote",
-    vehicleType: "Standard taxi",
-    priceSource: "Licensed taxi partner quote for the shared pod",
+    rideOption: "ride_app_fixed_quote",
+    vehicleType: getRideOption("ride_app_fixed_quote").title,
+    priceSource: "Ride app self-settle",
     pickupVenue: "",
     pickupDistrict: "",
     dropoffDistrict: "",
@@ -7935,6 +7949,7 @@ export function CreatePodChooseType() {
   const rideAppAccessNotice = user
     ? getRideAppAccessNotice(getRideAppTrustSummary(user.id))
     : null;
+  const taxiCreateUnlocked = isRidePodAdminUser(user, profile);
   const isAirportPod = podType === "airport";
   const isAirportTrip = isAirportPod || isAirportTaxiRoute(pickupAddress, dropoffAddress);
   const displayedTaxiPartnerPreference =
@@ -8306,6 +8321,7 @@ export function CreatePodChooseType() {
           stepLabels={activeStepLabels}
           onRequireAuth={ensureCreateAuth}
           rideAppAccessNotice={rideAppAccessNotice}
+          taxiCreateUnlocked={taxiCreateUnlocked}
           showBackAction={false}
         />
       )}
