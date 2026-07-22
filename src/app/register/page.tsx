@@ -649,7 +649,7 @@ export default function RegisterPage() {
 
   return (
     <AuthPageShell>
-      <section className="relative mx-auto grid w-full max-w-2xl gap-4 rounded-[28px] border border-[var(--rp-border)] bg-[var(--rp-card)] p-5 shadow-[var(--rp-shadow-soft)]">
+      <section className="relative mx-auto grid w-full max-w-2xl gap-4 px-1 py-2">
         {step === "form" || step === "avatar" ? (
           <button
             type="button"
