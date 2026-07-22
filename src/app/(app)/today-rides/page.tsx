@@ -1201,6 +1201,7 @@ function RideBoardCategoryCard({
 }) {
   const isGold = category.tone === "gold";
   const showWholeArtwork = category.id === "today-requests" || category.id === "schedule-later";
+  const hideInactiveScheduleFrame = category.id === "schedule-later" && !active;
   const cardAspectClass =
     category.id === "today-requests"
       ? "aspect-[1792/1092]"
@@ -1240,7 +1241,9 @@ function RideBoardCategoryCard({
         style={{ objectPosition: category.objectPosition }}
         className={cn(
           "absolute inset-0 h-full w-full transition duration-500",
-          showWholeArtwork ? "object-cover scale-100" : "object-cover",
+          showWholeArtwork
+            ? cn("object-cover", hideInactiveScheduleFrame ? "scale-[1.04]" : "scale-100")
+            : "object-cover",
           showWholeArtwork ? "" : active ? "scale-[1.015]" : "scale-100 group-hover:scale-[1.02]",
         )}
       />
