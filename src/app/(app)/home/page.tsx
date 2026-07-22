@@ -2032,6 +2032,7 @@ const initialRideModeFilter: RideModeFilter = "all";
 const initialSettlementFilter: SettlementFilter = "all";
 const initialFromDistrict = "All districts";
 const initialToDistrict = "All districts";
+const rideAppLaunchOfferSessionKey = "ridepod:ride-app-launch-offer:auto-opened";
 
 function getTimeOfDayGreeting() {
   const hour = new Date().getHours();
@@ -2155,7 +2156,15 @@ function HomePageContent() {
   const [seatFilter, setSeatFilter] = useState<SeatFilter>("any");
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [rideAppLaunchOfferOpen, setRideAppLaunchOfferOpen] = useState(true);
+  const [rideAppLaunchOfferOpen, setRideAppLaunchOfferOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+
+    const alreadyAutoOpened = window.sessionStorage.getItem(rideAppLaunchOfferSessionKey) === "true";
+    if (alreadyAutoOpened) return false;
+
+    window.sessionStorage.setItem(rideAppLaunchOfferSessionKey, "true");
+    return true;
+  });
   const [rideTypesVisible, setRideTypesVisible] = useState(true);
   const [expandedCategoryId, setExpandedCategoryId] = useState<HomeCategoryCardId | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<SelectedCategory | null>(null);
@@ -2169,6 +2178,14 @@ function HomePageContent() {
   const today = useMemo(() => new Date(), []);
   const activeHeroBackgroundMode = selectedRideMode === "ride_app" ? "ride_app" : "taxi";
   const heroGreeting = useMemo(() => getTimeOfDayGreeting(), []);
+
+  function handleRideAppLaunchOfferOpenChange(open: boolean) {
+    if (!open && typeof window !== "undefined") {
+      window.sessionStorage.setItem(rideAppLaunchOfferSessionKey, "true");
+    }
+
+    setRideAppLaunchOfferOpen(open);
+  }
 
   useEffect(() => {
     const preloadedImages = heroBackgroundModes.map((mode) => {
@@ -2955,7 +2972,7 @@ function HomePageContent() {
 
       <RideAppCommunityPanel
         offerOpen={rideAppLaunchOfferOpen}
-        onOfferOpenChange={setRideAppLaunchOfferOpen}
+        onOfferOpenChange={handleRideAppLaunchOfferOpenChange}
       />
 
       <DistrictFilterSheet
