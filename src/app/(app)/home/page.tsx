@@ -2678,7 +2678,7 @@ function HomePageContent() {
     ownershipFilter !== "all";
   const hasChosenRideMode = selectedRideMode !== null;
   const showRideOptionsBoard = true;
-  const showRideOptionsFrame = hasChosenRideMode;
+  const showRideOptionsFrame = false;
   const showRideRecommendations = hasChosenRideMode && expandedCategoryId !== null;
   const activeCategoryTab =
     activeTab === "all" || activeTab === "airport" || activeTab === "one_off" || activeTab === "recurring" ? activeTab : null;
