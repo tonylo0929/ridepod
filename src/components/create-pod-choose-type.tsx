@@ -345,7 +345,7 @@ const rideOptions: Array<{
 }> = [
   {
     id: "ride_app_fixed_quote",
-    title: "Ride App Self-Settle",
+    title: "Ride App",
     description: `${defaultRideAppCreateFeeSentence} Fee applies only when riders confirm ride details.`,
     helper: "Coordination-only. RidePod does not collect or protect the ride fare.",
     recurringHelper: "Create pod is free. RidePod fee applies only when someone joins an eligible pod.",
@@ -464,7 +464,7 @@ function getRideProofCopy(rideOption: RideOptionId) {
         bookingProofStatus: "Optional fare estimate screenshot",
         bookingProofHelper: "RidePod does not verify ride app screenshots.",
         reviewRows: [
-          { label: "Ride type", value: "Ride App Self-Settle" },
+          { label: "Ride type", value: "Ride App" },
           { label: "Payment rule", value: `${defaultRideAppCreateFeeSentence} Riders demo-confirm or waive the ${defaultRideAppJoinFeeLabel} RidePod join fee when they confirm ride details. ${ridePodPricingCopy.rideAppJoinFeeHelper}` },
           { label: "Screenshot", value: "Optional, local/mock only, not verified by RidePod." },
           { label: "Protection", value: "No fare protection is provided." },
@@ -3667,9 +3667,9 @@ const rideCategories: Array<{
   },
   {
     id: "ride_app",
-    title: "Ride App Self-Settle",
-    modeLabel: "Self-settle",
-    statusLabel: "Self-settle",
+    title: "Ride App",
+    modeLabel: "Ride app",
+    statusLabel: "Ride app",
     priceLabel: defaultRideAppCreateFeeLabel,
     priceHelper: defaultRideAppHostCreateFeeCents > 0 ? "create fee" : "to create",
     detailRows: [
