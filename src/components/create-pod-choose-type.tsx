@@ -1022,10 +1022,10 @@ function CreatePodStepper({
     <nav aria-label="Create pod progress" className="mx-auto mt-6 w-full max-w-[342px]">
       <div className="rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,color-mix(in_srgb,var(--rp-card)_88%,transparent),rgba(5,12,20,0.72))] p-3 shadow-[0_18px_42px_rgba(0,0,0,0.18)]">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
+          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
             Step {currentStep + 1} of {stepLabels.length}
           </p>
-          <p className="min-w-0 truncate text-sm font-black text-[var(--rp-text)]">
+          <p className="min-w-0 truncate text-[13px] font-black text-[var(--rp-text)]">
             {activeStepLabel}
           </p>
         </div>
@@ -2551,15 +2551,15 @@ function RouteStopsStep({
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#020912] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-7 text-[#f8fafc]">
         <section className="text-center">
           <ScheduleTypeEyebrow podType={podType} />
-          <h1 className="text-center text-[31px] font-black leading-tight text-[#f8fafc]">
+          <h1 className="text-center text-[29px] font-black leading-tight text-[#f8fafc]">
             {isAirport ? "Airport route" : "Route & stops"}
           </h1>
-          <p className="mx-auto mt-2 max-w-[260px] text-center text-base font-medium leading-6 text-[#cbd5e1]">
+          <p className="mx-auto mt-2 max-w-[320px] whitespace-nowrap text-center text-[13px] font-medium leading-5 text-[#cbd5e1]">
             {isRoutePanel
               ? isRideAppSelfSettle
                 ? isAirport
                   ? "Add airport route and where riders should meet."
-                  : "Add pickup, dropoff, and where riders should meet."
+                  : "Add pickup, dropoff & meeting point."
                 : isAirport
                   ? "Add airport pickup and drop-off details."
                   : "Add your pickup and dropoff."
@@ -2578,11 +2578,11 @@ function RouteStopsStep({
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
-          <div className="pointer-events-none absolute left-1/2 top-1/2 w-[calc(100%-7rem)] -translate-x-1/2 -translate-y-1/2 text-center">
-            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
+          <div className="pointer-events-none absolute left-1/2 top-1/2 w-[calc(100%-6rem)] -translate-x-1/2 -translate-y-1/2 text-center">
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
               {isRoutePanel ? `Step 1 of ${routePanelCount}` : `Step 2 of ${routePanelCount}`}
             </p>
-            <p className="w-full text-center text-sm font-black text-[var(--rp-text)]">
+            <p className="w-full whitespace-nowrap text-center text-[13px] font-black leading-4 text-[var(--rp-text)]">
               {isRoutePanel ? (isAirport ? "Airport pickup & drop-off" : "Pickup & dropoff") : isRideAppSelfSettle ? "Route requests" : "Extra stop requests"}
             </p>
           </div>
