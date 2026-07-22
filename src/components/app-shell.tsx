@@ -158,10 +158,15 @@ function PremiumBottomNavBoundary() {
 function PremiumTopNav() {
   const pathname = usePathname();
   const unreadCount = useRidePodUnreadCount();
-  const { user } = useAuth();
+  const { profile, user } = useAuth();
   const updatesHref = user ? "/updates" : `/login?next=${encodeURIComponent("/updates")}`;
   const topNavBadgeCount = user ? unreadCount : 3;
   const showRideBoardLogo = pathname === "/today-rides" || pathname.startsWith("/today-rides/");
+  const accountType =
+    (profile as ({ account_type?: string | null } & NonNullable<typeof profile>) | null)?.account_type ??
+    user?.user_metadata?.account_type;
+  const showTaxiQuoteBoard = Boolean(user && accountType && accountType !== "rider");
+  const taxiQuoteBoardActive = pathname === "/taxi-partner" || pathname.startsWith("/taxi-partner/");
 
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_92%,transparent)] px-4 py-3 shadow-[0_12px_30px_rgba(0,0,0,0.14)] backdrop-blur-xl lg:hidden">
@@ -206,6 +211,22 @@ function PremiumTopNav() {
           </Link>
         </div>
       </div>
+      {showTaxiQuoteBoard ? (
+        <div className="mx-auto mt-3 max-w-3xl">
+          <Link
+            href="/taxi-partner"
+            className={cn(
+              "flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-black transition",
+              taxiQuoteBoardActive
+                ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[var(--rp-primary-text)] shadow-[0_14px_28px_color-mix(in_srgb,var(--rp-primary)_24%,transparent)]"
+                : "border-[color-mix(in_srgb,var(--rp-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] text-[var(--rp-primary)] hover:bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)]",
+            )}
+          >
+            <CalendarDays className="h-4 w-4" />
+            Taxi Quote Board
+          </Link>
+        </div>
+      ) : null}
     </header>
   );
 }
