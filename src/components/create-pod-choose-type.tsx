@@ -1135,6 +1135,38 @@ function getAirportSpecialItems(details: AirportDetailsState) {
     .filter(Boolean);
 }
 
+function isAirportDetailsSliceComplete(details: AirportDetailsState, slice: AirportDetailsSlice) {
+  if (slice === "direction") return Boolean(details.airportDirection);
+
+  if (slice === "flight") {
+    const terminalOrHall = details.airportDirection === "to_airport" ? details.airportTerminal : details.airportHall;
+
+    return (
+      details.flightNumber.trim().length > 0 &&
+      details.flightFrom.trim().length > 0 &&
+      details.flightTo.trim().length > 0 &&
+      details.flightTimeLabel.trim().length > 0 &&
+      terminalOrHall.trim().length > 0
+    );
+  }
+
+  return (
+    details.airportLuggage.largeSuitcases >= 0 &&
+    details.airportLuggage.cabinBags >= 0 &&
+    details.airportLuggage.specialItems.trim().length > 0 &&
+    details.airportLuggage.note.trim().length > 0
+  );
+}
+
+function canOpenAirportDetailsSlice(details: AirportDetailsState, slice: AirportDetailsSlice) {
+  const targetIndex = airportDetailsSliceOrder.indexOf(slice);
+  if (targetIndex <= 0) return true;
+
+  return airportDetailsSliceOrder
+    .slice(0, targetIndex)
+    .every((previousSlice) => isAirportDetailsSliceComplete(details, previousSlice));
+}
+
 function CreatePodStepper({
   currentStep,
   stepLabels = baseCreateSteps,
@@ -2422,6 +2454,7 @@ function AirportDetailsStep({
   const previousAirportDetailsSlice =
     airportDetailsSliceOrder[Math.max(0, activeSliceIndex - 1)] ?? "direction";
   const airportDetailsContinueLabel = isLastAirportDetailsSlice ? "Continue" : "Next";
+  const canContinueAirportDetailsSlice = isAirportDetailsSliceComplete(airportDetails, airportDetailsSlice);
   const airportDetailsSliceSummary: Record<AirportDetailsSlice, string> = {
     direction: getAirportDirectionLabel(airportDetails.airportDirection),
     flight: airportDetails.flightNumber.trim() || "Add flight",
@@ -2448,6 +2481,8 @@ function AirportDetailsStep({
   }
 
   function handleAirportDetailsContinue() {
+    if (!canContinueAirportDetailsSlice) return;
+
     if (isLastAirportDetailsSlice) {
       onContinue();
       return;
@@ -2464,7 +2499,8 @@ function AirportDetailsStep({
         <section className="grid grid-cols-3 gap-2" role="tablist" aria-label="Airport details sections">
           {airportDetailsSliceOrder.map((slice, index) => {
             const selected = airportDetailsSlice === slice;
-            const completed = index < activeSliceIndex;
+            const completed = isAirportDetailsSliceComplete(airportDetails, slice);
+            const canOpenSlice = canOpenAirportDetailsSlice(airportDetails, slice);
 
             return (
               <button
@@ -2472,12 +2508,15 @@ function AirportDetailsStep({
                 type="button"
                 role="tab"
                 aria-selected={selected}
+                aria-disabled={!canOpenSlice}
+                disabled={!canOpenSlice}
                 onClick={() => setAirportDetailsSlice(slice)}
                 className={cn(
                   "grid min-h-[74px] justify-items-center gap-1 rounded-[18px] border px-2 py-3 text-center transition",
                   selected
                     ? "border-cyan-200 bg-cyan-300/14 text-cyan-50 shadow-[0_0_24px_rgba(34,211,238,0.12)]"
                     : "border-cyan-300/16 bg-[rgba(15,27,39,0.62)] text-[var(--rp-muted-strong)] hover:border-cyan-300/40",
+                  !canOpenSlice && "cursor-not-allowed opacity-45 hover:border-cyan-300/16",
                 )}
               >
                 <span
@@ -2528,7 +2567,8 @@ function AirportDetailsStep({
                 label="Flight number"
                 value={airportDetails.flightNumber}
                 placeholder="Example: CX841, UO624, HX236, BR872"
-                helper="Optional but recommended. RidePod does not verify flight status in this version."
+                helper="RidePod does not verify flight status in this version."
+                required
                 onChange={(flightNumber) => onAirportDetailsChange({ ...airportDetails, flightNumber })}
               />
               <div className="grid gap-3 sm:grid-cols-2">
@@ -2536,12 +2576,14 @@ function AirportDetailsStep({
                   label="Flying from"
                   value={airportDetails.flightFrom}
                   placeholder={isToAirport ? "Hong Kong (HKG)" : "Taipei (TPE)"}
+                  required
                   onChange={(flightFrom) => onAirportDetailsChange({ ...airportDetails, flightFrom })}
                 />
                 <SelfSettleTextField
                   label="Flying to"
                   value={airportDetails.flightTo}
                   placeholder={isToAirport ? "Taipei (TPE)" : "Hong Kong (HKG)"}
+                  required
                   onChange={(flightTo) => onAirportDetailsChange({ ...airportDetails, flightTo })}
                 />
               </div>
@@ -2549,12 +2591,14 @@ function AirportDetailsStep({
                 label={flightTimeLabel}
                 value={airportDetails.flightTimeLabel}
                 placeholder={isToAirport ? "e.g. 10:45 AM" : "e.g. 7:20 PM"}
+                required
                 onChange={(flightTimeLabelValue) => onAirportDetailsChange({ ...airportDetails, flightTimeLabel: flightTimeLabelValue })}
               />
               <SelfSettleTextField
                 label={terminalLabel}
                 value={isToAirport ? airportDetails.airportTerminal : airportDetails.airportHall}
                 placeholder={terminalPlaceholder}
+                required
                 onChange={(value) =>
                   onAirportDetailsChange(
                     isToAirport
@@ -2590,13 +2634,15 @@ function AirportDetailsStep({
                 label="Special items"
                 value={airportDetails.airportLuggage.specialItems}
                 placeholder="stroller, golf bag, sports gear, none"
-                helper="Optional."
+                helper="Type none if there are no special items."
+                required
                 onChange={(specialItems) => updateAirportLuggage({ specialItems })}
               />
               <SelfSettleTextField
                 label="Luggage note"
                 value={airportDetails.airportLuggage.note}
-                placeholder="Optional note for riders"
+                placeholder="Type none or add a note for riders"
+                required
                 onChange={(note) => updateAirportLuggage({ note })}
               />
             </div>
@@ -2611,6 +2657,7 @@ function AirportDetailsStep({
             onBack={handleAirportDetailsBack}
             onContinue={handleAirportDetailsContinue}
             continueLabel={airportDetailsContinueLabel}
+            disabled={!canContinueAirportDetailsSlice}
             continueIcon={!isLastAirportDetailsSlice ? <ArrowRight className="h-5 w-5" /> : undefined}
           />
         </div>
