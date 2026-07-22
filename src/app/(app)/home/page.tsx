@@ -741,8 +741,9 @@ function RideModeSwitch({
     id: Extract<RideModeFilter, "taxi" | "ride_app">;
     label: string;
     icon: typeof CarFront;
+    disabled?: boolean;
   }> = [
-    { id: "taxi", label: "Taxi", icon: CarFront },
+    { id: "taxi", label: "Taxi · Coming soon", icon: CarFront, disabled: true },
     { id: "ride_app", label: "Ride app", icon: Smartphone },
   ];
 
@@ -752,15 +753,19 @@ function RideModeSwitch({
         <div className="relative grid grid-cols-2 gap-1.5 overflow-hidden rounded-[22px] bg-black/10 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
         {options.map((option) => {
           const selected = value === option.id;
+          const disabled = option.disabled;
           const Icon = option.icon;
 
           return (
             <button
               key={option.id}
               type="button"
-              onClick={() => onChange(option.id)}
+              disabled={disabled}
+              onClick={() => {
+                if (!disabled) onChange(option.id);
+              }}
               className={cn(
-                "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] px-4 text-base font-black transition min-[420px]:text-lg",
+                "inline-flex min-h-[46px] items-center justify-center gap-2 rounded-[18px] px-3 text-sm font-black transition min-[420px]:px-4 min-[420px]:text-base",
                 selected
                   ? option.id === "ride_app"
                     ? "bg-[linear-gradient(180deg,#1d7de4_0%,#0d56ab_100%)] text-white shadow-[0_14px_28px_rgba(14,79,158,0.34)]"
@@ -768,6 +773,7 @@ function RideModeSwitch({
                   : option.id === "ride_app"
                     ? "text-blue-100/72 hover:bg-white/5 hover:text-white"
                     : "text-amber-100/74 hover:bg-white/5 hover:text-amber-50",
+                disabled && "cursor-not-allowed text-white/38 hover:bg-transparent hover:text-white/38",
               )}
             >
               <Icon className="h-5 w-5" />
