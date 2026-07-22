@@ -1195,7 +1195,7 @@ function RideBoardCategoryArtwork({
 }) {
   return (
     <section aria-label="Post a Request categories" className="grid gap-2">
-      <div className="grid grid-cols-2 gap-2 max-[340px]:grid-cols-1">
+      <div className="grid grid-cols-1 gap-3">
         {rideBoardCategories.map((category, index) => (
           <RideBoardCategoryCard
             key={category.id}
@@ -1234,7 +1234,7 @@ function RideBoardCategoryCard({
       aria-label={`Show ${category.label} ride requests preview`}
       className={cn(
         "group relative block w-full overflow-hidden border bg-[#030b12] text-left outline-none ring-1 ring-inset transition-[transform,box-shadow,border-color,filter] duration-300 ease-out hover:-translate-y-0.5 hover:scale-[1.01] focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
-        "aspect-[430/395] rounded-[18px]",
+        "aspect-[430/220] rounded-[18px] min-[720px]:aspect-[680/245]",
         active
           ? "z-10 -translate-y-0.5 scale-[1.015] border-[#65E6D0]/90 brightness-[1.06] ring-2 ring-[#65E6D0]/80 shadow-[0_26px_60px_rgba(0,0,0,0.44),0_0_42px_rgba(101,230,208,0.3)]"
           : "scale-100 border-[rgba(101,230,208,0.18)] ring-white/10 shadow-[0_18px_42px_rgba(0,0,0,0.28)]",
@@ -1246,7 +1246,8 @@ function RideBoardCategoryCard({
         fill
         priority={priority}
         quality={68}
-        sizes="(max-width: 768px) calc((100vw - 56px) / 2), 430px"
+        sizes="(max-width: 768px) calc(100vw - 32px), 680px"
+        style={{ objectPosition: category.objectPosition }}
         className={cn(
           "absolute inset-0 h-full w-full object-cover transition duration-500",
           active ? "scale-[1.015]" : "scale-100 group-hover:scale-[1.02]",
