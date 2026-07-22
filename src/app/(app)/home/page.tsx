@@ -321,8 +321,8 @@ function getEmptyTitle(tab: HomeTab, rideModeFilter: RideModeFilter) {
 }
 
 function getEmptyCopy(rideModeFilter: RideModeFilter, hasAnyRides: boolean) {
+  if (rideModeFilter === "taxi") return "Taxi pods are coming soon.";
   if (!hasAnyRides) return "Remove some filters to see more rides.";
-  if (rideModeFilter === "taxi") return "Try changing your route, time, or safety filters.";
   if (rideModeFilter === "ride_app") return "Try widening your time range or create a self-settle pod.";
   return "Try changing your From / To district filters.";
 }
@@ -890,7 +890,7 @@ function getRideAppProviderLabel(ride: HomeRide) {
 }
 
 function matchesRideModeFilter(ride: HomeRide, filter: RideModeFilter) {
-  if (filter === "taxi") return isTaxiPod(ride);
+  if (filter === "taxi") return false;
   if (filter === "ride_app") return isRideAppSelfSettle(ride);
   return true;
 }
@@ -1021,97 +1021,6 @@ function getHomeRideTrustBadge(summary: RideAppTrustSummary) {
   };
 }
 
-function formatRecurringWeekdays(ride: HomeRide) {
-  if (ride.recurrence_label?.trim()) return ride.recurrence_label.trim().toUpperCase();
-  const weekdays = ride.weekdays?.map((day) => day.trim().slice(0, 3).toUpperCase()).filter(Boolean) ?? [];
-  const weekdayKey = weekdays.join(",");
-  if (weekdayKey === "MON,TUE,WED,THU,FRI") return "MON-FRI";
-  if (weekdays.length === 1) return `EVERY ${weekdays[0]}`;
-  if (weekdays.length > 1) return weekdays.join("/");
-  if (ride.scheduleLabel?.trim()) return ride.scheduleLabel.trim().toUpperCase();
-  return "RECURRING";
-}
-
-function formatRecurringWeekdaysForCard(ride: HomeRide) {
-  const weekdays = ride.weekdays?.map((day) => day.trim()).filter(Boolean) ?? [];
-  if (weekdays.length > 0) {
-    return weekdays
-      .map((day) => {
-        const normalized = day.toLowerCase();
-        if (normalized.startsWith("tue")) return "Tues";
-        if (normalized.startsWith("thu")) return "Thurs";
-        return `${day.slice(0, 1).toUpperCase()}${day.slice(1, 3).toLowerCase()}`;
-      })
-      .join(", ");
-  }
-
-  if (ride.repeatsPattern?.trim()) return ride.repeatsPattern.trim();
-  if (ride.scheduleLabel?.trim()) return ride.scheduleLabel.trim();
-  return formatRecurringWeekdays(ride);
-}
-
-function formatRecurringStartLabel(ride: HomeRide) {
-  const startLabel = ride.startLabel?.trim();
-  if (startLabel) return startLabel.replace(/^Starts\s+/i, "");
-  return formatNextOccurrence(ride);
-}
-
-function getRecurringPeriodLabel(timeLabel: string) {
-  const match = timeLabel.match(/(\d{1,2})(?::\d{2})?\s*(AM|PM)/i);
-  if (!match) return "Scheduled";
-  let hour = Number(match[1]);
-  const meridiem = match[2].toUpperCase();
-  if (meridiem === "PM" && hour !== 12) hour += 12;
-  if (meridiem === "AM" && hour === 12) hour = 0;
-  if (hour < 12) return "Morning";
-  if (hour < 18) return "Afternoon";
-  return "Evening";
-}
-
-function formatNextOccurrence(ride: HomeRide) {
-  if (ride.next_occurrence_label?.trim()) return ride.next_occurrence_label.trim();
-  const nextRide = ride.nextRideLabel?.replace(/^Next(?: ride)?:?\s*/i, "").replace(/\s+at\s+.+$/i, "").trim();
-  return nextRide || ride.dateLabel;
-}
-
-function formatRecurringEstimate(ride: HomeRide) {
-  const estimate = ride.estimated_share ?? ride.rideAppEstimatedFarePerPerson ?? ride.pricePerPerson;
-  if (typeof estimate === "number") return `HK$${Math.round(estimate)}`;
-  const cleaned = estimate.trim();
-  if (!cleaned) return `HK$${ride.pricePerPerson}`;
-  return /^HK\$/i.test(cleaned) ? cleaned : `HK$${cleaned}`;
-}
-
-function getRecurringRideResultData(ride: HomeRide) {
-  const time = ride.ride_time?.trim() || ride.timeLabel;
-  const regularCount = ride.regular_count ?? ride.seatsUsed;
-  const maxRegulars = ride.max_regulars ?? ride.seatsTotal;
-  const seatsOpen = ride.seats_open ?? Math.max(maxRegulars - regularCount, 0);
-
-  return {
-    recurrenceLabel: formatRecurringWeekdays(ride),
-    weekdaysLabel: formatRecurringWeekdaysForCard(ride),
-    startLabel: formatRecurringStartLabel(ride),
-    time,
-    periodLabel: ride.period_label?.trim() || getRecurringPeriodLabel(time),
-    nextOccurrenceLabel: formatNextOccurrence(ride),
-    regularCount,
-    maxRegulars,
-    seatsOpen,
-    estimate: formatRecurringEstimate(ride),
-    rating: ride.host_rating ? String(ride.host_rating) : "4.9",
-  };
-}
-
-function RideResultMetaItem({ icon, children }: { icon: ReactNode; children: ReactNode }) {
-  return (
-    <span className="inline-flex min-w-0 items-center gap-1 text-[10px] font-black leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-[11px]">
-      <span className="shrink-0 text-[var(--rp-primary)]">{icon}</span>
-      <span className="truncate">{children}</span>
-    </span>
-  );
-}
-
 function getKnownRideHostDisplayName(ride: HomeRide) {
   const displayName = ride.hostDisplayName?.trim();
   if (displayName && displayName.toLowerCase() !== "new host") return displayName;
@@ -1199,115 +1108,6 @@ function getRideDetailSourceTab(ride: HomeRide, sourceTab: HomeTab): HomeTab {
   if (ride.rideKind === "one_off") return "one_off";
 
   return sourceTab;
-}
-
-function RecurringRideResultCard({
-  ride,
-  currentUserAvatar,
-  isAuthenticated,
-  sourceTab,
-}: {
-  ride: HomeRide;
-  currentUserAvatar: CurrentUserAvatar;
-  isAuthenticated: boolean;
-  sourceTab: HomeTab;
-}) {
-  const podHref = `/pods/${ride.id}?fromTab=${encodeURIComponent(getRideDetailSourceTab(ride, sourceTab))}`;
-  const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
-  const data = getRecurringRideResultData(ride);
-  const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
-  const compactStatusLabel = currentUserRelationship
-    ? currentUserRelationship.tone === "host"
-      ? "Created"
-      : "Joined"
-    : null;
-  const hostDisplayName = getRideHostDisplayName(ride);
-  const showCurrentUserAvatar = ride.currentUserRole === "host" && Boolean(currentUserAvatar);
-  const avatarPreference = showCurrentUserAvatar ? currentUserAvatar.avatarPreference : ride.hostAvatarPreference;
-  const avatarUrl = showCurrentUserAvatar ? currentUserAvatar.avatarUrl : ride.host_avatar_url ?? ride.hostAvatarUrl;
-  const initials = showCurrentUserAvatar ? currentUserAvatar.initials : getProfileInitials(hostDisplayName);
-  const seatsLabel = `${data.seatsOpen} seat${data.seatsOpen === 1 ? "" : "s"} open`;
-  const isFlightRide = ride.rideKind === "airport" || Boolean(ride.airportDirection);
-  const ScheduleIcon = isFlightRide ? Plane : RefreshCcw;
-
-  return (
-    <Link
-      href={cardHref}
-      className="block overflow-hidden rounded-[10px] border border-[color-mix(in_srgb,var(--rp-primary)_48%,var(--rp-border))] bg-[linear-gradient(135deg,#071018_0%,#0b1824_58%,#07111a_100%)] shadow-[0_16px_34px_rgba(0,0,0,0.3)] transition hover:border-[var(--rp-primary)] hover:shadow-[0_0_30px_color-mix(in_srgb,var(--rp-primary)_15%,transparent)]"
-    >
-      <div className="grid min-h-[106px] grid-cols-[78px_minmax(0,1fr)_70px] min-[390px]:grid-cols-[92px_minmax(0,1fr)_80px]">
-        <div className="grid min-w-0 content-center gap-1 px-2.5 py-3 min-[390px]:px-3">
-          <p className="flex min-w-0 items-center gap-1 text-[8px] font-black uppercase leading-none tracking-[0.06em] text-emerald-300 min-[390px]:text-[9px]">
-            <ScheduleIcon className="h-3 w-3 shrink-0" />
-            <span>Starts</span>
-          </p>
-          <p className="text-sm font-black leading-tight text-[var(--rp-text)] min-[390px]:text-base">
-            {data.startLabel}
-          </p>
-          <p className="text-[11px] font-black leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-xs">
-            {data.time}
-          </p>
-        </div>
-
-        <div className="grid min-w-0 content-center gap-1 border-x border-slate-500/20 px-3 py-3 min-[390px]:px-4">
-          <h2 className="line-clamp-2 text-[13px] font-black leading-[1.15] text-[var(--rp-text)] min-[390px]:text-sm">
-            {ride.fromLabel} {"\u2192"} {ride.toLabel}
-          </h2>
-          <p className="truncate text-[11px] font-black leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-xs">
-            Host: {hostDisplayName}
-          </p>
-          <div className="grid min-w-0 gap-0.5">
-            <p className="flex min-w-0 items-center gap-1 text-[10px] font-black leading-4 text-emerald-300 min-[390px]:text-[11px]">
-              <ScheduleIcon className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{data.weekdaysLabel}</span>
-            </p>
-            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
-              <RideResultMetaItem icon={<UsersRound className="h-3.5 w-3.5" />}>
-                {data.regularCount}/{data.maxRegulars} regulars
-              </RideResultMetaItem>
-              <RideResultMetaItem icon={<ArmchairIcon />}>{seatsLabel}</RideResultMetaItem>
-            </div>
-            <p className="truncate text-[11px] font-black leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-xs">
-              Total Est. <span className="text-sky-300">{data.estimate}</span>
-            </p>
-          </div>
-        </div>
-
-        <div className="grid min-w-0 content-center justify-items-center gap-1.5 px-2 py-3 min-[390px]:px-3">
-          {avatarPreference ? (
-            <RidePodAvatar
-              avatarUrl={avatarUrl}
-              avatarPreference={avatarPreference}
-              initials={initials}
-              displayName={hostDisplayName}
-              className={cn("h-10 w-10 rounded-full text-base", homeInitialAvatarClass)}
-            />
-          ) : (
-            <div className={cn("grid h-10 w-10 place-items-center rounded-full text-base font-black", homeInitialAvatarClass)}>
-              {initials}
-            </div>
-          )}
-          <div className="flex max-w-full items-center gap-1 text-[11px] font-black leading-none text-[var(--rp-text)]">
-            <Star className="h-3.5 w-3.5 shrink-0 fill-[var(--rp-primary)] text-[var(--rp-primary)]" />
-            <span>{data.rating}</span>
-          </div>
-          {compactStatusLabel ? (
-            <span
-              className={cn(
-                "inline-flex min-h-7 max-w-full items-center gap-1 rounded-full border px-2 text-[10px] font-black leading-none min-[390px]:px-2.5 min-[390px]:text-[11px]",
-                currentUserRelationship?.tone === "joined"
-                  ? "border-cyan-300/40 bg-cyan-400/12 text-cyan-100"
-                  : "border-[color-mix(in_srgb,var(--rp-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] text-[var(--rp-primary)]",
-              )}
-            >
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">{compactStatusLabel}</span>
-            </span>
-          ) : null}
-        </div>
-      </div>
-    </Link>
-  );
 }
 
 function HomeRideCard({
@@ -1423,18 +1223,6 @@ function HomeRideCard({
   );
 }
 
-function ArmchairIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M7 11V7a3 3 0 0 1 6 0v4" />
-      <path d="M5 11h10a3 3 0 0 1 3 3v4H2v-4a3 3 0 0 1 3-3Z" />
-      <path d="M4 18v2" />
-      <path d="M16 18v2" />
-      <path d="M18 14h2a2 2 0 0 1 2 2v2h-4" />
-    </svg>
-  );
-}
-
 function RideSearchResultCard(props: {
   ride: HomeRide;
   currentUserAvatar: CurrentUserAvatar;
@@ -1442,7 +1230,7 @@ function RideSearchResultCard(props: {
   sourceTab: HomeTab;
 }) {
   if (props.ride.rideKind === "recurring" || props.ride.is_recurring) {
-    return <RecurringRideResultCard {...props} />;
+    return <CategoryCompactResultCard {...props} />;
   }
 
   return <HomeRideCard {...props} />;
