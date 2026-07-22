@@ -17,7 +17,6 @@ import {
   Route,
   Send,
   ShieldCheck,
-  SlidersHorizontal,
   Star,
   UserRound,
   X,
@@ -1483,7 +1482,7 @@ function RideBoardCategoryDetailView({
 
   return (
     <section className="grid gap-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
         <Link
           href="/today-rides"
           className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--rp-primary)]/42 bg-white/[0.055] px-3.5 text-xs font-black text-[var(--rp-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:bg-[var(--rp-primary)]/10"
@@ -1491,14 +1490,6 @@ function RideBoardCategoryDetailView({
           <ArrowLeft className="h-4 w-4" />
           Post a Request
         </Link>
-
-        <button
-          type="button"
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.055] px-3.5 text-xs font-black text-[var(--rp-text)] transition hover:border-[var(--rp-border-strong)]"
-        >
-          <SlidersHorizontal className="h-4 w-4 text-[#65E6D0]" />
-          Filters
-        </button>
       </div>
 
       <div className={cn("relative overflow-hidden rounded-[28px] border bg-[#071018]", styles.heroBorder)}>
@@ -2100,8 +2091,7 @@ export default function RideBoardPage() {
   const [requests, setRequests] = useState<RideRequest[]>(initialRideRequests);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [previewCategory, setPreviewCategory] = useState<RideBoardPreviewCategory>("today");
-  const [districtFilter, setDistrictFilter] = useState<RideBoardDistrictFilter>("all_hk");
-  const [districtFilterOpen, setDistrictFilterOpen] = useState(false);
+  const districtFilter: RideBoardDistrictFilter = "all_hk";
   const [showPostForm, setShowPostForm] = useState(false);
   const [postFormCategory, setPostFormCategory] = useState<RideRequestCategory>(defaultFormValues.category);
   const [toastMessage, setToastMessage] = useState("");
@@ -2240,7 +2230,7 @@ export default function RideBoardPage() {
             headingRef={requestListHeadingRef}
           />
         ) : (
-          <section className="flex items-start justify-between gap-4">
+          <section className="flex items-start gap-4">
             <div className="min-w-0">
               <h1 className="whitespace-nowrap text-left text-[30px] font-black leading-none text-[var(--rp-text)] min-[390px]:text-[36px]">
                 Post a Request
@@ -2249,15 +2239,6 @@ export default function RideBoardPage() {
                 Find a ride. Share the journey.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setDistrictFilterOpen(true)}
-              aria-label="Open Hong Kong district filters"
-              className="mt-0.5 inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-[#0fb7a8]/72 bg-[#0fb7a8]/8 px-3.5 text-xs font-black text-[#20d6c4] shadow-[0_0_26px_rgba(15,183,168,0.12)] transition hover:bg-[#0fb7a8]/14 min-[390px]:text-[13px]"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-              {districtFilter === "all_hk" ? "HK District" : getDistrictFilterLabel(districtFilter)}
-            </button>
           </section>
         )}
 
@@ -2296,15 +2277,6 @@ export default function RideBoardPage() {
           onSubmit={handlePostSubmit}
         />
       ) : null}
-      <RideBoardDistrictFilterSheet
-        open={districtFilterOpen}
-        value={districtFilter}
-        onChange={(nextDistrictFilter) => {
-          setDistrictFilter(nextDistrictFilter);
-          focusRideList();
-        }}
-        onClose={() => setDistrictFilterOpen(false)}
-      />
       {toastMessage ? <RideBoardToast message={toastMessage} /> : null}
     </div>
   );
