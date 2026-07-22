@@ -1229,7 +1229,7 @@ function RideSearchResultCard(props: {
   isAuthenticated: boolean;
   sourceTab: HomeTab;
 }) {
-  if (props.ride.rideKind === "recurring" || props.ride.is_recurring) {
+  if (props.ride.rideKind === "airport" || Boolean(props.ride.airportDirection) || props.ride.rideKind === "recurring" || props.ride.is_recurring) {
     return <CategoryCompactResultCard {...props} />;
   }
 
@@ -1561,7 +1561,7 @@ function CategoryCompactResultCard({
       <div className="min-w-0">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {airportDirectionLabel ? (
-            <span className="inline-flex min-h-6 shrink-0 items-center rounded-full border border-[#f6d7ad]/38 bg-[#f6d7ad]/14 px-2.5 text-[11px] font-black text-[#ffd8a6]">
+            <span className="inline-flex min-h-6 shrink-0 items-center rounded-full border border-sky-300/42 bg-sky-400/14 px-2.5 text-[11px] font-black text-sky-200">
               {airportDirectionLabel}
             </span>
           ) : null}
