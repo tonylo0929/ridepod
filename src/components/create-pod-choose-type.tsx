@@ -5549,7 +5549,7 @@ function PeopleVehicleStep({
                   : isWhoCanJoinPage
                     ? "Choose who can join this shared taxi pod."
                     : isRideAppProviderPage
-                      ? "Choose the app the host expects to book for this pod."
+                      ? "Choose the app the host will book."
                     : isSelfSettleDetailsPage
                     ? "Set the estimate, split, and how riders will settle the final fare after the ride."
                   : isTaxiFlow && taxiDetailsPage === "partner"
