@@ -2028,7 +2028,7 @@ function EmptyRides({ tab, rideModeFilter, hasAnyRides }: { tab: HomeTab; rideMo
   );
 }
 
-const initialRideModeFilter: RideModeFilter = "all";
+const initialRideModeFilter: RideModeFilter = "ride_app";
 const initialSettlementFilter: SettlementFilter = "all";
 const initialFromDistrict = "All districts";
 const initialToDistrict = "All districts";
@@ -2149,7 +2149,7 @@ function HomePageContent() {
   const [airportFlightQuery, setAirportFlightQuery] = useState("");
   const [airportTerminalFilter, setAirportTerminalFilter] = useState<AirportTerminalFilter>("terminal_1");
   const [rideModeFilter, setRideModeFilter] = useState<RideModeFilter>(initialRideModeFilter);
-  const [selectedRideMode, setSelectedRideMode] = useState<Extract<RideModeFilter, "taxi" | "ride_app"> | null>(null);
+  const [selectedRideMode, setSelectedRideMode] = useState<Extract<RideModeFilter, "taxi" | "ride_app"> | null>("ride_app");
   const [settlementFilter, setSettlementFilter] = useState<SettlementFilter>(initialSettlementFilter);
   const [fareEstimateFilter, setFareEstimateFilter] = useState<FareEstimateFilter>("any");
   const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>("any");
