@@ -771,7 +771,7 @@ function RideModeSwitch({
         <div className="relative grid grid-cols-2 gap-1.5 overflow-hidden rounded-[22px] bg-black/10 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
         {options.map((option) => {
           const selected = value === option.id;
-          const disabled = option.disabled;
+          const disabled = false;
           const Icon = option.icon;
 
           return (
