@@ -104,11 +104,11 @@ const categoryRecommendationLabels: Record<HomeCategoryCardId, string> = {
   recurring: "Ride Regularly",
 };
 
-const categorySeeMoreLabels: Record<HomeCategoryCardId, string> = {
-  all: "View all public rides",
-  airport: "View all flight rides",
-  one_off: "View all scheduled rides",
-  recurring: "View all recurring rides",
+const categorySeeMoreCtaConfigs: Record<HomeCategoryCardId, { noun: string; icon: typeof Plane }> = {
+  all: { noun: "public", icon: UsersRound },
+  airport: { noun: "flight", icon: Plane },
+  one_off: { noun: "scheduled", icon: CalendarDays },
+  recurring: { noun: "recurring", icon: RefreshCcw },
 };
 
 const categoryResultScreenByCardId: Record<HomeCategoryCardId, CategoryResultsScreenId> = {
@@ -2614,9 +2614,11 @@ function HomePageContent() {
   const hiddenRecommendationRideCount = Math.max(0, visibleRides.length - recommendationPreviewLimit);
   const seeMoreRideBadgeCount = hiddenRecommendationRideCount > 0 ? hiddenRecommendationRideCount : visibleRides.length;
   const canSeeMoreRecommendations = activeCategoryTab !== null && visibleRides.length > 0;
-  const seeMoreRideLabel = expandedCategoryId ? categorySeeMoreLabels[expandedCategoryId] : "View all rides";
-  const seeMoreFlightRideLabel = `See ${seeMoreRideBadgeCount} more flight ${seeMoreRideBadgeCount === 1 ? "ride" : "rides"}`;
-  const showFlightSeeMoreCta = expandedCategoryId === "airport";
+  const seeMoreCtaConfig = expandedCategoryId ? categorySeeMoreCtaConfigs[expandedCategoryId] : null;
+  const SeeMoreCtaIcon = seeMoreCtaConfig?.icon ?? UsersRound;
+  const seeMoreRideLabel = seeMoreCtaConfig
+    ? `See ${seeMoreRideBadgeCount} more ${seeMoreCtaConfig.noun} ${seeMoreRideBadgeCount === 1 ? "ride" : "rides"}`
+    : `See ${seeMoreRideBadgeCount} more ${seeMoreRideBadgeCount === 1 ? "ride" : "rides"}`;
   const [oneOffCard, recurringCard, airportCard, allRidesCard] = categoryCards;
   const optionsFrameTone = selectedRideMode ?? "neutral";
   const renderCategoryCard = (card: (typeof categoryCards)[number]) => (
@@ -2874,29 +2876,15 @@ function HomePageContent() {
                 onClick={handleRecommendationSeeMore}
                 className={cn(
                   "group inline-flex min-h-[58px] w-full items-center justify-center rounded-[24px] px-5 text-lg font-black transition focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]",
-                  showFlightSeeMoreCta
-                    ? "gap-3 border border-transparent bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] text-[#07131C] shadow-[0_8px_22px_rgba(255,193,55,0.25)] hover:brightness-105"
-                    : "gap-5 border border-[color-mix(in_srgb,var(--rp-primary)_68%,transparent)] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.012)),rgba(5,16,27,0.86)] text-[var(--rp-primary)] shadow-[0_18px_48px_rgba(0,0,0,0.34),inset_0_0_0_1px_rgba(255,255,255,0.035)] hover:border-[var(--rp-primary)] hover:bg-[linear-gradient(180deg,rgba(245,188,73,0.1),rgba(255,255,255,0.012)),rgba(5,16,27,0.9)]",
+                  "gap-3 border border-transparent bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] text-[#07131C] shadow-[0_8px_22px_rgba(255,193,55,0.25)] hover:brightness-105",
                 )}
               >
-                {showFlightSeeMoreCta ? (
-                  <>
-                    <Plane className="h-5 w-5 shrink-0" />
-                    <span className="min-w-0 flex-1 truncate text-left">{seeMoreFlightRideLabel}</span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-2.5 w-2.5 rounded-full bg-[#07131C]" />
-                      <ChevronRight className="h-6 w-6 transition group-hover:translate-x-0.5" />
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <span>{seeMoreRideLabel}</span>
-                    <span className="inline-flex min-h-8 min-w-11 items-center justify-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_28%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 text-base font-black text-[var(--rp-primary)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
-                      +{seeMoreRideBadgeCount}
-                    </span>
-                    <ChevronRight className="h-6 w-6 transition group-hover:translate-x-0.5" />
-                  </>
-                )}
+                <SeeMoreCtaIcon className="h-5 w-5 shrink-0" />
+                <span className="min-w-0 flex-1 truncate text-left">{seeMoreRideLabel}</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-[#07131C]" />
+                  <ChevronRight className="h-6 w-6 transition group-hover:translate-x-0.5" />
+                </span>
               </button>
             </div>
           ) : null}
