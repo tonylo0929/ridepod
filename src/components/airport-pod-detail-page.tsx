@@ -33,6 +33,7 @@ import {
   isRideAppSelfSettlePod,
   usePodDetailJoinState,
 } from "@/components/pod-detail-join-state";
+import { NormalPodDetailPage } from "@/components/normal-pod-detail-page";
 
 function AirportCard({ children, className, id }: { children: ReactNode; className?: string; id?: string }) {
   return (
@@ -316,6 +317,14 @@ function RiderStack({ ride }: { ride: HomeRide }) {
 }
 
 export function AirportPodDetailPage({ ride, backHref = "/home" }: { ride: HomeRide; backHref?: string }) {
+  if (isRideAppSelfSettlePod(ride)) {
+    return <NormalPodDetailPage ride={ride} backHref={backHref} />;
+  }
+
+  return <AirportTaxiPodDetailPage ride={ride} backHref={backHref} />;
+}
+
+function AirportTaxiPodDetailPage({ ride, backHref = "/home" }: { ride: HomeRide; backHref?: string }) {
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [selectedHowItWorksStep, setSelectedHowItWorksStep] = useState<HowItWorksStepId | null>(null);
   const [showLockSeatModal, setShowLockSeatModal] = useState(false);
