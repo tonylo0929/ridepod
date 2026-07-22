@@ -1219,7 +1219,10 @@ function RideBoardCategoryCard({
               "z-10 brightness-[1.06] shadow-[0_26px_60px_rgba(0,0,0,0.44),0_0_42px_rgba(101,230,208,0.3)] after:border-transparent",
               showWholeArtwork ? "scale-100" : "-translate-y-0.5 scale-[1.015]",
             )
-          : "scale-100 shadow-[0_18px_42px_rgba(0,0,0,0.28)] after:border-[rgba(101,230,208,0.22)]",
+          : cn(
+              "scale-100 shadow-[0_18px_42px_rgba(0,0,0,0.28)]",
+              showWholeArtwork ? "after:border-transparent" : "after:border-[rgba(101,230,208,0.22)]",
+            ),
       )}
     >
       <Image
