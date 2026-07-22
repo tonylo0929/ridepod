@@ -1795,7 +1795,7 @@ function RideAppCommunityPanel() {
   return (
     <>
       {offerOpen ? (
-        <div className="fixed inset-0 z-[95] grid place-items-center overflow-y-auto bg-black/62 px-4 py-8 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[95] flex items-start justify-center overflow-y-auto bg-black/62 px-4 pb-[calc(88px+env(safe-area-inset-bottom))] pt-[calc(24px+env(safe-area-inset-top))] backdrop-blur-sm">
           <section
             role="dialog"
             aria-modal="true"
