@@ -163,6 +163,27 @@ const defaultRideAppCreateFeeSentence =
     ? `Host create fee: ${defaultRideAppCreateFeeLabel}. No live payment is taken in this version.`
     : "Free to create.";
 
+const hk18DistrictOptions = [
+  "Central and Western",
+  "Eastern",
+  "Southern",
+  "Wan Chai",
+  "Kowloon City",
+  "Kwun Tong",
+  "Sham Shui Po",
+  "Wong Tai Sin",
+  "Yau Tsim Mong",
+  "Islands",
+  "Kwai Tsing",
+  "North",
+  "Sai Kung",
+  "Sha Tin",
+  "Tai Po",
+  "Tsuen Wan",
+  "Tuen Mun",
+  "Yuen Long",
+] as const;
+
 type DateTimeState = {
   scheduleType: ScheduleType;
   date: string;
@@ -190,6 +211,8 @@ type PeopleVehicleState = {
   vehicleType: string;
   priceSource: string;
   pickupVenue: string;
+  pickupDistrict: string;
+  dropoffDistrict: string;
   rideAppProvider: RideAppProvider;
   rideAppProviderOther: string;
   estimatedRideAppFare: string;
@@ -2004,6 +2027,45 @@ function SelfSettleTextField({
   );
 }
 
+function DistrictSelectField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const fieldId = useId();
+
+  return (
+    <label htmlFor={fieldId} className="grid min-w-0 gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-left">
+      <span className="text-xs font-black uppercase tracking-[0.13em] text-[var(--rp-primary)]">
+        {label}
+        <span className="ml-1 text-[#f6c453]">*</span>
+      </span>
+      <span className="relative block">
+        <select
+          id={fieldId}
+          value={value}
+          required
+          aria-required="true"
+          onChange={(event) => onChange(event.target.value)}
+          className="min-h-11 w-full min-w-0 appearance-none rounded-xl border border-[var(--rp-border)] bg-[rgba(5,12,20,0.48)] px-3 pr-10 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+        >
+          <option value="">Choose district</option>
+          {hk18DistrictOptions.map((district) => (
+            <option key={district} value={district}>
+              {district}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--rp-primary)]" />
+      </span>
+    </label>
+  );
+}
+
 function SelfSettleSelectField<T extends string>({
   label,
   value,
@@ -2451,6 +2513,8 @@ function RouteStopsStep({
   pickupRoutePoint,
   dropoffRoutePoint,
   pickupVenue,
+  pickupDistrict,
+  dropoffDistrict,
   stops,
   stopRequestPolicy,
   isRideAppSelfSettle,
@@ -2463,6 +2527,8 @@ function RouteStopsStep({
   onPickupPlaceSelect,
   onDropoffPlaceSelect,
   onPickupVenueChange,
+  onPickupDistrictChange,
+  onDropoffDistrictChange,
   onAddStop,
   onStopChange,
   onRemoveStop,
@@ -2475,6 +2541,8 @@ function RouteStopsStep({
   pickupRoutePoint: RoutePointSelection | null;
   dropoffRoutePoint: RoutePointSelection | null;
   pickupVenue: string;
+  pickupDistrict: string;
+  dropoffDistrict: string;
   stops: RouteStop[];
   stopRequestPolicy: StopRequestPolicy;
   isRideAppSelfSettle: boolean;
@@ -2487,6 +2555,8 @@ function RouteStopsStep({
   onPickupPlaceSelect: (point: RoutePointSelection | null) => void;
   onDropoffPlaceSelect: (point: RoutePointSelection | null) => void;
   onPickupVenueChange: (value: string) => void;
+  onPickupDistrictChange: (value: string) => void;
+  onDropoffDistrictChange: (value: string) => void;
   onAddStop: () => void;
   onStopChange: (id: number, value: string) => void;
   onRemoveStop: (id: number) => void;
@@ -2498,6 +2568,8 @@ function RouteStopsStep({
   const canContinue =
     pickupAddress.trim().length > 0 &&
     dropoffAddress.trim().length > 0 &&
+    pickupDistrict.trim().length > 0 &&
+    dropoffDistrict.trim().length > 0 &&
     (!gatherPointRequired || gatherPointProvided);
   const [routePanel, setRoutePanel] = useState<"route" | "requests">("route");
   const isRoutePanel = routePanel === "route";
@@ -2629,6 +2701,11 @@ function RouteStopsStep({
                   onChange={onPickupChange}
                   onPlaceSelect={onPickupPlaceSelect}
                 />
+                <DistrictSelectField
+                  label="Pickup district"
+                  value={pickupDistrict}
+                  onChange={onPickupDistrictChange}
+                />
                 {!isRideAppSelfSettle ? (
                   <SelfSettleTextField
                     label="Gather point"
@@ -2658,6 +2735,11 @@ function RouteStopsStep({
                   onChange={onDropoffChange}
                   onPlaceSelect={onDropoffPlaceSelect}
                 />
+                <DistrictSelectField
+                  label="Destination district"
+                  value={dropoffDistrict}
+                  onChange={onDropoffDistrictChange}
+                />
                 {isRideAppSelfSettle ? (
                   <SelfSettleTextField
                     label={isAirport ? "Gather point" : "Gather point"}
@@ -2684,6 +2766,9 @@ function RouteStopsStep({
               </p>
               <p className="mt-2 text-sm font-black leading-5 text-[var(--rp-text)]">
                 {routePointSummary(pickupAddress, "None")} {"\u2192"} {routePointSummary(dropoffAddress, "None")}
+              </p>
+              <p className="mt-2 text-xs font-black text-[var(--rp-muted-strong)]">
+                {pickupDistrict || "Pickup district"} {"\u2192"} {dropoffDistrict || "Destination district"}
               </p>
             </div>
             <StopRequestPolicySelector
@@ -5743,8 +5828,8 @@ function buildCreatedRideAppHomeRide({
 
   return {
     id,
-    fromDistrict: districtFromLabel(pickupAddress),
-    toDistrict: districtFromLabel(dropoffAddress),
+    fromDistrict: peopleVehicle.pickupDistrict || districtFromLabel(pickupAddress),
+    toDistrict: peopleVehicle.dropoffDistrict || districtFromLabel(dropoffAddress),
     fromLabel: pickupAddress || "Pickup",
     toLabel: dropoffAddress || "Drop-off",
     dateLabel: getScheduleDateSummary(dateTime),
@@ -5860,8 +5945,8 @@ function buildCreatedAirportTaxiHomeRide({
 
   return {
     id: crypto.randomUUID(),
-    fromDistrict: districtFromLabel(pickupAddress),
-    toDistrict: districtFromLabel(dropoffAddress),
+    fromDistrict: peopleVehicle.pickupDistrict || districtFromLabel(pickupAddress),
+    toDistrict: peopleVehicle.dropoffDistrict || districtFromLabel(dropoffAddress),
     fromLabel: pickupAddress || (airportDetails.airportDirection === "from_airport" ? getAirportTerminalHallValue(airportDetails) : "Pickup"),
     toLabel: dropoffAddress || (airportDetails.airportDirection === "to_airport" ? getAirportTerminalHallValue(airportDetails) : "Destination"),
     dateLabel: getScheduleDateSummary(dateTime),
@@ -6037,8 +6122,10 @@ function TaxiReviewSummaryCard({
     ["Taxi type", taxiType],
     ["Luggage", getLuggageNeedsSummary(peopleVehicle)],
     ["Pickup point", pickupAddress || "None"],
+    ["Pickup district", peopleVehicle.pickupDistrict || "None"],
     ...(peopleVehicle.pickupVenue.trim() ? ([["Gather point", peopleVehicle.pickupVenue.trim()]] as Array<[string, string]>) : []),
     ["Dropoff point", dropoffAddress || "None"],
+    ["Destination district", peopleVehicle.dropoffDistrict || "None"],
   ];
   const taxiPartnerPreferenceLabel = getTaxiPartnerPreferenceLabel(taxiPartnerPreference);
 
@@ -6048,11 +6135,13 @@ function TaxiReviewSummaryCard({
         <h2 className="text-lg font-black text-[var(--rp-primary)]">Trip</h2>
         <dl className="mt-3 grid gap-2">
           <RouteSummaryLine label="Pickup" value={pickupAddress || "None"} />
+          <RouteSummaryLine label="Pickup district" value={peopleVehicle.pickupDistrict || "None"} />
           {peopleVehicle.pickupVenue.trim() ? <RouteSummaryLine label="Gather" value={peopleVehicle.pickupVenue.trim()} /> : null}
           {stops.map((stop, index) => (
             <RouteSummaryLine key={stop.id} label={`Stop ${index + 1}`} value={stop.address || "Optional stop"} />
           ))}
           <RouteSummaryLine label="Dropoff" value={dropoffAddress || "None"} />
+          <RouteSummaryLine label="Destination district" value={peopleVehicle.dropoffDistrict || "None"} />
         </dl>
         <p className="mt-3 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-3 text-xs font-black text-[var(--rp-primary)]">
           Route: {getRoutePlanSummary(pickupAddress, dropoffAddress, stops)}
@@ -6131,6 +6220,8 @@ function SelfSettleReviewSummaryCard({
   const rows: Array<{ icon: ReactNode; label: string; value: string }> = [
     { icon: <Smartphone className="h-4 w-4" />, label: "Ride type", value: "Ride App" },
     { icon: <MapPin className="h-4 w-4" />, label: "Route", value: `${routePointSummary(pickupAddress, "None")} -> ${routePointSummary(dropoffAddress, "None")}` },
+    { icon: <MapPin className="h-4 w-4" />, label: "Pickup district", value: peopleVehicle.pickupDistrict || "None" },
+    { icon: <MapPin className="h-4 w-4" />, label: "Destination district", value: peopleVehicle.dropoffDistrict || "None" },
     { icon: <LocateFixed className="h-4 w-4" />, label: "Gather point", value: peopleVehicle.pickupVenue || "None" },
     { icon: <CarFront className="h-4 w-4" />, label: "Ride app", value: getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther) },
     { icon: <CalendarDays className="h-4 w-4" />, label: "Date/time", value: `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}` },
@@ -7595,6 +7686,8 @@ export function CreatePodChooseType() {
     vehicleType: "Standard taxi",
     priceSource: "Licensed taxi partner quote for the shared pod",
     pickupVenue: "",
+    pickupDistrict: "",
+    dropoffDistrict: "",
     rideAppProvider: "uber",
     rideAppProviderOther: "",
     estimatedRideAppFare: "",
@@ -7650,12 +7743,21 @@ export function CreatePodChooseType() {
 
     if (airportDetails.airportDirection === "to_airport") {
       if (!dropoffAddress.trim()) setDropoffAddress(terminalOrHall === "Not provided" ? "HKIA Terminal 1 Departures" : terminalOrHall);
-    } else {
-      if (!pickupAddress.trim()) setPickupAddress(terminalOrHall === "Not provided" ? "HKIA Arrival Hall A" : terminalOrHall);
-      if (isRideAppSelfSettle && !peopleVehicle.pickupVenue.trim()) {
+      if (!peopleVehicle.dropoffDistrict.trim()) {
         setPeopleVehicle((current) => ({
           ...current,
-          pickupVenue: airportDetails.airportHall.trim() || "HKIA Arrival Hall A",
+          dropoffDistrict: "Islands",
+        }));
+      }
+    } else {
+      if (!pickupAddress.trim()) setPickupAddress(terminalOrHall === "Not provided" ? "HKIA Arrival Hall A" : terminalOrHall);
+      if (!peopleVehicle.pickupDistrict.trim() || (isRideAppSelfSettle && !peopleVehicle.pickupVenue.trim())) {
+        setPeopleVehicle((current) => ({
+          ...current,
+          pickupDistrict: current.pickupDistrict.trim() ? current.pickupDistrict : "Islands",
+          pickupVenue: isRideAppSelfSettle && !current.pickupVenue.trim()
+            ? airportDetails.airportHall.trim() || "HKIA Arrival Hall A"
+            : current.pickupVenue,
         }));
       }
     }
@@ -7685,12 +7787,28 @@ export function CreatePodChooseType() {
 
   function handleAirportDetailsChange(details: AirportDetailsState) {
     const switchedToFromAirport = airportDetails.airportDirection !== "from_airport" && details.airportDirection === "from_airport";
+    const switchedToAirportDropoff = airportDetails.airportDirection !== "to_airport" && details.airportDirection === "to_airport";
 
     setAirportDetails(details);
 
     if (switchedToFromAirport) {
       setDropoffAddress("");
       setDropoffRoutePoint(null);
+      setPeopleVehicle((current) => ({
+        ...current,
+        pickupDistrict: "Islands",
+        dropoffDistrict: "",
+      }));
+    }
+
+    if (switchedToAirportDropoff) {
+      setPickupAddress("");
+      setPickupRoutePoint(null);
+      setPeopleVehicle((current) => ({
+        ...current,
+        pickupDistrict: "",
+        dropoffDistrict: "Islands",
+      }));
     }
   }
 
@@ -7852,6 +7970,8 @@ export function CreatePodChooseType() {
           pickupRoutePoint={pickupRoutePoint}
           dropoffRoutePoint={dropoffRoutePoint}
           pickupVenue={peopleVehicle.pickupVenue}
+          pickupDistrict={peopleVehicle.pickupDistrict}
+          dropoffDistrict={peopleVehicle.dropoffDistrict}
           stops={stops}
           stopRequestPolicy={displayedStopRequestPolicy}
           isRideAppSelfSettle={isRideAppSelfSettle}
@@ -7864,6 +7984,8 @@ export function CreatePodChooseType() {
           onPickupPlaceSelect={handlePickupPlaceSelect}
           onDropoffPlaceSelect={handleDropoffPlaceSelect}
           onPickupVenueChange={(pickupVenue) => setPeopleVehicle((current) => ({ ...current, pickupVenue }))}
+          onPickupDistrictChange={(pickupDistrict) => setPeopleVehicle((current) => ({ ...current, pickupDistrict }))}
+          onDropoffDistrictChange={(dropoffDistrict) => setPeopleVehicle((current) => ({ ...current, dropoffDistrict }))}
           onAddStop={() => {
             setStops((currentStops) => [...currentStops, { id: nextStopId, address: "" }]);
             setNextStopId((id) => id + 1);
