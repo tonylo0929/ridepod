@@ -1725,6 +1725,7 @@ function CategoryLowResultsPanel({ categoryLabel, onAdjustFilters }: { categoryL
 }
 
 function RideAppCommunityPanel() {
+  const [offerOpen, setOfferOpen] = useState(true);
   const [claimModalOpen, setClaimModalOpen] = useState(false);
   const rideAppWaiver = useRideAppWaiverState();
   const waiverClaimed = rideAppWaiver.claimed && !rideAppWaiver.used;
@@ -1734,25 +1735,41 @@ function RideAppCommunityPanel() {
 
   return (
     <>
-      <section className="mb-4 mt-4 grid gap-4">
-        <div className="rounded-[26px] border border-cyan-200/35 bg-[linear-gradient(180deg,rgba(236,254,255,0.96),rgba(240,253,250,0.9))] p-5 text-[#12303a] shadow-[0_24px_60px_rgba(45,212,191,0.16)]">
-          <div className="grid gap-4 min-[560px]:grid-cols-[1fr_auto] min-[560px]:items-start">
-            <div className="min-w-0">
+      {offerOpen ? (
+        <div className="fixed inset-0 z-[95] grid place-items-center overflow-y-auto bg-black/62 px-4 py-8 backdrop-blur-sm">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ride-app-launch-offer-title"
+            className="relative w-full max-w-[390px] overflow-hidden rounded-[28px] border border-cyan-200/45 bg-[linear-gradient(180deg,rgba(236,254,255,0.98),rgba(240,253,250,0.94))] p-5 text-[#12303a] shadow-[0_30px_90px_rgba(0,0,0,0.44),0_24px_60px_rgba(45,212,191,0.18)]"
+          >
+            <button
+              type="button"
+              aria-label="Close launch offer"
+              onClick={() => setOfferOpen(false)}
+              className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full border border-cyan-900/10 bg-white/72 text-cyan-950 shadow-[0_10px_22px_rgba(8,47,73,0.14)] transition hover:bg-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="pr-10">
               <p className="text-sm font-black uppercase tracking-[0.18em] text-cyan-700">RIDE APP LAUNCH OFFER</p>
-              <h2 className="mt-2 text-2xl font-black leading-tight text-[#10212a]">
+              <h2 id="ride-app-launch-offer-title" className="mt-2 text-2xl font-black leading-tight text-[#10212a]">
                 First 100 joining members
               </h2>
-              <p className="mt-1 text-left text-lg font-black leading-6 text-[#10212a]">
-                HK$5 RidePod fee waived.
-              </p>
+              <p className="mt-1 text-left text-lg font-black leading-6 text-[#10212a]">HK$5 RidePod fee waived.</p>
             </div>
-            <div className="grid gap-2 min-[560px]:justify-items-end">
+
+            <div className="mt-5 grid gap-2">
               <button
                 type="button"
-                onClick={() => setClaimModalOpen(true)}
+                onClick={() => {
+                  setOfferOpen(false);
+                  setClaimModalOpen(true);
+                }}
                 disabled={waiverClaimed || waiverUsed}
                 className={cn(
-                  "inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-[14px] px-5 text-sm font-black shadow-[0_18px_34px_rgba(37,99,235,0.28)] transition min-[560px]:w-auto",
+                  "inline-flex min-h-12 w-full items-center justify-center gap-3 rounded-[14px] px-5 text-sm font-black shadow-[0_18px_34px_rgba(37,99,235,0.28)] transition",
                   waiverClaimed || waiverUsed
                     ? "bg-white/72 text-cyan-800"
                     : "bg-[linear-gradient(135deg,#2563eb_0%,#13d8cb_100%)] text-white hover:brightness-110",
@@ -1762,23 +1779,20 @@ function RideAppCommunityPanel() {
                 {ctaLabel}
               </button>
               {helper ? (
-                <p className="text-center text-xs font-black text-cyan-800 min-[560px]:text-right">
-                  {helper}
-                </p>
+                <p className="text-center text-xs font-black text-cyan-800">{helper}</p>
               ) : null}
             </div>
-          </div>
-          <div className="mt-5 grid gap-2">
-            <div className="flex items-center justify-between text-xs font-black uppercase tracking-[0.14em] text-cyan-800">
+
+            <div className="mt-5 flex items-center justify-between text-xs font-black uppercase tracking-[0.14em] text-cyan-800">
               <span>0 / 100 claimed</span>
               <span>100 left</span>
             </div>
-            <div className="h-3 overflow-hidden rounded-full bg-cyan-900/10">
+            <div className="mt-2 h-3 overflow-hidden rounded-full bg-cyan-900/10">
               <div className="h-full w-[2%] rounded-full bg-[linear-gradient(90deg,#5eead4,#2563eb)]" />
             </div>
-          </div>
+          </section>
         </div>
-      </section>
+      ) : null}
 
       {claimModalOpen ? (
         <RideAppWaiverClaimModal
