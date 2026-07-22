@@ -45,7 +45,6 @@ import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
 import { useAuth } from "@/providers/AuthProvider";
 
 type AirportDirectionFilter = "all" | "to_airport" | "from_airport";
-type AirportTerminalFilter = "all" | "terminal_1" | "terminal_2";
 type PodPreferenceFilter = "all" | "open" | "women_only" | "verified_only" | "invite_only";
 type TaxiDriverFilter = "all" | "accepted" | "waiting";
 type TaxiTypeFilter = "all" | string;
@@ -86,12 +85,6 @@ const scheduleRideQuickFilters: Array<{ id: ScheduleRideQuickFilter; label: stri
 const airportDirectionOptions: Array<{ id: Exclude<AirportDirectionFilter, "all">; label: string }> = [
   { id: "from_airport", label: "From airport" },
   { id: "to_airport", label: "To airport" },
-];
-
-const airportTerminalOptions: Array<{ id: AirportTerminalFilter; label: string }> = [
-  { id: "all", label: "Any terminal" },
-  { id: "terminal_1", label: "Terminal 1" },
-  { id: "terminal_2", label: "Terminal 2" },
 ];
 
 const tabLabels: Record<HomeTab, string> = {
@@ -924,14 +917,6 @@ function matchesAirportFlightQuery(ride: HomeRide, query: string) {
   ].some((value) => normalizeFlightSearch(value ?? "").includes(normalizedQuery));
 }
 
-function matchesAirportTerminalFilter(ride: HomeRide, terminal: AirportTerminalFilter) {
-  if (terminal === "all") return true;
-  if (!ride.airportTerminal) return true;
-
-  const terminalNumber = terminal === "terminal_1" ? "1" : "2";
-  return normalizeFlightSearch(ride.airportTerminal).includes(`terminal${terminalNumber}`);
-}
-
 function matchesAirportDirectionFilter(ride: HomeRide, direction: AirportDirectionFilter) {
   const effectiveDirection = direction === "all" ? "to_airport" : direction;
   return ride.airportDirection === effectiveDirection;
@@ -1454,10 +1439,8 @@ function CategoryResultsScreen({
   toDistrict,
   airportDirection,
   airportFlightQuery,
-  airportTerminal,
   onAirportDirectionChange,
   onAirportFlightQueryChange,
-  onAirportTerminalChange,
   onOpenFilters,
 }: {
   screen: CategoryResultsScreenId;
@@ -1476,10 +1459,8 @@ function CategoryResultsScreen({
   toDistrict: string;
   airportDirection: AirportDirectionFilter;
   airportFlightQuery: string;
-  airportTerminal: AirportTerminalFilter;
   onAirportDirectionChange: (value: Exclude<AirportDirectionFilter, "all">) => void;
   onAirportFlightQueryChange: (value: string) => void;
-  onAirportTerminalChange: (value: AirportTerminalFilter) => void;
   onOpenFilters: () => void;
 }) {
   const screenOpen = phase === "open";
@@ -1613,31 +1594,6 @@ function CategoryResultsScreen({
                 className="mt-2 min-h-11 w-full rounded-[14px] border border-white/10 bg-[#091724] px-3 text-sm font-black uppercase text-white outline-none transition placeholder:text-white/34 focus:border-[#f6d7ad]/68 focus:shadow-[0_0_0_3px_rgba(246,215,173,0.12)]"
               />
             </label>
-
-            <div>
-              <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[#f6d7ad]/78">Terminal</span>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {airportTerminalOptions.map((option) => {
-                  const selected = airportTerminal === option.id;
-
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => onAirportTerminalChange(option.id)}
-                      className={cn(
-                        "min-h-10 rounded-[14px] border px-3 text-xs font-black transition",
-                        selected
-                          ? "border-[#f6d7ad]/72 bg-[#f6d7ad]/72 text-[#14100b] shadow-[0_12px_30px_rgba(246,215,173,0.18)]"
-                          : "border-white/10 bg-white/[0.055] text-[#fff4e6] hover:border-[#f6d7ad]/42",
-                      )}
-                    >
-                      {option.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           </div>
         ) : null}
 
@@ -2238,7 +2194,6 @@ function HomePageContent() {
   const [taxiTypeFilter, setTaxiTypeFilter] = useState<TaxiTypeFilter>("all");
   const [airportDirectionFilter, setAirportDirectionFilter] = useState<AirportDirectionFilter>("all");
   const [airportFlightQuery, setAirportFlightQuery] = useState("");
-  const [airportTerminalFilter, setAirportTerminalFilter] = useState<AirportTerminalFilter>("all");
   const [rideModeFilter, setRideModeFilter] = useState<RideModeFilter>(initialRideModeFilter);
   const [selectedRideMode, setSelectedRideMode] = useState<Extract<RideModeFilter, "taxi" | "ride_app"> | null>("ride_app");
   const [settlementFilter, setSettlementFilter] = useState<SettlementFilter>(initialSettlementFilter);
@@ -2402,9 +2357,8 @@ function HomePageContent() {
       filteredRides
         .filter((ride) => rideMatchesTab(activeTab, ride))
         .filter((ride) => activeTab !== "airport" || matchesAirportDirectionFilter(ride, airportDirectionFilter))
-        .filter((ride) => activeTab !== "airport" || matchesAirportFlightQuery(ride, airportFlightQuery))
-        .filter((ride) => activeTab !== "airport" || matchesAirportTerminalFilter(ride, airportTerminalFilter)),
-    [activeTab, airportDirectionFilter, airportFlightQuery, airportTerminalFilter, filteredRides],
+        .filter((ride) => activeTab !== "airport" || matchesAirportFlightQuery(ride, airportFlightQuery)),
+    [activeTab, airportDirectionFilter, airportFlightQuery, filteredRides],
   );
 
   const airportRecommendationFallbackRides = useMemo(() => {
@@ -2466,8 +2420,7 @@ function HomePageContent() {
       const exactAirportRides = filteredRides
         .filter((ride) => rideMatchesTab("airport", ride))
         .filter((ride) => matchesAirportDirectionFilter(ride, airportDirectionFilter))
-        .filter((ride) => matchesAirportFlightQuery(ride, airportFlightQuery))
-        .filter((ride) => matchesAirportTerminalFilter(ride, airportTerminalFilter));
+        .filter((ride) => matchesAirportFlightQuery(ride, airportFlightQuery));
 
       if (exactAirportRides.length > 0) return exactAirportRides;
 
@@ -2498,7 +2451,6 @@ function HomePageContent() {
   }, [
     airportDirectionFilter,
     airportFlightQuery,
-    airportTerminalFilter,
     allHomeRides,
     deadlineFilter,
     fareEstimateFilter,
@@ -2650,10 +2602,9 @@ function HomePageContent() {
   function handleCategoryCardSelect(tab: HomeCategoryCardId) {
     setExpandedCategoryId((current) => (current === tab ? null : tab));
 
-    if (tab !== "airport" && (airportDirectionFilter !== "all" || airportFlightQuery || airportTerminalFilter !== "all")) {
+    if (tab !== "airport" && (airportDirectionFilter !== "all" || airportFlightQuery)) {
       setAirportDirectionFilter("all");
       setAirportFlightQuery("");
-      setAirportTerminalFilter("all");
       setFromDistrict("All districts");
       setToDistrict("All districts");
     }
@@ -2714,7 +2665,6 @@ function HomePageContent() {
     setTaxiTypeFilter("all");
     setAirportDirectionFilter("all");
     setAirportFlightQuery("");
-    setAirportTerminalFilter("all");
     setSettlementFilter(rideModeFilter === "ride_app" ? "self_settle" : rideModeFilter === "taxi" ? "protected" : "all");
     setFareEstimateFilter("any");
     setDeadlineFilter("any");
@@ -2783,7 +2733,6 @@ function HomePageContent() {
     taxiTypeFilter !== "all" ||
     airportDirectionFilter !== "all" ||
     airportFlightQuery !== "" ||
-    airportTerminalFilter !== "all" ||
     settlementFilter !== baselineSettlementFilter ||
     fareEstimateFilter !== "any" ||
     deadlineFilter !== "any" ||
@@ -3113,7 +3062,6 @@ function HomePageContent() {
         toDistrict={toDistrict}
         airportDirection={airportDirectionFilter}
         airportFlightQuery={airportFlightQuery}
-        airportTerminal={airportTerminalFilter}
         onAirportDirectionChange={(value) => {
           setAirportDirectionFilter(value);
           setCategoryResultFilters((current) => ({
@@ -3122,7 +3070,6 @@ function HomePageContent() {
           }));
         }}
         onAirportFlightQueryChange={setAirportFlightQuery}
-        onAirportTerminalChange={setAirportTerminalFilter}
         onOpenFilters={() => setFiltersOpen(true)}
       />
     ) : null}
