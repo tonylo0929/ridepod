@@ -85,6 +85,7 @@ type RideRequest = {
   expiryLabel: string;
   visibilityLabel: string;
   extraLabel?: string;
+  tags?: string[];
 };
 
 type RideRequestFormValues = {
@@ -95,6 +96,7 @@ type RideRequestFormValues = {
   time: string;
   maxPeople: string;
   note: string;
+  tags: string;
   visibility: string;
   expiryTime: string;
   timeFlexibility: TimeFlexibility;
@@ -477,6 +479,7 @@ const initialRideRequests: RideRequest[] = [
     expiryLabel: "After departure",
     visibilityLabel: "Public",
     extraLabel: "Request type",
+    tags: ["CausewayBay", "Central", "Today"],
   },
   {
     id: "board-tst-sha-tin-today",
@@ -504,6 +507,7 @@ const initialRideRequests: RideRequest[] = [
     expiryLabel: "After departure",
     visibilityLabel: "Public",
     extraLabel: "Request type",
+    tags: ["TST", "ShaTin", "AfterWork"],
   },
   {
     id: "board-quarry-bay-tko-today",
@@ -531,6 +535,7 @@ const initialRideRequests: RideRequest[] = [
     expiryLabel: "After departure",
     visibilityLabel: "Public",
     extraLabel: "Request type",
+    tags: ["QuarryBay", "TKO", "Tonight"],
   },
   {
     id: "board-tko-central",
@@ -559,6 +564,7 @@ const initialRideRequests: RideRequest[] = [
     expiryLabel: "After departure",
     visibilityLabel: "Public",
     extraLabel: "Commute pattern",
+    tags: ["TKO", "Central", "Commute"],
   },
   {
     id: "board-tuen-mun-central-commute",
@@ -646,6 +652,7 @@ const initialRideRequests: RideRequest[] = [
     expiryLabel: "After departure",
     visibilityLabel: "Public",
     extraLabel: "Event details",
+    tags: ["AsiaWorld", "Concert", "MongKok"],
   },
   {
     id: "board-hku-concert-central",
@@ -675,6 +682,7 @@ const initialRideRequests: RideRequest[] = [
     expiryLabel: "After departure",
     visibilityLabel: "Public",
     extraLabel: "Event details",
+    tags: ["HKU", "Central", "AfterShow"],
   },
   {
     id: "board-stadium-tko-events",
@@ -875,6 +883,7 @@ const defaultFormValues: RideRequestFormValues = {
   time: "",
   maxPeople: "3",
   note: "",
+  tags: "",
   visibility: "Public board",
   expiryTime: "departure",
   timeFlexibility: "Exact time",
@@ -925,6 +934,32 @@ function formatTimeLabel(timeValue: string) {
   });
 }
 
+function normalizeRequestTag(value: string) {
+  return value
+    .trim()
+    .replace(/^#+/, "")
+    .replace(/[^\p{L}\p{N}_-]+/gu, "")
+    .slice(0, 24);
+}
+
+function parseRequestTags(value: string) {
+  const tags = value
+    .split(/[\s,]+/)
+    .map(normalizeRequestTag)
+    .filter(Boolean);
+
+  return Array.from(new Set(tags)).slice(0, 6);
+}
+
+function formatRequestTag(tag: string) {
+  const normalized = normalizeRequestTag(tag);
+  return normalized ? `#${normalized}` : "";
+}
+
+function getRequestTags(request: RideRequest) {
+  return request.tags?.map(formatRequestTag).filter(Boolean) ?? [];
+}
+
 function getRequestStatus(dateValue: string, timeValue: string): RideRequestStatus {
   if (!dateValue || !timeValue) return "open";
 
@@ -959,6 +994,8 @@ function getRequestSignalText(request: RideRequest) {
     request.detailLine,
     request.note,
     request.extraLabel,
+    ...(request.tags ?? []),
+    ...getRequestTags(request),
     request.dateLabel,
     request.timeLabel,
   ]
@@ -983,6 +1020,8 @@ function getRequestPlaceSearchText(request: RideRequest) {
       request.to,
       request.note,
       request.detailLine,
+      ...(request.tags ?? []),
+      ...getRequestTags(request),
       request.eventVenue,
       request.eventName,
       request.purpose,
@@ -1427,6 +1466,7 @@ function RideBoardPreviewPostCard({
 }) {
   const status = statusCopy[request.status];
   const interestedProgressDegrees = Math.max(34, Math.min(340, Math.round((request.interestedCount / request.maxPeople) * 360)));
+  const tags = getRequestTags(request);
 
   const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -1464,6 +1504,18 @@ function RideBoardPreviewPostCard({
           </span>
           <span className="truncate text-xs font-bold text-[var(--rp-muted-strong)]">Host: {request.host.name}</span>
         </div>
+        {tags.length > 0 ? (
+          <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
+            {tags.slice(0, 3).map((tag) => (
+              <span
+                key={`${request.id}-${tag}`}
+                className="inline-flex min-h-6 items-center rounded-full border border-[#34e9ce]/26 bg-[#34e9ce]/10 px-2 text-[10px] font-black leading-none text-[#98FBCB]"
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
       <div className="grid shrink-0 justify-items-end gap-2 border-l border-white/10 pl-3">
         <div className="grid justify-items-center gap-1">
@@ -1680,6 +1732,7 @@ function RideRequestDetailModal({
 }) {
   const actionState = getActionState(request);
   const ActionIcon = actionState.icon;
+  const tags = getRequestTags(request);
 
   return (
     <div className="fixed inset-0 z-[90] overflow-y-auto bg-black/72 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-10 backdrop-blur-sm sm:grid sm:place-items-center sm:py-8">
@@ -1723,6 +1776,18 @@ function RideRequestDetailModal({
                 {categoryLabels[request.category]}
               </span>
             </div>
+            {tags.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <span
+                    key={`${request.id}-detail-${tag}`}
+                    className="inline-flex min-h-7 items-center rounded-full border border-[#34e9ce]/30 bg-[#34e9ce]/10 px-3 text-xs font-black text-[#98FBCB]"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
 
             <dl className="mt-4 grid gap-3 text-left">
               <div>
@@ -1820,6 +1885,7 @@ function PostRideRequestForm({
   }));
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const selectedPostType = postTypeOptions.find((option) => option.id === values.category) ?? postTypeOptions[0];
+  const previewTags = parseRequestTags(values.tags);
 
   const inputClass =
     "min-h-12 w-full rounded-[14px] border border-white/10 bg-white/[0.06] px-3 text-sm font-bold text-[var(--rp-text)] outline-none transition placeholder:text-[var(--rp-muted)] focus:border-[#98FBCB] focus:ring-2 focus:ring-[rgba(152,251,203,0.18)]";
@@ -2017,6 +2083,17 @@ function PostRideRequestForm({
               <textarea value={values.note} onChange={(event) => updateValue("note", event.target.value)} className={cn(inputClass, "min-h-[92px] resize-none py-3 leading-6")} placeholder="Add pickup details or timing notes" maxLength={160} />
             </label>
 
+            <label className="grid gap-2 text-left">
+              <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Tags</span>
+              <input
+                value={values.tags}
+                onChange={(event) => updateValue("tags", event.target.value)}
+                className={inputClass}
+                placeholder="#HKU #Central #Concert"
+              />
+              <span className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">Add searchable tags separated by spaces or commas.</span>
+            </label>
+
             <div className="grid grid-cols-1 gap-3 min-[430px]:grid-cols-2">
               <label className="grid gap-2 text-left">
                 <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Number of people / seats</span>
@@ -2067,6 +2144,18 @@ function PostRideRequestForm({
               <p className="mt-3 rounded-[14px] border border-white/10 bg-black/20 px-3 py-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
                 {values.note.trim() || "Looking for people going the same way."}
               </p>
+              {previewTags.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {previewTags.map((tag) => (
+                    <span
+                      key={`review-${tag}`}
+                      className="inline-flex min-h-7 items-center rounded-full border border-[#34e9ce]/30 bg-[#34e9ce]/10 px-3 text-xs font-black text-[#98FBCB]"
+                    >
+                      {formatRequestTag(tag)}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <button type="button" onClick={() => setStep(2)} className="inline-flex min-h-[52px] items-center justify-center rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-5 text-base font-black text-[var(--rp-text)]">
@@ -2210,6 +2299,7 @@ export default function RideBoardPage() {
   };
 
   const handlePostSubmit = (values: RideRequestFormValues) => {
+    const tags = parseRequestTags(values.tags);
     const detailLineByCategory: Record<RideRequestCategory, string> = {
       today_requests: values.timeFlexibility,
       schedule_later: "Planned ahead",
@@ -2257,6 +2347,7 @@ export default function RideBoardPage() {
             : "After departure",
       visibilityLabel: values.visibility,
       extraLabel: extraLabelByCategory[values.category],
+      tags,
     };
 
     setRequests((currentRequests) => [newRequest, ...currentRequests]);
