@@ -36,6 +36,7 @@ import { cn } from "@/components/ui";
 type RideRequestCategory = "today_requests" | "commute" | "events" | "late_night" | "others";
 type RideBoardCategory = "today" | "commute" | "events" | "late_night" | "others";
 type RideBoardFilter = "all" | RideBoardCategory;
+type RideBoardPreviewCategory = "today" | "schedule_later";
 type RideBoardCategorySlug = "today-requests" | "commute" | "events" | "late-night" | "others";
 type RideBoardDistrictFilter = "all_hk" | "hk_island" | "kowloon" | "new_territories" | "airport" | string;
 type RideRequestStatus = "open" | "leaving_soon" | "closed" | "expired";
@@ -172,6 +173,10 @@ function getRideBoardHref(filter: RideBoardFilter) {
   return filter === "all" ? "/today-rides" : `/today-rides/${rideBoardCategoryToSlug[filter]}`;
 }
 
+function getRideBoardPreviewHref(filter: RideBoardPreviewCategory) {
+  return filter === "today" ? getRideBoardHref("today") : "/today-rides";
+}
+
 function getRideBoardFilterFromParam(param: string | string[] | undefined): RideBoardFilter {
   const slug = Array.isArray(param) ? param[0] : param;
 
@@ -230,6 +235,17 @@ const rideBoardCategoryCopy: Record<
     emptyHeading: "No other rides yet.",
     emptyBody: "Create a flexible ride request.",
     emptyCtaLabel: "Create ride",
+  },
+};
+
+const rideBoardPreviewCopy: Record<RideBoardPreviewCategory, RideBoardEmptyCopy & { heading: string; helper: string }> = {
+  today: rideBoardCategoryCopy.today,
+  schedule_later: {
+    heading: "Schedule later",
+    helper: "Plan ahead for tomorrow, commute days, events, and flexible routes.",
+    emptyHeading: "No scheduled requests yet.",
+    emptyBody: "Post a future ride request so riders can find it early.",
+    emptyCtaLabel: "Create scheduled request",
   },
 };
 
@@ -363,12 +379,11 @@ const rideBoardAccentStyles: Record<
 };
 
 const rideBoardCategories: Array<{
-  id: "today-requests" | "commute" | "events" | "late-night" | "others";
+  id: "today-requests" | "schedule-later";
   label: string;
   subtitle: string;
   image: string;
-  filter: RideBoardCategory;
-  featured?: boolean;
+  filter: RideBoardPreviewCategory;
   eyebrow?: string;
   ctaLabel?: string;
   objectPosition: string;
@@ -376,47 +391,23 @@ const rideBoardCategories: Array<{
 }> = [
   {
     id: "today-requests",
-    label: "Today Requests",
-    subtitle: "Find rides happening today, near you.",
+    label: "Today's request",
+    subtitle: "Find same-day ride requests near you.",
     image: "/images/ride-board/today-requests-card.webp",
     filter: "today",
-    featured: true,
-    eyebrow: "Featured",
+    eyebrow: "Now",
     ctaLabel: "Browse Today",
     objectPosition: "right center",
   },
   {
-    id: "commute",
-    label: "Commute",
-    subtitle: "Daily rides. Better together.",
+    id: "schedule-later",
+    label: "Schedule later",
+    subtitle: "Plan tomorrow, commute, events, or flexible routes.",
     image: "/images/ride-board/commute-card.webp",
-    filter: "commute",
+    filter: "schedule_later",
+    eyebrow: "Plan ahead",
+    ctaLabel: "Browse Later",
     objectPosition: "center bottom",
-  },
-  {
-    id: "events",
-    label: "Events",
-    subtitle: "Go together. Enjoy more.",
-    image: "/images/ride-board/events-card.webp",
-    filter: "events",
-    objectPosition: "right center",
-  },
-  {
-    id: "late-night",
-    label: "Late Night",
-    subtitle: "Clear late-night pickup plans.",
-    image: "/images/ride-board/late-night-card.webp",
-    filter: "late_night",
-    objectPosition: "right bottom",
-  },
-  {
-    id: "others",
-    label: "Others",
-    subtitle: "Flexible rides. Your way.",
-    image: "/images/ride-board/others-card.webp",
-    filter: "others",
-    objectPosition: "right bottom",
-    tone: "gold",
   },
 ];
 
@@ -1067,6 +1058,15 @@ function getVisibleRequests(requests: RideRequest[], filter: RideBoardFilter, di
   });
 }
 
+function getVisiblePreviewRequests(requests: RideRequest[], filter: RideBoardPreviewCategory, districtFilter: RideBoardDistrictFilter = "all_hk") {
+  return requests.filter((request) => {
+    if (request.status === "expired") return false;
+    if (!matchesRideBoardDistrict(request, districtFilter)) return false;
+    if (filter === "today") return isRideDateToday(request);
+    return !isRideDateToday(request);
+  });
+}
+
 function getRideBoardCategoryCounts(requests: RideRequest[], districtFilter: RideBoardDistrictFilter = "all_hk") {
   return requests.reduce<Record<RideBoardCategory, number>>(
     (counts, request) => {
@@ -1189,33 +1189,21 @@ function RideBoardCategoryArtwork({
   categoryCounts,
   onCategorySelect,
 }: {
-  selectedCategory: RideBoardCategory;
-  categoryCounts: Record<RideBoardCategory, number>;
-  onCategorySelect: (category: RideBoardCategory) => void;
+  selectedCategory: RideBoardPreviewCategory;
+  categoryCounts: Record<RideBoardPreviewCategory, number>;
+  onCategorySelect: (category: RideBoardPreviewCategory) => void;
 }) {
-  const featuredCategory = rideBoardCategories.find((category) => category.featured);
-  const secondaryCategories = rideBoardCategories.filter((category) => !category.featured);
-
   return (
     <section aria-label="Ride Board categories" className="grid gap-2">
-      {featuredCategory ? (
-        <RideBoardCategoryCard
-          category={featuredCategory}
-          active={selectedCategory === featuredCategory.filter}
-          count={categoryCounts[featuredCategory.filter]}
-          onClick={onCategorySelect}
-          priority
-        />
-      ) : null}
-
       <div className="grid grid-cols-2 gap-2 max-[340px]:grid-cols-1">
-        {secondaryCategories.map((category) => (
+        {rideBoardCategories.map((category, index) => (
           <RideBoardCategoryCard
             key={category.id}
             category={category}
             active={selectedCategory === category.filter}
             count={categoryCounts[category.filter]}
             onClick={onCategorySelect}
+            priority={index === 0}
           />
         ))}
       </div>
@@ -1233,10 +1221,9 @@ function RideBoardCategoryCard({
   category: (typeof rideBoardCategories)[number];
   active: boolean;
   count: number;
-  onClick: (category: RideBoardCategory) => void;
+  onClick: (category: RideBoardPreviewCategory) => void;
   priority?: boolean;
 }) {
-  const isFeatured = category.featured === true;
   const isGold = category.tone === "gold";
 
   return (
@@ -1247,7 +1234,7 @@ function RideBoardCategoryCard({
       aria-label={`Show ${category.label} ride requests preview`}
       className={cn(
         "group relative block w-full overflow-hidden border bg-[#030b12] text-left outline-none ring-1 ring-inset transition-[transform,box-shadow,border-color,filter] duration-300 ease-out hover:-translate-y-0.5 hover:scale-[1.01] focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
-        isFeatured ? "aspect-[875/443] rounded-[24px]" : "aspect-[430/395] rounded-[18px]",
+        "aspect-[430/395] rounded-[18px]",
         active
           ? "z-10 -translate-y-0.5 scale-[1.015] border-[#65E6D0]/90 brightness-[1.06] ring-2 ring-[#65E6D0]/80 shadow-[0_26px_60px_rgba(0,0,0,0.44),0_0_42px_rgba(101,230,208,0.3)]"
           : "scale-100 border-[rgba(101,230,208,0.18)] ring-white/10 shadow-[0_18px_42px_rgba(0,0,0,0.28)]",
@@ -1259,7 +1246,7 @@ function RideBoardCategoryCard({
         fill
         priority={priority}
         quality={68}
-        sizes={isFeatured ? "(max-width: 768px) calc(100vw - 48px), 875px" : "(max-width: 768px) calc((100vw - 56px) / 2), 430px"}
+        sizes="(max-width: 768px) calc((100vw - 56px) / 2), 430px"
         className={cn(
           "absolute inset-0 h-full w-full object-cover transition duration-500",
           active ? "scale-[1.015]" : "scale-100 group-hover:scale-[1.02]",
@@ -1339,6 +1326,27 @@ function RideBoardFilters({
         })}
       </div>
     </section>
+  );
+}
+
+function getRideBoardPreviewCounts(requests: RideRequest[], districtFilter: RideBoardDistrictFilter = "all_hk") {
+  return requests.reduce<Record<RideBoardPreviewCategory, number>>(
+    (counts, request) => {
+      if (request.status === "expired") return counts;
+      if (!matchesRideBoardDistrict(request, districtFilter)) return counts;
+
+      if (isRideDateToday(request)) {
+        counts.today += 1;
+      } else {
+        counts.schedule_later += 1;
+      }
+
+      return counts;
+    },
+    {
+      today: 0,
+      schedule_later: 0,
+    },
   );
 }
 
@@ -1423,14 +1431,14 @@ function RideBoardPreviewSection({
   seeMoreHref,
   sectionRef,
 }: {
-  selectedCategory: RideBoardCategory;
+  selectedCategory: RideBoardPreviewCategory;
   requests: RideRequest[];
   totalCount: number;
   onOpen: (id: string) => void;
   seeMoreHref: string;
   sectionRef: RefObject<HTMLElement | null>;
 }) {
-  const copy = rideBoardCategoryCopy[selectedCategory];
+  const copy = rideBoardPreviewCopy[selectedCategory];
 
   return (
     <section ref={sectionRef} className="grid scroll-mt-24 gap-3 rounded-[24px] border border-[rgba(101,230,208,0.18)] bg-[rgba(7,17,26,0.72)] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.24)]">
@@ -2165,7 +2173,7 @@ export default function RideBoardPage() {
   const activeFilter = routeFilter;
   const [requests, setRequests] = useState<RideRequest[]>(initialRideRequests);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
-  const [previewCategory, setPreviewCategory] = useState<RideBoardCategory>("today");
+  const [previewCategory, setPreviewCategory] = useState<RideBoardPreviewCategory>("today");
   const [districtFilter, setDistrictFilter] = useState<RideBoardDistrictFilter>("all_hk");
   const [districtFilterOpen, setDistrictFilterOpen] = useState(false);
   const [showPostForm, setShowPostForm] = useState(false);
@@ -2177,9 +2185,10 @@ export default function RideBoardPage() {
   const requestListHeadingRef = useRef<HTMLHeadingElement | null>(null);
 
   const visibleRequests = useMemo(() => getVisibleRequests(requests, activeFilter, districtFilter), [requests, activeFilter, districtFilter]);
-  const previewRequests = useMemo(() => getVisibleRequests(requests, previewCategory, districtFilter), [previewCategory, requests, districtFilter]);
+  const previewRequests = useMemo(() => getVisiblePreviewRequests(requests, previewCategory, districtFilter), [previewCategory, requests, districtFilter]);
   const previewTopRequests = useMemo(() => previewRequests.slice(0, 3), [previewRequests]);
   const categoryCounts = useMemo(() => getRideBoardCategoryCounts(requests, districtFilter), [requests, districtFilter]);
+  const previewCategoryCounts = useMemo(() => getRideBoardPreviewCounts(requests, districtFilter), [requests, districtFilter]);
   const selectedRequest = selectedRequestId ? requests.find((request) => request.id === selectedRequestId) ?? null : null;
   const isCategoryPage = activeFilter !== "all";
   const activeCategory = isCategoryPage ? (activeFilter as RideBoardCategory) : null;
@@ -2210,7 +2219,7 @@ export default function RideBoardPage() {
     }
   };
 
-  const handlePreviewCategorySelect = (category: RideBoardCategory) => {
+  const handlePreviewCategorySelect = (category: RideBoardPreviewCategory) => {
     setPreviewCategory(category);
     window.requestAnimationFrame(() => {
       previewListRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -2339,7 +2348,7 @@ export default function RideBoardPage() {
             <RideBoardFilters activeFilter={activeFilter} categoryCounts={categoryCounts} onFilterChange={handleFilterChange} />
             <RideBoardCategoryArtwork
               selectedCategory={previewCategory}
-              categoryCounts={categoryCounts}
+              categoryCounts={previewCategoryCounts}
               onCategorySelect={handlePreviewCategorySelect}
             />
             <RideBoardPreviewSection
@@ -2347,7 +2356,7 @@ export default function RideBoardPage() {
               requests={previewTopRequests}
               totalCount={previewRequests.length}
               onOpen={setSelectedRequestId}
-              seeMoreHref={getRideBoardHref(previewCategory)}
+              seeMoreHref={getRideBoardPreviewHref(previewCategory)}
               sectionRef={previewListRef}
             />
             <PostRideRequestButton onClick={() => openPostForm()} compact />
