@@ -1194,7 +1194,7 @@ function RideBoardCategoryArtwork({
   onCategorySelect: (category: RideBoardPreviewCategory) => void;
 }) {
   return (
-    <section aria-label="Ride Board categories" className="grid gap-2">
+    <section aria-label="Post a Request categories" className="grid gap-2">
       <div className="grid grid-cols-2 gap-2 max-[340px]:grid-cols-1">
         {rideBoardCategories.map((category, index) => (
           <RideBoardCategoryCard
@@ -1280,7 +1280,7 @@ function RideBoardFilters({
   onFilterChange: (filter: RideBoardFilter) => void;
 }) {
   return (
-    <section aria-label="Ride Board filters" className="scrollbar-hide -mx-4 overflow-x-auto px-4">
+    <section aria-label="Post a Request filters" className="scrollbar-hide -mx-4 overflow-x-auto px-4">
       <div className="flex min-w-max gap-3">
         {rideBoardFilters.map((chip) => {
           const active = activeFilter === chip.id;
@@ -1563,7 +1563,7 @@ function RideBoardCategoryDetailView({
           className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--rp-primary)]/42 bg-white/[0.055] px-3.5 text-xs font-black text-[var(--rp-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:bg-[var(--rp-primary)]/10"
         >
           <ArrowLeft className="h-4 w-4" />
-          Ride Board
+          Post a Request
         </Link>
 
         <button
@@ -2325,7 +2325,7 @@ export default function RideBoardPage() {
           <section className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <h1 className="whitespace-nowrap text-left text-[30px] font-black leading-none text-[var(--rp-text)] min-[390px]:text-[36px]">
-                Ride Board
+                Post a Request
               </h1>
               <p className="mt-1.5 text-[13px] font-semibold leading-5 text-white/62 min-[390px]:text-sm">
                 Find a ride. Share the journey.

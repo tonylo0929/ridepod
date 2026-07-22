@@ -53,7 +53,7 @@ const desktopDrawerNav = [
   { href: "/about", label: "About", icon: Info },
   { href: "/support", label: "Support RidePod", icon: Coffee },
   { href: "/membership", label: "RidePod Plus", icon: Crown },
-  { href: "/today-rides", label: "Ride Board", icon: CalendarDays },
+  { href: "/today-rides", label: "Post a Request", icon: CalendarDays },
   { href: "/history", label: "Ride history", icon: HistoryIcon, requiresAuth: true },
   { href: "/chats", label: "Live Chat", icon: MessageCircle, requiresAuth: true },
 ];
@@ -139,9 +139,9 @@ function PremiumBottomNav() {
     <nav className="fixed bottom-0 left-1/2 z-[120] min-h-[72px] w-full max-w-md -translate-x-1/2 border-t border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_96%,#02070d)] px-0 pb-[max(env(safe-area-inset-bottom),0.35rem)] shadow-[var(--rp-shadow-nav)] backdrop-blur-xl lg:hidden">
       <div className="grid grid-cols-4 items-center">
         <NavLink href="/home?tab=one_off" label="Search" icon={Search} compact />
-        <NavLink href="/create" label="Create" icon={PlusCircle} compact />
+        <NavLink href="/create" label="Create a Ride" icon={PlusCircle} compact />
         <NavLink href="/pods" label="My Ride" icon={CalendarCheck} compact requiresAuth isLoggedIn={isLoggedIn} hardNavigate />
-        <NavLink href="/today-rides" label="Ride Board" icon={CalendarDays} compact />
+        <NavLink href="/today-rides" label="Post a Request" icon={CalendarDays} compact />
       </div>
     </nav>
   );

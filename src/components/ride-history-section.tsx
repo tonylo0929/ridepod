@@ -37,7 +37,7 @@ type HistoryTab = "taxi" | "uber" | "ride_board";
 const historyTabs: Array<{ id: HistoryTab; label: string; icon: LucideIcon }> = [
   { id: "taxi", label: "Taxi", icon: CarFront },
   { id: "uber", label: "Uber", icon: Smartphone },
-  { id: "ride_board", label: "Ride Board", icon: UsersRound },
+  { id: "ride_board", label: "Post a Request", icon: UsersRound },
 ];
 
 function historyDateLabel(date: string) {
