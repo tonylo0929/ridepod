@@ -239,6 +239,11 @@ const rideBoardPreviewCopy: Record<RideBoardPreviewCategory, RideBoardEmptyCopy 
   },
 };
 
+const rideBoardPreviewSeeMoreLabels: Record<RideBoardPreviewCategory, string> = {
+  today: "View today's requests",
+  schedule_later: "View scheduled requests",
+};
+
 type RideBoardCategoryDetail = {
   eyebrow: string;
   title: string;
@@ -1367,6 +1372,7 @@ function RideBoardPreviewSection({
   sectionRef: RefObject<HTMLElement | null>;
 }) {
   const copy = rideBoardPreviewCopy[selectedCategory];
+  const seeMoreLabel = rideBoardPreviewSeeMoreLabels[selectedCategory];
 
   return (
     <section ref={sectionRef} className="grid scroll-mt-24 gap-3 rounded-[24px] border border-[rgba(101,230,208,0.18)] bg-[rgba(7,17,26,0.72)] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.24)]">
@@ -1398,7 +1404,7 @@ function RideBoardPreviewSection({
         href={seeMoreHref}
         className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[18px] border border-[#65E6D0]/42 bg-[#65E6D0]/10 px-4 text-sm font-black text-[#98FBCB] shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition hover:border-[#65E6D0]/70 hover:bg-[#65E6D0]/16 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[#65E6D0]"
       >
-        View All Requests
+        {seeMoreLabel}
         <ChevronRight className="h-4 w-4" />
       </Link>
     </section>
