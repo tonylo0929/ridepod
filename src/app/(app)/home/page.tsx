@@ -1594,7 +1594,7 @@ function CategoryResultsScreen({
               <input
                 value={airportFlightQuery}
                 onChange={(event) => onAirportFlightQueryChange(event.target.value.toUpperCase())}
-                placeholder="CX 841"
+                placeholder="Example: CX841, UO624"
                 inputMode="text"
                 autoCapitalize="characters"
                 className="mt-2 min-h-11 w-full rounded-[14px] border border-white/10 bg-[#091724] px-3 text-sm font-black uppercase text-white outline-none transition placeholder:text-white/34 focus:border-[#f6d7ad]/68 focus:shadow-[0_0_0_3px_rgba(246,215,173,0.12)]"

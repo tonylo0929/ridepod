@@ -2526,7 +2526,7 @@ function AirportDetailsStep({
               <SelfSettleTextField
                 label="Flight number"
                 value={airportDetails.flightNumber}
-                placeholder="e.g. CX400, BR871, UO123"
+                placeholder="Example: CX841, UO624, HX236, BR872"
                 helper="Optional but recommended. RidePod does not verify flight status in this version."
                 onChange={(flightNumber) => onAirportDetailsChange({ ...airportDetails, flightNumber })}
               />
