@@ -3812,7 +3812,7 @@ function EstimatedCostStep({
                 onChange={(event) => setEstimateDraft(sanitizeEstimatedCostInput(event.target.value))}
                 placeholder="84"
                 aria-invalid={!canContinue}
-                className="h-12 w-[7ch] min-w-0 bg-transparent text-[30px] font-black leading-none text-[var(--rp-text)] outline-none placeholder:text-[var(--rp-muted)]"
+                className="h-12 w-[7ch] min-w-0 bg-transparent text-[30px] font-black leading-none text-[var(--rp-text)] caret-[var(--rp-primary)] outline-none selection:bg-transparent selection:text-[var(--rp-text)] placeholder:text-[var(--rp-muted)]"
               />
             </div>
             {!isRideAppSelfSettle ? (
