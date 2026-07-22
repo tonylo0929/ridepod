@@ -1515,7 +1515,7 @@ function CategoryResultsScreen({
         >
           Back to Search
         </button>
-        <div className={cn("relative overflow-hidden rounded-[28px] border bg-[#06111b]", config.borderClassName, config.shadowClassName)}>
+        <div className={cn("relative overflow-hidden rounded-[28px]", config.shadowClassName)}>
           <Image
             src={config.imageSrc}
             alt={config.imageAlt}
