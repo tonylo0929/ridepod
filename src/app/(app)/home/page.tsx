@@ -1699,6 +1699,7 @@ function CategoryResultsScreen({
                 src="/images/ride-board/rideboard-cta-request-illustration.png"
                 alt=""
                 fill
+                quality={92}
                 sizes="(max-width: 389px) calc(100vw - 32px), 274px"
                 className="object-cover object-right"
               />
@@ -1726,6 +1727,7 @@ function CategoryResultsScreen({
                 src="/images/ride-board/rideboard-cta-create-illustration.png"
                 alt=""
                 fill
+                quality={92}
                 sizes="(max-width: 389px) calc(100vw - 32px), 274px"
                 className="object-cover object-right"
               />
