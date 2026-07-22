@@ -37,6 +37,7 @@ type RideRequestCategory = "today_requests" | "commute" | "events" | "late_night
 type RideBoardCategory = "today" | "commute" | "events" | "late_night" | "others";
 type RideBoardFilter = "all" | RideBoardCategory;
 type RideBoardCategorySlug = "today-requests" | "commute" | "events" | "late-night" | "others";
+type RideBoardDistrictFilter = "all_hk" | "hk_island" | "kowloon" | "new_territories" | "airport" | string;
 type RideRequestStatus = "open" | "leaving_soon" | "closed" | "expired";
 type RecurrenceType = "One-time" | "Recurring";
 type EventTiming = "Going to event" | "Leaving after event" | "Both possible";
@@ -112,6 +113,27 @@ const rideBoardFilters: Array<{ id: RideBoardFilter; label: string; icon: typeof
   { id: "events", label: "Events", icon: CalendarDays },
   { id: "late_night", label: "Late Night", icon: Moon },
   { id: "others", label: "Others", icon: ShieldCheck },
+];
+
+const hkDistrictFilters: Array<{ id: RideBoardDistrictFilter; label: string; aliases: string[] }> = [
+  { id: "all_hk", label: "All Hong Kong", aliases: [] },
+  { id: "hk_island", label: "Hong Kong Island", aliases: ["hong kong island", "central", "admiralty", "wan chai", "causeway bay", "quarry bay", "hku", "lan kwai fong"] },
+  { id: "kowloon", label: "Kowloon", aliases: ["kowloon", "tsim sha tsui", "tst", "jordan", "mong kok", "kowloon bay", "east kowloon", "kai tak", "k11 musea"] },
+  { id: "new_territories", label: "New Territories", aliases: ["new territories", "sha tin", "tai po", "tuen mun", "yuen long", "tseung kwan o", "tko", "tsuen wan", "tung chung"] },
+  { id: "airport", label: "Airport", aliases: ["airport", "hkia", "hong kong airport", "chek lap kok", "asiaworld-expo", "asia world expo"] },
+  { id: "central", label: "Central", aliases: ["central", "lan kwai fong"] },
+  { id: "causeway_bay", label: "Causeway Bay", aliases: ["causeway bay", "cwb"] },
+  { id: "quarry_bay", label: "Quarry Bay", aliases: ["quarry bay"] },
+  { id: "wan_chai", label: "Wan Chai", aliases: ["wan chai"] },
+  { id: "tsim_sha_tsui", label: "Tsim Sha Tsui", aliases: ["tsim sha tsui", "tst", "k11 musea"] },
+  { id: "mong_kok", label: "Mong Kok", aliases: ["mong kok"] },
+  { id: "kowloon_bay", label: "Kowloon Bay / East Kowloon", aliases: ["kowloon bay", "east kowloon"] },
+  { id: "sha_tin", label: "Sha Tin", aliases: ["sha tin", "shatin"] },
+  { id: "tseung_kwan_o", label: "Tseung Kwan O", aliases: ["tseung kwan o", "tko"] },
+  { id: "tai_po", label: "Tai Po", aliases: ["tai po"] },
+  { id: "tuen_mun", label: "Tuen Mun", aliases: ["tuen mun"] },
+  { id: "yuen_long", label: "Yuen Long", aliases: ["yuen long"] },
+  { id: "tung_chung", label: "Tung Chung", aliases: ["tung chung"] },
 ];
 
 const rideRequestCategoryToBoardCategory: Record<RideRequestCategory, RideBoardCategory> = {
@@ -953,6 +975,51 @@ function getRequestSignalText(request: RideRequest) {
     .toLowerCase();
 }
 
+function normalizePlaceText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getRequestPlaceSearchText(request: RideRequest) {
+  return normalizePlaceText(
+    [
+      request.from,
+      request.to,
+      request.note,
+      request.detailLine,
+      request.eventVenue,
+      request.eventName,
+      request.purpose,
+      request.commuteLabel,
+      request.extraLabel,
+    ]
+      .filter(Boolean)
+      .join(" "),
+  );
+}
+
+function getDistrictFilterLabel(filter: RideBoardDistrictFilter) {
+  return hkDistrictFilters.find((district) => district.id === filter)?.label ?? "All Hong Kong";
+}
+
+function matchesRideBoardDistrict(request: RideRequest, districtFilter: RideBoardDistrictFilter) {
+  if (districtFilter === "all_hk") return true;
+
+  const district = hkDistrictFilters.find((option) => option.id === districtFilter);
+  if (!district) return true;
+
+  const placeText = getRequestPlaceSearchText(request);
+
+  return district.aliases.some((alias) => {
+    const normalizedAlias = normalizePlaceText(alias);
+    return normalizedAlias.length > 0 && placeText.includes(normalizedAlias);
+  });
+}
+
 function isRideDateToday(request: RideRequest) {
   const dateLabel = request.dateLabel.trim().toLowerCase();
   return request.sameDay === true || request.departureDate === getTodayInputValue() || dateLabel === "today" || dateLabel.includes("today");
@@ -991,18 +1058,20 @@ function matchesRideBoardCategory(request: RideRequest, filter: RideBoardCategor
   return boardCategory === "others";
 }
 
-function getVisibleRequests(requests: RideRequest[], filter: RideBoardFilter) {
+function getVisibleRequests(requests: RideRequest[], filter: RideBoardFilter, districtFilter: RideBoardDistrictFilter = "all_hk") {
   return requests.filter((request) => {
     if (request.status === "expired") return false;
+    if (!matchesRideBoardDistrict(request, districtFilter)) return false;
     if (filter === "all") return true;
     return matchesRideBoardCategory(request, filter);
   });
 }
 
-function getRideBoardCategoryCounts(requests: RideRequest[]) {
+function getRideBoardCategoryCounts(requests: RideRequest[], districtFilter: RideBoardDistrictFilter = "all_hk") {
   return requests.reduce<Record<RideBoardCategory, number>>(
     (counts, request) => {
       if (request.status === "expired") return counts;
+      if (!matchesRideBoardDistrict(request, districtFilter)) return counts;
 
       const boardCategory = getRequestBoardCategory(request);
       counts[boardCategory] += 1;
@@ -1270,6 +1339,79 @@ function RideBoardFilters({
         })}
       </div>
     </section>
+  );
+}
+
+function RideBoardDistrictFilterSheet({
+  open,
+  value,
+  onChange,
+  onClose,
+}: {
+  open: boolean;
+  value: RideBoardDistrictFilter;
+  onChange: (value: RideBoardDistrictFilter) => void;
+  onClose: () => void;
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[95] flex items-end justify-center bg-black/70 px-3 pb-0 pt-10 backdrop-blur-sm">
+      <button type="button" aria-label="Close district filters" className="absolute inset-0 cursor-default" onClick={onClose} />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ride-board-district-filter-title"
+        className="relative z-10 w-full max-w-md rounded-t-[28px] border border-[rgba(152,251,203,0.24)] bg-[linear-gradient(180deg,#0c1824,#07111a)] p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] shadow-[0_-24px_70px_rgba(0,0,0,0.5)]"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-left text-xs font-black uppercase tracking-[0.14em] text-[#98FBCB]">Hong Kong district</p>
+            <h2 id="ride-board-district-filter-title" className="mt-1 text-left text-xl font-black text-[var(--rp-text)]">
+              Match host route places
+            </h2>
+          </div>
+          <button
+            type="button"
+            aria-label="Close district filters"
+            onClick={onClose}
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/5 text-[var(--rp-muted-strong)]"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <p className="mt-3 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+          Choose an HK district. RideBoard matches pickup, destination, notes, and venue text written by hosts.
+        </p>
+
+        <div className="mt-4 grid max-h-[52vh] gap-2 overflow-y-auto pr-1">
+          {hkDistrictFilters.map((district) => {
+            const selected = value === district.id;
+
+            return (
+              <button
+                key={district.id}
+                type="button"
+                onClick={() => {
+                  onChange(district.id);
+                  onClose();
+                }}
+                className={cn(
+                  "flex min-h-12 w-full items-center justify-between gap-3 rounded-[16px] border px-3 text-left text-sm font-black transition",
+                  selected
+                    ? "border-[#98FBCB] bg-[#98FBCB]/16 text-[#d8ffea]"
+                    : "border-white/10 bg-white/[0.045] text-[var(--rp-muted-strong)] hover:border-[#98FBCB]/45 hover:text-[var(--rp-text)]",
+                )}
+              >
+                <span>{district.label}</span>
+                {selected ? <CheckCircle2 className="h-4 w-4 shrink-0 text-[#98FBCB]" /> : null}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -2024,6 +2166,8 @@ export default function RideBoardPage() {
   const [requests, setRequests] = useState<RideRequest[]>(initialRideRequests);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [previewCategory, setPreviewCategory] = useState<RideBoardCategory>("today");
+  const [districtFilter, setDistrictFilter] = useState<RideBoardDistrictFilter>("all_hk");
+  const [districtFilterOpen, setDistrictFilterOpen] = useState(false);
   const [showPostForm, setShowPostForm] = useState(false);
   const [postFormCategory, setPostFormCategory] = useState<RideRequestCategory>(defaultFormValues.category);
   const [toastMessage, setToastMessage] = useState("");
@@ -2032,10 +2176,10 @@ export default function RideBoardPage() {
   const requestListRef = useRef<HTMLElement | null>(null);
   const requestListHeadingRef = useRef<HTMLHeadingElement | null>(null);
 
-  const visibleRequests = useMemo(() => getVisibleRequests(requests, activeFilter), [requests, activeFilter]);
-  const previewRequests = useMemo(() => getVisibleRequests(requests, previewCategory), [previewCategory, requests]);
+  const visibleRequests = useMemo(() => getVisibleRequests(requests, activeFilter, districtFilter), [requests, activeFilter, districtFilter]);
+  const previewRequests = useMemo(() => getVisibleRequests(requests, previewCategory, districtFilter), [previewCategory, requests, districtFilter]);
   const previewTopRequests = useMemo(() => previewRequests.slice(0, 3), [previewRequests]);
-  const categoryCounts = useMemo(() => getRideBoardCategoryCounts(requests), [requests]);
+  const categoryCounts = useMemo(() => getRideBoardCategoryCounts(requests, districtFilter), [requests, districtFilter]);
   const selectedRequest = selectedRequestId ? requests.find((request) => request.id === selectedRequestId) ?? null : null;
   const isCategoryPage = activeFilter !== "all";
   const activeCategory = isCategoryPage ? (activeFilter as RideBoardCategory) : null;
@@ -2180,12 +2324,12 @@ export default function RideBoardPage() {
             </div>
             <button
               type="button"
-              onClick={() => handleFilterChange("all")}
-              aria-pressed={activeFilter === "all"}
+              onClick={() => setDistrictFilterOpen(true)}
+              aria-label="Open Hong Kong district filters"
               className="mt-0.5 inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-full border border-[#0fb7a8]/72 bg-[#0fb7a8]/8 px-3.5 text-xs font-black text-[#20d6c4] shadow-[0_0_26px_rgba(15,183,168,0.12)] transition hover:bg-[#0fb7a8]/14 min-[390px]:text-[13px]"
             >
               <SlidersHorizontal className="h-4 w-4" />
-              Filters
+              {districtFilter === "all_hk" ? "HK District" : getDistrictFilterLabel(districtFilter)}
             </button>
           </section>
         )}
@@ -2226,6 +2370,15 @@ export default function RideBoardPage() {
           onSubmit={handlePostSubmit}
         />
       ) : null}
+      <RideBoardDistrictFilterSheet
+        open={districtFilterOpen}
+        value={districtFilter}
+        onChange={(nextDistrictFilter) => {
+          setDistrictFilter(nextDistrictFilter);
+          focusRideList();
+        }}
+        onClose={() => setDistrictFilterOpen(false)}
+      />
       {toastMessage ? <RideBoardToast message={toastMessage} /> : null}
     </div>
   );
