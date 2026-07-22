@@ -184,6 +184,40 @@ const hk18DistrictOptions = [
   "Yuen Long",
 ] as const;
 
+type Hk18District = (typeof hk18DistrictOptions)[number];
+
+const hk18DistrictCenters: Record<Hk18District, RouteCoordinates> = {
+  "Central and Western": { lat: 22.285, lng: 114.15 },
+  Eastern: { lat: 22.284, lng: 114.225 },
+  Southern: { lat: 22.248, lng: 114.158 },
+  "Wan Chai": { lat: 22.277, lng: 114.173 },
+  "Kowloon City": { lat: 22.328, lng: 114.191 },
+  "Kwun Tong": { lat: 22.313, lng: 114.225 },
+  "Sham Shui Po": { lat: 22.331, lng: 114.159 },
+  "Wong Tai Sin": { lat: 22.342, lng: 114.195 },
+  "Yau Tsim Mong": { lat: 22.304, lng: 114.17 },
+  Islands: { lat: 22.309, lng: 113.918 },
+  "Kwai Tsing": { lat: 22.354, lng: 114.103 },
+  North: { lat: 22.501, lng: 114.128 },
+  "Sai Kung": { lat: 22.382, lng: 114.271 },
+  "Sha Tin": { lat: 22.384, lng: 114.188 },
+  "Tai Po": { lat: 22.45, lng: 114.166 },
+  "Tsuen Wan": { lat: 22.371, lng: 114.114 },
+  "Tuen Mun": { lat: 22.391, lng: 113.977 },
+  "Yuen Long": { lat: 22.445, lng: 114.022 },
+};
+
+const newTerritoriesDistricts = new Set<string>([
+  "Kwai Tsing",
+  "North",
+  "Sai Kung",
+  "Sha Tin",
+  "Tai Po",
+  "Tsuen Wan",
+  "Tuen Mun",
+  "Yuen Long",
+]);
+
 type DateTimeState = {
   scheduleType: ScheduleType;
   date: string;
@@ -715,6 +749,84 @@ function formatCentsFixed(value: number) {
 
 function centsToDollars(value: number) {
   return Math.round(Math.max(0, value)) / 100;
+}
+
+function isHk18District(value: string): value is Hk18District {
+  return hk18DistrictOptions.includes(value as Hk18District);
+}
+
+function getDistrictCenter(value: string) {
+  return isHk18District(value) ? hk18DistrictCenters[value] : null;
+}
+
+function estimateDistrictDistanceMeters(pickupDistrict: string, dropoffDistrict: string) {
+  const pickupCenter = getDistrictCenter(pickupDistrict);
+  const dropoffCenter = getDistrictCenter(dropoffDistrict);
+  if (!pickupCenter || !dropoffCenter) return null;
+
+  if (pickupDistrict === dropoffDistrict) return 3200;
+
+  const earthRadiusKm = 6371;
+  const degreesToRadians = Math.PI / 180;
+  const latDelta = (dropoffCenter.lat - pickupCenter.lat) * degreesToRadians;
+  const lngDelta = (dropoffCenter.lng - pickupCenter.lng) * degreesToRadians;
+  const pickupLat = pickupCenter.lat * degreesToRadians;
+  const dropoffLat = dropoffCenter.lat * degreesToRadians;
+  const haversine =
+    Math.sin(latDelta / 2) ** 2 +
+    Math.cos(pickupLat) * Math.cos(dropoffLat) * Math.sin(lngDelta / 2) ** 2;
+  const straightLineKm = 2 * earthRadiusKm * Math.asin(Math.sqrt(haversine));
+  const roadDistanceKm = Math.max(4.5, straightLineKm * 1.38 + 1.2);
+
+  return Math.round(roadDistanceKm * 1000);
+}
+
+function inferTaxiZoneFromDistricts(pickupDistrict: string, dropoffDistrict: string): HkTaxiZone {
+  if (pickupDistrict === "Islands" || dropoffDistrict === "Islands") return "LANTAU";
+  if (newTerritoriesDistricts.has(pickupDistrict) && newTerritoriesDistricts.has(dropoffDistrict)) {
+    return "NEW_TERRITORIES";
+  }
+
+  return "URBAN";
+}
+
+function inferRouteRiskFromDistricts(pickupDistrict: string, dropoffDistrict: string): RouteRiskLevel {
+  const crossesHarbour =
+    ["Central and Western", "Eastern", "Southern", "Wan Chai"].includes(pickupDistrict) !==
+    ["Central and Western", "Eastern", "Southern", "Wan Chai"].includes(dropoffDistrict);
+
+  return pickupDistrict === "Islands" || dropoffDistrict === "Islands" || crossesHarbour
+    ? "AIRPORT_OR_TUNNEL"
+    : "NORMAL";
+}
+
+function getDistrictTaxiFareSuggestion(peopleVehicle: PeopleVehicleState) {
+  const distanceMeters = estimateDistrictDistanceMeters(
+    peopleVehicle.pickupDistrict,
+    peopleVehicle.dropoffDistrict,
+  );
+  if (!distanceMeters) return null;
+
+  const zone = inferTaxiZoneFromDistricts(peopleVehicle.pickupDistrict, peopleVehicle.dropoffDistrict);
+  const routeRiskLevel = inferRouteRiskFromDistricts(peopleVehicle.pickupDistrict, peopleVehicle.dropoffDistrict);
+  const tollEstimateCents = routeRiskLevel === "AIRPORT_OR_TUNNEL" ? 2500 : 0;
+  const taxiEstimate = calculateMoneyHkTaxiFareEstimate({
+    zone,
+    distanceMeters,
+    baggageCount: peopleVehicle.bags,
+    tollEstimateCents,
+    trafficBufferPercent: routeRiskLevel === "AIRPORT_OR_TUNNEL" ? 8 : 5,
+  });
+
+  return {
+    totalFareCents: taxiEstimate.totalFareCents,
+    totalFare: Math.round(centsToDollars(taxiEstimate.totalFareCents)),
+    distanceMeters,
+    zone,
+    routeRiskLevel,
+    estimateConfidence: taxiEstimate.estimateConfidence,
+    ruleLabel: taxiEstimate.ruleLabel,
+  };
 }
 
 function parseFlexibilityMinutes(value: string) {
@@ -3546,17 +3658,19 @@ function EstimatedCostStep({
   onContinue: () => void;
 }) {
   const isRideAppSelfSettle = normalizeRideOptionId(peopleVehicle.rideOption) === "ride_app_fixed_quote";
+  const districtFareSuggestion = isRideAppSelfSettle ? null : getDistrictTaxiFareSuggestion(peopleVehicle);
   const seatCount = Math.max(1, peopleVehicle.seatsAvailable);
   const [estimateDraft, setEstimateDraft] = useState(() =>
     isRideAppSelfSettle
       ? formatEstimatedCostTextDraft(peopleVehicle.estimatedRideAppFare)
-      : formatEstimatedCostDraft(pricing.estimatedFare),
+      : formatEstimatedCostDraft(districtFareSuggestion?.totalFare ?? pricing.estimatedFare),
   );
   const estimateAmount = parseEstimatedCost(estimateDraft);
   const roundedEstimate = Math.round(estimateAmount);
   const perRiderEstimate = Math.max(1, Math.ceil(roundedEstimate / seatCount));
   const canContinue = roundedEstimate > 0;
   const rideAppProviderLabel = getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther);
+  const estimatedDistanceKm = districtFareSuggestion ? Math.max(1, districtFareSuggestion.distanceMeters / 1000).toFixed(1) : null;
 
   function handleContinue() {
     if (!canContinue) return;
@@ -3567,10 +3681,16 @@ function EstimatedCostStep({
         estimatedRideAppFare: `HK$${roundedEstimate}`,
       });
     } else {
+      const approvedMaxFare = districtFareSuggestion
+        ? centsToDollars(
+            suggestApprovedMaxFare(dollarsToCents(roundedEstimate), districtFareSuggestion.routeRiskLevel),
+          )
+        : Math.max(roundedEstimate, Math.ceil(roundedEstimate * 1.15));
+
       onPricingChange({
         estimatedFare: roundedEstimate,
         estimatedShare: perRiderEstimate,
-        maxFare: Math.max(roundedEstimate, Math.ceil(roundedEstimate * 1.15)),
+        maxFare: approvedMaxFare,
       });
     }
 
@@ -3626,7 +3746,9 @@ function EstimatedCostStep({
             {!isRideAppSelfSettle ? (
               <span className={cn("text-xs font-semibold leading-5", canContinue ? "text-[var(--rp-muted-strong)]" : "text-[#f6c453]")}>
                 {canContinue
-                  ? "Use the best total estimate you have right now. You can still review details later."
+                  ? districtFareSuggestion
+                    ? `RidePod district estimate from ${peopleVehicle.pickupDistrict} to ${peopleVehicle.dropoffDistrict}. You can still edit it.`
+                    : "Use the best total estimate you have right now. You can still review details later."
                   : "Estimated cost is compulsory. Enter a positive HKD amount to continue."}
               </span>
             ) : null}
@@ -3650,6 +3772,19 @@ function EstimatedCostStep({
                   {canContinue ? formatMoney(perRiderEstimate) : "-"}
                 </p>
               </div>
+              {districtFareSuggestion ? (
+                <div className="col-span-2 rounded-[18px] border border-[#f6c453]/25 bg-[#f6c453]/10 p-4">
+                  <p className="text-[11px] font-black uppercase tracking-[0.13em] text-[#f6c453]">
+                    RidePod estimate basis
+                  </p>
+                  <p className="mt-2 text-sm font-black leading-5 text-[var(--rp-text)]">
+                    {peopleVehicle.pickupDistrict} {"\u2192"} {peopleVehicle.dropoffDistrict}
+                  </p>
+                  <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                    About {estimatedDistanceKm} km, {districtFareSuggestion.ruleLabel.toLowerCase()}.
+                  </p>
+                </div>
+              ) : null}
             </div>
           ) : null}
         </section>
@@ -7324,12 +7459,17 @@ function ReviewPodStep({
   const [reviewPanel, setReviewPanel] = useState(0);
   const [showCreateConfirm, setShowCreateConfirm] = useState(false);
   const [createConfirmChecked, setCreateConfirmChecked] = useState(false);
-  const defaultTaxiEstimate = calculateMoneyHkTaxiFareEstimate({
+  const districtFareSuggestion = getDistrictTaxiFareSuggestion(peopleVehicle);
+  const defaultTaxiEstimate = districtFareSuggestion ?? calculateMoneyHkTaxiFareEstimate({
     zone: "URBAN",
     distanceMeters: 6000,
     baggageCount: peopleVehicle.bags,
   });
-  const defaultApprovedMaxCents = suggestApprovedMaxFare(defaultTaxiEstimate.totalFareCents, "NORMAL");
+  const defaultRouteRisk = districtFareSuggestion?.routeRiskLevel ?? "NORMAL";
+  const defaultDistanceKm = districtFareSuggestion
+    ? Math.max(1, districtFareSuggestion.distanceMeters / 1000)
+    : 6;
+  const defaultApprovedMaxCents = suggestApprovedMaxFare(defaultTaxiEstimate.totalFareCents, defaultRouteRisk);
   const [moneyProtection, setMoneyProtection] = useState<MoneyProtectionState>({
     estimatedTotalFare: centsToDollars(defaultTaxiEstimate.totalFareCents),
     approvedMaxTotalFare: centsToDollars(defaultApprovedMaxCents),
@@ -7341,13 +7481,13 @@ function ReviewPodStep({
     estimateConfidence: defaultTaxiEstimate.estimateConfidence,
     systemEstimatedFare: centsToDollars(defaultTaxiEstimate.totalFareCents),
     hostEstimatedFare: pricing.estimatedFare,
-    taxiZone: "URBAN",
-    estimatedDistanceKm: 6,
+    taxiZone: defaultTaxiEstimate.zone,
+    estimatedDistanceKm: defaultDistanceKm,
     baggageCount: peopleVehicle.bags,
     tollEstimate: 0,
     waitingMinutes: 0,
     trafficBufferPercent: 0,
-    routeRiskLevel: "NORMAL",
+    routeRiskLevel: defaultRouteRisk,
   });
   const normalizedRideOption = normalizeRideOptionId(peopleVehicle.rideOption);
   const isTaxiPartnerQuoteReview = normalizedRideOption === "taxi_partner_quote";
