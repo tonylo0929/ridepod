@@ -796,7 +796,7 @@ function RideModeSwitch({
               )}
             >
               <Icon className="h-5 w-5" />
-              {option.label}
+              <span className="whitespace-nowrap">{option.label}</span>
             </button>
           );
         })}
