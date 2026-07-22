@@ -2114,6 +2114,15 @@ export default function RideBoardPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get("post") !== "request") return;
+
+    setPostFormCategory(defaultFormValues.category);
+    setShowPostForm(true);
+    router.replace("/today-rides", { scroll: false });
+  }, [router]);
+
   const showToast = (message: string) => {
     setToastMessage(message);
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);

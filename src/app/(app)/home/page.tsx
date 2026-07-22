@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   CircleDollarSign,
   Gift,
+  MessageCircle,
   Plane,
   RefreshCcw,
   ShieldCheck,
@@ -1209,6 +1210,8 @@ function RecurringRideResultCard({
   const avatarUrl = showCurrentUserAvatar ? currentUserAvatar.avatarUrl : ride.host_avatar_url ?? ride.hostAvatarUrl;
   const initials = showCurrentUserAvatar ? currentUserAvatar.initials : getProfileInitials(hostDisplayName);
   const seatsLabel = `${data.seatsOpen} seat${data.seatsOpen === 1 ? "" : "s"} open`;
+  const isFlightRide = ride.rideKind === "airport" || Boolean(ride.airportDirection);
+  const ScheduleIcon = isFlightRide ? Plane : RefreshCcw;
 
   return (
     <Link
@@ -1218,7 +1221,7 @@ function RecurringRideResultCard({
       <div className="grid min-h-[106px] grid-cols-[78px_minmax(0,1fr)_70px] min-[390px]:grid-cols-[92px_minmax(0,1fr)_80px]">
         <div className="grid min-w-0 content-center gap-1 px-2.5 py-3 min-[390px]:px-3">
           <p className="flex min-w-0 items-center gap-1 text-[8px] font-black uppercase leading-none tracking-[0.06em] text-emerald-300 min-[390px]:text-[9px]">
-            <RefreshCcw className="h-3 w-3 shrink-0" />
+            <ScheduleIcon className="h-3 w-3 shrink-0" />
             <span>Starts</span>
           </p>
           <p className="text-sm font-black leading-tight text-[var(--rp-text)] min-[390px]:text-base">
@@ -1238,7 +1241,7 @@ function RecurringRideResultCard({
           </p>
           <div className="grid min-w-0 gap-0.5">
             <p className="flex min-w-0 items-center gap-1 text-[10px] font-black leading-4 text-emerald-300 min-[390px]:text-[11px]">
-              <RefreshCcw className="h-3.5 w-3.5 shrink-0" />
+              <ScheduleIcon className="h-3.5 w-3.5 shrink-0" />
               <span className="truncate">{data.weekdaysLabel}</span>
             </p>
             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
@@ -1663,19 +1666,61 @@ function CategoryResultsScreen({
           "-mx-4 mt-4 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10",
         )}
       >
-        <Link
-          href="/today-rides"
-          className="mx-auto block w-full max-w-[560px] overflow-hidden rounded-[22px] border border-blue-400/70 bg-[#020d18] shadow-[0_18px_44px_rgba(37,99,235,0.22)] transition hover:border-blue-300 hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300"
-        >
-          <Image
-            src="/images/ride-board/rideboard-request-cta.png"
-            alt="RideBoard. Can't find the right ride? Post your route and let others join."
-            width={1791}
-            height={878}
-            sizes="(max-width: 720px) min(calc(100vw - 32px), 560px), 560px"
-            className="block h-auto w-full"
-          />
-        </Link>
+        <div className="mx-auto grid w-full max-w-[560px] grid-cols-2 gap-3 max-[389px]:grid-cols-1">
+          <Link
+            href="/today-rides?post=request"
+            className="group flex min-h-[274px] flex-col overflow-hidden rounded-[22px] border border-blue-500/80 bg-[linear-gradient(145deg,#06172c_0%,#03101f_58%,#020b16_100%)] p-3 shadow-[0_18px_44px_rgba(37,99,235,0.2)] transition hover:border-blue-300 hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300 min-[430px]:p-4"
+          >
+            <div className="relative z-10">
+              <h3 className="text-[19px] font-black leading-[1.05] text-white min-[430px]:text-[23px]">Post a ride request</h3>
+              <p className="mt-2 text-[12px] font-semibold leading-5 text-white/72 min-[430px]:text-sm">
+                Tell others where and when you need to go.
+              </p>
+            </div>
+            <div className="relative mt-2 h-[116px] overflow-hidden rounded-[16px] bg-[#03101f] min-[430px]:h-[132px]">
+              <Image
+                src="/images/ride-board/rideboard-cta-request-illustration.png"
+                alt=""
+                fill
+                sizes="(max-width: 389px) calc(100vw - 32px), 274px"
+                className="object-cover object-right"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,10,20,0.12),transparent_46%)]" />
+            </div>
+            <span className="mt-auto inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[16px] bg-[linear-gradient(180deg,#2d9cff,#126af3)] px-3 text-sm font-black text-white shadow-[0_14px_28px_rgba(18,106,243,0.32)] transition group-hover:brightness-110 min-[430px]:text-base">
+              <MessageCircle className="h-5 w-5" />
+              Post request
+              <ChevronRight className="h-5 w-5" />
+            </span>
+          </Link>
+
+          <Link
+            href="/create"
+            className="group flex min-h-[274px] flex-col overflow-hidden rounded-[22px] border border-[var(--rp-primary)]/82 bg-[linear-gradient(145deg,#08131f_0%,#04101b_58%,#020b13_100%)] p-3 shadow-[0_18px_44px_rgba(242,193,91,0.16)] transition hover:border-[var(--rp-primary)] hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)] min-[430px]:p-4"
+          >
+            <div className="relative z-10">
+              <h3 className="text-[19px] font-black leading-[1.05] text-white min-[430px]:text-[23px]">Create your own ride</h3>
+              <p className="mt-2 text-[12px] font-semibold leading-5 text-white/72 min-[430px]:text-sm">
+                Be the host. Invite others to join and ride together.
+              </p>
+            </div>
+            <div className="relative mt-2 h-[116px] overflow-hidden rounded-[16px] bg-[#06101a] min-[430px]:h-[132px]">
+              <Image
+                src="/images/ride-board/rideboard-cta-create-illustration.png"
+                alt=""
+                fill
+                sizes="(max-width: 389px) calc(100vw - 32px), 274px"
+                className="object-cover object-right"
+              />
+              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(3,10,18,0.08),transparent_48%)]" />
+            </div>
+            <span className="mt-auto inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[16px] bg-[linear-gradient(180deg,#ffdb6b,#f2bd42)] px-3 text-sm font-black text-[#07111a] shadow-[0_14px_28px_rgba(242,193,91,0.26)] transition group-hover:brightness-105 min-[430px]:text-base">
+              <CarFront className="h-5 w-5" />
+              Create ride
+              <ChevronRight className="h-5 w-5" />
+            </span>
+          </Link>
+        </div>
       </div>
     </section>
   );
