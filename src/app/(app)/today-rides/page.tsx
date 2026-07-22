@@ -1422,6 +1422,7 @@ function RideBoardPreviewPostCard({
   onOpen: (id: string) => void;
 }) {
   const status = statusCopy[request.status];
+  const interestedProgressDegrees = Math.max(34, Math.min(340, Math.round((request.interestedCount / request.maxPeople) * 360)));
 
   const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -1461,9 +1462,18 @@ function RideBoardPreviewPostCard({
         </div>
       </div>
       <div className="grid shrink-0 justify-items-end gap-2 border-l border-white/10 pl-3">
-        <div className="rounded-[13px] border border-white/10 bg-white/[0.055] px-2.5 py-2 text-center">
-          <p className="text-lg font-black leading-none text-[#34e9ce]">{request.interestedCount}</p>
-          <p className="mt-0.5 text-[10px] font-bold leading-3 text-[var(--rp-muted-strong)]">interested</p>
+        <div className="grid justify-items-center gap-1">
+          <div
+            className="grid h-12 w-12 place-items-center rounded-full p-[3px] shadow-[0_0_18px_rgba(52,233,206,0.14)]"
+            style={{
+              background: `conic-gradient(#34e9ce 0deg ${interestedProgressDegrees}deg, rgba(52,233,206,0.18) ${interestedProgressDegrees}deg 360deg)`,
+            }}
+          >
+            <div className="grid h-full w-full place-items-center rounded-full bg-[#06141f]">
+              <span className="text-lg font-black leading-none text-[#34e9ce]">{request.interestedCount}</span>
+            </div>
+          </div>
+          <p className="text-[10px] font-bold leading-none text-[var(--rp-muted-strong)]">interested</p>
         </div>
         <ChevronRight className="h-4 w-4 text-[#98FBCB] transition group-hover:translate-x-0.5" />
       </div>
