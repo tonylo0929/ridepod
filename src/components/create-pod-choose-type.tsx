@@ -3750,12 +3750,12 @@ function EstimatedCostStep({
       <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#020912] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-7 text-[#f8fafc]">
-        <section className="text-center">
+        <section className="grid justify-items-center text-center">
           <ScheduleTypeEyebrow podType={podType} />
-          <h1 className="mt-2 text-[31px] font-black leading-tight text-[var(--rp-text)]">
+          <h1 className="mt-2 w-full text-center text-[31px] font-black leading-tight text-[var(--rp-text)]">
             Estimated Cost
           </h1>
-          <p className="mx-auto mt-2 max-w-[292px] text-base font-medium leading-6 text-[var(--rp-muted)]">
+          <p className="mt-2 w-full max-w-[330px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]">
             Add the total ride estimate before riders can review this pod.
           </p>
         </section>
