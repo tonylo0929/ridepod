@@ -180,7 +180,7 @@ function PremiumTopNav() {
               />
             </span>
           ) : (
-            <RidePodLogo className="h-8 w-[108px] justify-center" imageClassName="h-full w-full" priority />
+            <RidePodLogo className="h-8 w-[122px] justify-center" imageClassName="h-full w-full" priority />
           )}
           <span
             className={cn(
