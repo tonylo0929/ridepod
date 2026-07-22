@@ -7866,15 +7866,11 @@ function ReviewPodStep({
 function SuccessHero() {
   return (
     <section className="text-center">
-      <div className="relative mx-auto h-48 overflow-hidden rounded-[26px]">
-        <Image
-          src="/ridepod/success-dark-background.png"
-          alt=""
-          fill
-          sizes="390px"
-          className="object-cover object-center"
-          priority
-        />
+      <div className="relative mx-auto grid h-48 overflow-hidden rounded-[26px] bg-[radial-gradient(ellipse_at_bottom,rgba(246,196,83,0.42),transparent_30%),radial-gradient(circle_at_center,rgba(246,196,83,0.13),rgba(4,16,31,0.88)_52%,rgba(3,10,18,0.98)_100%)]">
+        <div className="absolute inset-x-[20%] bottom-8 h-5 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(246,196,83,0.78),rgba(246,196,83,0.22)_42%,transparent_72%)] blur-sm" />
+        <div className="relative z-10 m-auto grid h-32 w-32 place-items-center rounded-full border-[7px] border-[#f6c453] text-[#f6c453] shadow-[0_0_42px_rgba(246,196,83,0.34),inset_0_0_28px_rgba(246,196,83,0.08)]">
+          <Check className="h-16 w-16 stroke-[2.6]" />
+        </div>
       </div>
       <h1 className="mt-5 text-[40px] font-black leading-none text-[var(--rp-text)]">
         All set!
