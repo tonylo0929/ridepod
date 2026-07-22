@@ -107,15 +107,6 @@ type RideRequestFormValues = {
   requestType: string;
 };
 
-const rideBoardFilters: Array<{ id: RideBoardFilter; label: string; icon: typeof MapPin }> = [
-  { id: "all", label: "All", icon: MapPin },
-  { id: "today", label: "Today Requests", icon: Clock3 },
-  { id: "commute", label: "Commute", icon: Route },
-  { id: "events", label: "Events", icon: CalendarDays },
-  { id: "late_night", label: "Late Night", icon: Moon },
-  { id: "others", label: "Others", icon: ShieldCheck },
-];
-
 const hkDistrictFilters: Array<{ id: RideBoardDistrictFilter; label: string; aliases: string[] }> = [
   { id: "all_hk", label: "All Hong Kong", aliases: [] },
   { id: "hk_island", label: "Hong Kong Island", aliases: ["hong kong island", "central", "admiralty", "wan chai", "causeway bay", "quarry bay", "hku", "lan kwai fong"] },
@@ -1067,26 +1058,6 @@ function getVisiblePreviewRequests(requests: RideRequest[], filter: RideBoardPre
   });
 }
 
-function getRideBoardCategoryCounts(requests: RideRequest[], districtFilter: RideBoardDistrictFilter = "all_hk") {
-  return requests.reduce<Record<RideBoardCategory, number>>(
-    (counts, request) => {
-      if (request.status === "expired") return counts;
-      if (!matchesRideBoardDistrict(request, districtFilter)) return counts;
-
-      const boardCategory = getRequestBoardCategory(request);
-      counts[boardCategory] += 1;
-      return counts;
-    },
-    {
-      today: 0,
-      commute: 0,
-      events: 0,
-      late_night: 0,
-      others: 0,
-    },
-  );
-}
-
 function getRideCountLabel(count: number) {
   return `${count} ${count === 1 ? "ride" : "rides"}`;
 }
@@ -1281,65 +1252,6 @@ function RideBoardCategoryCard({
         {getCompactRideCountLabel(count)}
       </span>
     </button>
-  );
-}
-
-function RideBoardFilters({
-  activeFilter,
-  categoryCounts,
-  onFilterChange,
-}: {
-  activeFilter: RideBoardFilter;
-  categoryCounts: Record<RideBoardCategory, number>;
-  onFilterChange: (filter: RideBoardFilter) => void;
-}) {
-  return (
-    <section aria-label="Post a Request filters" className="scrollbar-hide -mx-4 overflow-x-auto px-4">
-      <div className="flex min-w-max gap-3">
-        {rideBoardFilters.map((chip) => {
-          const active = activeFilter === chip.id;
-          const Icon = chip.icon;
-          const isOthers = chip.id === "others";
-          const count =
-            chip.id === "all"
-              ? Object.values(categoryCounts).reduce((total, categoryCount) => total + categoryCount, 0)
-              : categoryCounts[chip.id];
-
-          return (
-            <button
-              key={chip.id}
-              type="button"
-              onClick={() => onFilterChange(chip.id)}
-              aria-pressed={active}
-              className={cn(
-                "inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-xs font-black transition min-[390px]:text-[13px]",
-                active
-                  ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)] shadow-[0_0_24px_color-mix(in_srgb,var(--rp-primary)_20%,transparent)]"
-                  : isOthers
-                    ? "border-[var(--rp-primary)]/44 bg-[var(--rp-primary)]/8 text-[var(--rp-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:bg-[var(--rp-primary)]/12"
-                    : "border-white/10 bg-white/[0.055] text-[var(--rp-muted-strong)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:border-[var(--rp-border-strong)] hover:text-[var(--rp-text)]",
-              )}
-            >
-              <Icon className="h-4 w-4 stroke-[2.2]" />
-              {chip.label}
-              <span
-                className={cn(
-                  "ml-0.5 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-black",
-                  active
-                    ? "bg-black/24 text-current"
-                    : isOthers
-                      ? "bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]"
-                      : "bg-white/[0.075] text-white/72",
-                )}
-                aria-label={`${count} ${count === 1 ? "ride" : "rides"}`}
-              >
-                {getCompactRideCountLabel(count)}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </section>
   );
 }
 
@@ -2201,7 +2113,6 @@ export default function RideBoardPage() {
   const visibleRequests = useMemo(() => getVisibleRequests(requests, activeFilter, districtFilter), [requests, activeFilter, districtFilter]);
   const previewRequests = useMemo(() => getVisiblePreviewRequests(requests, previewCategory, districtFilter), [previewCategory, requests, districtFilter]);
   const previewTopRequests = useMemo(() => previewRequests.slice(0, 3), [previewRequests]);
-  const categoryCounts = useMemo(() => getRideBoardCategoryCounts(requests, districtFilter), [requests, districtFilter]);
   const previewCategoryCounts = useMemo(() => getRideBoardPreviewCounts(requests, districtFilter), [requests, districtFilter]);
   const selectedRequest = selectedRequestId ? requests.find((request) => request.id === selectedRequestId) ?? null : null;
   const isCategoryPage = activeFilter !== "all";
@@ -2224,13 +2135,6 @@ export default function RideBoardPage() {
       requestListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       requestListHeadingRef.current?.focus({ preventScroll: true });
     });
-  };
-
-  const handleFilterChange = (filter: RideBoardFilter) => {
-    router.push(getRideBoardHref(filter), { scroll: false });
-    if (filter !== "all") {
-      focusRideList();
-    }
   };
 
   const handlePreviewCategorySelect = (category: RideBoardPreviewCategory) => {
@@ -2359,7 +2263,6 @@ export default function RideBoardPage() {
 
         {activeCategory ? null : (
           <>
-            <RideBoardFilters activeFilter={activeFilter} categoryCounts={categoryCounts} onFilterChange={handleFilterChange} />
             <RideBoardCategoryArtwork
               selectedCategory={previewCategory}
               categoryCounts={previewCategoryCounts}
