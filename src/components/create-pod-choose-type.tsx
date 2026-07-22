@@ -3472,6 +3472,7 @@ function EstimatedCostStep({
   const roundedEstimate = Math.round(estimateAmount);
   const perRiderEstimate = Math.max(1, Math.ceil(roundedEstimate / seatCount));
   const canContinue = roundedEstimate > 0;
+  const rideAppProviderLabel = getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther);
 
   function handleContinue() {
     if (!canContinue) return;
@@ -3517,16 +3518,16 @@ function EstimatedCostStep({
                 Required estimate
               </p>
               <h2 className="mt-1 text-xl font-black leading-tight text-[var(--rp-text)]">
-                {isRideAppSelfSettle ? "Ride app fare" : "Taxi fare"}
+                {isRideAppSelfSettle ? rideAppProviderLabel : "Taxi fare"}
               </h2>
             </div>
           </div>
 
           <label className="grid gap-2 text-left">
             <span className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
-              {isRideAppSelfSettle ? "Total estimated cost by Ride App" : "Total estimated cost"}
+              {isRideAppSelfSettle ? `Total estimated ${rideAppProviderLabel} fare` : "Total estimated cost"}
             </span>
-            <div className="flex min-h-14 items-center rounded-[18px] border border-[var(--rp-border)] bg-[rgba(5,12,20,0.58)] px-4 focus-within:border-[var(--rp-primary)]">
+            <div className="inline-flex min-h-14 w-fit max-w-full items-center rounded-[18px] border border-[var(--rp-border)] bg-[rgba(5,12,20,0.58)] px-4 focus-within:border-[var(--rp-primary)]">
               <span className="mr-2 text-base font-black text-[#f6c453]">HK$</span>
               <input
                 type="text"
@@ -3535,7 +3536,7 @@ function EstimatedCostStep({
                 onChange={(event) => setEstimateDraft(sanitizeEstimatedCostInput(event.target.value))}
                 placeholder="84"
                 aria-invalid={!canContinue}
-                className="h-12 min-w-0 flex-1 bg-transparent text-[30px] font-black leading-none text-[var(--rp-text)] outline-none placeholder:text-[var(--rp-muted)]"
+                className="h-12 w-[7ch] min-w-0 bg-transparent text-[30px] font-black leading-none text-[var(--rp-text)] outline-none placeholder:text-[var(--rp-muted)]"
               />
             </div>
             {!isRideAppSelfSettle ? (
