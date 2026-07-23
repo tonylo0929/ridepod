@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 
 const SPLASH_STORAGE_KEY = "ridepod_splash_seen";
@@ -185,26 +186,25 @@ export function SplashScreen() {
         .ridepod-splash__logo {
           position: relative;
           display: inline-flex;
+          width: min(76vw, 340px);
           margin: 0;
           overflow: hidden;
           isolation: isolate;
-          font-size: clamp(48px, 16vw, 72px);
-          line-height: 0.95;
-          font-weight: 800;
-          letter-spacing: 0;
-          text-shadow: 0 18px 50px rgba(0, 0, 0, 0.44);
         }
 
         .ridepod-splash__logo-text {
-          display: inline-flex;
+          display: block;
+          width: 100%;
           clip-path: inset(0 100% 0 0);
           will-change: clip-path;
           animation: ridepod-splash-logo-reveal 1350ms 120ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
 
-        .ridepod-splash__logo-gold {
-          color: var(--rp-primary);
-          text-shadow: 0 0 34px rgba(242, 193, 91, 0.22);
+        .ridepod-splash__logo-image {
+          display: block;
+          width: 100%;
+          height: auto;
+          filter: drop-shadow(0 20px 42px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 24px rgba(242, 193, 91, 0.16));
         }
 
         .ridepod-splash__logo::after {
@@ -377,12 +377,18 @@ export function SplashScreen() {
           <span className="ridepod-splash__route-line" />
           <span className="ridepod-splash__dot ridepod-splash__dot--end" />
         </div>
-        <h1 className="ridepod-splash__logo">
+        <div className="ridepod-splash__logo">
           <span className="ridepod-splash__logo-text">
-            <span>Ride</span>
-            <span className="ridepod-splash__logo-gold">Pod</span>
+            <Image
+              src="/ridepod/fare-enough-logo-gold.png"
+              alt="Fare Enough"
+              width={1559}
+              height={315}
+              priority
+              className="ridepod-splash__logo-image"
+            />
           </span>
-        </h1>
+        </div>
         <p className="ridepod-splash__tagline">Your ride, together.</p>
       </div>
     </div>
