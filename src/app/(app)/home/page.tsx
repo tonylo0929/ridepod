@@ -1238,37 +1238,55 @@ function RideSearchResultCard(props: {
 
 function HomeBottomActionCards() {
   return (
-    <div className="mx-auto grid w-full max-w-[560px] grid-cols-2 gap-3 max-[389px]:grid-cols-1">
-      <Link
-        href="/today-rides?post=request"
-        aria-label="Post a ride request"
-        className="group relative aspect-[4/5] overflow-hidden rounded-[22px] bg-transparent transition hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300"
-      >
-        <Image
-          src="/images/ridepod/create-your-request-full-20260724.png"
-          alt=""
-          fill
-          quality={100}
-          sizes="(max-width: 389px) calc(100vw - 32px), 274px"
-          className="object-contain object-center transition duration-300 group-hover:scale-[1.01]"
-        />
-      </Link>
+    <section className="mx-auto w-full max-w-[560px]" aria-labelledby="home-bottom-actions-title">
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-[#65E6D0]">Next step</p>
+          <h2 id="home-bottom-actions-title" className="mt-1 text-xl font-black leading-tight text-[var(--rp-text)]">
+            Did not find the right ride?
+          </h2>
+        </div>
+        <span className="hidden text-right text-xs font-bold leading-5 text-[var(--rp-muted-strong)] min-[430px]:block">
+          Post or host in seconds.
+        </span>
+      </div>
 
-      <Link
-        href="/create"
-        aria-label="Create your own ride"
-        className="group relative aspect-[4/5] overflow-hidden rounded-[22px] border border-[var(--rp-primary)]/82 bg-[#06101a] shadow-[0_18px_44px_rgba(242,193,91,0.16)] transition hover:border-[var(--rp-primary)] hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
-      >
-        <Image
-          src="/images/ride-board/create-ride-card-clean-20260724.png"
-          alt=""
-          fill
-          quality={100}
-          sizes="(max-width: 389px) calc(100vw - 32px), 274px"
-          className="object-cover object-center transition duration-300 group-hover:scale-[1.03]"
-        />
-      </Link>
-    </div>
+      <div className="grid grid-cols-2 gap-3 max-[389px]:grid-cols-1">
+        <Link
+          href="/today-rides?post=request"
+          aria-label="Post a quick request"
+          className="group grid min-h-[128px] content-between rounded-[20px] border border-blue-400/58 bg-[linear-gradient(145deg,rgba(7,28,55,0.94),rgba(3,14,28,0.98))] p-4 shadow-[0_18px_42px_rgba(37,99,235,0.16)] transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_22px_50px_rgba(37,99,235,0.22)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300"
+        >
+          <span className="grid h-11 w-11 place-items-center rounded-[14px] bg-[linear-gradient(135deg,#22d3ee,#14b8a6)] text-white shadow-[0_14px_28px_rgba(20,184,166,0.22)]">
+            <CalendarDays className="h-5 w-5" />
+          </span>
+          <span>
+            <span className="block text-lg font-black leading-tight text-white">Need a ride?</span>
+            <span className="mt-2 inline-flex items-center gap-1 text-sm font-black text-blue-200">
+              Post a Quick Request
+              <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </span>
+          </span>
+        </Link>
+
+        <Link
+          href="/create"
+          aria-label="Create a ride"
+          className="group grid min-h-[128px] content-between rounded-[20px] border border-[var(--rp-primary)]/70 bg-[linear-gradient(145deg,rgba(31,24,8,0.86),rgba(8,15,24,0.98))] p-4 shadow-[0_18px_42px_rgba(242,193,91,0.14)] transition hover:-translate-y-0.5 hover:border-[var(--rp-primary)] hover:shadow-[0_22px_50px_rgba(242,193,91,0.2)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
+        >
+          <span className="grid h-11 w-11 place-items-center rounded-[14px] bg-[linear-gradient(180deg,#fff0b8,#f2c15b)] text-[#07111a] shadow-[0_14px_28px_rgba(242,193,91,0.2)]">
+            <CarFront className="h-5 w-5" />
+          </span>
+          <span>
+            <span className="block text-lg font-black leading-tight text-white">Want to offer a ride?</span>
+            <span className="mt-2 inline-flex items-center gap-1 text-sm font-black text-[var(--rp-primary)]">
+              Create a Ride
+              <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            </span>
+          </span>
+        </Link>
+      </div>
+    </section>
   );
 }
 
