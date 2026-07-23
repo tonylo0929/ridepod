@@ -1257,7 +1257,7 @@ function HomeBottomActionCards() {
       <Link
         href="/create"
         aria-label="Create your own ride"
-        className="group relative aspect-[4/5] overflow-hidden rounded-[22px] border border-[var(--rp-primary)]/82 bg-[#06101a] shadow-[0_18px_44px_rgba(242,193,91,0.16)] transition hover:border-[var(--rp-primary)] hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
+        className="group relative aspect-[4/5] overflow-hidden rounded-[22px] bg-transparent transition hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
       >
         <Image
           src="/images/ride-board/create-ride-card-20260723.png"
