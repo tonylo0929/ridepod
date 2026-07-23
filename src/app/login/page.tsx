@@ -104,10 +104,10 @@ export default function LoginPage() {
   return (
     <AuthPageShell>
       <section className="mx-auto grid w-full max-w-md gap-4 overflow-hidden rounded-[28px] border border-[color-mix(in_srgb,var(--rp-border)_84%,white_8%)] bg-[radial-gradient(circle_at_50%_0%,rgba(245,188,73,0.12),transparent_34%),color-mix(in_srgb,var(--rp-card)_94%,black_6%)] p-4 shadow-[0_24px_70px_rgba(0,0,0,0.38)] min-[390px]:p-5">
-        <div className="relative -mx-4 -mt-4 aspect-[1896/829] overflow-hidden rounded-t-[28px] rounded-b-[24px] border-b border-white/10 bg-[var(--rp-card-muted)] shadow-[0_18px_36px_rgba(0,0,0,0.28)] min-[390px]:-mx-5 min-[390px]:-mt-5">
+        <div className="relative -mx-4 -mt-4 aspect-[11/4] overflow-hidden rounded-t-[28px] rounded-b-[24px] border-b border-white/10 bg-[var(--rp-card-muted)] shadow-[0_18px_36px_rgba(0,0,0,0.28)] min-[390px]:-mx-5 min-[390px]:-mt-5">
           <Image
-            src="/ridepod/login-welcome-hero.png"
-            alt="RidePod shared ride app welcome banner"
+            src="/ridepod/fare-enough-login-hero.png"
+            alt="FareEnough shared ride app welcome banner"
             fill
             priority
             sizes="(max-width: 640px) 100vw, 448px"
