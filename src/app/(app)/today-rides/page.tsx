@@ -252,6 +252,7 @@ type RideBoardCategoryDetail = {
   title: string;
   subtitle: string;
   image: string;
+  imagePosition?: string;
   icon: typeof MapPin;
   chips: string[];
   listHeading: string;
@@ -265,6 +266,7 @@ const rideBoardCategoryDetails: Record<RideBoardCategory, RideBoardCategoryDetai
     title: "Today Requests",
     subtitle: "See who needs a ride near you today.",
     image: "/images/ride-board/today-requests.png",
+    imagePosition: "center top",
     icon: UserRound,
     chips: ["Nearby", "Leaving Soon", "This Afternoon", "Tonight"],
     listHeading: "Requests happening today",
@@ -1583,6 +1585,7 @@ function RideBoardCategoryDetailView({
             priority
             quality={75}
             sizes="(max-width: 768px) calc(100vw - 32px), 720px"
+            style={{ objectPosition: detail.imagePosition ?? "center center" }}
             className="object-cover"
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,10,16,0.02),rgba(4,10,16,0.06)_62%,rgba(4,10,16,0.18))]" aria-hidden="true" />
