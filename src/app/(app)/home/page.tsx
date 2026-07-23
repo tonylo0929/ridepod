@@ -2562,21 +2562,6 @@ function HomePageContent() {
           : seatFilter === "minimum_not_reached"
             ? "Minimum not reached"
             : "";
-  const baselineSettlementFilter =
-    rideModeFilter === "taxi" ? "protected" : rideModeFilter === "ride_app" ? "self_settle" : initialSettlementFilter;
-  const hasActiveFilters =
-    fromDistrict !== initialFromDistrict ||
-    toDistrict !== initialToDistrict ||
-    podPreferenceFilter !== "all" ||
-    taxiDriverFilter !== "all" ||
-    taxiTypeFilter !== "all" ||
-    airportDirectionFilter !== "all" ||
-    airportFlightQuery !== "" ||
-    settlementFilter !== baselineSettlementFilter ||
-    fareEstimateFilter !== "any" ||
-    deadlineFilter !== "any" ||
-    seatFilter !== "any" ||
-    ownershipFilter !== "all";
   const hasChosenRideMode = selectedRideMode !== null;
   const showRideOptionsBoard = true;
   const showRideOptionsFrame = true;
@@ -2820,17 +2805,6 @@ function HomePageContent() {
                 </span>
               </div>
             )}
-            {hasActiveFilters ? (
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={resetRouteFilters}
-                  className="inline-flex min-h-10 items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-4 text-xs font-black text-[var(--rp-primary)]"
-                >
-                  Clear
-                </button>
-              </div>
-            ) : null}
           </div>
 
           <div className="grid gap-3">

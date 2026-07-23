@@ -665,7 +665,7 @@ export default function RegisterPage() {
           <span className="absolute right-5 top-5 grid h-12 w-12 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
             {accountType === "taxi_partner" ? <CarFront className="h-5 w-5" /> : <UserRound className="h-5 w-5" />}
           </span>
-          <h1 className="text-3xl font-black text-[var(--rp-primary)]">
+          <h1 className="text-3xl font-black text-[var(--rp-text)]">
             {step === "account_type"
               ? "Create your RidePod account"
               : step === "avatar"
