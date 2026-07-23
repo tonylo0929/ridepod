@@ -1247,7 +1247,7 @@ function HomeBottomActionCards() {
           </h2>
         </div>
         <span className="hidden text-right text-xs font-bold leading-5 text-[var(--rp-muted-strong)] min-[430px]:block">
-          Post or host in seconds.
+          Request or create in seconds.
         </span>
       </div>
 
