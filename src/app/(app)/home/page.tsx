@@ -1245,12 +1245,12 @@ function HomeBottomActionCards() {
         className="group relative aspect-[4/5] overflow-hidden rounded-[22px] border border-blue-500/80 bg-[#03101f] shadow-[0_18px_44px_rgba(37,99,235,0.2)] transition hover:border-blue-300 hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300"
       >
         <Image
-          src="/images/ride-board/rideboard-cta-request-illustration.png"
+          src="/images/ridepod/create-your-request.png"
           alt=""
           fill
-          quality={92}
+          quality={100}
           sizes="(max-width: 389px) calc(100vw - 32px), 274px"
-          className="object-cover object-right transition duration-300 group-hover:scale-[1.03]"
+          className="object-cover object-center transition duration-300 group-hover:scale-[1.03]"
         />
       </Link>
 
@@ -1263,9 +1263,9 @@ function HomeBottomActionCards() {
           src="/images/ride-board/create-ride-card-20260723.png"
           alt=""
           fill
-          quality={92}
+          quality={100}
           sizes="(max-width: 389px) calc(100vw - 32px), 274px"
-          className="object-cover object-right transition duration-300 group-hover:scale-[1.03]"
+          className="object-cover object-center transition duration-300 group-hover:scale-[1.03]"
         />
       </Link>
     </div>
