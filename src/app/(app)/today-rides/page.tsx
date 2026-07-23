@@ -1174,17 +1174,20 @@ function PostRideRequestButton({
   onClick,
   compact = false,
   label = "Post Ride Request",
+  corner = false,
 }: {
   onClick: () => void;
   compact?: boolean;
   label?: string;
+  corner?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex w-full items-center justify-center gap-3 rounded-[22px] bg-[linear-gradient(180deg,#fff0b8_0%,#ffd36a_24%,#f2c15b_58%,#d9912f_100%)] px-5 font-black text-[var(--rp-primary-text)] shadow-[0_22px_46px_rgba(242,193,91,0.25)] transition hover:brightness-105 active:scale-[0.99]",
+        "inline-flex items-center justify-center gap-3 bg-[linear-gradient(180deg,#fff0b8_0%,#ffd36a_24%,#f2c15b_58%,#d9912f_100%)] font-black text-[var(--rp-primary-text)] shadow-[0_22px_46px_rgba(242,193,91,0.25)] transition hover:brightness-105 active:scale-[0.99]",
+        corner ? "w-auto rounded-full px-4" : "w-full rounded-[22px] px-5",
         compact ? "min-h-[54px] text-base" : "min-h-14 text-base",
       )}
     >
@@ -2464,7 +2467,7 @@ export default function RideBoardPage() {
             headingRef={requestListHeadingRef}
           />
         ) : (
-          <section className="flex items-start gap-4">
+          <section className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 className="whitespace-nowrap text-left text-[30px] font-black leading-none text-[var(--rp-text)] min-[390px]:text-[36px]">
                 Post a Request
@@ -2473,6 +2476,7 @@ export default function RideBoardPage() {
                 Find a ride. Share the journey.
               </p>
             </div>
+            <PostRideRequestButton onClick={() => openPostForm()} compact corner label="Post" />
           </section>
         )}
 
@@ -2491,7 +2495,6 @@ export default function RideBoardPage() {
               seeMoreHref={getRideBoardPreviewHref(previewCategory)}
               sectionRef={previewListRef}
             />
-            <PostRideRequestButton onClick={() => openPostForm()} compact />
           </>
         )}
       </div>
