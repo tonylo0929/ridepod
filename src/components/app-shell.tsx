@@ -50,6 +50,7 @@ function getProfileDisplayName({
 }
 
 const desktopDrawerNav = [
+  { href: "/home", label: "Home", icon: Home },
   { href: "/about", label: "About", icon: Info },
   { href: "/support", label: "Support RidePod", icon: Coffee },
   { href: "/membership", label: "RidePod Plus", icon: Crown },

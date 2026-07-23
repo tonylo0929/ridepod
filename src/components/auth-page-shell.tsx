@@ -39,6 +39,7 @@ function getProfileDisplayName({
 }
 
 const authPrimaryItems = [
+  { href: "/home", label: "Home", icon: Home },
   { href: "/about", label: "About", icon: Info },
   { href: "/support", label: "Support RidePod", icon: Coffee },
   { href: "/history", label: "Ride history", icon: HistoryIcon, requiresAuth: true },
