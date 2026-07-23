@@ -2104,7 +2104,7 @@ function PostRideRequestForm({
                 value={values.tags}
                 onChange={(event) => updateValue("tags", event.target.value)}
                 className={inputClass}
-                placeholder="#HKU #Central #Concert"
+                placeholder="#Airport #AfterWork #Central #Concert"
               />
               <span className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">Add searchable tags separated by spaces or commas.</span>
             </label>
