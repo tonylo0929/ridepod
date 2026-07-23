@@ -1265,7 +1265,7 @@ function HomeBottomActionCards() {
           fill
           quality={100}
           sizes="(max-width: 389px) calc(100vw - 32px), 274px"
-          className="object-cover object-center transition duration-300 group-hover:scale-[1.03]"
+          className="object-contain object-center transition duration-300 group-hover:scale-[1.01]"
         />
       </Link>
     </div>
