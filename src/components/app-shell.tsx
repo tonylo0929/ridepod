@@ -172,20 +172,20 @@ function PremiumTopNav() {
     <header className="sticky top-0 z-40 border-b border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_92%,transparent)] px-4 py-3 shadow-[0_12px_30px_rgba(0,0,0,0.14)] backdrop-blur-xl lg:hidden">
       <div className="mx-auto grid max-w-3xl grid-cols-[56px_1fr_auto] items-center gap-3">
         <HomeMenuDrawer />
-        <Link href="/home?tab=one_off" className="inline-flex items-center gap-1.5 justify-self-center" aria-label="RidePod home">
+        <Link href="/home?tab=one_off" className="inline-flex items-center gap-1.5 justify-self-center" aria-label="Fare Enough home">
           {showRideBoardLogo ? (
-            <span className="relative inline-flex h-8 w-[122px] items-center overflow-hidden rounded-md">
+            <span className="relative inline-flex h-8 w-[136px] items-center overflow-hidden rounded-md min-[390px]:w-[158px]">
               <Image
-                src="/ridepod/rideboard-logo-wordmark.png"
-                alt="RidePod"
-                width={320}
-                height={80}
+                src="/ridepod/fare-enough-logo-cyan.png"
+                alt="Fare Enough"
+                width={1482}
+                height={305}
                 priority
                 className="h-full w-full object-contain"
               />
             </span>
           ) : (
-            <RidePodLogo className="h-8 w-[122px] justify-center" imageClassName="h-full w-full" priority />
+            <RidePodLogo className="h-8 w-[136px] justify-center min-[390px]:w-[158px]" imageClassName="h-full w-full" priority />
           )}
           <span
             className={cn(
