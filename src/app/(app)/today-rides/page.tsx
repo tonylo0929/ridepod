@@ -1381,16 +1381,30 @@ function RideBoardPreviewSection({
 }) {
   const copy = rideBoardPreviewCopy[selectedCategory];
   const seeMoreLabel = rideBoardPreviewSeeMoreLabels[selectedCategory];
+  const isToday = selectedCategory === "today";
 
   return (
-    <section ref={sectionRef} className="grid scroll-mt-24 gap-3 rounded-[24px] border border-[rgba(101,230,208,0.18)] bg-[rgba(7,17,26,0.72)] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.24)]">
+    <section
+      ref={sectionRef}
+      className={cn(
+        "grid scroll-mt-24 gap-3 rounded-[24px] border bg-[rgba(7,17,26,0.72)] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.24)]",
+        isToday ? "border-[rgba(242,193,91,0.28)]" : "border-[rgba(101,230,208,0.18)]",
+      )}
+    >
       <div className="flex items-start justify-between gap-3 px-1">
         <div className="min-w-0 text-left">
-          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#65E6D0]">Top posts</p>
+          <p className={cn("text-[11px] font-black uppercase tracking-[0.14em]", isToday ? "text-[var(--rp-primary)]" : "text-[#65E6D0]")}>Top posts</p>
           <h2 className="mt-1 text-xl font-black leading-tight text-[var(--rp-text)]">{copy.heading}</h2>
           <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{copy.helper}</p>
         </div>
-        <span className="inline-flex min-h-8 shrink-0 items-center rounded-full border border-[#65E6D0]/35 bg-[#65E6D0]/10 px-3 text-xs font-black text-[#98FBCB]">
+        <span
+          className={cn(
+            "inline-flex min-h-8 shrink-0 items-center rounded-full border px-3 text-xs font-black",
+            isToday
+              ? "border-[var(--rp-primary)]/42 bg-[rgba(242,193,91,0.12)] text-[var(--rp-primary)]"
+              : "border-[#65E6D0]/35 bg-[#65E6D0]/10 text-[#98FBCB]",
+          )}
+        >
           {Math.min(3, totalCount)} / {totalCount}
         </span>
       </div>
@@ -1398,7 +1412,7 @@ function RideBoardPreviewSection({
       {requests.length > 0 ? (
         <div className="grid gap-2.5">
           {requests.map((request) => (
-            <RideBoardPreviewPostCard key={request.id} request={request} onOpen={onOpen} />
+            <RideBoardPreviewPostCard key={request.id} request={request} accent={selectedCategory} onOpen={onOpen} />
           ))}
         </div>
       ) : (
@@ -1410,7 +1424,12 @@ function RideBoardPreviewSection({
 
       <Link
         href={seeMoreHref}
-        className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[18px] border border-[#65E6D0]/42 bg-[#65E6D0]/10 px-4 text-sm font-black text-[#98FBCB] shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition hover:border-[#65E6D0]/70 hover:bg-[#65E6D0]/16 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[#65E6D0]"
+        className={cn(
+          "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[18px] border px-4 text-sm font-black shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4",
+          isToday
+            ? "border-[var(--rp-primary)]/48 bg-[rgba(242,193,91,0.12)] text-[var(--rp-primary)] hover:border-[var(--rp-primary)]/72 hover:bg-[rgba(242,193,91,0.18)] focus-visible:outline-[var(--rp-primary)]"
+            : "border-[#65E6D0]/42 bg-[#65E6D0]/10 text-[#98FBCB] hover:border-[#65E6D0]/70 hover:bg-[#65E6D0]/16 focus-visible:outline-[#65E6D0]",
+        )}
       >
         {seeMoreLabel}
         <ChevronRight className="h-4 w-4" />
@@ -1421,14 +1440,19 @@ function RideBoardPreviewSection({
 
 function RideBoardPreviewPostCard({
   request,
+  accent,
   onOpen,
 }: {
   request: RideRequest;
+  accent: RideBoardPreviewCategory;
   onOpen: (id: string) => void;
 }) {
   const status = statusCopy[request.status];
   const interestedProgressDegrees = Math.max(34, Math.min(340, Math.round((request.interestedCount / request.maxPeople) * 360)));
   const tags = getRequestTags(request);
+  const isToday = accent === "today";
+  const progressColor = isToday ? "#f2c15b" : "#34e9ce";
+  const progressTrack = isToday ? "rgba(242,193,91,0.18)" : "rgba(52,233,206,0.18)";
 
   const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -1443,16 +1467,26 @@ function RideBoardPreviewPostCard({
       tabIndex={0}
       onClick={() => onOpen(request.id)}
       onKeyDown={handleCardKeyDown}
-      className="group grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[rgba(152,251,203,0.22)] bg-[linear-gradient(145deg,rgba(8,27,39,0.94),rgba(5,16,25,0.98))] px-3 py-3 text-left shadow-[0_14px_34px_rgba(0,0,0,0.24)] outline-none transition hover:border-[#65E6D0]/54 focus-visible:ring-2 focus-visible:ring-[#65E6D0]"
+      className={cn(
+        "group grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] bg-[linear-gradient(145deg,rgba(8,27,39,0.94),rgba(5,16,25,0.98))] px-3 py-3 text-left shadow-[0_14px_34px_rgba(0,0,0,0.24)] outline-none transition focus-visible:ring-2",
+        isToday
+          ? "border border-[rgba(242,193,91,0.26)] hover:border-[var(--rp-primary)]/56 focus-visible:ring-[var(--rp-primary)]"
+          : "border border-[rgba(152,251,203,0.22)] hover:border-[#65E6D0]/54 focus-visible:ring-[#65E6D0]",
+      )}
     >
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#34e9ce]/35 bg-[#34e9ce]/12 text-xs font-black text-[#98FBCB]">
+          <span
+            className={cn(
+              "grid h-8 w-8 shrink-0 place-items-center rounded-full border text-xs font-black",
+              isToday ? "border-[var(--rp-primary)]/42 bg-[rgba(242,193,91,0.14)] text-[var(--rp-primary)]" : "border-[#34e9ce]/35 bg-[#34e9ce]/12 text-[#98FBCB]",
+            )}
+          >
             {request.host.name.charAt(0).toUpperCase()}
           </span>
           <div className="min-w-0">
             <h3 className="text-[13px] font-black leading-4 text-[var(--rp-text)] min-[390px]:text-sm">
-              {request.from} <span className="text-[#34e9ce]">-&gt;</span> {request.to}
+              {request.from} <span className={cn(isToday ? "text-[var(--rp-primary)]" : "text-[#34e9ce]")}>-&gt;</span> {request.to}
             </h3>
             <p className="mt-0.5 truncate text-xs font-bold leading-4 text-[var(--rp-muted-strong)]">
               {request.dateLabel}, {request.timeLabel} - {request.detailLine.replace(/^~/, "")}
@@ -1471,7 +1505,12 @@ function RideBoardPreviewPostCard({
             {tags.slice(0, 3).map((tag) => (
               <span
                 key={`${request.id}-${tag}`}
-                className="inline-flex min-h-6 items-center rounded-full border border-[#34e9ce]/26 bg-[#34e9ce]/10 px-2 text-[10px] font-black leading-none text-[#98FBCB]"
+                className={cn(
+                  "inline-flex min-h-6 items-center rounded-full border px-2 text-[10px] font-black leading-none",
+                  isToday
+                    ? "border-[var(--rp-primary)]/28 bg-[rgba(242,193,91,0.11)] text-[var(--rp-primary)]"
+                    : "border-[#34e9ce]/26 bg-[#34e9ce]/10 text-[#98FBCB]",
+                )}
               >
                 {tag}
               </span>
@@ -1482,18 +1521,21 @@ function RideBoardPreviewPostCard({
       <div className="grid shrink-0 justify-items-end gap-2 border-l border-white/10 pl-3">
         <div className="grid justify-items-center gap-1">
           <div
-            className="grid h-12 w-12 place-items-center rounded-full p-[3px] shadow-[0_0_18px_rgba(52,233,206,0.14)]"
+            className={cn(
+              "grid h-12 w-12 place-items-center rounded-full p-[3px]",
+              isToday ? "shadow-[0_0_18px_rgba(242,193,91,0.16)]" : "shadow-[0_0_18px_rgba(52,233,206,0.14)]",
+            )}
             style={{
-              background: `conic-gradient(#34e9ce 0deg ${interestedProgressDegrees}deg, rgba(52,233,206,0.18) ${interestedProgressDegrees}deg 360deg)`,
+              background: `conic-gradient(${progressColor} 0deg ${interestedProgressDegrees}deg, ${progressTrack} ${interestedProgressDegrees}deg 360deg)`,
             }}
           >
             <div className="grid h-full w-full place-items-center rounded-full bg-[#06141f]">
-              <span className="text-lg font-black leading-none text-[#34e9ce]">{request.interestedCount}</span>
+              <span className={cn("text-lg font-black leading-none", isToday ? "text-[var(--rp-primary)]" : "text-[#34e9ce]")}>{request.interestedCount}</span>
             </div>
           </div>
           <p className="text-[10px] font-bold leading-none text-[var(--rp-muted-strong)]">interested</p>
         </div>
-        <ChevronRight className="h-4 w-4 text-[#98FBCB] transition group-hover:translate-x-0.5" />
+        <ChevronRight className={cn("h-4 w-4 transition group-hover:translate-x-0.5", isToday ? "text-[var(--rp-primary)]" : "text-[#98FBCB]")} />
       </div>
     </article>
   );
