@@ -1271,6 +1271,9 @@ function HomeBottomActionCards() {
             Did not find the right ride?
           </h2>
         </div>
+        <span className="hidden text-right text-xs font-bold leading-5 text-[var(--rp-muted-strong)] min-[430px]:block">
+          Request or create in seconds.
+        </span>
       </div>
 
       <div className="grid grid-cols-2 gap-3 max-[389px]:grid-cols-1">
