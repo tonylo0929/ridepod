@@ -1278,7 +1278,7 @@ function HomeBottomActionCards() {
 
       <div className="grid grid-cols-2 gap-3 max-[389px]:grid-cols-1">
         <Link
-          href="/today-rides?post=request"
+          href="/today-rides"
           aria-label="Post a quick request"
           className="group grid min-h-[128px] content-between rounded-[20px] border border-blue-400/58 bg-[linear-gradient(145deg,rgba(7,28,55,0.94),rgba(3,14,28,0.98))] p-4 shadow-[0_18px_42px_rgba(37,99,235,0.16)] transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_22px_50px_rgba(37,99,235,0.22)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300"
         >
