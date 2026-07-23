@@ -35,10 +35,10 @@ import {
 import { cn } from "@/components/ui";
 
 type RideRequestCategory = "today_requests" | "schedule_later" | "commute" | "events" | "late_night" | "others";
-type RideBoardCategory = "today" | "commute" | "events" | "late_night" | "others";
+type RideBoardCategory = "today" | "scheduled" | "commute" | "events" | "late_night" | "others";
 type RideBoardFilter = "all" | RideBoardCategory;
 type RideBoardPreviewCategory = "today" | "schedule_later";
-type RideBoardCategorySlug = "today-requests" | "commute" | "events" | "late-night" | "others";
+type RideBoardCategorySlug = "today-requests" | "scheduled" | "commute" | "events" | "late-night" | "others";
 type RideBoardDistrictFilter = "all_hk" | "hk_island" | "kowloon" | "new_territories" | "airport" | string;
 type RideRequestStatus = "open" | "leaving_soon" | "closed" | "expired";
 type RecurrenceType = "One-time" | "Recurring";
@@ -133,7 +133,7 @@ const hkDistrictFilters: Array<{ id: RideBoardDistrictFilter; label: string; ali
 
 const rideRequestCategoryToBoardCategory: Record<RideRequestCategory, RideBoardCategory> = {
   today_requests: "today",
-  schedule_later: "others",
+  schedule_later: "scheduled",
   commute: "commute",
   events: "events",
   late_night: "late_night",
@@ -142,6 +142,7 @@ const rideRequestCategoryToBoardCategory: Record<RideRequestCategory, RideBoardC
 
 const rideBoardCategoryToRequestCategory: Record<RideBoardCategory, RideRequestCategory> = {
   today: "today_requests",
+  scheduled: "schedule_later",
   commute: "commute",
   events: "events",
   late_night: "late_night",
@@ -150,6 +151,7 @@ const rideBoardCategoryToRequestCategory: Record<RideBoardCategory, RideRequestC
 
 const rideBoardCategoryToSlug: Record<RideBoardCategory, RideBoardCategorySlug> = {
   today: "today-requests",
+  scheduled: "scheduled",
   commute: "commute",
   events: "events",
   late_night: "late-night",
@@ -158,6 +160,7 @@ const rideBoardCategoryToSlug: Record<RideBoardCategory, RideBoardCategorySlug> 
 
 const rideBoardSlugToCategory: Record<RideBoardCategorySlug, RideBoardCategory> = {
   "today-requests": "today",
+  scheduled: "scheduled",
   commute: "commute",
   events: "events",
   "late-night": "late_night",
@@ -169,7 +172,7 @@ function getRideBoardHref(filter: RideBoardFilter) {
 }
 
 function getRideBoardPreviewHref(filter: RideBoardPreviewCategory) {
-  return filter === "today" ? getRideBoardHref("today") : "/today-rides";
+  return filter === "today" ? getRideBoardHref("today") : getRideBoardHref("scheduled");
 }
 
 function getRideBoardFilterFromParam(param: string | string[] | undefined): RideBoardFilter {
@@ -202,6 +205,13 @@ const rideBoardCategoryCopy: Record<
     emptyHeading: "No today requests yet.",
     emptyBody: "Create a same-day ride request and see who is going the same way.",
     emptyCtaLabel: "Create today request",
+  },
+  scheduled: {
+    heading: "Scheduled requests",
+    helper: "Future ride requests planned ahead.",
+    emptyHeading: "No scheduled requests yet.",
+    emptyBody: "Post a future ride request so riders can find it early.",
+    emptyCtaLabel: "Create scheduled request",
   },
   commute: {
     heading: "Commute rides",
@@ -274,6 +284,18 @@ const rideBoardCategoryDetails: Record<RideBoardCategory, RideBoardCategoryDetai
     listHeading: "Requests happening today",
     ctaLabel: "Post Ride Request",
     accent: "teal",
+  },
+  scheduled: {
+    eyebrow: "Plan Ahead",
+    title: "Scheduled Requests",
+    subtitle: "Find tomorrow's rides and future shared routes.",
+    image: "/images/ride-board/schedule-later-card-20260722.png",
+    imagePosition: "center center",
+    icon: CalendarDays,
+    chips: ["Tomorrow", "This Week", "Commute", "Events"],
+    listHeading: "Upcoming scheduled requests",
+    ctaLabel: "Post scheduled request",
+    accent: "indigo",
   },
   commute: {
     eyebrow: "Daily Routes",
@@ -1078,6 +1100,10 @@ function matchesRideBoardCategory(request: RideRequest, filter: RideBoardCategor
     return isRideDateToday(request);
   }
 
+  if (filter === "scheduled") {
+    return !isRideDateToday(request);
+  }
+
   if (filter === "commute") {
     return request.scheduleType === "recurring" || signalText.includes("commute") || signalText.includes("recurring") || signalText.includes("weekdays");
   }
@@ -1186,8 +1212,8 @@ function PostRideRequestButton({
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex items-center justify-center gap-3 bg-[linear-gradient(180deg,#fff0b8_0%,#ffd36a_24%,#f2c15b_58%,#d9912f_100%)] font-black text-[var(--rp-primary-text)] shadow-[0_22px_46px_rgba(242,193,91,0.25)] transition hover:brightness-105 active:scale-[0.99]",
-        corner ? "w-auto rounded-full px-4" : "w-full rounded-[22px] px-5",
+        "inline-flex items-center justify-center bg-[linear-gradient(180deg,#fff0b8_0%,#ffd36a_24%,#f2c15b_58%,#d9912f_100%)] font-black text-[var(--rp-primary-text)] shadow-[0_22px_46px_rgba(242,193,91,0.25)] transition hover:brightness-105 active:scale-[0.99]",
+        corner ? "w-auto gap-1.5 rounded-full px-4" : "w-full gap-3 rounded-[22px] px-5",
         compact ? "min-h-[54px] text-base" : "min-h-14 text-base",
       )}
     >
