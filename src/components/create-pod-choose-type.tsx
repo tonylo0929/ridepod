@@ -367,6 +367,15 @@ type CalendarDay = {
 const timeMinutes = Array.from({ length: 12 }, (_, index) =>
   String(index * 5).padStart(2, "0"),
 );
+const airportTimeHours = Array.from({ length: 12 }, (_, index) => String(index + 1).padStart(2, "0"));
+const airportTimeMinutes = Array.from({ length: 60 }, (_, index) => String(index).padStart(2, "0"));
+const airportTimePeriods = ["AM", "PM"] as const;
+type AirportTimePeriod = (typeof airportTimePeriods)[number];
+type AirportTimeParts = {
+  hour: string;
+  minute: string;
+  period: AirportTimePeriod | "";
+};
 
 const weekdayLabels = ["SU", "MO", "TU", "WE", "TH", "FR", "SA"];
 const stopRequestPolicyOptions: Array<{
@@ -2217,6 +2226,111 @@ function SelfSettleTextField({
   );
 }
 
+function parseAirportTimeLabel(value: string): AirportTimeParts {
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)(?:\s*HK\s*time)?$/i);
+  const hour = match?.[1] ? match[1].padStart(2, "0") : "";
+  const minute = match?.[2] && airportTimeMinutes.includes(match[2]) ? match[2] : "";
+  const period = match?.[3]?.toUpperCase();
+
+  return {
+    hour: airportTimeHours.includes(hour) ? hour : "",
+    minute,
+    period: period === "AM" || period === "PM" ? period : "",
+  };
+}
+
+function formatAirportTimeLabel(parts: AirportTimeParts) {
+  if (!parts.hour || !parts.minute || !parts.period) return "";
+  return `${parts.hour}:${parts.minute} ${parts.period} HK time`;
+}
+
+function AirportTimeSelectField({
+  label,
+  value,
+  required,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  required?: boolean;
+  onChange: (value: string) => void;
+}) {
+  const fieldId = useId();
+  const [parts, setParts] = useState<AirportTimeParts>(() => parseAirportTimeLabel(value));
+
+  function updatePart(patch: Partial<AirportTimeParts>) {
+    const nextParts = { ...parts, ...patch };
+    setParts(nextParts);
+    onChange(formatAirportTimeLabel(nextParts));
+  }
+
+  const selectClassName =
+    "min-h-11 w-full min-w-0 appearance-none rounded-xl border border-[var(--rp-border)] bg-[rgba(5,12,20,0.48)] px-3 pr-9 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]";
+
+  return (
+    <fieldset className="grid min-w-0 gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-left">
+      <legend id={fieldId} className="text-xs font-black uppercase tracking-[0.13em] text-[var(--rp-primary)]">
+        {label}
+        {required ? <span className="ml-1 text-[#f6c453]">*</span> : null}
+      </legend>
+      <div className="grid grid-cols-[1fr_1fr_1.05fr] gap-2" aria-labelledby={fieldId}>
+        <span className="relative block">
+          <select
+            aria-label="Flight time hour"
+            value={parts.hour}
+            required={required}
+            onChange={(event) => updatePart({ hour: event.target.value })}
+            className={selectClassName}
+          >
+            <option value="">Hour</option>
+            {airportTimeHours.map((hour) => (
+              <option key={hour} value={hour}>
+                {hour}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--rp-primary)]" />
+        </span>
+        <span className="relative block">
+          <select
+            aria-label="Flight time minute"
+            value={parts.minute}
+            required={required}
+            onChange={(event) => updatePart({ minute: event.target.value })}
+            className={selectClassName}
+          >
+            <option value="">Min</option>
+            {airportTimeMinutes.map((minute) => (
+              <option key={minute} value={minute}>
+                {minute}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--rp-primary)]" />
+        </span>
+        <span className="relative block">
+          <select
+            aria-label="Flight time AM or PM"
+            value={parts.period}
+            required={required}
+            onChange={(event) => updatePart({ period: event.target.value as AirportTimePeriod | "" })}
+            className={selectClassName}
+          >
+            <option value="">AM/PM</option>
+            {airportTimePeriods.map((period) => (
+              <option key={period} value={period}>
+                {period}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--rp-primary)]" />
+        </span>
+      </div>
+      <span className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">Hong Kong time. Choose hour, minute, and AM/PM.</span>
+    </fieldset>
+  );
+}
+
 function DistrictSelectField({
   label,
   value,
@@ -2490,7 +2604,7 @@ function AirportDetailsStep({
   const isToAirport = airportDetails.airportDirection === "to_airport";
   const terminalLabel = isToAirport ? "Departure terminal / hall" : "Arrival hall / meeting area";
   const terminalPlaceholder = isToAirport ? "e.g. Terminal 1, Departures" : "e.g. Arrival Hall A";
-  const flightTimeLabel = isToAirport ? "Flight departure time" : "Flight arrival time";
+  const flightTimeLabel = isToAirport ? "Flight departure time (HK time)" : "Flight arrival time (HK time)";
   const activeSliceIndex = Math.max(0, airportDetailsSliceOrder.indexOf(airportDetailsSlice));
   const isLastAirportDetailsSlice = activeSliceIndex === airportDetailsSliceOrder.length - 1;
   const nextAirportDetailsSlice =
@@ -2631,10 +2745,9 @@ function AirportDetailsStep({
                   onChange={(flightTo) => onAirportDetailsChange({ ...airportDetails, flightTo })}
                 />
               </div>
-              <SelfSettleTextField
+              <AirportTimeSelectField
                 label={flightTimeLabel}
                 value={airportDetails.flightTimeLabel}
-                placeholder={isToAirport ? "e.g. 10:45 AM" : "e.g. 7:20 PM"}
                 required
                 onChange={(flightTimeLabelValue) => onAirportDetailsChange({ ...airportDetails, flightTimeLabel: flightTimeLabelValue })}
               />
