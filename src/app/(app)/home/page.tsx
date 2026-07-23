@@ -28,6 +28,7 @@ import { cn } from "@/components/ui";
 import {
   districtOptions,
   homeRides,
+  isHostApprovedStopPolicy,
   matchesDistrict,
   rideMatchesTab,
   type HomeRide,
@@ -55,6 +56,7 @@ type FareEstimateFilter = "any" | "estimate_available" | "estimate_pending";
 type DeadlineFilter = "any" | "joining_now" | "expiring_soon" | "minimum_reached";
 type SeatFilter = "any" | "one_left" | "two_plus_available" | "minimum_not_reached" | "minimum_reached";
 type OwnershipFilter = "all" | "mine" | "joined";
+type StopRequestFilter = "all" | "allowed";
 type ScheduleRideQuickFilter = "recommended" | "today" | "tomorrow" | "this_week";
 type CategoryResultsScreenId = "schedule" | "recurring" | "airport" | "all";
 type SelectedCategory = CategoryResultsScreenId;
@@ -267,6 +269,11 @@ const ownershipFilters: Array<{ id: OwnershipFilter; label: string }> = [
   { id: "all", label: "All pods" },
   { id: "mine", label: "My pods" },
   { id: "joined", label: "Joined" },
+];
+
+const stopRequestFilters: Array<{ id: StopRequestFilter; label: string }> = [
+  { id: "all", label: "Any route" },
+  { id: "allowed", label: "Allows stop requests" },
 ];
 
 const heroBackgroundModes = ["taxi", "ride_app"] as const;
@@ -539,9 +546,11 @@ function DistrictFilterSheet({
   fromDistrict,
   toDistrict,
   ownership,
+  stopRequests,
   onFromChange,
   onToChange,
   onOwnershipChange,
+  onStopRequestsChange,
   onSwap,
   onReset,
   onClose,
@@ -551,9 +560,11 @@ function DistrictFilterSheet({
   fromDistrict: string;
   toDistrict: string;
   ownership: OwnershipFilter;
+  stopRequests: StopRequestFilter;
   onFromChange: (district: string) => void;
   onToChange: (district: string) => void;
   onOwnershipChange: (value: OwnershipFilter) => void;
+  onStopRequestsChange: (value: StopRequestFilter) => void;
   onSwap: () => void;
   onReset: () => void;
   onClose: () => void;
@@ -596,6 +607,15 @@ function DistrictFilterSheet({
               options={ownershipFilters}
               tone={ownership === "joined" ? "ride_app" : "taxi"}
               onChange={(value) => onOwnershipChange(value as OwnershipFilter)}
+            />
+          </FilterSection>
+
+          <FilterSection title="Stop requests">
+            <SegmentedFilter
+              value={stopRequests}
+              options={stopRequestFilters}
+              tone="ride_app"
+              onChange={(value) => onStopRequestsChange(value as StopRequestFilter)}
             />
           </FilterSection>
 
@@ -952,6 +972,11 @@ function matchesOwnershipFilter(ride: HomeRide, filter: OwnershipFilter) {
   return true;
 }
 
+function matchesStopRequestFilter(ride: HomeRide, filter: StopRequestFilter) {
+  if (filter === "allowed") return isHostApprovedStopPolicy(ride.stopRequestPolicy);
+  return true;
+}
+
 function getCurrentUserRideRelationship(ride: HomeRide) {
   if (ride.currentUserRole === "host") {
     return {
@@ -1246,9 +1271,6 @@ function HomeBottomActionCards() {
             Did not find the right ride?
           </h2>
         </div>
-        <span className="hidden text-right text-xs font-bold leading-5 text-[var(--rp-muted-strong)] min-[430px]:block">
-          Request or create in seconds.
-        </span>
       </div>
 
       <div className="grid grid-cols-2 gap-3 max-[389px]:grid-cols-1">
@@ -2058,6 +2080,7 @@ function HomePageContent() {
   const [deadlineFilter, setDeadlineFilter] = useState<DeadlineFilter>("any");
   const [seatFilter, setSeatFilter] = useState<SeatFilter>("any");
   const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
+  const [stopRequestFilter, setStopRequestFilter] = useState<StopRequestFilter>("all");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [rideAppLaunchOfferOpen, setRideAppLaunchOfferOpen] = useState(() => {
     if (typeof window === "undefined") return false;
@@ -2177,6 +2200,7 @@ function HomePageContent() {
           matchesDeadlineFilter(ride, deadlineFilter) &&
           matchesSeatFilter(ride, seatFilter) &&
           matchesOwnershipFilter(ride, ownershipFilter) &&
+          matchesStopRequestFilter(ride, stopRequestFilter) &&
           matchesDistrict(fromDistrict, ride.fromDistrict) &&
           matchesDistrict(toDistrict, ride.toDistrict) &&
           (podPreferenceFilter === "all" ||
@@ -2202,6 +2226,7 @@ function HomePageContent() {
       rideModeFilter,
       seatFilter,
       settlementFilter,
+      stopRequestFilter,
       taxiDriverFilter,
       taxiTypeFilter,
       today,
@@ -2231,6 +2256,7 @@ function HomePageContent() {
         matchesDeadlineFilter(ride, deadlineFilter) &&
         matchesSeatFilter(ride, seatFilter) &&
         matchesOwnershipFilter(ride, ownershipFilter) &&
+        matchesStopRequestFilter(ride, stopRequestFilter) &&
         (podPreferenceFilter === "all" ||
           (podPreferenceFilter === "open" && ride.podType === "Open pod") ||
           (podPreferenceFilter === "women_only" && ride.podType === "Women-only") ||
@@ -2252,6 +2278,7 @@ function HomePageContent() {
     rideModeFilter,
     seatFilter,
     settlementFilter,
+    stopRequestFilter,
     tabFilteredRides.length,
     taxiDriverFilter,
     taxiTypeFilter,
@@ -2291,6 +2318,7 @@ function HomePageContent() {
           matchesDeadlineFilter(ride, deadlineFilter) &&
           matchesSeatFilter(ride, seatFilter) &&
           matchesOwnershipFilter(ride, ownershipFilter) &&
+          matchesStopRequestFilter(ride, stopRequestFilter) &&
           (podPreferenceFilter === "all" ||
             (podPreferenceFilter === "open" && ride.podType === "Open pod") ||
             (podPreferenceFilter === "women_only" && ride.podType === "Women-only") ||
@@ -2319,6 +2347,7 @@ function HomePageContent() {
     seatFilter,
     selectedCategory,
     settlementFilter,
+    stopRequestFilter,
     taxiDriverFilter,
     taxiTypeFilter,
     today,
@@ -2527,6 +2556,7 @@ function HomePageContent() {
     setDeadlineFilter("any");
     setSeatFilter("any");
     setOwnershipFilter("all");
+    setStopRequestFilter("all");
   }
 
   const airportSummary =
@@ -2877,9 +2907,11 @@ function HomePageContent() {
         fromDistrict={fromDistrict}
         toDistrict={toDistrict}
         ownership={ownershipFilter}
+        stopRequests={stopRequestFilter}
         onFromChange={setFromDistrict}
         onToChange={setToDistrict}
         onOwnershipChange={setOwnershipFilter}
+        onStopRequestsChange={setStopRequestFilter}
         onSwap={() => {
           setFromDistrict(toDistrict);
           setToDistrict(fromDistrict);
