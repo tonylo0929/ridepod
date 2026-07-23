@@ -1262,9 +1262,9 @@ function HomeBottomActionCards() {
           </span>
           <span>
             <span className="block text-lg font-black leading-tight text-white">Need a ride?</span>
-            <span className="mt-2 inline-flex items-center gap-1 text-sm font-black text-blue-200">
-              Post a Quick Request
-              <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
+            <span className="mt-2 flex items-center justify-between gap-2 text-[13px] font-black leading-5 text-blue-200">
+              <span>Post a quick request in seconds</span>
+              <ChevronRight className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5" />
             </span>
           </span>
         </Link>
