@@ -189,7 +189,7 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {status ? <p className="text-sm font-black text-[var(--rp-success)]">{status}</p> : null}
+        {status ? <p className="text-sm font-black text-white">{status}</p> : null}
         {fallbackNote ? <p className="text-xs font-bold leading-5 text-[var(--rp-muted)]">{fallbackNote}</p> : null}
         {error ? <p className="text-sm font-black text-[var(--rp-danger)]">{error}</p> : null}
 
