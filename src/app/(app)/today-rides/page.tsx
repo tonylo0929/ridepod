@@ -15,8 +15,10 @@ import {
   Moon,
   Plus,
   Route,
+  Search,
   Send,
   ShieldCheck,
+  SlidersHorizontal,
   Star,
   UserRound,
   X,
@@ -1100,6 +1102,29 @@ function getVisibleRequests(requests: RideRequest[], filter: RideBoardFilter, di
   });
 }
 
+function getSearchableRequestTags(request: RideRequest) {
+  return [...(request.tags ?? []), ...getRequestTags(request), ...getRideRequestTags(request)]
+    .map((tag) => normalizeRequestTag(tag).toLowerCase())
+    .filter(Boolean);
+}
+
+function matchesRideBoardTagSearch(request: RideRequest, tagSearch: string) {
+  const terms = parseRequestTags(tagSearch).map((tag) => tag.toLowerCase());
+  if (terms.length === 0) return true;
+
+  const searchableTags = getSearchableRequestTags(request);
+  return terms.every((term) => searchableTags.some((tag) => tag.includes(term)));
+}
+
+function getFilteredRideBoardRequests(
+  requests: RideRequest[],
+  filter: RideBoardFilter,
+  districtFilter: RideBoardDistrictFilter = "all_hk",
+  tagSearch = "",
+) {
+  return getVisibleRequests(requests, filter, districtFilter).filter((request) => matchesRideBoardTagSearch(request, tagSearch));
+}
+
 function getVisiblePreviewRequests(requests: RideRequest[], filter: RideBoardPreviewCategory, districtFilter: RideBoardDistrictFilter = "all_hk") {
   return requests.filter((request) => {
     if (request.status === "expired") return false;
@@ -1132,6 +1157,10 @@ function getRideRequestTags(request: RideRequest) {
     requestTagLabel(request.to),
     request.sameDay ? "#Today" : requestTagLabel(request.detailLine.replace(/^~/, "")),
   ].filter((tag, index, tags) => tag.length > 1 && tags.indexOf(tag) === index);
+}
+
+function getRideBoardDisplayTags(request: RideRequest) {
+  return [...getRideRequestTags(request), ...getRequestTags(request)].filter((tag, index, tags) => tag.length > 1 && tags.indexOf(tag) === index).slice(0, 5);
 }
 
 function getActionState(request: RideRequest) {
@@ -1547,6 +1576,10 @@ function RideBoardCategoryDetailView({
   category,
   requests,
   totalCount,
+  districtFilter,
+  tagSearch,
+  onDistrictFilterOpen,
+  onTagSearchChange,
   onOpen,
   onPostClick,
   sectionRef,
@@ -1555,6 +1588,10 @@ function RideBoardCategoryDetailView({
   category: RideBoardCategory;
   requests: RideRequest[];
   totalCount: number;
+  districtFilter: RideBoardDistrictFilter;
+  tagSearch: string;
+  onDistrictFilterOpen: () => void;
+  onTagSearchChange: (value: string) => void;
   onOpen: (id: string) => void;
   onPostClick: () => void;
   sectionRef: RefObject<HTMLElement | null>;
@@ -1617,6 +1654,31 @@ function RideBoardCategoryDetailView({
         </div>
       </div>
 
+      <div className="grid gap-2 rounded-[22px] border border-white/10 bg-white/[0.055] p-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] min-[520px]:grid-cols-[minmax(0,1fr)_auto]">
+        <label className="flex min-h-12 min-w-0 items-center gap-2 rounded-[16px] border border-white/10 bg-[#07111a] px-3 focus-within:border-[#65E6D0]/58 focus-within:ring-2 focus-within:ring-[#65E6D0]/18">
+          <Search className="h-4 w-4 shrink-0 text-[#98FBCB]" />
+          <span className="sr-only">Search tags</span>
+          <input
+            type="search"
+            value={tagSearch}
+            onChange={(event) => onTagSearchChange(event.target.value)}
+            placeholder="Search tags"
+            className="min-w-0 flex-1 bg-transparent text-sm font-black text-[var(--rp-text)] outline-none placeholder:text-[var(--rp-muted)]"
+          />
+        </label>
+        <button
+          type="button"
+          onClick={onDistrictFilterOpen}
+          className="inline-flex min-h-12 min-w-0 items-center justify-between gap-2 rounded-[16px] border border-[#65E6D0]/26 bg-[#65E6D0]/10 px-3 text-left text-sm font-black text-[#98FBCB] transition hover:border-[#65E6D0]/52 hover:bg-[#65E6D0]/14"
+        >
+          <span className="inline-flex min-w-0 items-center gap-2">
+            <SlidersHorizontal className="h-4 w-4 shrink-0" />
+            <span className="truncate">{getDistrictFilterLabel(districtFilter)}</span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0" />
+        </button>
+      </div>
+
       <section ref={sectionRef} className="grid scroll-mt-24 gap-3" aria-labelledby="ride-board-results-heading">
         <div className="flex items-center justify-between gap-3">
           <h1
@@ -1668,7 +1730,7 @@ function RideBoardCategoryResultRow({
 }) {
   const styles = rideBoardAccentStyles[accent];
   const status = statusCopy[request.status];
-  const tags = getRideRequestTags(request);
+  const tags = getRideBoardDisplayTags(request);
   const interestedProgressDegrees = Math.max(34, Math.min(340, Math.round((request.interestedCount / request.maxPeople) * 360)));
 
   const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -2237,7 +2299,9 @@ export default function RideBoardPage() {
   const [requests, setRequests] = useState<RideRequest[]>(initialRideRequests);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [previewCategory, setPreviewCategory] = useState<RideBoardPreviewCategory>("today");
-  const districtFilter: RideBoardDistrictFilter = "all_hk";
+  const [districtFilter, setDistrictFilter] = useState<RideBoardDistrictFilter>("all_hk");
+  const [tagSearch, setTagSearch] = useState("");
+  const [showDistrictFilter, setShowDistrictFilter] = useState(false);
   const [showPostForm, setShowPostForm] = useState(false);
   const [postFormCategory, setPostFormCategory] = useState<RideRequestCategory>(defaultFormValues.category);
   const [toastMessage, setToastMessage] = useState("");
@@ -2246,7 +2310,10 @@ export default function RideBoardPage() {
   const requestListRef = useRef<HTMLElement | null>(null);
   const requestListHeadingRef = useRef<HTMLHeadingElement | null>(null);
 
-  const visibleRequests = useMemo(() => getVisibleRequests(requests, activeFilter, districtFilter), [requests, activeFilter, districtFilter]);
+  const visibleRequests = useMemo(
+    () => getFilteredRideBoardRequests(requests, activeFilter, districtFilter, activeFilter === "all" ? "" : tagSearch),
+    [requests, activeFilter, districtFilter, tagSearch],
+  );
   const previewRequests = useMemo(() => getVisiblePreviewRequests(requests, previewCategory, districtFilter), [previewCategory, requests, districtFilter]);
   const previewTopRequests = useMemo(() => previewRequests.slice(0, 3), [previewRequests]);
   const previewCategoryCounts = useMemo(() => getRideBoardPreviewCounts(requests, districtFilter), [requests, districtFilter]);
@@ -2387,6 +2454,10 @@ export default function RideBoardPage() {
             category={activeCategory}
             requests={visibleRequests}
             totalCount={visibleRequests.length}
+            districtFilter={districtFilter}
+            tagSearch={tagSearch}
+            onDistrictFilterOpen={() => setShowDistrictFilter(true)}
+            onTagSearchChange={setTagSearch}
             onOpen={setSelectedRequestId}
             onPostClick={() => openPostForm()}
             sectionRef={requestListRef}
@@ -2440,6 +2511,15 @@ export default function RideBoardPage() {
           onSubmit={handlePostSubmit}
         />
       ) : null}
+      <RideBoardDistrictFilterSheet
+        open={showDistrictFilter}
+        value={districtFilter}
+        onChange={(value) => {
+          setDistrictFilter(value);
+          setShowDistrictFilter(false);
+        }}
+        onClose={() => setShowDistrictFilter(false)}
+      />
       {toastMessage ? <RideBoardToast message={toastMessage} /> : null}
     </div>
   );
