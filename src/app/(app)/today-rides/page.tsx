@@ -1245,7 +1245,7 @@ function RideBoardCategoryCard({
   const activeArtworkFrameClass =
     category.id === "today-requests"
       ? "shadow-[0_26px_60px_rgba(0,0,0,0.44),0_0_0_1px_rgba(242,193,91,0.35),0_0_42px_rgba(242,193,91,0.32)] after:border-2 after:border-[var(--rp-primary)]"
-      : "shadow-[0_26px_60px_rgba(0,0,0,0.44),0_0_0_1px_rgba(101,230,208,0.32),0_0_42px_rgba(101,230,208,0.24)] after:border-2 after:border-[#65E6D0]";
+      : "shadow-[0_26px_60px_rgba(0,0,0,0.44),0_0_0_1px_rgba(96,165,250,0.34),0_0_42px_rgba(96,165,250,0.26)] after:border-2 after:border-[#60A5FA]";
 
   return (
     <button
@@ -1254,7 +1254,8 @@ function RideBoardCategoryCard({
       aria-pressed={active}
       aria-label={`Show ${category.label} ride requests preview`}
       className={cn(
-        "group relative block w-full overflow-hidden bg-[#030b12] text-left outline-none transition-[transform,box-shadow,filter] duration-300 ease-out after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-[inherit] after:border after:transition-colors focus-visible:ring-2 focus-visible:ring-[#65E6D0] active:translate-y-0",
+        "group relative block w-full overflow-hidden bg-[#030b12] text-left outline-none transition-[transform,box-shadow,filter] duration-300 ease-out after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-[inherit] after:border after:transition-colors focus-visible:ring-2 active:translate-y-0",
+        category.id === "today-requests" ? "focus-visible:ring-[var(--rp-primary)]" : "focus-visible:ring-[#60A5FA]",
         showWholeArtwork ? "" : "hover:-translate-y-0.5 hover:scale-[1.01]",
         cardAspectClass,
         "rounded-[18px]",
@@ -1295,7 +1296,9 @@ function RideBoardCategoryCard({
           "absolute right-3 top-3 z-10 inline-flex min-h-7 items-center rounded-full border px-2.5 text-[10px] font-black uppercase tracking-[0.08em] shadow-[0_10px_22px_rgba(0,0,0,0.36)] backdrop-blur-md min-[390px]:right-4 min-[390px]:top-4 min-[390px]:text-[11px]",
           isGold
             ? "border-[var(--rp-primary)]/42 bg-[rgba(21,24,20,0.72)] text-[var(--rp-primary)]"
-            : "border-[#65E6D0]/38 bg-[rgba(5,18,26,0.72)] text-[#98FBCB]",
+            : category.id === "schedule-later"
+              ? "border-[#60A5FA]/42 bg-[rgba(6,18,34,0.78)] text-[#BAE6FD]"
+              : "border-[#65E6D0]/38 bg-[rgba(5,18,26,0.72)] text-[#98FBCB]",
         )}
       >
         {getCompactRideCountLabel(count)}
@@ -1422,12 +1425,12 @@ function RideBoardPreviewSection({
       ref={sectionRef}
       className={cn(
         "grid scroll-mt-24 gap-3 rounded-[24px] border bg-[rgba(7,17,26,0.72)] p-3 shadow-[0_20px_50px_rgba(0,0,0,0.24)]",
-        isToday ? "border-[rgba(242,193,91,0.28)]" : "border-[rgba(101,230,208,0.18)]",
+        isToday ? "border-[rgba(242,193,91,0.28)]" : "border-[rgba(96,165,250,0.24)]",
       )}
     >
       <div className="flex items-start justify-between gap-3 px-1">
         <div className="min-w-0 text-left">
-          <p className={cn("text-[11px] font-black uppercase tracking-[0.14em]", isToday ? "text-[var(--rp-primary)]" : "text-[#65E6D0]")}>Top posts</p>
+          <p className={cn("text-[11px] font-black uppercase tracking-[0.14em]", isToday ? "text-[var(--rp-primary)]" : "text-[#60A5FA]")}>Top posts</p>
           <h2 className="mt-1 text-xl font-black leading-tight text-[var(--rp-text)]">{copy.heading}</h2>
           <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{copy.helper}</p>
         </div>
@@ -1436,7 +1439,7 @@ function RideBoardPreviewSection({
             "inline-flex min-h-8 shrink-0 items-center rounded-full border px-3 text-xs font-black",
             isToday
               ? "border-[var(--rp-primary)]/42 bg-[rgba(242,193,91,0.12)] text-[var(--rp-primary)]"
-              : "border-[#65E6D0]/35 bg-[#65E6D0]/10 text-[#98FBCB]",
+              : "border-[#60A5FA]/42 bg-[#60A5FA]/12 text-[#BAE6FD]",
           )}
         >
           {Math.min(3, totalCount)} / {totalCount}
@@ -1462,7 +1465,7 @@ function RideBoardPreviewSection({
           "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[18px] border px-4 text-sm font-black shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4",
           isToday
             ? "border-[var(--rp-primary)]/48 bg-[rgba(242,193,91,0.12)] text-[var(--rp-primary)] hover:border-[var(--rp-primary)]/72 hover:bg-[rgba(242,193,91,0.18)] focus-visible:outline-[var(--rp-primary)]"
-            : "border-[#65E6D0]/42 bg-[#65E6D0]/10 text-[#98FBCB] hover:border-[#65E6D0]/70 hover:bg-[#65E6D0]/16 focus-visible:outline-[#65E6D0]",
+            : "border-[#60A5FA]/48 bg-[#60A5FA]/12 text-[#BAE6FD] hover:border-[#60A5FA]/76 hover:bg-[#60A5FA]/18 focus-visible:outline-[#60A5FA]",
         )}
       >
         {seeMoreLabel}
@@ -1485,8 +1488,8 @@ function RideBoardPreviewPostCard({
   const interestedProgressDegrees = Math.max(34, Math.min(340, Math.round((request.interestedCount / request.maxPeople) * 360)));
   const tags = getRequestTags(request);
   const isToday = accent === "today";
-  const progressColor = isToday ? "#f2c15b" : "#34e9ce";
-  const progressTrack = isToday ? "rgba(242,193,91,0.18)" : "rgba(52,233,206,0.18)";
+  const progressColor = isToday ? "#f2c15b" : "#60a5fa";
+  const progressTrack = isToday ? "rgba(242,193,91,0.18)" : "rgba(96,165,250,0.18)";
 
   const handleCardKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === "Enter" || event.key === " ") {
@@ -1505,7 +1508,7 @@ function RideBoardPreviewPostCard({
         "group grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] bg-[linear-gradient(145deg,rgba(8,27,39,0.94),rgba(5,16,25,0.98))] px-3 py-3 text-left shadow-[0_14px_34px_rgba(0,0,0,0.24)] outline-none transition focus-visible:ring-2",
         isToday
           ? "border border-[rgba(242,193,91,0.26)] hover:border-[var(--rp-primary)]/56 focus-visible:ring-[var(--rp-primary)]"
-          : "border border-[rgba(152,251,203,0.22)] hover:border-[#65E6D0]/54 focus-visible:ring-[#65E6D0]",
+          : "border border-[rgba(96,165,250,0.28)] hover:border-[#60A5FA]/60 focus-visible:ring-[#60A5FA]",
       )}
     >
       <div className="min-w-0">
@@ -1513,14 +1516,14 @@ function RideBoardPreviewPostCard({
           <span
             className={cn(
               "grid h-8 w-8 shrink-0 place-items-center rounded-full border text-xs font-black",
-              isToday ? "border-[var(--rp-primary)]/42 bg-[rgba(242,193,91,0.14)] text-[var(--rp-primary)]" : "border-[#34e9ce]/35 bg-[#34e9ce]/12 text-[#98FBCB]",
+              isToday ? "border-[var(--rp-primary)]/42 bg-[rgba(242,193,91,0.14)] text-[var(--rp-primary)]" : "border-[#60A5FA]/38 bg-[#60A5FA]/12 text-[#BAE6FD]",
             )}
           >
             {request.host.name.charAt(0).toUpperCase()}
           </span>
           <div className="min-w-0">
             <h3 className="text-[13px] font-black leading-4 text-[var(--rp-text)] min-[390px]:text-sm">
-              {request.from} <span className={cn(isToday ? "text-[var(--rp-primary)]" : "text-[#34e9ce]")}>-&gt;</span> {request.to}
+              {request.from} <span className={cn(isToday ? "text-[var(--rp-primary)]" : "text-[#60A5FA]")}>-&gt;</span> {request.to}
             </h3>
             <p className="mt-0.5 truncate text-xs font-bold leading-4 text-[var(--rp-muted-strong)]">
               {request.dateLabel}, {request.timeLabel} - {request.detailLine.replace(/^~/, "")}
@@ -1543,7 +1546,7 @@ function RideBoardPreviewPostCard({
                   "inline-flex min-h-6 items-center rounded-full border px-2 text-[10px] font-black leading-none",
                   isToday
                     ? "border-[var(--rp-primary)]/28 bg-[rgba(242,193,91,0.11)] text-[var(--rp-primary)]"
-                    : "border-[#34e9ce]/26 bg-[#34e9ce]/10 text-[#98FBCB]",
+                    : "border-[#60A5FA]/30 bg-[#60A5FA]/10 text-[#BAE6FD]",
                 )}
               >
                 {tag}
@@ -1557,19 +1560,19 @@ function RideBoardPreviewPostCard({
           <div
             className={cn(
               "grid h-12 w-12 place-items-center rounded-full p-[3px]",
-              isToday ? "shadow-[0_0_18px_rgba(242,193,91,0.16)]" : "shadow-[0_0_18px_rgba(52,233,206,0.14)]",
+              isToday ? "shadow-[0_0_18px_rgba(242,193,91,0.16)]" : "shadow-[0_0_18px_rgba(96,165,250,0.18)]",
             )}
             style={{
               background: `conic-gradient(${progressColor} 0deg ${interestedProgressDegrees}deg, ${progressTrack} ${interestedProgressDegrees}deg 360deg)`,
             }}
           >
             <div className="grid h-full w-full place-items-center rounded-full bg-[#06141f]">
-              <span className={cn("text-lg font-black leading-none", isToday ? "text-[var(--rp-primary)]" : "text-[#34e9ce]")}>{request.interestedCount}</span>
+              <span className={cn("text-lg font-black leading-none", isToday ? "text-[var(--rp-primary)]" : "text-[#60A5FA]")}>{request.interestedCount}</span>
             </div>
           </div>
           <p className="text-[10px] font-bold leading-none text-[var(--rp-muted-strong)]">interested</p>
         </div>
-        <ChevronRight className={cn("h-4 w-4 transition group-hover:translate-x-0.5", isToday ? "text-[var(--rp-primary)]" : "text-[#98FBCB]")} />
+        <ChevronRight className={cn("h-4 w-4 transition group-hover:translate-x-0.5", isToday ? "text-[var(--rp-primary)]" : "text-[#BAE6FD]")} />
       </div>
     </article>
   );
