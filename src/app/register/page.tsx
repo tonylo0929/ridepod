@@ -24,6 +24,7 @@ const accountTypeCards: Array<{
   title: string;
   description: string;
   helper: string;
+  comingSoon?: boolean;
   icon: typeof UserRound;
 }> = [
   {
@@ -37,7 +38,8 @@ const accountTypeCards: Array<{
     id: "taxi_partner",
     title: "Taxi Partner",
     description: "Quote and manage shared taxi pod requests.",
-    helper: "For licensed taxi drivers, fleets, or operators.",
+    helper: "For licensed taxi drivers, fleets, or operators. Coming soon.",
+    comingSoon: true,
     icon: CarFront,
   },
 ];
@@ -688,6 +690,7 @@ export default function RegisterPage() {
                 const selected = accountType === card.id;
                 const isRiderCard = card.id === "rider";
                 const isTaxiPartnerCard = card.id === "taxi_partner";
+                const disabled = Boolean(card.comingSoon);
                 const artworkSrc = isRiderCard
                   ? riderRegisterCardImageSrc
                   : isTaxiPartnerCard
@@ -698,13 +701,20 @@ export default function RegisterPage() {
                   <button
                     key={card.id}
                     type="button"
-                    onClick={() => setAccountType(card.id)}
+                    onClick={() => {
+                      if (disabled) return;
+                      setAccountType(card.id);
+                    }}
+                    disabled={disabled}
+                    aria-disabled={disabled}
                     className={cn(
                       "grid gap-3 rounded-[22px] border p-4 text-left transition",
                       artworkSrc && "overflow-hidden p-0",
-                      selected
+                      disabled && "cursor-not-allowed opacity-70 grayscale-[0.18]",
+                      selected && !disabled
                         ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,var(--rp-card-soft))]"
                         : "border-[var(--rp-border)] bg-[var(--rp-card-soft)] hover:border-[var(--rp-border-strong)]",
+                      disabled && "hover:border-[var(--rp-border)]",
                     )}
                   >
                     {artworkSrc ? (
@@ -719,7 +729,12 @@ export default function RegisterPage() {
                           sizes="(max-width: 768px) calc(100vw - 56px), 648px"
                           className="object-cover"
                         />
-                        {selected ? (
+                        {disabled ? (
+                          <span className="absolute right-3 top-3 inline-flex min-h-8 items-center rounded-full border border-[var(--rp-primary)]/50 bg-[#08141f]/88 px-3 text-[11px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(0,0,0,0.34)]">
+                            Coming soon
+                          </span>
+                        ) : null}
+                        {selected && !disabled ? (
                           <span className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full border border-[var(--rp-primary)] bg-[#08141f]/88 text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(0,0,0,0.34)]">
                             <CheckCircle2 className="h-5 w-5" />
                           </span>
@@ -730,11 +745,24 @@ export default function RegisterPage() {
                         <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
                           <Icon className="h-5 w-5" />
                         </span>
-                        {selected ? <CheckCircle2 className="h-5 w-5 text-[var(--rp-primary)]" /> : null}
+                        {disabled ? (
+                          <span className="rounded-full border border-[var(--rp-primary)]/50 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]">
+                            Coming soon
+                          </span>
+                        ) : selected ? (
+                          <CheckCircle2 className="h-5 w-5 text-[var(--rp-primary)]" />
+                        ) : null}
                       </span>
                     )}
                     <span className={cn(artworkSrc && "block px-4 pb-4")}>
-                      <span className="block text-lg font-black text-[var(--rp-text)]">{card.title}</span>
+                      <span className="flex flex-wrap items-center gap-2 text-lg font-black text-[var(--rp-text)]">
+                        {card.title}
+                        {disabled ? (
+                          <span className="rounded-full border border-[var(--rp-primary)]/46 bg-[var(--rp-primary)]/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-[var(--rp-primary)]">
+                            Coming soon
+                          </span>
+                        ) : null}
+                      </span>
                       <span className="mt-1 block text-sm font-bold leading-6 text-[var(--rp-muted)]">
                         {card.description}
                       </span>
