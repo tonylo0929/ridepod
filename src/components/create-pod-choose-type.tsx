@@ -5413,64 +5413,33 @@ function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxi
   const isLuggage = variant === "luggage";
   const isWhoCanJoin = variant === "whoCanJoin";
   const isDefault = variant === "default";
-  // TODO: Replace with rider group image for Who Can Join step.
   const imageSrc =
     isTaxiSelector || isLuggage || isWhoCanJoin
       ? "/images/ridepod/taxi-selector-left.jpg"
-      : "/images/ridepod/people-vehicle-dark.png";
+      : "/images/ridepod/create-your-request.png";
 
   return (
     <aside className="people-vehicle-dark-panel relative min-h-[650px] overflow-hidden border-r border-[var(--rp-border-strong)]">
       <Image
         src={imageSrc}
-        alt=""
+        alt={isDefault ? "Create Your Request" : ""}
         fill
         sizes={isTaxiSelector || isLuggage || isWhoCanJoin ? "(max-width: 768px) 40vw, 360px" : "(max-width: 768px) 52vw, 360px"}
         quality={100}
-        className={cn("object-cover", isTaxiSelector || isLuggage || isWhoCanJoin ? "object-center" : "object-[38%_center]")}
+        className={cn("object-cover", isTaxiSelector || isLuggage || isWhoCanJoin ? "object-center" : "object-[45%_center]")}
         priority
       />
       <div className={cn(
         "absolute inset-0",
         isTaxiSelector || isLuggage || isWhoCanJoin
           ? "bg-[linear-gradient(90deg,rgba(5,11,18,0.1),rgba(5,11,18,0.02)_48%,rgba(5,11,18,0.34)),linear-gradient(180deg,rgba(5,11,18,0.02),rgba(5,11,18,0.1)_58%,rgba(5,11,18,0.48))]"
-          : "bg-[linear-gradient(90deg,rgba(5,11,18,0.2),rgba(5,11,18,0.02)_45%,rgba(5,11,18,0.32)),linear-gradient(180deg,rgba(5,11,18,0.03),rgba(5,11,18,0.18)_58%,rgba(5,11,18,0.7))]",
+          : "bg-[linear-gradient(90deg,rgba(5,11,18,0.12),rgba(5,11,18,0.02)_48%,rgba(5,11,18,0.24)),linear-gradient(180deg,rgba(5,11,18,0.02),rgba(5,11,18,0.08)_58%,rgba(5,11,18,0.26))]",
       )} />
-      {isDefault ? (
+      {!isDefault ? null : (
         <>
-          <div className="absolute inset-x-[24%] top-[25%] h-[30%]">
-            <svg viewBox="0 0 92 220" className="h-full w-full overflow-visible drop-shadow-[0_0_14px_rgba(246,196,83,0.65)]" aria-hidden="true">
-              <path
-                d="M17 13 C 24 45, 53 58, 61 91 S 29 136, 35 169 S 52 197, 70 211"
-                fill="none"
-                stroke="#f6c453"
-                strokeLinecap="round"
-                strokeWidth="8"
-              />
-              <circle cx="17" cy="13" r="13" fill="#07111a" stroke="#ffd36a" strokeWidth="6" />
-              <circle cx="70" cy="211" r="15" fill="#07111a" stroke="#ffd36a" strokeWidth="7" />
-              <circle cx="70" cy="211" r="5" fill="#ffd36a" />
-            </svg>
-          </div>
-          <div className="absolute left-[42%] top-[25%] rounded-xl bg-[#07111a]/45 px-2 py-1 text-sm font-semibold leading-5 text-slate-200 backdrop-blur-sm">
-            <p>Pickup</p>
-            <p>7:10 PM</p>
-          </div>
-          <div className="absolute left-[24%] top-[47%] rounded-xl bg-[#07111a]/45 px-2 py-1 text-sm font-semibold leading-5 text-slate-200 backdrop-blur-sm">
-            <p>Drop-off</p>
-            <p>7:43 PM</p>
-          </div>
-          <div className="absolute bottom-8 left-5 right-5 rounded-[12px] border border-white/12 bg-[#07111a]/68 p-3 text-white shadow-[0_18px_40px_rgba(0,0,0,0.28)] backdrop-blur-md">
-            <p className="flex items-center gap-2 text-sm font-black text-[#ffd36a]">
-              <UsersRound className="h-5 w-5" />
-              Group ride
-            </p>
-            <p className="mt-3 text-sm font-medium leading-5 text-slate-200">
-              Coordinated pickup. One seamless ride.
-            </p>
-          </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/4 bg-[linear-gradient(180deg,transparent,rgba(5,11,18,0.34))]" />
         </>
-      ) : null}
+      )}
     </aside>
   );
 }
