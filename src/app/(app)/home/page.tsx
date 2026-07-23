@@ -1242,15 +1242,15 @@ function HomeBottomActionCards() {
       <Link
         href="/today-rides?post=request"
         aria-label="Post a ride request"
-        className="group relative aspect-[4/5] overflow-hidden rounded-[22px] border border-blue-500/80 bg-[#03101f] shadow-[0_18px_44px_rgba(37,99,235,0.2)] transition hover:border-blue-300 hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300"
+        className="group relative aspect-[4/5] overflow-hidden rounded-[22px] bg-transparent transition hover:brightness-105 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300"
       >
         <Image
-          src="/images/ridepod/create-your-request.png"
+          src="/images/ridepod/create-your-request-full-20260724.png"
           alt=""
           fill
           quality={100}
           sizes="(max-width: 389px) calc(100vw - 32px), 274px"
-          className="object-cover object-center transition duration-300 group-hover:scale-[1.03]"
+          className="object-contain object-center transition duration-300 group-hover:scale-[1.01]"
         />
       </Link>
 
