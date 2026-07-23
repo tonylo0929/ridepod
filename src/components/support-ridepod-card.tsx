@@ -23,10 +23,10 @@ export function SupportRidePodCard({ compact = false }: { compact?: boolean }) {
               <Coffee className="h-6 w-6" />
             </span>
             <h2 className={`${compact ? "mt-4 text-xl" : "mt-5 text-3xl"} font-black leading-tight text-[var(--rp-text)]`}>
-              Support RidePod
+              Support FareEnough
             </h2>
             <p className="mt-3 max-w-2xl text-left text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-              RidePod is built to help people coordinate shared rides in Hong Kong. If this helped you, you can support the project.
+              FareEnough helps riders in Hong Kong coordinate shared trips with clearer routes, costs, and plans. If it helped you, you can support the project.
             </p>
             <p className="mt-3 text-left text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-muted-strong)]">
               Optional support only. This is not a ride payment, platform fee, or fare settlement.
@@ -54,7 +54,7 @@ function PayMeSupportModal({ onClose }: { onClose: () => void }) {
       <section className="w-full max-w-md rounded-[28px] border border-[color-mix(in_srgb,var(--rp-primary)_45%,var(--rp-border))] bg-[radial-gradient(circle_at_top_right,color-mix(in_srgb,var(--rp-primary)_16%,transparent),transparent_34%),linear-gradient(180deg,var(--rp-card),var(--rp-card-soft))] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.46)]">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">Support RidePod</p>
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">Support FareEnough</p>
             <h3 className="mt-2 text-2xl font-black text-[var(--rp-text)]">Buy us a coffee</h3>
           </div>
           <button
@@ -68,7 +68,7 @@ function PayMeSupportModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted)]">
-          Scan the PayMe code if you want to support RidePod.
+          Scan the PayMe code if you want to support FareEnough.
         </p>
 
         <div className="mt-5 rounded-[24px] border border-[var(--rp-border)] bg-white p-4 shadow-[inset_0_0_0_1px_rgba(7,17,26,0.08)]">

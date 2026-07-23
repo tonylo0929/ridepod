@@ -357,9 +357,9 @@ export default function AdminPricingSettingsPage() {
             </WaiverCard>
 
             <WaiverCard
-              title="RidePod Plus monthly waivers"
+              title="FareEnough Plus monthly waivers"
               enabled={draftConfig.waivers.plusWaiversEnabled}
-              helper="Plus preview users receive monthly RidePod join fee waivers."
+              helper="FareEnough Plus preview users receive monthly FareEnough join fee waivers."
               onEnabledChange={(enabled) => updateWaivers((waivers) => ({ ...waivers, plusWaiversEnabled: enabled }))}
             >
               <NumberField

@@ -21,7 +21,7 @@ export type RidePodMembershipTierInfo = {
 };
 
 export const ridePodPlusBenefits = [
-  "5 monthly HK$5 RidePod fee waivers",
+  "5 monthly HK$5 FareEnough fee waivers",
   "Saved routes",
   "Quick-create from saved route",
   "Recurring ride templates",
@@ -46,7 +46,7 @@ export const ridePodMembershipTiers: RidePodMembershipTierInfo[] = [
   },
   {
     id: "plus",
-    label: "RidePod Plus",
+    label: "FareEnough Plus",
     description: "Extra tools for frequent shared rides.",
     benefits: ridePodPlusBenefits,
   },
@@ -77,7 +77,7 @@ export const plusMembershipState: RidePodMembershipState = {
 };
 
 export const ridePodJoinFeeWaiverCopy = {
-  appliesTo: "HK$5 RidePod join fee",
+  appliesTo: "HK$5 FareEnough join fee",
   excludes: "Ride fare and taxi partner quotes are not included.",
   demoNote: "No live payment is charged.",
 };

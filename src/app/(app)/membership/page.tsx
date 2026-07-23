@@ -44,10 +44,10 @@ export default function MembershipPage() {
           <div className="min-w-0">
             <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">Membership</p>
             <h1 className="mt-2 text-3xl font-black tracking-tight text-[var(--rp-text)] sm:text-4xl">
-              RidePod Plus
+              FareEnough Plus
             </h1>
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              More tools for frequent shared rides.
+              Saved routes, quick filters, and join-fee waivers for regular riders.
             </p>
             <p className="mt-3 inline-flex rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-1.5 text-xs font-black text-[var(--rp-muted-strong)]">
               No live subscription or payment is charged in this version.
@@ -63,7 +63,7 @@ export default function MembershipPage() {
             <h2 className="mt-2 text-2xl font-black text-[var(--rp-text)]">{currentTier.label}</h2>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
               {isPlus
-                ? "You have Plus preview benefits."
+                ? "You have FareEnough Plus preview benefits."
                 : isOrganizerPlus
                   ? "Organizer Plus is coming soon."
                   : "Create and join shared taxi pods."}
@@ -88,7 +88,7 @@ export default function MembershipPage() {
                   : "bg-[var(--rp-gradient-primary)] text-[var(--rp-primary-text)] shadow-[0_18px_34px_color-mix(in_srgb,var(--rp-primary)_26%,transparent)] hover:brightness-105",
             )}
           >
-            {isPlus ? "Plus active" : isOrganizerPlus ? "Coming soon" : "Try Plus preview"}
+            {isPlus ? "FareEnough active" : isOrganizerPlus ? "Coming soon" : "Try FareEnough preview"}
           </button>
         </div>
       </section>
@@ -106,12 +106,12 @@ export default function MembershipPage() {
         />
         <TierCard
           tierId="plus"
-          title="RidePod Plus"
+          title="FareEnough Plus"
           price={tierPrices.plus}
-          description="Extra tools for frequent shared rides."
+          description="Lower-friction planning tools for riders who share often."
           benefits={ridePodPlusBenefits}
           current={isPlus}
-          cta={isPlus ? "Current plan" : "Try Plus preview"}
+          cta={isPlus ? "Current plan" : "Try FareEnough preview"}
           highlighted
           note="No live payment is charged."
           onClick={() => setShowPlusPreviewModal(true)}
@@ -129,9 +129,9 @@ export default function MembershipPage() {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
-        <InfoCard title="What Plus does not do" icon={<Sparkles className="h-5 w-5" />}>
+        <InfoCard title="What FareEnough Plus does not do" icon={<Sparkles className="h-5 w-5" />}>
           <p className="text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            Plus does not guarantee a ride, taxi partner, refund, route change, or fare outcome.
+            FareEnough Plus does not guarantee a ride, taxi partner, refund, route change, or fare outcome.
           </p>
           <p className="mt-2 text-sm font-black leading-6 text-[var(--rp-muted-strong)]">
             Ride fares and taxi partner quotes are not included.
@@ -140,7 +140,7 @@ export default function MembershipPage() {
 
         <InfoCard title="Monthly waivers" icon={<Gift className="h-5 w-5" />}>
           <p className="text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            Plus waivers apply to the HK$5 RidePod join fee on eligible pod joins.
+            FareEnough waivers apply to the HK$5 FareEnough join fee on eligible pod joins.
           </p>
           <ul className="mt-3 grid gap-2 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
             <li>- Taxi fares are not included.</li>
@@ -222,7 +222,7 @@ function TierCard({
           </span>
         ) : tierId === "plus" ? (
           <span className="rounded-full border border-[var(--rp-border-strong)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 py-1 text-xs font-black text-[var(--rp-primary)]">
-            Plus preview
+            FareEnough preview
           </span>
         ) : null}
       </div>
@@ -297,14 +297,14 @@ function PlusPreviewModal({
         >
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">RidePod Plus</p>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">FareEnough Plus</p>
               <h2 id="plus-active-title" className="mt-2 text-2xl font-black leading-tight">
-                Plus preview active
+                FareEnough preview active
               </h2>
             </div>
             <button
               type="button"
-              aria-label="Close Plus active modal"
+              aria-label="Close FareEnough active modal"
               onClick={onClose}
               className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]"
             >
@@ -313,7 +313,7 @@ function PlusPreviewModal({
           </div>
 
           <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            You are using RidePod Plus preview. No live subscription or payment is charged.
+            You are using FareEnough Plus preview. No live subscription or payment is charged.
           </p>
           <button
             type="button"
@@ -338,14 +338,14 @@ function PlusPreviewModal({
         <div className="min-h-0 overflow-y-auto p-5">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">Plus preview</p>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-primary)]">FareEnough preview</p>
               <h2 id="plus-preview-title" className="mt-2 text-2xl font-black leading-tight">
-                Try RidePod Plus preview?
+                Try FareEnough Plus preview?
               </h2>
             </div>
             <button
               type="button"
-              aria-label="Close Plus preview modal"
+              aria-label="Close FareEnough preview modal"
               onClick={onClose}
               className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)]"
             >
@@ -354,7 +354,7 @@ function PlusPreviewModal({
           </div>
 
           <p className="mt-4 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            Plus gives frequent riders extra tools while RidePod tests membership features.
+            FareEnough Plus gives frequent riders extra tools while the membership experience is still in preview.
           </p>
 
           <ul className="mt-5 grid gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4">
@@ -404,7 +404,7 @@ function PlusPreviewModal({
                 : "cursor-not-allowed border border-[var(--rp-border)] bg-[var(--rp-card-muted)] text-[var(--rp-muted)]",
             )}
           >
-            Activate Plus preview
+            Activate FareEnough preview
           </button>
         </div>
       </section>
@@ -425,10 +425,10 @@ function PlusSuccessModal({ onClose }: { onClose: () => void }) {
           <CheckCircle2 className="h-7 w-7" />
         </span>
         <h2 id="plus-success-title" className="mt-4 text-2xl font-black leading-tight">
-          Plus preview active
+          FareEnough preview active
         </h2>
         <p className="mt-3 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-          You now have RidePod Plus preview benefits.
+          You now have FareEnough Plus preview benefits.
         </p>
         <button
           type="button"

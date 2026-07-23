@@ -46,8 +46,8 @@ function getProfileDisplayName({
 const primaryItems = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/about", label: "About", icon: Info },
-  { href: "/support", label: "Support RidePod", icon: Coffee },
-  { href: "/membership", label: "RidePod Plus", icon: Crown },
+  { href: "/support", label: "Support FareEnough", icon: Coffee },
+  { href: "/membership", label: "FareEnough Plus", icon: Crown },
   { href: "/history", label: "Ride history", icon: HistoryIcon, requiresAuth: true },
   { href: "/chats", label: "Live Chat", icon: MessageCircle, requiresAuth: true },
 ];
