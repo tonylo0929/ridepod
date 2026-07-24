@@ -6361,6 +6361,8 @@ function getAirportHomeRideFields(airportDetails?: AirportDetailsState | null): 
 function buildCreatedRideAppHomeRide({
   pickupAddress,
   dropoffAddress,
+  pickupRoutePoint,
+  dropoffRoutePoint,
   dateTime,
   confirmationDeadline,
   peopleVehicle,
@@ -6373,6 +6375,8 @@ function buildCreatedRideAppHomeRide({
 }: {
   pickupAddress: string;
   dropoffAddress: string;
+  pickupRoutePoint: RoutePointSelection | null;
+  dropoffRoutePoint: RoutePointSelection | null;
   dateTime: DateTimeState;
   confirmationDeadline: ConfirmationDeadlineState;
   peopleVehicle: PeopleVehicleState;
@@ -6481,8 +6485,10 @@ function buildCreatedRideAppHomeRide({
     hostDisplayName,
     joinedRiders: [],
     pickupLabel: peopleVehicle.pickupVenue || pickupAddress,
+    pickupCoordinates: pickupRoutePoint?.coordinates ?? null,
     pickupTime: getScheduleTimeSummary(dateTime),
     dropoffLabel: dropoffAddress,
+    dropoffCoordinates: dropoffRoutePoint?.coordinates ?? null,
     stopRequestPolicy,
     proposedStops: [],
     approvedStops: [],
@@ -8515,6 +8521,8 @@ export function CreatePodChooseType() {
       const createdRide = buildCreatedRideAppHomeRide({
         pickupAddress,
         dropoffAddress,
+        pickupRoutePoint,
+        dropoffRoutePoint,
         dateTime,
         confirmationDeadline,
         peopleVehicle,

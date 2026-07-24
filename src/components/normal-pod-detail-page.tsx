@@ -894,6 +894,7 @@ function buildRideAppStopRequestPatch(ride: HomeRide, stopLabel: string, request
         id: requestId,
         requestedByName: requestedBy,
         stopLocation: stopLabel,
+        stopCoordinates: requestedStop.coordinates ?? null,
         reason: requestedStop.reason,
         status: "pending" as const,
         requestedAtLabel: "Just now",
@@ -931,6 +932,7 @@ function buildRouteRequestDecisionList(
       id: request.id || stop.id,
       requestedByName: stop.requestedBy ?? request.requestedByName,
       stopLocation: stop.label,
+      stopCoordinates: stop.coordinates ?? request.stopCoordinates ?? null,
       reason: stop.reason ?? request.reason,
       status,
       reviewedByName,
@@ -943,6 +945,7 @@ function buildRouteRequestDecisionList(
       id: stop.id,
       requestedByName: stop.requestedBy ?? "Rider",
       stopLocation: stop.label,
+      stopCoordinates: stop.coordinates ?? null,
       reason: stop.reason,
       status,
       requestedAtLabel: "Just now",
@@ -3395,50 +3398,13 @@ const routeMapWidth = 640;
 const routeMapHeight = 278;
 const routeMapTileSize = 256;
 
-const hkRoutePlaceAliases: Array<{ names: string[]; coordinates: RouteCoordinates }> = [
-  { names: ["tai po", "tai po market", "tai po centre"], coordinates: { lat: 22.4508, lng: 114.1642 } },
-  { names: ["hong kong airport", "hong kong international airport", "hkia", "chek lap kok", "airport"], coordinates: { lat: 22.308, lng: 113.9185 } },
-  { names: ["sha tin", "shatin", "sha tin station"], coordinates: { lat: 22.3822, lng: 114.1889 } },
-  { names: ["tsing yi", "tsing yi station"], coordinates: { lat: 22.3584, lng: 114.1069 } },
-  { names: ["central", "central station"], coordinates: { lat: 22.2819, lng: 114.1588 } },
-  { names: ["cyberport"], coordinates: { lat: 22.2617, lng: 114.13 } },
-  { names: ["mong kok", "mongkok"], coordinates: { lat: 22.3193, lng: 114.1694 } },
-  { names: ["kowloon bay"], coordinates: { lat: 22.3235, lng: 114.2143 } },
-  { names: ["admiralty", "admiralty station"], coordinates: { lat: 22.2783, lng: 114.1647 } },
-  { names: ["wan chai", "wan chai mtr"], coordinates: { lat: 22.277, lng: 114.1733 } },
-  { names: ["kai tak sports park", "kai tak"], coordinates: { lat: 22.3246, lng: 114.2042 } },
-  { names: ["tuen mun", "tuen mun station"], coordinates: { lat: 22.3912, lng: 113.9776 } },
-  { names: ["k city", "kowloon city"], coordinates: { lat: 22.3282, lng: 114.1916 } },
-  { names: ["causeway bay"], coordinates: { lat: 22.2797, lng: 114.1869 } },
-  { names: ["tsim sha tsui", "tst"], coordinates: { lat: 22.2976, lng: 114.1722 } },
-  { names: ["disneyland", "hong kong disneyland"], coordinates: { lat: 22.3131, lng: 114.0433 } },
-  { names: ["quarry bay"], coordinates: { lat: 22.2881, lng: 114.2134 } },
-];
-
-function normalizeRoutePlaceLabel(value: string | null | undefined) {
-  return (
-    value
-      ?.trim()
-      .toLowerCase()
-      .replace(/hong kong intl\.?/g, "hong kong international")
-      .replace(/[^a-z0-9]+/g, " ")
-      .replace(/\s+/g, " ")
-      .trim() ?? ""
-  );
+function getRouteMapboxAccessToken() {
+  return process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim() || process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim() || "";
 }
 
-function getKnownRouteCoordinates(...labels: Array<string | null | undefined>) {
-  const normalizedLabels = labels.map(normalizeRoutePlaceLabel).filter(Boolean);
-
-  for (const label of normalizedLabels) {
-    for (const place of hkRoutePlaceAliases) {
-      if (place.names.some((name) => label === name || label.includes(name) || name.includes(label))) {
-        return place.coordinates;
-      }
-    }
-  }
-
-  return null;
+function getRouteCoordinateKey(coordinates?: RouteCoordinates | null) {
+  if (!coordinates) return null;
+  return `${coordinates.lat.toFixed(5)},${coordinates.lng.toFixed(5)}`;
 }
 
 function getAirportRouteDisplayLabel(value: string) {
@@ -3467,7 +3433,7 @@ function routeMapPoint({
 function uniqueRouteStops(stops: RoutePlanStop[]) {
   const seen = new Set<string>();
   return stops.filter((stop) => {
-    const key = normalizeRoutePlaceLabel(stop.label);
+    const key = stop.id || getRouteCoordinateKey(stop.coordinates) || stop.label.trim().toLowerCase();
     if (!key || seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -3477,20 +3443,18 @@ function uniqueRouteStops(stops: RoutePlanStop[]) {
 function getDisplayedRouteStops(ride: HomeRide) {
   const routeRequests = getNormalizedRouteRequests(ride);
   const approvedStops = routeRequests.approved.map(routeRequestToRoutePlanStop);
-  const pendingStops = routeRequests.pending.map(routeRequestToRoutePlanStop);
 
   if (isDirectRoutePolicy(ride.stopRequestPolicy)) return [];
-  return uniqueRouteStops([...approvedStops, ...pendingStops]);
+  return uniqueRouteStops(approvedStops).filter((stop) => Boolean(stop.coordinates));
 }
 
 function buildRouteMapPoints(ride: HomeRide, displayedStops: RoutePlanStop[]) {
-  const pickupLabel = ride.pickupLabel ?? ride.fromLabel;
   const destinationLabel = getAirportRouteDisplayLabel(ride.dropoffLabel ?? ride.toLabel);
   const pickupPoint = routeMapPoint({
     id: "pickup",
     label: ride.fromLabel,
     helper: ride.pickupLabel && ride.pickupLabel !== ride.fromLabel ? ride.pickupLabel : null,
-    coordinates: getKnownRouteCoordinates(pickupLabel, ride.fromLabel, ride.fromDistrict),
+    coordinates: ride.pickupCoordinates ?? null,
     kind: "pickup",
     markerLabel: "A",
   });
@@ -3500,7 +3464,7 @@ function buildRouteMapPoints(ride: HomeRide, displayedStops: RoutePlanStop[]) {
         id: `stop-${stop.id || index}`,
         label: stop.label,
         helper: stop.status === "pending_host_approval" ? "Waiting for host approval" : "Planned stop",
-        coordinates: getKnownRouteCoordinates(stop.label),
+        coordinates: stop.coordinates ?? null,
         kind: "stop",
         markerLabel: String(index + 1),
       }),
@@ -3510,7 +3474,7 @@ function buildRouteMapPoints(ride: HomeRide, displayedStops: RoutePlanStop[]) {
     id: "destination",
     label: destinationLabel,
     helper: ride.dropoffLabel && ride.dropoffLabel !== ride.toLabel ? ride.toLabel : null,
-    coordinates: getKnownRouteCoordinates(ride.dropoffLabel, ride.toLabel, ride.toDistrict),
+    coordinates: ride.dropoffCoordinates ?? null,
     kind: "destination",
     markerLabel: "B",
   });
@@ -3554,6 +3518,38 @@ function makeOsrmDrivingRouteUrl(points: RouteCoordinates[]) {
   });
 
   return `https://router.project-osrm.org/route/v1/driving/${coordinates}?${params.toString()}`;
+}
+
+function makeMapboxDrivingRouteUrl(points: RouteCoordinates[], token: string) {
+  const coordinates = points.map((point) => `${point.lng},${point.lat}`).join(";");
+  const params = new URLSearchParams({
+    access_token: token,
+    alternatives: "false",
+    geometries: "geojson",
+    overview: "full",
+    steps: "false",
+  });
+
+  return `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?${params.toString()}`;
+}
+
+function makeDrivingRouteUrl(points: RouteCoordinates[]) {
+  const mapboxToken = getRouteMapboxAccessToken();
+  return mapboxToken ? makeMapboxDrivingRouteUrl(points, mapboxToken) : makeOsrmDrivingRouteUrl(points);
+}
+
+function makeRouteMapTileUrl(zoom: number, x: number, y: number) {
+  const mapboxToken = getRouteMapboxAccessToken();
+  if (mapboxToken) {
+    const params = new URLSearchParams({ access_token: mapboxToken });
+    return `https://api.mapbox.com/styles/v1/mapbox/dark-v11/tiles/256/${zoom}/${x}/${y}@2x?${params.toString()}`;
+  }
+
+  return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
+}
+
+function getRouteMapAttributionLabel() {
+  return getRouteMapboxAccessToken() ? "Mapbox Directions + OpenStreetMap" : "OpenStreetMap + OSRM";
 }
 
 function makeGoogleMapsDirectionsUrl(points: RouteMapPoint[]) {
@@ -3637,7 +3633,7 @@ function buildRouteMapTiles(topLeft: { x: number; y: number }, zoom: number): Ro
       const wrappedX = ((x % scale) + scale) % scale;
       tiles.push({
         key: `${zoom}-${wrappedX}-${y}`,
-        url: `https://tile.openstreetmap.org/${zoom}/${wrappedX}/${y}.png`,
+        url: makeRouteMapTileUrl(zoom, wrappedX, y),
         left: x * routeMapTileSize - topLeft.x,
         top: y * routeMapTileSize - topLeft.y,
         width: routeMapTileSize,
@@ -3708,7 +3704,7 @@ function RealDrivingRouteMap({
 
     const controller = new AbortController();
 
-    fetch(makeOsrmDrivingRouteUrl(coordinates), { signal: controller.signal })
+    fetch(makeDrivingRouteUrl(coordinates), { signal: controller.signal })
       .then((response) => {
         if (!response.ok) throw new Error("Route request failed");
         return response.json() as Promise<OsrmRouteResponse>;
@@ -3825,7 +3821,7 @@ function RealDrivingRouteMap({
       </a>
 
       <span className="absolute bottom-2 left-3 rounded-full bg-[#07111d]/70 px-2 py-1 text-[9px] font-bold text-[var(--rp-muted-strong)] backdrop-blur-md">
-        OpenStreetMap + OSRM
+        {getRouteMapAttributionLabel()}
       </span>
 
       {activeRouteStatus === "error" ? (

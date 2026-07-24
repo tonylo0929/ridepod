@@ -21,9 +21,15 @@ export type StopRequestPolicy = "direct_only" | "host_approved_before_quote" | "
 export type RoutePlanStopStatus = "pending_host_approval" | "approved" | "declined";
 export type RouteRequestStatus = "pending" | "approved" | "declined" | "withdrawn" | "expired";
 
+export type GeoCoordinates = {
+  lat: number;
+  lng: number;
+};
+
 export type RoutePlanStop = {
   id: string;
   label: string;
+  coordinates?: GeoCoordinates | null;
   requestedBy?: string;
   stopType?: "pickup_stop" | "dropoff_stop" | "quick_stop";
   reason?: string;
@@ -35,6 +41,7 @@ export type RouteRequest = {
   requestedByUserId?: string;
   requestedByName: string;
   stopLocation: string;
+  stopCoordinates?: GeoCoordinates | null;
   reason?: string;
   status: RouteRequestStatus;
   requestedAtLabel?: string;
@@ -304,8 +311,10 @@ export type HomeRide = {
   hostDisplayName?: string | null;
   joinedRiders: string[];
   pickupLabel?: string;
+  pickupCoordinates?: GeoCoordinates | null;
   pickupTime?: string;
   dropoffLabel?: string;
+  dropoffCoordinates?: GeoCoordinates | null;
   stopRequestPolicy?: StopRequestPolicy;
   routeRequests?: RouteRequest[];
   proposedStops?: RoutePlanStop[];
@@ -399,8 +408,10 @@ const recurringRideAppSearchRides: HomeRide[] = [
     hostDisplayName: "Maya",
     joinedRiders: ["Maya", "Leo", "Anson"],
     pickupLabel: "Central",
+    pickupCoordinates: { lat: 22.2819, lng: 114.1588 },
     pickupTime: "7:05 AM",
     dropoffLabel: "Cyberport",
+    dropoffCoordinates: { lat: 22.2617, lng: 114.13 },
     stopRequestPolicy: "direct_only",
     selectedRideDate: "2026-08-13",
     direction: "Outbound",
@@ -464,8 +475,10 @@ const recurringRideAppSearchRides: HomeRide[] = [
     hostDisplayName: "Jason",
     joinedRiders: ["Jason", "Ivy"],
     pickupLabel: "Tai Po",
+    pickupCoordinates: { lat: 22.4508, lng: 114.1642 },
     pickupTime: "7:20 AM",
     dropoffLabel: "Hong Kong Airport",
+    dropoffCoordinates: { lat: 22.308, lng: 113.9185 },
     stopRequestPolicy: "direct_only",
     selectedRideDate: "2026-08-11",
     direction: "Outbound",
@@ -515,8 +528,10 @@ const recurringRideAppSearchRides: HomeRide[] = [
     hostDisplayName: "Kara",
     joinedRiders: ["Kara", "Sam", "Hei", "Wing"],
     pickupLabel: "Mong Kok",
+    pickupCoordinates: { lat: 22.3193, lng: 114.1694 },
     pickupTime: "7:35 AM",
     dropoffLabel: "Kowloon Bay",
+    dropoffCoordinates: { lat: 22.3235, lng: 114.2143 },
     stopRequestPolicy: "direct_only",
     selectedRideDate: "2026-08-12",
     direction: "Outbound",
@@ -780,6 +795,7 @@ function routePlanStopToRouteRequest(stop: RoutePlanStop, status: RouteRequestSt
     id: stop.id,
     requestedByName: normalizeRouteRequestName(stop.requestedBy),
     stopLocation: stop.label,
+    stopCoordinates: stop.coordinates ?? null,
     reason: stop.reason,
     status,
   };
@@ -793,6 +809,7 @@ export function routeRequestToRoutePlanStop(request: RouteRequest): RoutePlanSto
   return {
     id: request.id,
     label: request.stopLocation,
+    coordinates: request.stopCoordinates ?? null,
     requestedBy: request.requestedByName,
     stopType: "quick_stop",
     reason: request.reason,
@@ -813,6 +830,7 @@ export function getNormalizedRouteRequests(ride: HomeRide): NormalizedRouteReque
       ...request,
       requestedByName: normalizeRouteRequestName(request.requestedByName),
       stopLocation: request.stopLocation.trim(),
+      stopCoordinates: request.stopCoordinates ?? null,
     });
   });
 

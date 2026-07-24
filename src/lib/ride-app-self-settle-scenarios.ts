@@ -80,6 +80,7 @@ function routeStop(status: "pending_host_approval" | "approved" | "declined") {
   return {
     id: `ra-stop-${status}`,
     label: "Add Wan Chai quick pickup before TST",
+    coordinates: { lat: 22.277, lng: 114.1733 },
     requestedBy: "You",
     stopType: "pickup_stop" as const,
     reason: "Meet another rider near the MTR exit.",
@@ -153,8 +154,10 @@ function baseRide(overrides: Partial<HomeRide> = {}): HomeRide {
     hostName: "Mark",
     joinedRiders: joined ? ["You"] : [],
     pickupLabel: "Central Pier 7 taxi stand",
+    pickupCoordinates: { lat: 22.2819, lng: 114.1588 },
     pickupTime: "7:25 PM",
     dropoffLabel: "Tsim Sha Tsui Star Ferry",
+    dropoffCoordinates: { lat: 22.2937, lng: 114.1697 },
     stopRequestPolicy: "direct_only",
     proposedStops: [],
     approvedStops: [],
@@ -526,11 +529,14 @@ const scenarios: RideAppSelfSettleScenario[] = [
     joinedRiders: ["Mandy", "Ken", "James"],
     joinedRiderCount: 3,
     pickupLabel: "Admiralty Station Exit A rideshare pickup",
+    pickupCoordinates: { lat: 22.2783, lng: 114.1647 },
     dropoffLabel: "Kai Tak Sports Park Gate B",
+    dropoffCoordinates: { lat: 22.3246, lng: 114.2042 },
     proposedStops: [
       {
         id: "ra-h-11-stop-mandy",
         label: "Wan Chai MTR Exit A",
+        coordinates: { lat: 22.277, lng: 114.1733 },
         requestedBy: "Mandy",
         stopType: "pickup_stop",
         reason: "Easier pickup before the group heads to Kai Tak.",
