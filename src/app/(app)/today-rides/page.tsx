@@ -1316,15 +1316,6 @@ function RideBoardCategoryCard({
       <span className="sr-only">
         {category.label}. {category.subtitle} {getRideCountLabel(count)}.
       </span>
-      {category.id === "today-requests" ? (
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute left-[5.8%] top-[66%] z-10 inline-flex h-[11.5%] w-[30.8%] items-center justify-center gap-[6%] rounded-full bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] text-[clamp(10px,2.7vw,17px)] font-black text-[#07131C] shadow-[0_8px_22px_rgba(255,193,55,0.25)]"
-        >
-          Browse Today
-          <ChevronRight className="h-[1.15em] w-[1.15em] stroke-[3]" />
-        </span>
-      ) : null}
       <span
         aria-hidden="true"
         className={cn(
