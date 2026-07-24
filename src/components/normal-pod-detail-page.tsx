@@ -20,13 +20,13 @@ import {
   Clock3,
   Copy,
   Crown,
+  ExternalLink,
   ImagePlus,
   ListChecks,
   MapPin,
   MessageCircle,
   MessagesSquare,
   Plane,
-  Plus,
   ReceiptText,
   Repeat2,
   Route,
@@ -44,6 +44,7 @@ import {
 import { cn } from "@/components/ui";
 import {
   getNormalizedRouteRequests,
+  isDirectRoutePolicy,
   isHostApprovedStopPolicy,
   routeRequestToRoutePlanStop,
   type HomeRide,
@@ -3341,6 +3342,536 @@ function ApproveStopFareReviewModal({
   );
 }
 
+type RouteCoordinates = {
+  lat: number;
+  lng: number;
+};
+
+type RouteMapPointKind = "pickup" | "stop" | "destination";
+
+type RouteMapPoint = {
+  id: string;
+  label: string;
+  helper?: string | null;
+  coordinates: RouteCoordinates;
+  kind: RouteMapPointKind;
+  markerLabel: string;
+};
+
+type RouteMapTile = {
+  key: string;
+  url: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+};
+
+type RouteMapProjection = {
+  zoom: number;
+  topLeft: { x: number; y: number };
+  tiles: RouteMapTile[];
+};
+
+type OsrmRouteResponse = {
+  routes?: Array<{
+    duration?: number;
+    distance?: number;
+    geometry?: {
+      coordinates?: Array<[number, number]>;
+    };
+  }>;
+};
+
+type DrivingRouteState = {
+  routeKey: string;
+  status: "idle" | "loading" | "ready" | "error";
+  coordinates: RouteCoordinates[];
+  durationMinutes: number | null;
+  distanceMeters: number | null;
+};
+
+const routeMapWidth = 640;
+const routeMapHeight = 278;
+const routeMapTileSize = 256;
+
+const hkRoutePlaceAliases: Array<{ names: string[]; coordinates: RouteCoordinates }> = [
+  { names: ["tai po", "tai po market", "tai po centre"], coordinates: { lat: 22.4508, lng: 114.1642 } },
+  { names: ["hong kong airport", "hong kong international airport", "hkia", "chek lap kok", "airport"], coordinates: { lat: 22.308, lng: 113.9185 } },
+  { names: ["sha tin", "shatin", "sha tin station"], coordinates: { lat: 22.3822, lng: 114.1889 } },
+  { names: ["tsing yi", "tsing yi station"], coordinates: { lat: 22.3584, lng: 114.1069 } },
+  { names: ["central", "central station"], coordinates: { lat: 22.2819, lng: 114.1588 } },
+  { names: ["cyberport"], coordinates: { lat: 22.2617, lng: 114.13 } },
+  { names: ["mong kok", "mongkok"], coordinates: { lat: 22.3193, lng: 114.1694 } },
+  { names: ["kowloon bay"], coordinates: { lat: 22.3235, lng: 114.2143 } },
+  { names: ["admiralty", "admiralty station"], coordinates: { lat: 22.2783, lng: 114.1647 } },
+  { names: ["wan chai", "wan chai mtr"], coordinates: { lat: 22.277, lng: 114.1733 } },
+  { names: ["kai tak sports park", "kai tak"], coordinates: { lat: 22.3246, lng: 114.2042 } },
+  { names: ["tuen mun", "tuen mun station"], coordinates: { lat: 22.3912, lng: 113.9776 } },
+  { names: ["k city", "kowloon city"], coordinates: { lat: 22.3282, lng: 114.1916 } },
+  { names: ["causeway bay"], coordinates: { lat: 22.2797, lng: 114.1869 } },
+  { names: ["tsim sha tsui", "tst"], coordinates: { lat: 22.2976, lng: 114.1722 } },
+  { names: ["disneyland", "hong kong disneyland"], coordinates: { lat: 22.3131, lng: 114.0433 } },
+  { names: ["quarry bay"], coordinates: { lat: 22.2881, lng: 114.2134 } },
+];
+
+function normalizeRoutePlaceLabel(value: string | null | undefined) {
+  return (
+    value
+      ?.trim()
+      .toLowerCase()
+      .replace(/hong kong intl\.?/g, "hong kong international")
+      .replace(/[^a-z0-9]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim() ?? ""
+  );
+}
+
+function getKnownRouteCoordinates(...labels: Array<string | null | undefined>) {
+  const normalizedLabels = labels.map(normalizeRoutePlaceLabel).filter(Boolean);
+
+  for (const label of normalizedLabels) {
+    for (const place of hkRoutePlaceAliases) {
+      if (place.names.some((name) => label === name || label.includes(name) || name.includes(label))) {
+        return place.coordinates;
+      }
+    }
+  }
+
+  return null;
+}
+
+function getAirportRouteDisplayLabel(value: string) {
+  return /hong kong (international )?airport|hkia|chek lap kok/i.test(value) ? "Hong Kong International Airport" : value;
+}
+
+function routeMapPoint({
+  id,
+  label,
+  helper,
+  coordinates,
+  kind,
+  markerLabel,
+}: {
+  id: string;
+  label: string;
+  helper?: string | null;
+  coordinates: RouteCoordinates | null;
+  kind: RouteMapPointKind;
+  markerLabel: string;
+}): RouteMapPoint | null {
+  if (!coordinates) return null;
+  return { id, label, helper, coordinates, kind, markerLabel };
+}
+
+function uniqueRouteStops(stops: RoutePlanStop[]) {
+  const seen = new Set<string>();
+  return stops.filter((stop) => {
+    const key = normalizeRoutePlaceLabel(stop.label);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function getDisplayedRouteStops(ride: HomeRide) {
+  const routeRequests = getNormalizedRouteRequests(ride);
+  const approvedStops = routeRequests.approved.map(routeRequestToRoutePlanStop);
+  const pendingStops = routeRequests.pending.map(routeRequestToRoutePlanStop);
+
+  if (isDirectRoutePolicy(ride.stopRequestPolicy)) return [];
+  return uniqueRouteStops([...approvedStops, ...pendingStops]);
+}
+
+function buildRouteMapPoints(ride: HomeRide, displayedStops: RoutePlanStop[]) {
+  const pickupLabel = ride.pickupLabel ?? ride.fromLabel;
+  const destinationLabel = getAirportRouteDisplayLabel(ride.dropoffLabel ?? ride.toLabel);
+  const pickupPoint = routeMapPoint({
+    id: "pickup",
+    label: ride.fromLabel,
+    helper: ride.pickupLabel && ride.pickupLabel !== ride.fromLabel ? ride.pickupLabel : null,
+    coordinates: getKnownRouteCoordinates(pickupLabel, ride.fromLabel, ride.fromDistrict),
+    kind: "pickup",
+    markerLabel: "A",
+  });
+  const stopPoints = displayedStops
+    .map((stop, index) =>
+      routeMapPoint({
+        id: `stop-${stop.id || index}`,
+        label: stop.label,
+        helper: stop.status === "pending_host_approval" ? "Waiting for host approval" : "Planned stop",
+        coordinates: getKnownRouteCoordinates(stop.label),
+        kind: "stop",
+        markerLabel: String(index + 1),
+      }),
+    )
+    .filter(Boolean) as RouteMapPoint[];
+  const destinationPoint = routeMapPoint({
+    id: "destination",
+    label: destinationLabel,
+    helper: ride.dropoffLabel && ride.dropoffLabel !== ride.toLabel ? ride.toLabel : null,
+    coordinates: getKnownRouteCoordinates(ride.dropoffLabel, ride.toLabel, ride.toDistrict),
+    kind: "destination",
+    markerLabel: "B",
+  });
+
+  return [pickupPoint, ...stopPoints, destinationPoint].filter(Boolean) as RouteMapPoint[];
+}
+
+function formatRouteDuration(minutes: number | null) {
+  return typeof minutes === "number" ? `Approx. ${minutes} min` : "Calculating route";
+}
+
+function formatRouteDistance(distanceMeters: number | null) {
+  if (typeof distanceMeters !== "number") return null;
+  const kilometers = distanceMeters / 1000;
+  return `${kilometers >= 10 ? Math.round(kilometers) : kilometers.toFixed(1)} km`;
+}
+
+function encodeRouteKey(points: RouteMapPoint[]) {
+  return points.map((point) => `${point.coordinates.lng.toFixed(5)},${point.coordinates.lat.toFixed(5)}`).join(";");
+}
+
+function decodeRouteKey(routeKey: string): RouteCoordinates[] {
+  return routeKey
+    .split(";")
+    .map((pair) => {
+      const [lngText, latText] = pair.split(",");
+      const lng = Number(lngText);
+      const lat = Number(latText);
+      return Number.isFinite(lng) && Number.isFinite(lat) ? { lng, lat } : null;
+    })
+    .filter(Boolean) as RouteCoordinates[];
+}
+
+function makeOsrmDrivingRouteUrl(points: RouteCoordinates[]) {
+  const coordinates = points.map((point) => `${point.lng},${point.lat}`).join(";");
+  const params = new URLSearchParams({
+    alternatives: "false",
+    geometries: "geojson",
+    overview: "full",
+    steps: "false",
+  });
+
+  return `https://router.project-osrm.org/route/v1/driving/${coordinates}?${params.toString()}`;
+}
+
+function makeGoogleMapsDirectionsUrl(points: RouteMapPoint[]) {
+  const origin = points[0];
+  const destination = points[points.length - 1];
+  if (!origin || !destination) return "https://www.google.com/maps";
+  const params = new URLSearchParams({
+    api: "1",
+    origin: `${origin.coordinates.lat},${origin.coordinates.lng}`,
+    destination: `${destination.coordinates.lat},${destination.coordinates.lng}`,
+    travelmode: "driving",
+  });
+  const waypoints = points.slice(1, -1).map((point) => `${point.coordinates.lat},${point.coordinates.lng}`);
+  if (waypoints.length) params.set("waypoints", waypoints.join("|"));
+
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
+}
+
+function lngLatToWorldPixel(point: RouteCoordinates, zoom: number) {
+  const scale = routeMapTileSize * 2 ** zoom;
+  const sinLat = Math.sin((point.lat * Math.PI) / 180);
+  return {
+    x: ((point.lng + 180) / 360) * scale,
+    y: (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale,
+  };
+}
+
+function getRouteCoordinateBounds(points: RouteCoordinates[]) {
+  return points.reduce(
+    (bounds, point) => ({
+      minLng: Math.min(bounds.minLng, point.lng),
+      maxLng: Math.max(bounds.maxLng, point.lng),
+      minLat: Math.min(bounds.minLat, point.lat),
+      maxLat: Math.max(bounds.maxLat, point.lat),
+    }),
+    {
+      minLng: Number.POSITIVE_INFINITY,
+      maxLng: Number.NEGATIVE_INFINITY,
+      minLat: Number.POSITIVE_INFINITY,
+      maxLat: Number.NEGATIVE_INFINITY,
+    },
+  );
+}
+
+function getRouteMapCenter(points: RouteCoordinates[]) {
+  const bounds = getRouteCoordinateBounds(points);
+  if (!Number.isFinite(bounds.minLng)) return { lat: 22.3193, lng: 114.1694 };
+  return {
+    lat: (bounds.minLat + bounds.maxLat) / 2,
+    lng: (bounds.minLng + bounds.maxLng) / 2,
+  };
+}
+
+function chooseRouteMapZoom(points: RouteCoordinates[]) {
+  if (points.length < 2) return 11;
+
+  for (let zoom = 13; zoom >= 9; zoom -= 1) {
+    const projected = points.map((point) => lngLatToWorldPixel(point, zoom));
+    const xs = projected.map((point) => point.x);
+    const ys = projected.map((point) => point.y);
+    const spanX = Math.max(...xs) - Math.min(...xs);
+    const spanY = Math.max(...ys) - Math.min(...ys);
+
+    if (spanX <= routeMapWidth * 0.72 && spanY <= routeMapHeight * 0.7) return zoom;
+  }
+
+  return 9;
+}
+
+function buildRouteMapTiles(topLeft: { x: number; y: number }, zoom: number): RouteMapTile[] {
+  const tiles: RouteMapTile[] = [];
+  const scale = 2 ** zoom;
+  const startX = Math.floor(topLeft.x / routeMapTileSize);
+  const endX = Math.floor((topLeft.x + routeMapWidth) / routeMapTileSize);
+  const startY = Math.floor(topLeft.y / routeMapTileSize);
+  const endY = Math.floor((topLeft.y + routeMapHeight) / routeMapTileSize);
+
+  for (let x = startX; x <= endX; x += 1) {
+    for (let y = startY; y <= endY; y += 1) {
+      if (y < 0 || y >= scale) continue;
+      const wrappedX = ((x % scale) + scale) % scale;
+      tiles.push({
+        key: `${zoom}-${wrappedX}-${y}`,
+        url: `https://tile.openstreetmap.org/${zoom}/${wrappedX}/${y}.png`,
+        left: x * routeMapTileSize - topLeft.x,
+        top: y * routeMapTileSize - topLeft.y,
+        width: routeMapTileSize,
+        height: routeMapTileSize,
+      });
+    }
+  }
+
+  return tiles;
+}
+
+function buildRouteMapProjection(points: RouteCoordinates[]): RouteMapProjection {
+  const center = getRouteMapCenter(points);
+  const zoom = chooseRouteMapZoom(points);
+  const centerPixel = lngLatToWorldPixel(center, zoom);
+  const topLeft = {
+    x: centerPixel.x - routeMapWidth / 2,
+    y: centerPixel.y - routeMapHeight / 2,
+  };
+
+  return {
+    zoom,
+    topLeft,
+    tiles: buildRouteMapTiles(topLeft, zoom),
+  };
+}
+
+function projectRoutePoint(point: RouteCoordinates, projection: RouteMapProjection) {
+  const pixel = lngLatToWorldPixel(point, projection.zoom);
+  return {
+    x: pixel.x - projection.topLeft.x,
+    y: pixel.y - projection.topLeft.y,
+  };
+}
+
+function getMapMarkerClass(kind: RouteMapPointKind) {
+  if (kind === "destination") return "border-rose-200 bg-rose-400 text-white shadow-[0_0_24px_rgba(251,113,133,0.45)]";
+  if (kind === "stop") return "border-cyan-100 bg-[#052638] text-cyan-100 shadow-[0_0_20px_rgba(34,211,238,0.42)]";
+  return "border-cyan-100 bg-cyan-400 text-[#03131c] shadow-[0_0_24px_rgba(34,211,238,0.55)]";
+}
+
+function getRoutePointRowIconClass(kind: RouteMapPointKind) {
+  if (kind === "destination") return "border-rose-300/35 bg-rose-400/12 text-rose-200";
+  if (kind === "stop") return "border-cyan-300/35 bg-cyan-300/10 text-cyan-200";
+  return "border-cyan-300/35 bg-cyan-300/16 text-cyan-200";
+}
+
+function RealDrivingRouteMap({
+  points,
+  policyLabel,
+}: {
+  points: RouteMapPoint[];
+  policyLabel: string;
+}) {
+  const routeKey = encodeRouteKey(points);
+  const routePointCoordinates = points.map((point) => point.coordinates);
+  const [routeState, setRouteState] = useState<DrivingRouteState>({
+    routeKey: "",
+    status: "idle",
+    coordinates: [],
+    durationMinutes: null,
+    distanceMeters: null,
+  });
+
+  useEffect(() => {
+    const coordinates = decodeRouteKey(routeKey);
+    if (coordinates.length < 2) return;
+
+    const controller = new AbortController();
+
+    fetch(makeOsrmDrivingRouteUrl(coordinates), { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error("Route request failed");
+        return response.json() as Promise<OsrmRouteResponse>;
+      })
+      .then((data) => {
+        const route = data.routes?.[0];
+        const routeCoordinates =
+          route?.geometry?.coordinates?.map(([lng, lat]) => ({ lng, lat })).filter((point) => Number.isFinite(point.lng) && Number.isFinite(point.lat)) ?? [];
+        if (!routeCoordinates.length) throw new Error("Route geometry unavailable");
+        setRouteState({
+          routeKey,
+          status: "ready",
+          coordinates: routeCoordinates,
+          durationMinutes: typeof route?.duration === "number" ? Math.max(1, Math.round(route.duration / 60)) : null,
+          distanceMeters: typeof route?.distance === "number" ? route.distance : null,
+        });
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.warn("RidePod real route map failed", error);
+        setRouteState({ routeKey, status: "error", coordinates: [], durationMinutes: null, distanceMeters: null });
+      });
+
+    return () => controller.abort();
+  }, [routeKey]);
+
+  const routeStateMatchesPoints = routeState.routeKey === routeKey;
+  const activeRouteStatus = routePointCoordinates.length < 2 ? "error" : routeStateMatchesPoints ? routeState.status : "loading";
+  const activeRouteCoordinates = routeStateMatchesPoints ? routeState.coordinates : [];
+  const mapCoordinates = activeRouteCoordinates.length ? activeRouteCoordinates : routePointCoordinates;
+  const projection = buildRouteMapProjection(mapCoordinates);
+  const routePolyline = activeRouteCoordinates
+    .map((point) => {
+      const projected = projectRoutePoint(point, projection);
+      return `${projected.x.toFixed(1)},${projected.y.toFixed(1)}`;
+    })
+    .join(" ");
+  const durationLabel = activeRouteStatus === "error" ? "Route unavailable" : formatRouteDuration(routeStateMatchesPoints ? routeState.durationMinutes : null);
+  const distanceLabel = routeStateMatchesPoints ? formatRouteDistance(routeState.distanceMeters) : null;
+  const fullRouteUrl = makeGoogleMapsDirectionsUrl(points);
+
+  return (
+    <div className="relative min-h-[236px] overflow-hidden rounded-[18px] border border-cyan-100/14 bg-[#07111d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+      <div className="absolute inset-0">
+        {projection.tiles.map((tile) => (
+          <span
+            key={tile.key}
+            aria-hidden="true"
+            className="absolute bg-cover bg-center opacity-[0.58] grayscale"
+            style={{
+              backgroundImage: `url(${tile.url})`,
+              left: `${(tile.left / routeMapWidth) * 100}%`,
+              top: `${(tile.top / routeMapHeight) * 100}%`,
+              width: `${(tile.width / routeMapWidth) * 100}%`,
+              height: `${(tile.height / routeMapHeight) * 100}%`,
+            }}
+          />
+        ))}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,9,17,0.16),rgba(3,9,17,0.56)),radial-gradient(circle_at_center,rgba(34,211,238,0.08),transparent_58%)]" />
+        <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${routeMapWidth} ${routeMapHeight}`} aria-hidden="true">
+          {routePolyline ? (
+            <>
+              <polyline points={routePolyline} fill="none" stroke="rgba(2,8,23,0.78)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="11" />
+              <polyline points={routePolyline} fill="none" stroke="rgba(103,232,249,0.96)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="5.5" />
+            </>
+          ) : null}
+        </svg>
+        {points.map((point) => {
+          const projected = projectRoutePoint(point.coordinates, projection);
+          return (
+            <span
+              key={point.id}
+              className="absolute -translate-x-1/2 -translate-y-1/2"
+              style={{
+                left: `${(projected.x / routeMapWidth) * 100}%`,
+                top: `${(projected.y / routeMapHeight) * 100}%`,
+              }}
+            >
+              <span className={cn("grid h-8 w-8 place-items-center rounded-full border-2 text-sm font-black", getMapMarkerClass(point.kind))}>
+                {point.markerLabel}
+              </span>
+              <span className="mt-1 hidden max-w-[116px] rounded-full bg-[#06111c]/78 px-2 py-1 text-[10px] font-black leading-3 text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] min-[390px]:block">
+                {point.label}
+              </span>
+            </span>
+          );
+        })}
+      </div>
+
+      <div className="absolute left-3 top-3 grid gap-2">
+        <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/12 bg-[#07111d]/82 px-3 text-[11px] font-black text-cyan-100 shadow-[0_8px_18px_rgba(0,0,0,0.24)] backdrop-blur-md">
+          <Route className="h-4 w-4 text-cyan-200" />
+          Suggested route
+        </span>
+        <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/12 bg-[#07111d]/82 px-3 text-[11px] font-black text-[var(--rp-muted-strong)] shadow-[0_8px_18px_rgba(0,0,0,0.24)] backdrop-blur-md">
+          <Clock3 className="h-4 w-4" />
+          {durationLabel}
+          {distanceLabel ? <span className="text-cyan-200">{distanceLabel}</span> : null}
+        </span>
+        <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/12 bg-[#07111d]/82 px-3 text-[11px] font-black text-white shadow-[0_8px_18px_rgba(0,0,0,0.24)] backdrop-blur-md">
+          <ShieldCheck className="h-4 w-4 text-cyan-200" />
+          {policyLabel}
+        </span>
+      </div>
+
+      <a
+        href={fullRouteUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="absolute bottom-3 right-3 inline-flex min-h-10 items-center gap-2 rounded-[14px] border border-cyan-200/24 bg-[#07111d]/82 px-3 text-xs font-black text-cyan-100 shadow-[0_8px_20px_rgba(0,0,0,0.25)] backdrop-blur-md transition hover:border-cyan-200/45 hover:bg-cyan-300/10"
+      >
+        View full route
+        <ExternalLink className="h-4 w-4" />
+      </a>
+
+      <span className="absolute bottom-2 left-3 rounded-full bg-[#07111d]/70 px-2 py-1 text-[9px] font-bold text-[var(--rp-muted-strong)] backdrop-blur-md">
+        OpenStreetMap + OSRM
+      </span>
+
+      {activeRouteStatus === "error" ? (
+        <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-[14px] border border-rose-300/20 bg-[#07111d]/86 px-3 py-2 text-center text-xs font-black text-rose-100 shadow-[0_10px_28px_rgba(0,0,0,0.3)]">
+          Real driving route is unavailable right now.
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function JoinedRouteInfoRow({
+  icon,
+  label,
+  value,
+  helper,
+  kind,
+  action,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  helper?: string | null;
+  kind: RouteMapPointKind | "policy";
+  action?: boolean;
+}) {
+  return (
+    <div className="grid grid-cols-[44px_minmax(0,1fr)_22px] items-center gap-3 border-b border-cyan-100/10 px-3 py-3.5 last:border-b-0">
+      <span
+        className={cn(
+          "grid h-10 w-10 place-items-center rounded-[14px] border",
+          kind === "policy" ? "border-emerald-300/35 bg-emerald-300/10 text-emerald-200" : getRoutePointRowIconClass(kind),
+        )}
+      >
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-black uppercase tracking-[0.13em] text-[var(--rp-muted-strong)]">{label}</span>
+        <span className="mt-0.5 block break-words text-sm font-black leading-5 text-white">{value}</span>
+        {helper ? <span className="mt-0.5 block break-words text-xs font-semibold leading-4 text-[var(--rp-muted-strong)]">{helper}</span> : null}
+      </span>
+      {action ? <ChevronRight className="h-5 w-5 text-[var(--rp-muted-strong)]" /> : null}
+    </div>
+  );
+}
+
 function CompactRideAppRoutePanel({
   ride,
   canRequestStop = false,
@@ -3365,6 +3896,7 @@ function CompactRideAppRoutePanel({
   const approvedStops = routeRequests.approved.map(routeRequestToRoutePlanStop);
   const declinedRequest = routeRequests.declined[0] ?? null;
   const declinedStop = declinedRequest ? routeRequestToRoutePlanStop(declinedRequest) : null;
+  const directRouteOnly = isDirectRoutePolicy(ride.stopRequestPolicy);
   const allowStopRequests = isHostApprovedStopPolicy(ride.stopRequestPolicy) && ride.rideKind !== "recurring";
   const routeLocked =
     ride.bookingDetailsShared === true ||
@@ -3406,52 +3938,15 @@ function CompactRideAppRoutePanel({
             : "No rider has requested an extra stop yet."
           : "This pod does not allow extra stop requests.";
   const trimmedStopRequest = stopRequestDraft.trim();
-  const gatherVenue = ride.pickupLabel ?? "Host will set gather point";
-  const gatherArea = ride.pickupLabel ? ride.fromLabel : "Where riders meet before booking";
-  const requestedRouteStops = [
-    ...(pendingStop
-      ? [
-          {
-            id: pendingStop.id,
-            dotClass: "bg-[var(--rp-primary)]",
-            label: "Request stop (Pending)",
-            title: pendingStop.label,
-            helper: pendingStop.requestedBy ? `Requested by ${pendingStop.requestedBy}` : "Waiting for host approval",
-          },
-        ]
-      : []),
-    ...approvedStops.map((stop) => ({
-      id: stop.id,
-      dotClass: "bg-[var(--rp-primary)]",
-      label: "Request stop (Approved)",
-      title: stop.label,
-      helper: stop.requestedBy ? `Requested by ${stop.requestedBy}` : "Approved by host",
-    })),
-  ];
-  const routeRows = [
-    {
-      id: "gather",
-      dotClass: "bg-cyan-300",
-      label: "Gather",
-      title: gatherVenue,
-      helper: gatherArea,
-    },
-    {
-      id: "pickup",
-      dotClass: "bg-emerald-300",
-      label: "From",
-      title: ride.fromLabel,
-      helper: null,
-    },
-    ...requestedRouteStops,
-    {
-      id: "dropoff",
-      dotClass: "bg-rose-300",
-      label: "To",
-      title: ride.dropoffLabel ?? ride.toLabel,
-      helper: ride.dropoffLabel ? ride.toLabel : null,
-    },
-  ];
+  const displayedStops = getDisplayedRouteStops(ride);
+  const routeMapPoints = buildRouteMapPoints(ride, displayedStops);
+  const policyLabel = directRouteOnly ? "Direct route only" : "Stops allowed";
+  const routeSectionTitle = directRouteOnly ? "Suggested route" : "Route + stop requests";
+  const destinationLabel = getAirportRouteDisplayLabel(ride.dropoffLabel ?? ride.toLabel);
+  const plannedStopsLabel = displayedStops.map((stop) => stop.label).join(" · ");
+  const stopPolicyHelper = directRouteOnly
+    ? "This pod does not allow extra stop requests."
+    : "Extra stop requests are reviewed by the host.";
 
   function submitStopRequest() {
     if (!canShowStopRequestForm || !trimmedStopRequest) return;
@@ -3520,44 +4015,35 @@ function CompactRideAppRoutePanel({
   }
 
   return (
-    <div id="route-requests" className="scroll-mt-24 grid gap-2">
-      <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
-        <ol className="grid gap-0">
-          {routeRows.map((row, index) => {
-            const last = index === routeRows.length - 1;
+    <div id="route-requests" className="scroll-mt-24 grid gap-3">
+      <section className="rounded-[20px] border border-cyan-100/12 bg-[linear-gradient(180deg,rgba(8,18,31,0.92),rgba(6,14,24,0.98))] p-3 shadow-[0_18px_44px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.04)]">
+        <p className="px-1 pb-2 text-[11px] font-black uppercase tracking-[0.2em] text-cyan-200">{routeSectionTitle}</p>
+        <RealDrivingRouteMap points={routeMapPoints} policyLabel={policyLabel} />
 
-            return (
-              <li key={row.id} className="grid grid-cols-[18px_minmax(0,1fr)] gap-3">
-                <span className="grid justify-items-center">
-                  <span className={cn("mt-1.5 h-3 w-3 rounded-full", row.dotClass)} />
-                  {!last ? <span className="h-full min-h-10 border-l border-dashed border-white/24" /> : null}
-                </span>
-                <span className={cn("min-w-0", !last && "pb-3")}>
-                  <span className="block text-[10px] font-semibold leading-4 text-[var(--rp-muted-strong)]">{row.label}</span>
-                  <span className="block break-words text-sm font-black leading-5 text-white">{row.title}</span>
-                  {row.helper ? (
-                    <span className="mt-0.5 block break-words text-xs font-semibold leading-4 text-[var(--rp-muted-strong)]">
-                      {row.helper}
-                    </span>
-                  ) : null}
-                </span>
-              </li>
-            );
-          })}
-        </ol>
-      </section>
-
-      <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Stop requests</p>
-        <div className="mt-3 flex items-start gap-3">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[12px] border border-white/10 bg-black/20 text-[var(--rp-muted-strong)]">
-            <MapPin className="h-4 w-4" />
-          </span>
-          <div className="min-w-0">
-            <h3 className={cn("text-sm font-black", canShowStopRequestForm ? "text-[var(--rp-primary)]" : "text-white")}>
-              {stopRequestTitle}
-            </h3>
-            <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">{stopRequestBody}</p>
+        {!directRouteOnly ? (
+          <section className="mt-3 rounded-[16px] border border-emerald-300/18 bg-emerald-300/8 p-3">
+            <div className="flex items-center gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[13px] border border-emerald-300/30 bg-emerald-300/10 text-emerald-200">
+                <UserPlus className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-black text-white">
+                  {plannedStopsLabel ? "Stop requests allowed" : stopRequestTitle}
+                </h3>
+                <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                  {plannedStopsLabel ? "Riders may request an extra stop if it fits the route." : stopRequestBody}
+                </p>
+              </div>
+              {canShowStopRequestForm ? (
+                <button
+                  type="button"
+                  onClick={() => setRequestScreenOpen(true)}
+                  className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-[13px] border border-cyan-300/38 bg-cyan-300/10 px-3 text-xs font-black text-cyan-100 transition hover:bg-cyan-300/16"
+                >
+                  Request a stop
+                </button>
+              ) : null}
+            </div>
             {canShowHostReviewActions && pendingStop ? (
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button
@@ -3576,18 +4062,42 @@ function CompactRideAppRoutePanel({
                 </button>
               </div>
             ) : null}
-            {canShowStopRequestForm ? (
-              <button
-                type="button"
-                onClick={() => setRequestScreenOpen(true)}
-                className="mt-3 flex min-h-14 w-full items-center justify-center gap-3 rounded-[18px] border border-dashed border-[var(--rp-primary)] bg-[var(--rp-primary)]/5 px-4 text-sm font-black text-[var(--rp-primary)] shadow-[0_12px_28px_rgba(0,0,0,0.18)] transition hover:bg-[var(--rp-primary)]/10"
-              >
-                <Plus className="h-5 w-5" />
-                Request a stop
-              </button>
-            ) : null}
-          </div>
-        </div>
+          </section>
+        ) : null}
+
+        <section className="mt-3 overflow-hidden rounded-[16px] border border-cyan-100/10 bg-white/[0.035]">
+          <JoinedRouteInfoRow
+            icon={<MapPin className="h-5 w-5" />}
+            label="Pickup"
+            value={ride.fromLabel}
+            helper={ride.pickupLabel && ride.pickupLabel !== ride.fromLabel ? ride.pickupLabel : null}
+            kind="pickup"
+          />
+          {!directRouteOnly && plannedStopsLabel ? (
+            <JoinedRouteInfoRow
+              icon={<Route className="h-5 w-5" />}
+              label="Planned stops"
+              value={plannedStopsLabel}
+              helper="Included before the final destination"
+              kind="stop"
+            />
+          ) : null}
+          <JoinedRouteInfoRow
+            icon={ride.rideKind === "airport" ? <Plane className="h-5 w-5" /> : <MapPin className="h-5 w-5" />}
+            label="Destination"
+            value={destinationLabel}
+            helper={ride.dropoffLabel && ride.dropoffLabel !== ride.toLabel ? ride.toLabel : null}
+            kind="destination"
+          />
+          <JoinedRouteInfoRow
+            icon={<ShieldCheck className="h-5 w-5" />}
+            label="Stop policy"
+            value={policyLabel}
+            helper={stopPolicyHelper}
+            kind="policy"
+            action={!directRouteOnly}
+          />
+        </section>
       </section>
       {approvalStop ? (
         <ApproveStopFareReviewModal
@@ -3753,7 +4263,6 @@ function SelfSettlePodSummaryHero({
       !isRideAppSeatHoldExpired(ride));
   const fareReviewState = getRideAppFareEstimateReviewState(ride);
   const displayEstimateLabel = estimateLabel;
-  const minimumRidersToGoLabel = getRideAppMinimumRidersToGoLabel(ride);
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
   const hostCancellationActive = hostCancellationStatus !== "active";
   const estimateActionLabel = fareReviewState.confirmed ? "View breakdown" : "Review fare";
@@ -3761,6 +4270,7 @@ function SelfSettlePodSummaryHero({
   const manageActionsPendingCount = getManagePodActionsPendingCount(ride);
   const seatsLeft = Math.max(0, ride.seatsTotal - summaryEffectiveSeatsUsed);
   const seatsLeftLabel = `${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`;
+  const riderSummaryLabel = summaryUserHadRideAppSeat ? `Joined · ${seatsLeftLabel}` : getRideAppMinimumRidersToGoLabel(ride);
   const preJoinEstimateValue = estimateUpdated ? estimateValue : "Awaiting host estimate";
   const noticeBadgeClass =
     "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-rose-300/35 bg-rose-400/12 px-1.5 text-[11px] font-black leading-none text-rose-200";
@@ -3956,7 +4466,7 @@ function SelfSettlePodSummaryHero({
               <span className="block whitespace-nowrap text-lg font-black leading-5 text-cyan-100">{summaryEffectiveSeatsUsed} / {ride.seatsTotal}</span>
             </span>
             <span className="mt-0.5 block whitespace-nowrap text-[9px] font-black leading-4 text-[var(--rp-primary)] min-[390px]:text-[10px]">
-              {minimumRidersToGoLabel}
+              {riderSummaryLabel}
             </span>
             <span className="mt-1.5 block h-1.5 w-full max-w-24 overflow-hidden rounded-full bg-white/14">
               <span className="block h-full rounded-full bg-cyan-300" style={{ width: `${summaryProgress}%` }} />
@@ -5644,17 +6154,6 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                   <PreJoinRideAppTripDetails ride={ride} />
                 ) : (
                   <div className="grid gap-3">
-                    <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
-                      <div className="flex items-center gap-3">
-                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] border border-white/10 bg-black/20 text-[var(--rp-primary)]">
-                          <CalendarDays className="h-5 w-5" />
-                        </span>
-                        <div className="min-w-0">
-                          <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Date & time</p>
-                          <p className="mt-1 text-sm font-black leading-5 text-white">{ride.dateLabel} - {ride.timeLabel}</p>
-                        </div>
-                      </div>
-                    </section>
                     <CompactRideAppRoutePanel
                       ride={ride}
                       canRequestStop={canRequestRideAppStop}
