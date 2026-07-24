@@ -289,7 +289,7 @@ const rideBoardCategoryDetails: Record<RideBoardCategory, RideBoardCategoryDetai
     eyebrow: "Plan Ahead",
     title: "Scheduled Requests",
     subtitle: "Find tomorrow's rides and future shared routes.",
-    image: "/images/ride-board/schedule-later-card-20260722.png",
+    image: "/images/ride-board/schedule-later-plan-ahead-20260724.jpg",
     imagePosition: "center center",
     icon: CalendarDays,
     chips: ["Tomorrow", "This Week", "Commute", "Events"],
@@ -427,7 +427,7 @@ const rideBoardCategories: Array<{
     id: "schedule-later",
     label: "Schedule later",
     subtitle: "Plan tomorrow, commute, events, or flexible routes.",
-    image: "/images/ride-board/schedule-later-card-20260722.png",
+    image: "/images/ride-board/schedule-later-plan-ahead-20260724.jpg",
     filter: "schedule_later",
     eyebrow: "Plan ahead",
     ctaLabel: "Browse Later",
@@ -1266,7 +1266,9 @@ function RideBoardCategoryCard({
   const isGold = category.tone === "gold";
   const showWholeArtwork = category.id === "today-requests" || category.id === "schedule-later";
   const cardAspectClass = showWholeArtwork
-    ? "aspect-[1792/1092]"
+    ? category.id === "schedule-later"
+      ? "aspect-[4/3]"
+      : "aspect-[1792/1092]"
     : "aspect-[430/220] min-[720px]:aspect-[680/245]";
   const activeArtworkFrameClass =
     category.id === "today-requests"
@@ -1633,6 +1635,7 @@ function RideBoardCategoryDetailView({
   const styles = rideBoardAccentStyles[detail.accent];
   const emptyCopy = rideBoardCategoryCopy[category];
   const showSquareHeroArtwork = category === "today";
+  const showFourThreeHeroArtwork = category === "scheduled";
 
   return (
     <section className="grid gap-4">
@@ -1652,7 +1655,9 @@ function RideBoardCategoryDetailView({
             "relative w-full",
             showSquareHeroArtwork
               ? "aspect-square"
-              : "aspect-[16/10] min-h-[238px] max-[380px]:min-h-[218px] min-[520px]:min-h-[286px]",
+              : showFourThreeHeroArtwork
+                ? "aspect-[4/3]"
+                : "aspect-[16/10] min-h-[238px] max-[380px]:min-h-[218px] min-[520px]:min-h-[286px]",
           )}
         >
           <Image
