@@ -277,7 +277,7 @@ const rideBoardCategoryDetails: Record<RideBoardCategory, RideBoardCategoryDetai
     eyebrow: "Featured - Today",
     title: "Today Requests",
     subtitle: "See who needs a ride near you today.",
-    image: "/images/ride-board/today-requests.png",
+    image: "/images/ride-board/today-request-detail-20260724.jpg",
     imagePosition: "center top",
     icon: UserRound,
     chips: ["Nearby", "Leaving Soon", "This Afternoon", "Tonight"],
@@ -1634,7 +1634,7 @@ function RideBoardCategoryDetailView({
   const detail = rideBoardCategoryDetails[category];
   const styles = rideBoardAccentStyles[detail.accent];
   const emptyCopy = rideBoardCategoryCopy[category];
-  const showSquareHeroArtwork = category === "today";
+  const showFourThreeTodayArtwork = category === "today";
   const showFourThreeHeroArtwork = category === "scheduled";
 
   return (
@@ -1653,8 +1653,8 @@ function RideBoardCategoryDetailView({
         <div
           className={cn(
             "relative w-full",
-            showSquareHeroArtwork
-              ? "aspect-square"
+            showFourThreeTodayArtwork
+              ? "aspect-[4/3]"
               : showFourThreeHeroArtwork
                 ? "aspect-[4/3]"
                 : "aspect-[16/10] min-h-[238px] max-[380px]:min-h-[218px] min-[520px]:min-h-[286px]",
