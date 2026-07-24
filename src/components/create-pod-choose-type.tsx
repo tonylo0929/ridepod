@@ -3900,6 +3900,7 @@ function EstimatedCostStep({
   const canContinue = roundedEstimate > 0;
   const rideAppProviderLabel = getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther);
   const estimatedDistanceKm = districtFareSuggestion ? Math.max(1, districtFareSuggestion.distanceMeters / 1000).toFixed(1) : null;
+  const fareEstimateHeroImageSrc = "/images/ridepod/create/fare-estimate-hero.png";
 
   function handleContinue() {
     if (!canContinue) return;
@@ -3931,15 +3932,44 @@ function EstimatedCostStep({
       <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
 
       <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto bg-[#020912] px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-7 text-[#f8fafc]">
-        <section className="grid justify-items-center text-center">
-          <ScheduleTypeEyebrow podType={podType} />
-          <h1 className="mt-2 w-full text-center text-[31px] font-black leading-tight text-[var(--rp-text)]">
-            Estimated Cost
-          </h1>
-          <p className="mt-2 w-full max-w-[330px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]">
-            Add the total ride estimate before riders can review this pod.
-          </p>
-        </section>
+        {isRideAppSelfSettle ? (
+          <section className="relative min-h-[318px] overflow-hidden rounded-[30px] border border-[#f6c453]/35 bg-[#06131f] px-4 py-5 shadow-[0_22px_54px_rgba(0,0,0,0.34)]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_84%_28%,rgba(246,196,83,0.24),transparent_31%),linear-gradient(180deg,rgba(8,28,47,0.96),rgba(2,9,18,0.98))]" />
+            <div className="pointer-events-none absolute bottom-0 right-0 z-0 h-[82%] w-[54%] max-w-[230px]">
+              <Image
+                src={fareEstimateHeroImageSrc}
+                alt=""
+                width={223}
+                height={344}
+                priority
+                sizes="(max-width: 720px) 54vw, 230px"
+                className="h-full w-full object-contain"
+                style={{ objectPosition: "right bottom" }}
+              />
+            </div>
+            <div className="relative z-10 max-w-[190px]">
+              <span className="grid h-[58px] w-[58px] place-items-center rounded-[18px] border border-[#f6c453] bg-[#f6c453]/10 text-[#f6c453] shadow-[0_16px_30px_rgba(0,0,0,0.25)]">
+                <Smartphone className="h-7 w-7" />
+              </span>
+              <h1 className="mt-6 text-[31px] font-black leading-[1.08] text-[var(--rp-text)]">
+                Set an estimated fare
+              </h1>
+              <p className="mt-4 text-base font-medium leading-6 text-[var(--rp-muted)]">
+                This is only a planning estimate. You&apos;ll share the live fare after riders confirm.
+              </p>
+            </div>
+          </section>
+        ) : (
+          <section className="grid justify-items-center text-center">
+            <ScheduleTypeEyebrow podType={podType} />
+            <h1 className="mt-2 w-full text-center text-[31px] font-black leading-tight text-[var(--rp-text)]">
+              Estimated Cost
+            </h1>
+            <p className="mt-2 w-full max-w-[330px] text-center text-base font-medium leading-6 text-[var(--rp-muted)]">
+              Add the total ride estimate before riders can review this pod.
+            </p>
+          </section>
+        )}
 
         <section className="mt-7 grid justify-items-center gap-5 rounded-[26px] border border-[#f6c453]/45 bg-[linear-gradient(180deg,rgba(246,196,83,0.14),rgba(15,27,39,0.74))] p-4 shadow-[0_22px_54px_rgba(0,0,0,0.32)]">
           <div className="flex items-center justify-center gap-3 text-center">
