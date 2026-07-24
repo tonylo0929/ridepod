@@ -43,6 +43,23 @@ function airportLabel(ride: HomeRide) {
   return null;
 }
 
+function getSpecificRideAppProviderName(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.toLowerCase();
+  if (normalized === "ride app" || normalized === "selected by host") return null;
+  return trimmed;
+}
+
+function getRideAppProviderDisplay(ride: HomeRide) {
+  return (
+    getSpecificRideAppProviderName(ride.rideAppProviderName) ??
+    getSpecificRideAppProviderName(ride.rideAppBookingDetails?.rideAppName) ??
+    getSpecificRideAppProviderName(ride.rideAppBookingDetails?.rideAppUsed) ??
+    "Ride app"
+  );
+}
+
 function DetailCard({ children, className, id }: { children: React.ReactNode; className?: string; id?: string }) {
   return (
     <section
@@ -285,7 +302,7 @@ export function HomePodDetailPage({ ride, backHref = "/home" }: { ride: HomeRide
         <DetailCard>
           <h2 className="text-lg font-black text-[var(--rp-text)]">Ride details</h2>
           <div className="mt-4">
-            <DetailRow label={selfSettlePod ? "Ride type" : "Taxi type"} value={ride.taxiType} />
+            <DetailRow label={selfSettlePod ? "Ride app" : "Taxi type"} value={selfSettlePod ? getRideAppProviderDisplay(ride) : ride.taxiType} />
             <DetailRow label="Luggage" value={ride.luggage} />
             <DetailRow label="Accessibility" value={ride.accessibility} />
             <DetailRow label="Pod type" value={ride.podType} />

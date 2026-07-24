@@ -903,8 +903,20 @@ function getRideAppTotalEstimateDisplay(ride: HomeRide) {
   return getRideAppHostFareEstimateDisplay(ride);
 }
 
+function getSpecificRideAppProviderName(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.toLowerCase();
+  if (normalized === "ride app" || normalized === "selected by host") return null;
+  return trimmed;
+}
+
 function getRideAppProviderLabel(ride: HomeRide) {
-  if (ride.rideAppProviderName?.trim()) return ride.rideAppProviderName.trim();
+  const provider =
+    getSpecificRideAppProviderName(ride.rideAppProviderName) ??
+    getSpecificRideAppProviderName(ride.rideAppBookingDetails?.rideAppName) ??
+    getSpecificRideAppProviderName(ride.rideAppBookingDetails?.rideAppUsed);
+  if (provider) return provider;
   if (ride.taxiType?.trim() && !ride.taxiType.toLowerCase().includes("ride app")) return ride.taxiType.trim();
   return null;
 }

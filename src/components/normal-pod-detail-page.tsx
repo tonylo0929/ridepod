@@ -393,8 +393,20 @@ function estimateTotalFromRange(value: string) {
   return Math.round(numbers.reduce((total, number) => total + number, 0) / numbers.length);
 }
 
+function getSpecificRideAppProviderName(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.toLowerCase();
+  if (normalized === "ride app" || normalized === "selected by host") return null;
+  return trimmed;
+}
+
 function getRideAppProviderDisplay(ride: HomeRide) {
-  if (ride.rideAppProviderName?.trim()) return ride.rideAppProviderName.trim();
+  const provider =
+    getSpecificRideAppProviderName(ride.rideAppProviderName) ??
+    getSpecificRideAppProviderName(ride.rideAppBookingDetails?.rideAppName) ??
+    getSpecificRideAppProviderName(ride.rideAppBookingDetails?.rideAppUsed);
+  if (provider) return provider;
   if (ride.taxiType && !ride.taxiType.toLowerCase().includes("ride app")) return ride.taxiType;
   return "Selected by host";
 }

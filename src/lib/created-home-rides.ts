@@ -308,6 +308,14 @@ function getEffectiveJoinedRiderCount(ride: HomeRide) {
   return Math.max(ride.joinedRiderCount ?? 0, Math.max(0, ride.seatsUsed - 1));
 }
 
+function getSpecificRideAppProviderName(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.toLowerCase();
+  if (normalized === "ride app" || normalized === "selected by host") return null;
+  return trimmed;
+}
+
 function mergeRiderConfirmations(existing: HomeRide, incoming: HomeRide) {
   const existingRows = existing.riderConfirmations ?? [];
   const incomingRows = incoming.riderConfirmations ?? [];
@@ -334,10 +342,16 @@ function hostPublishedRideUpdates(incoming: HomeRide): Partial<HomeRide> {
     Boolean(incoming.estimatedRideAppFare?.trim()) ||
     typeof incoming.rideAppEstimatedFareTotal === "number" ||
     incoming.rideAppFareEstimateStatus === "accepted";
+  const rideAppProviderName =
+    getSpecificRideAppProviderName(incoming.rideAppProviderName) ??
+    getSpecificRideAppProviderName(incoming.rideAppBookingDetails?.rideAppName) ??
+    getSpecificRideAppProviderName(incoming.rideAppBookingDetails?.rideAppUsed);
+  const hasIncomingBookingDetails = Boolean(incoming.rideAppBookingDetails && Object.keys(incoming.rideAppBookingDetails).length > 0);
 
-  if (!hasIncomingFareEstimate) return {};
+  if (!hasIncomingFareEstimate && !rideAppProviderName && !hasIncomingBookingDetails) return {};
 
   const updates: Partial<HomeRide> = {
+    rideAppProviderName: rideAppProviderName ?? undefined,
     estimatedRideAppFare: incoming.estimatedRideAppFare,
     rideAppEstimatedFareTotal: incoming.rideAppEstimatedFareTotal,
     rideAppEstimatedFarePerPerson: incoming.rideAppEstimatedFarePerPerson,

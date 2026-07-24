@@ -6438,6 +6438,11 @@ function buildCreatedRideAppHomeRide({
       updatedBy: "You",
     },
     rideAppPodStatus: "booking_details_needed",
+    rideAppBookingDetails: {
+      rideAppName: rideAppProviderName,
+      rideAppUsed: rideAppProviderName,
+      estimatedFare: estimatedFare || undefined,
+    },
     rideAppBookingTrigger: peopleVehicle.rideAppBookingTrigger,
     rideAppMinimumConfirmedRiders: peopleVehicle.rideAppMinimumConfirmedRiders,
     rideAppRequiredConfirmations: peopleVehicle.rideAppMinimumConfirmedRiders,

@@ -470,8 +470,23 @@ function getCompactRecurringScheduleLabel(ride: HomeRide) {
   return ride.repeatsPattern ?? ride.recurrence_label ?? ride.dateLabel;
 }
 
+function getSpecificRideAppProviderName(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.toLowerCase();
+  if (normalized === "ride app" || normalized === "selected by host") return null;
+  return trimmed;
+}
+
 function getRecurringVehicleLabel(ride: HomeRide, selfSettle: boolean) {
-  if (selfSettle) return ride.rideAppProviderName?.trim() || "Ride app";
+  if (selfSettle) {
+    return (
+      getSpecificRideAppProviderName(ride.rideAppProviderName) ??
+      getSpecificRideAppProviderName(ride.rideAppBookingDetails?.rideAppName) ??
+      getSpecificRideAppProviderName(ride.rideAppBookingDetails?.rideAppUsed) ??
+      "Ride app"
+    );
+  }
   return ride.taxiType;
 }
 

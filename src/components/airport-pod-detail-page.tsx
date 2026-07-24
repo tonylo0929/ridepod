@@ -49,6 +49,23 @@ function AirportCard({ children, className, id }: { children: ReactNode; classNa
   );
 }
 
+function getSpecificRideAppProviderName(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.toLowerCase();
+  if (normalized === "ride app" || normalized === "selected by host") return null;
+  return trimmed;
+}
+
+function getRideAppProviderDisplay(ride: HomeRide) {
+  return (
+    getSpecificRideAppProviderName(ride.rideAppProviderName) ??
+    getSpecificRideAppProviderName(ride.rideAppBookingDetails?.rideAppName) ??
+    getSpecificRideAppProviderName(ride.rideAppBookingDetails?.rideAppUsed) ??
+    "Ride app"
+  );
+}
+
 type HowItWorksStepId = 1 | 2 | 3 | 4;
 
 const howItWorksSteps: Array<{
@@ -554,7 +571,11 @@ function AirportTaxiPodDetailPage({ ride, backHref = "/home" }: { ride: HomeRide
               />
               <AirportDetailItem icon={<MapPin className="h-7 w-7" />} label="Terminal / hall" value={airportTerminalHallLabel(ride)} />
               <AirportDetailItem icon={<BriefcaseBusiness className="h-7 w-7" />} label="Luggage" value={airportLuggageLabel(ride, groupLuggageLabel)} />
-              <AirportDetailItem icon={<CarFront className="h-7 w-7" />} label={selfSettlePod ? "Ride app" : "Taxi type"} value={ride.taxiType} />
+              <AirportDetailItem
+                icon={<CarFront className="h-7 w-7" />}
+                label={selfSettlePod ? "Ride app" : "Taxi type"}
+                value={selfSettlePod ? getRideAppProviderDisplay(ride) : ride.taxiType}
+              />
             </div>
             {userLuggageLabel ? (
               <p className="mt-4 rounded-[14px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] px-3 py-2 text-xs font-black text-[var(--rp-primary)]">

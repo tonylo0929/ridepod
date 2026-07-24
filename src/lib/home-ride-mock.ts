@@ -184,6 +184,8 @@ export type HomeRide = {
   rideAppDetailVersion?: number;
   rideAppCurrentDetailVersion?: number;
   rideAppBookingDetails?: {
+    rideAppName?: string;
+    rideAppUsed?: string;
     estimatedFare?: string;
   };
   currentUserRideAppDetailVersionConfirmed?: number;
