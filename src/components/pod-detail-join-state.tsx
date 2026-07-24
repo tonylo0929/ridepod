@@ -3878,7 +3878,7 @@ export function SelfSettleBookingDetailsCard({
     ["Gather point", ride.pickupLabel ?? "Not set"],
     ["Drop-off", ride.dropoffLabel ?? ride.toLabel],
     ["Pickup time / ETA", ride.pickupTime ?? ride.timeLabel],
-    ["Ride app", ride.rideAppProviderName ?? ride.taxiType],
+    ["Ride app", getRideAppProviderDisplay(ride)],
     ["Confirm-by time", deadlineState.status === "expired" ? "Seat released" : `${confirmByLabel} - ${confirmTimeLeftLabel}`],
     ["Estimated fare", fareEstimate ?? ride.estimatedRideAppFare ?? "Shared by host"],
     ...(fareEstimateWasMeaningfullyUpdated ? [["Detail status", "Updated fare estimate"]] : []),
@@ -5065,6 +5065,23 @@ function getRideAppAcceptedPaymentDisplay(ride: HomeRide) {
   return ride.rideAppAcceptedPaymentMethods?.length
     ? ride.rideAppAcceptedPaymentMethods.join(", ")
     : ride.paymentMethod ?? "Agree in chat before the ride";
+}
+
+function getSpecificRideAppProviderName(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.toLowerCase();
+  if (normalized === "ride app" || normalized === "selected by host") return null;
+  return trimmed;
+}
+
+function getRideAppProviderDisplay(ride: HomeRide) {
+  return (
+    getSpecificRideAppProviderName(ride.rideAppProviderName) ??
+    getSpecificRideAppProviderName(ride.rideAppBookingDetails?.rideAppName) ??
+    getSpecificRideAppProviderName(ride.rideAppBookingDetails?.rideAppUsed) ??
+    "Ride app"
+  );
 }
 
 function SelfSettleBookingDetailsDisplay({ details }: { details: SelfSettleRideAppBookingDetails }) {
