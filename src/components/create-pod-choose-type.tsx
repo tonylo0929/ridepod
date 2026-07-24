@@ -23,6 +23,7 @@ import {
   Loader2,
   LocateFixed,
   Luggage,
+  Lightbulb,
   Mail,
   MapPin,
   Minus,
@@ -3898,9 +3899,9 @@ function EstimatedCostStep({
   const roundedEstimate = Math.round(estimateAmount);
   const perRiderEstimate = Math.max(1, Math.ceil(roundedEstimate / seatCount));
   const canContinue = roundedEstimate > 0;
-  const rideAppProviderLabel = getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther);
   const estimatedDistanceKm = districtFareSuggestion ? Math.max(1, districtFareSuggestion.distanceMeters / 1000).toFixed(1) : null;
   const fareEstimateHeroImageSrc = "/images/ridepod/create/fare-estimate-hero.png";
+  const estimateInputRef = useRef<HTMLInputElement>(null);
 
   function handleContinue() {
     if (!canContinue) return;
@@ -3971,38 +3972,116 @@ function EstimatedCostStep({
           </section>
         )}
 
-        <section className="mt-7 grid justify-items-center gap-5 rounded-[26px] border border-[#f6c453]/45 bg-[linear-gradient(180deg,rgba(246,196,83,0.14),rgba(15,27,39,0.74))] p-4 shadow-[0_22px_54px_rgba(0,0,0,0.32)]">
-          <div className="flex items-center justify-center gap-3 text-center">
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#f6c453]/35 bg-[#f6c453]/16 text-[#f6c453]">
-              {isRideAppSelfSettle ? <Smartphone className="h-5 w-5" /> : <CarFront className="h-5 w-5" />}
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.16em] text-[#f6c453]">
-                Required estimate
-              </p>
-              <h2 className="mt-1 text-xl font-black leading-tight text-[var(--rp-text)]">
-                {isRideAppSelfSettle ? rideAppProviderLabel : "Taxi fare"}
-              </h2>
-            </div>
-          </div>
+        {isRideAppSelfSettle ? (
+          <>
+            <section className="mt-7 rounded-[22px] border border-[#f6c453] bg-[radial-gradient(circle_at_20%_10%,rgba(37,99,135,0.28),transparent_34%),linear-gradient(180deg,rgba(9,23,34,0.96),rgba(3,11,19,0.98))] p-5 shadow-[0_18px_44px_rgba(0,0,0,0.32)]">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-lg font-black leading-6 text-[var(--rp-text)]">
+                  Expected total ride-app fare
+                </h2>
+                <span className="shrink-0 rounded-full bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] px-3 py-1.5 text-xs font-black text-[#07131c] shadow-[0_8px_22px_rgba(255,193,55,0.25)]">
+                  Approximate
+                </span>
+              </div>
 
-          <label className="grid w-full justify-items-center gap-2 text-center">
-            <span className="text-center text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
-              {isRideAppSelfSettle ? `Total estimated ${rideAppProviderLabel} fare` : "Total estimated cost"}
-            </span>
-            <div className="inline-flex min-h-14 w-fit max-w-full items-center rounded-[18px] border border-[var(--rp-border)] bg-[rgba(5,12,20,0.58)] px-4 focus-within:border-[var(--rp-primary)]">
-              <span className="mr-2 text-base font-black text-[#f6c453]">HK$</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={estimateDraft}
-                onChange={(event) => setEstimateDraft(sanitizeEstimatedCostInput(event.target.value))}
-                placeholder="84"
-                aria-invalid={!canContinue}
-                className="h-12 w-[7ch] min-w-0 bg-transparent text-[30px] font-black leading-none text-[var(--rp-text)] caret-[var(--rp-primary)] outline-none selection:bg-transparent selection:text-[var(--rp-text)] placeholder:text-[var(--rp-muted)]"
-              />
+              <div className="mt-8 grid grid-cols-[minmax(0,1fr)_48px] items-center gap-4">
+                <label className="min-w-0">
+                  <span className="sr-only">Expected total ride-app fare</span>
+                  <span className="flex min-w-0 items-baseline text-[#f6c453]">
+                    <span className="mr-2 text-[30px] font-black leading-none">HK$</span>
+                    <input
+                      ref={estimateInputRef}
+                      type="text"
+                      inputMode="decimal"
+                      value={estimateDraft}
+                      onChange={(event) => setEstimateDraft(sanitizeEstimatedCostInput(event.target.value))}
+                      placeholder="84"
+                      aria-invalid={!canContinue}
+                      className="h-[56px] w-[4.6ch] max-w-full min-w-0 bg-transparent p-0 text-[48px] font-black leading-none text-[#f6c453] caret-[var(--rp-primary)] outline-none selection:bg-transparent selection:text-[#f6c453] placeholder:text-[#f6c453]/45"
+                    />
+                  </span>
+                  <span className="mt-2 block text-base font-medium leading-6 text-[var(--rp-muted)]">
+                    Total estimated fare
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  aria-label="Edit estimated ride-app fare"
+                  onClick={() => estimateInputRef.current?.focus()}
+                  className="grid h-12 w-12 place-items-center rounded-full border border-white/28 bg-white/5 text-[var(--rp-text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-[#f6c453]/70 hover:text-[#f6c453]"
+                >
+                  <Pencil className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="my-6 h-px bg-white/12" />
+
+              <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+                <p className="text-base font-black leading-6 text-[var(--rp-text)]">
+                  &divide; {seatCount} seat{seatCount === 1 ? "" : "s"}
+                </p>
+                <div className="text-right">
+                  <p className="text-2xl font-black leading-7 text-[#f6c453]">
+                    {canContinue ? formatMoney(perRiderEstimate) : "HK$-"}{" "}
+                    <span className="text-base font-medium text-[#f6c453]/72">/person</span>
+                  </p>
+                  <p className="mt-1 text-sm font-medium leading-5 text-[var(--rp-muted)]">
+                    Estimated per rider
+                  </p>
+                </div>
+              </div>
+
+              {!canContinue ? (
+                <p className="mt-4 rounded-[14px] border border-[#f6c453]/24 bg-[#f6c453]/10 px-3 py-2 text-sm font-bold leading-5 text-[#f6c453]">
+                  Enter a positive HKD amount to continue.
+                </p>
+              ) : null}
+            </section>
+
+            <section className="mt-5 flex items-center gap-4 rounded-[18px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,rgba(15,31,45,0.96),rgba(8,20,31,0.96))] p-4 shadow-[0_14px_34px_rgba(0,0,0,0.22)]">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#f6c453]/18 bg-[#f6c453]/12 text-[#f6c453]">
+                <Lightbulb className="h-6 w-6" />
+              </span>
+              <div className="min-w-0">
+                <h2 className="text-base font-black leading-6 text-[#f6c453]">Why we ask</h2>
+                <p className="mt-1 text-sm font-medium leading-5 text-[var(--rp-muted)]">
+                  So riders know the expected cost before joining.
+                </p>
+              </div>
+            </section>
+          </>
+        ) : (
+          <section className="mt-7 grid justify-items-center gap-5 rounded-[26px] border border-[#f6c453]/45 bg-[linear-gradient(180deg,rgba(246,196,83,0.14),rgba(15,27,39,0.74))] p-4 shadow-[0_22px_54px_rgba(0,0,0,0.32)]">
+            <div className="flex items-center justify-center gap-3 text-center">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[#f6c453]/35 bg-[#f6c453]/16 text-[#f6c453]">
+                <CarFront className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-[#f6c453]">
+                  Required estimate
+                </p>
+                <h2 className="mt-1 text-xl font-black leading-tight text-[var(--rp-text)]">
+                  Taxi fare
+                </h2>
+              </div>
             </div>
-            {!isRideAppSelfSettle ? (
+
+            <label className="grid w-full justify-items-center gap-2 text-center">
+              <span className="text-center text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
+                Total estimated cost
+              </span>
+              <div className="inline-flex min-h-14 w-fit max-w-full items-center rounded-[18px] border border-[var(--rp-border)] bg-[rgba(5,12,20,0.58)] px-4 focus-within:border-[var(--rp-primary)]">
+                <span className="mr-2 text-base font-black text-[#f6c453]">HK$</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={estimateDraft}
+                  onChange={(event) => setEstimateDraft(sanitizeEstimatedCostInput(event.target.value))}
+                  placeholder="84"
+                  aria-invalid={!canContinue}
+                  className="h-12 w-[7ch] min-w-0 bg-transparent text-[30px] font-black leading-none text-[var(--rp-text)] caret-[var(--rp-primary)] outline-none selection:bg-transparent selection:text-[var(--rp-text)] placeholder:text-[var(--rp-muted)]"
+                />
+              </div>
               <span className={cn("text-xs font-semibold leading-5", canContinue ? "text-[var(--rp-muted-strong)]" : "text-[#f6c453]")}>
                 {canContinue
                   ? districtFareSuggestion
@@ -4010,10 +4089,8 @@ function EstimatedCostStep({
                     : "Use the best total estimate you have right now. You can still review details later."
                   : "Estimated cost is compulsory. Enter a positive HKD amount to continue."}
               </span>
-            ) : null}
-          </label>
+            </label>
 
-          {!isRideAppSelfSettle ? (
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-[18px] border border-white/10 bg-black/20 p-4">
                 <p className="text-[11px] font-black uppercase tracking-[0.13em] text-[var(--rp-muted-strong)]">
@@ -4045,14 +4122,14 @@ function EstimatedCostStep({
                 </div>
               ) : null}
             </div>
-          ) : null}
-        </section>
+          </section>
+        )}
 
-        <p className="mt-4 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
-          {isRideAppSelfSettle
-            ? "This estimate appears on the pod so riders know the external app fare before joining."
-            : `RidePod will show about ${seatCount} seat${seatCount === 1 ? "" : "s"} and the estimated share per rider.`}
-        </p>
+        {!isRideAppSelfSettle ? (
+          <p className="mt-4 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+            RidePod will show about {seatCount} seat{seatCount === 1 ? "" : "s"} and the estimated share per rider.
+          </p>
+        ) : null}
 
         <div className="mt-7">
           <CreatePodStepActions
