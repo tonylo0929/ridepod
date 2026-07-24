@@ -815,7 +815,7 @@ function RideModeSwitch({
               )}
             >
               <Icon className="h-5 w-5" />
-              <span className="whitespace-nowrap">{option.label}</span>
+              <span className={cn("whitespace-nowrap", option.id === "taxi" && "text-xs min-[420px]:text-sm")}>{option.label}</span>
             </button>
           );
         })}
