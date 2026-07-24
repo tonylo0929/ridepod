@@ -4049,6 +4049,33 @@ function EstimatedCostStep({
                 </p>
               </div>
             </section>
+
+            <section className="mt-5 rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,rgba(15,31,45,0.96),rgba(8,20,31,0.96))] p-5 shadow-[0_14px_34px_rgba(0,0,0,0.22)]">
+              <h2 className="text-lg font-black leading-6 text-[var(--rp-text)]">What happens next</h2>
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                <div className="grid min-w-0 justify-items-center text-center">
+                  <span className="grid h-14 w-14 place-items-center rounded-full border border-[#f6c453]/20 bg-[#f6c453]/10 text-[#f6c453] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                    <UsersRound className="h-6 w-6" />
+                  </span>
+                  <h3 className="mt-3 text-[13px] font-black leading-4 text-[var(--rp-text)]">Riders confirm</h3>
+                  <p className="mt-2 text-[12px] font-medium leading-4 text-[var(--rp-muted)]">When enough riders join</p>
+                </div>
+                <div className="grid min-w-0 justify-items-center text-center">
+                  <span className="grid h-14 w-14 place-items-center rounded-full border border-[#f6c453]/20 bg-[#f6c453]/10 text-[#f6c453] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                    <Smartphone className="h-6 w-6" />
+                  </span>
+                  <h3 className="mt-3 text-[13px] font-black leading-4 text-[var(--rp-text)]">Share live fare</h3>
+                  <p className="mt-2 text-[12px] font-medium leading-4 text-[var(--rp-muted)]">Screenshot preferred</p>
+                </div>
+                <div className="grid min-w-0 justify-items-center text-center">
+                  <span className="grid h-14 w-14 place-items-center rounded-full border border-[#f6c453]/20 bg-[#f6c453]/10 text-[#f6c453] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                    <CarFront className="h-6 w-6" />
+                  </span>
+                  <h3 className="mt-3 text-[13px] font-black leading-4 text-[var(--rp-text)]">Enjoy the ride</h3>
+                  <p className="mt-2 text-[12px] font-medium leading-4 text-[var(--rp-muted)]">Fare shown before trip</p>
+                </div>
+              </div>
+            </section>
           </>
         ) : (
           <section className="mt-7 grid justify-items-center gap-5 rounded-[26px] border border-[#f6c453]/45 bg-[linear-gradient(180deg,rgba(246,196,83,0.14),rgba(15,27,39,0.74))] p-4 shadow-[0_22px_54px_rgba(0,0,0,0.32)]">
