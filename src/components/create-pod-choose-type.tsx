@@ -4018,7 +4018,7 @@ function EstimatedCostStep({
 
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
                 <p className="text-base font-black leading-6 text-[var(--rp-text)]">
-                  &divide; {seatCount} seat{seatCount === 1 ? "" : "s"}
+                  &divide; {seatCount} selected rider{seatCount === 1 ? "" : "s"}
                 </p>
                 <div className="text-right">
                   <p className="text-2xl font-black leading-7 text-[#f6c453]">
@@ -4030,12 +4030,6 @@ function EstimatedCostStep({
                   </p>
                 </div>
               </div>
-
-              {!canContinue ? (
-                <p className="mt-4 rounded-[14px] border border-[#f6c453]/24 bg-[#f6c453]/10 px-3 py-2 text-sm font-bold leading-5 text-[#f6c453]">
-                  Enter a positive HKD amount to continue.
-                </p>
-              ) : null}
             </section>
 
             <section className="mt-5 flex items-center gap-4 rounded-[18px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,rgba(15,31,45,0.96),rgba(8,20,31,0.96))] p-4 shadow-[0_14px_34px_rgba(0,0,0,0.22)]">
