@@ -1303,7 +1303,7 @@ function HomeBottomActionCards() {
             <CarFront className="h-5 w-5" />
           </span>
           <span>
-            <span className="block text-lg font-black leading-tight text-white">Want to offer a ride?</span>
+            <span className="block whitespace-nowrap text-[15px] font-black leading-tight text-white min-[390px]:text-base">Want to offer a ride?</span>
             <span className="mt-2 inline-flex items-center gap-1 text-sm font-black text-[var(--rp-primary)]">
               Create a Ride
               <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
