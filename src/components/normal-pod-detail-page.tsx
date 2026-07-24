@@ -13,6 +13,7 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   Car,
+  ChevronRight,
   CheckCircle2,
   CheckSquare,
   CircleDollarSign,
@@ -24,8 +25,10 @@ import {
   MapPin,
   MessageCircle,
   MessagesSquare,
+  Plane,
   Plus,
   ReceiptText,
+  Repeat2,
   Route,
   Share2,
   ShieldCheck,
@@ -252,11 +255,48 @@ function DetailSwitch({
   value,
   onChange,
   rideMode = "taxi",
+  variant = "segmented",
+  podLabel = "Pod",
 }: {
   value: DetailTab;
   onChange: (value: DetailTab) => void;
   rideMode?: HowItWorksRideMode;
+  variant?: "segmented" | "prejoin";
+  podLabel?: string;
 }) {
+  const tabs = [
+    { id: "trip" as const, label: "Trip", icon: CalendarDays },
+    { id: "pod" as const, label: podLabel, icon: UsersRound },
+  ];
+
+  if (variant === "prejoin") {
+    return (
+      <div className="grid grid-cols-2 border-b border-cyan-100/10 bg-[rgba(7,17,29,0.72)]">
+        {tabs.map((tab) => {
+          const active = tab.id === value;
+          const Icon = tab.icon;
+
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => onChange(tab.id)}
+              className={cn(
+                "relative inline-flex min-h-16 items-center justify-center gap-2 border-r border-cyan-100/10 px-3 text-sm font-black transition last:border-r-0",
+                active ? "text-cyan-200" : "text-[var(--rp-muted-strong)] hover:bg-white/[0.035] hover:text-[var(--rp-text)]",
+                active &&
+                  "after:absolute after:inset-x-0 after:bottom-0 after:h-1 after:rounded-t-full after:bg-[linear-gradient(90deg,#67e8f9,#38bdf8)] after:shadow-[0_0_18px_rgba(103,232,249,0.35)]",
+              )}
+            >
+              <Icon className="h-5 w-5" />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-muted)] p-1">
       {detailTabs.map((tab) => {
@@ -3564,6 +3604,71 @@ function CompactRideAppRoutePanel({
   );
 }
 
+function getPreJoinStopPolicyDisplay(ride: HomeRide) {
+  if (isHostApprovedStopPolicy(ride.stopRequestPolicy)) return "Host approves stop requests";
+  return "Direct route only";
+}
+
+function getPreJoinDestinationIcon(ride: HomeRide) {
+  if (ride.rideKind === "airport") return <Plane className="h-7 w-7" />;
+  if (ride.rideKind === "recurring") return <Repeat2 className="h-7 w-7" />;
+  return <Route className="h-7 w-7" />;
+}
+
+function PreJoinTripDetailRow({
+  icon,
+  label,
+  value,
+  helper,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+  helper?: string | null;
+}) {
+  return (
+    <div className="grid grid-cols-[56px_minmax(0,1fr)_24px] items-center gap-3 border-b border-cyan-100/10 px-4 py-4 last:border-b-0">
+      <span className="grid h-14 w-14 place-items-center rounded-[16px] border border-cyan-200/14 bg-white/[0.045] text-cyan-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-black uppercase tracking-[0.16em] text-[var(--rp-muted-strong)]">{label}</span>
+        <span className="mt-1 block break-words text-lg font-black leading-tight text-white">{value}</span>
+        {helper ? <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">{helper}</span> : null}
+      </span>
+      <ChevronRight className="h-6 w-6 text-[var(--rp-muted-strong)]" />
+    </div>
+  );
+}
+
+function PreJoinRideAppTripDetails({ ride }: { ride: HomeRide }) {
+  return (
+    <div>
+      <PreJoinTripDetailRow
+        icon={<CalendarDays className="h-7 w-7" />}
+        label="Date & time"
+        value={`${ride.dateLabel} · ${ride.timeLabel}`}
+      />
+      <PreJoinTripDetailRow
+        icon={<MapPin className="h-7 w-7" />}
+        label="Pickup"
+        value={ride.fromLabel}
+      />
+      <PreJoinTripDetailRow
+        icon={getPreJoinDestinationIcon(ride)}
+        label="Destination"
+        value={ride.toLabel}
+      />
+      <PreJoinTripDetailRow
+        icon={<ShieldCheck className="h-7 w-7" />}
+        label="Stop policy"
+        value={getPreJoinStopPolicyDisplay(ride)}
+        helper={isHostApprovedStopPolicy(ride.stopRequestPolicy) ? "Extra stops need host approval." : "This ride does not allow extra stop requests."}
+      />
+    </div>
+  );
+}
+
 function SelfSettlePodSummaryHero({
   ride,
   seatsUsed,
@@ -3639,6 +3744,7 @@ function SelfSettlePodSummaryHero({
   const rejoinRestriction = getRideAppRejoinRestrictionCopy(ride, ride.seatsUsed < ride.seatsTotal);
   const canLeaveRideFromHero = summaryUserHadRideAppSeat && !summaryUserIsHost;
   const showInlineJoinRide = !summaryUserIsHost && !canLeaveRideFromHero && canJoinRide;
+  const isPreJoinLayout = showInlineJoinRide;
   const summaryUserCanOpenChat =
     summaryUserIsHost ||
     (summaryUserHadRideAppSeat &&
@@ -3653,6 +3759,9 @@ function SelfSettlePodSummaryHero({
   const estimateActionLabel = fareReviewState.confirmed ? "View breakdown" : "Review fare";
   const compactSummaryDateLabel = getCompactPodSummaryDateLabel(ride.dateLabel);
   const manageActionsPendingCount = getManagePodActionsPendingCount(ride);
+  const seatsLeft = Math.max(0, ride.seatsTotal - summaryEffectiveSeatsUsed);
+  const seatsLeftLabel = `${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`;
+  const preJoinEstimateValue = estimateUpdated ? estimateValue : "Awaiting host estimate";
   const noticeBadgeClass =
     "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-rose-300/35 bg-rose-400/12 px-1.5 text-[11px] font-black leading-none text-rose-200";
   const estimateContent = (
@@ -3663,6 +3772,112 @@ function SelfSettlePodSummaryHero({
       </p>
     </>
   );
+
+  if (isPreJoinLayout) {
+    return (
+      <section className="grid gap-4">
+        <div className="relative overflow-hidden rounded-[24px] border border-cyan-100/20 bg-[radial-gradient(circle_at_top_left,rgba(103,232,249,0.08),transparent_34%),linear-gradient(145deg,rgba(13,24,39,0.96),rgba(3,10,18,0.98))] p-5 shadow-[0_20px_56px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.06)]">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),transparent_42%)]" />
+
+          <div className="relative grid grid-cols-[72px_minmax(0,1fr)_44px] gap-3">
+            <span
+              className="grid h-[72px] w-[72px] place-items-center overflow-hidden rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_68%,white_18%)] bg-[linear-gradient(180deg,#ffe59a,#f2c15b)] bg-cover bg-center text-2xl font-black text-[#07111a] shadow-[0_14px_32px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,255,255,0.55)]"
+              style={!hostAvatarPreference && hostProfileImageUrl ? { backgroundImage: `url(${hostProfileImageUrl})` } : undefined}
+              aria-label={`${hostAvatarDisplayName} profile`}
+            >
+              {hostAvatarPreference ? (
+                <RidePodAvatar
+                  avatarUrl={hostProfileImageUrl}
+                  avatarPreference={hostAvatarPreference}
+                  initials={getInitials(hostAvatarDisplayName) || hostAvatarLabel}
+                  displayName={hostAvatarDisplayName}
+                  className="h-full w-full rounded-full text-xl !text-cyan-50"
+                />
+              ) : hostProfileImageUrl ? null : (
+                hostAvatarLabel
+              )}
+            </span>
+
+            <div className="min-w-0 self-center">
+              <h2 className="text-[22px] font-black leading-tight text-white">
+                {ride.fromLabel} {"\u2192"} {ride.toLabel}
+              </h2>
+              <p className="mt-1 text-base font-semibold leading-5 text-[var(--rp-muted-strong)]">Hosted by {hostAvatarDisplayName}</p>
+              <Link
+                href={getViewProfileHref(hostAvatarDisplayName, "host")}
+                className="mt-2 inline-flex min-h-8 items-center justify-center rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-3 text-[11px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
+              >
+                View profile
+              </Link>
+            </div>
+
+            <button
+              type="button"
+              onClick={onSharePod}
+              aria-label="Share pod"
+              className="grid h-11 w-11 place-items-center rounded-full border border-cyan-200/28 bg-cyan-300/8 text-cyan-100 shadow-[0_8px_18px_rgba(0,0,0,0.2),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:bg-cyan-300/14"
+            >
+              <Share2 className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="relative mt-5 grid grid-cols-3 border-t border-cyan-100/10 pt-5 text-center">
+            <div className="grid min-w-0 justify-items-center gap-2 border-r border-cyan-100/10 px-2">
+              <CalendarDays className="h-6 w-6 text-cyan-200" />
+              <span className="min-w-0">
+                <span className="block whitespace-nowrap text-sm font-black leading-5 text-white">
+                  {compactSummaryDateLabel} {"\u00b7"} {ride.timeLabel}
+                </span>
+                <span className="block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">Date & time</span>
+              </span>
+            </div>
+
+            <div className="grid min-w-0 justify-items-center gap-2 border-r border-cyan-100/10 px-2">
+              <UsersRound className="h-6 w-6 text-[var(--rp-muted-strong)]" />
+              <span className="min-w-0">
+                <span className="block whitespace-nowrap text-sm font-black leading-5 text-white">{summaryEffectiveSeatsUsed} / {ride.seatsTotal} riders</span>
+                <span className="block whitespace-nowrap text-sm font-black leading-5 text-cyan-200">{seatsLeftLabel}</span>
+              </span>
+            </div>
+
+            <div className="grid min-w-0 justify-items-center gap-2 px-2">
+              <Car className="h-6 w-6 text-[var(--rp-muted-strong)]" />
+              <span className="min-w-0">
+                <span className="block truncate text-lg font-black leading-6 text-white">{getPodStatusVehicleLabel(ride)}</span>
+                <span className="block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">Ride type</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.06fr)] gap-3">
+          <button
+            type="button"
+            onClick={onViewFareProof}
+            className="grid min-h-[136px] content-center rounded-[18px] border border-cyan-300/18 bg-[rgba(7,17,29,0.72)] p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-cyan-300/32 hover:bg-cyan-300/8"
+          >
+            <Clock3 className="h-8 w-8 text-cyan-200" />
+            <span className="mt-4 block text-base font-semibold leading-5 text-[var(--rp-muted-strong)]">Ride app estimate</span>
+            <span className="mt-1 block text-lg font-black leading-6 text-cyan-200">{preJoinEstimateValue}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={onJoinRide}
+            className="grid min-h-[136px] grid-cols-[56px_minmax(0,1fr)] items-center gap-3 rounded-[18px] border border-[var(--rp-primary)]/70 bg-[linear-gradient(135deg,rgba(242,193,91,0.2),rgba(51,37,12,0.76))] p-4 text-left shadow-[0_14px_34px_rgba(242,193,91,0.12),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-[var(--rp-primary)] hover:brightness-105"
+          >
+            <span className="grid h-14 w-14 place-items-center rounded-full border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]">
+              <ArrowRight className="h-7 w-7 stroke-[3]" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-2xl font-black leading-tight text-white">Join Ride</span>
+              <span className="mt-1 block text-base font-semibold leading-5 text-[var(--rp-muted-strong)]">Reserve your seat</span>
+            </span>
+          </button>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="grid gap-4">
@@ -4585,6 +4800,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
   const howItWorksRideMode: HowItWorksRideMode = selfSettlePod ? "ride_app" : "taxi";
   const showSelfSettleJoin = getCurrentUserCanJoinSelfSettlePod(ride, joinView);
   const showSelfSettleHost = selfSettlePod && getCurrentUserIsHost(ride);
+  const showPreJoinRideAppLayout = selfSettlePod && showSelfSettleJoin && !showSelfSettleHost;
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
   const hostCancellationAllowsHostControls = hostCancellationStatus === "active";
   const canUpdateRideAppEstimate = selfSettlePod && showSelfSettleHost && hostCancellationAllowsHostControls;
@@ -5400,17 +5616,33 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
             />
           ) : null}
 
-          <DetailShell className={activeDetailTab === "trip" ? "border-0 bg-transparent p-0 shadow-none" : undefined}>
+          <DetailShell
+            className={cn(
+              showPreJoinRideAppLayout
+                ? "overflow-hidden border-cyan-100/18 bg-[linear-gradient(180deg,rgba(8,17,29,0.96),rgba(5,13,23,0.98))] p-0 shadow-[0_18px_48px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.05)]"
+                : activeDetailTab === "trip"
+                  ? "border-0 bg-transparent p-0 shadow-none"
+                  : undefined,
+            )}
+          >
             <div>
-                <DetailSwitch value={activeDetailTab} onChange={setActiveDetailTab} rideMode={howItWorksRideMode} />
+                <DetailSwitch
+                  value={activeDetailTab}
+                  onChange={setActiveDetailTab}
+                  rideMode={howItWorksRideMode}
+                  variant={showPreJoinRideAppLayout ? "prejoin" : "segmented"}
+                  podLabel={showPreJoinRideAppLayout ? "Ride Group" : "Pod"}
+                />
             </div>
 
             {activeDetailTab === "trip" ? (
-              <div className="mt-4">
+              <div className={cn(showPreJoinRideAppLayout ? "mt-0" : "mt-4")}>
                 <div className="hidden">
                   <DetailItem icon={<CalendarDays className="h-5 w-5" />} label="Date & time" value={`${ride.dateLabel} · ${ride.timeLabel}`} />
                 </div>
-                {selfSettlePod ? (
+                {selfSettlePod ? showPreJoinRideAppLayout ? (
+                  <PreJoinRideAppTripDetails ride={ride} />
+                ) : (
                   <div className="grid gap-3">
                     <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
                       <div className="flex items-center gap-3">
@@ -5439,7 +5671,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                 )}
               </div>
             ) : (
-              <div className="mt-4 grid gap-4">
+              <div className={cn(showPreJoinRideAppLayout ? "mt-0 grid gap-4 p-4" : "mt-4 grid gap-4")}>
                 {selfSettlePod ? null : (
                   <div className="flex flex-wrap gap-2">
                     <DetailTag tone="gold">Payment protected</DetailTag>
