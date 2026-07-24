@@ -1632,6 +1632,7 @@ function RideBoardCategoryDetailView({
   const detail = rideBoardCategoryDetails[category];
   const styles = rideBoardAccentStyles[detail.accent];
   const emptyCopy = rideBoardCategoryCopy[category];
+  const showSquareHeroArtwork = category === "today";
 
   return (
     <section className="grid gap-4">
@@ -1646,7 +1647,14 @@ function RideBoardCategoryDetailView({
       </div>
 
       <div className={cn("relative overflow-hidden rounded-[28px] border bg-[#071018]", styles.heroBorder)}>
-        <div className="relative aspect-[16/10] min-h-[238px] w-full max-[380px]:min-h-[218px] min-[520px]:min-h-[286px]">
+        <div
+          className={cn(
+            "relative w-full",
+            showSquareHeroArtwork
+              ? "aspect-square"
+              : "aspect-[16/10] min-h-[238px] max-[380px]:min-h-[218px] min-[520px]:min-h-[286px]",
+          )}
+        >
           <Image
             src={detail.image}
             alt={`${detail.title} illustration`}
