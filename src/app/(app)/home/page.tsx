@@ -2707,24 +2707,34 @@ function HomePageContent() {
           aria-hidden="true"
           className="absolute inset-0 bg-[#04101a]"
         />
-        <div className="relative z-10 mx-auto w-full max-w-[680px] px-1 pb-4 sm:px-2 min-[720px]:px-3">
-          <p
-            className={cn(
-              "text-[25px] font-black leading-tight tracking-tight text-white min-[720px]:text-3xl",
-            )}
-          >
-            {isAuthenticated ? (
-              <>
-                <span>{heroGreeting}, </span>
-                <span className="break-words">{displayName}</span>
-              </>
-            ) : (
-              "Your ride, together."
-            )}
-          </p>
-          <p className="mt-1 text-[15px] font-semibold text-white/72 min-[720px]:text-base">
-            {isAuthenticated ? "Your ride, together." : "First Local Shared Ride in Hong Kong"}
-          </p>
+        <div className="relative z-10 mx-auto flex w-full max-w-[680px] items-start justify-between gap-3 px-1 pb-4 sm:px-2 min-[720px]:px-3">
+          <div className="min-w-0">
+            <p
+              className={cn(
+                "text-[25px] font-black leading-tight tracking-tight text-white min-[720px]:text-3xl",
+              )}
+            >
+              {isAuthenticated ? (
+                <>
+                  <span>{heroGreeting}, </span>
+                  <span className="break-words">{displayName}</span>
+                </>
+              ) : (
+                "Your ride, together."
+              )}
+            </p>
+            <p className="mt-1 text-[15px] font-semibold text-white/72 min-[720px]:text-base">
+              {isAuthenticated ? "Your ride, together." : "First Local Shared Ride in Hong Kong"}
+            </p>
+          </div>
+          {!isAuthenticated ? (
+            <Link
+              href="/login"
+              className="mt-1 inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[#ffd968]/60 bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] px-4 text-sm font-black text-[#07131c] shadow-[0_8px_22px_rgba(255,193,55,0.25)] transition hover:brightness-105 active:translate-y-px"
+            >
+              Login
+            </Link>
+          ) : null}
         </div>
         <div
           className={cn(
