@@ -1289,14 +1289,14 @@ function HomeBottomActionCards() {
         <Link
           href="/today-rides"
           aria-label="Post a quick request"
-          className="group grid min-h-[128px] content-between rounded-[20px] border border-blue-400/58 bg-[linear-gradient(145deg,rgba(7,28,55,0.94),rgba(3,14,28,0.98))] p-4 shadow-[0_18px_42px_rgba(37,99,235,0.16)] transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_22px_50px_rgba(37,99,235,0.22)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300"
+          className="group grid min-h-[128px] place-items-center gap-3 rounded-[20px] border border-blue-400/58 bg-[linear-gradient(145deg,rgba(7,28,55,0.94),rgba(3,14,28,0.98))] p-4 text-center shadow-[0_18px_42px_rgba(37,99,235,0.16)] transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_22px_50px_rgba(37,99,235,0.22)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300"
         >
           <span className="grid h-11 w-11 place-items-center rounded-[14px] bg-[linear-gradient(135deg,#22d3ee,#14b8a6)] text-white shadow-[0_14px_28px_rgba(20,184,166,0.22)]">
             <CalendarDays className="h-5 w-5" />
           </span>
-          <span>
+          <span className="grid justify-items-center">
             <span className="block text-lg font-black leading-tight text-white">Need a ride?</span>
-            <span className="mt-2 flex items-center justify-between gap-2 text-[13px] font-black leading-5 text-blue-200">
+            <span className="mt-2 inline-flex items-center justify-center gap-2 text-[13px] font-black leading-5 text-blue-200">
               <span>Post a quick request in seconds</span>
               <ChevronRight className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5" />
             </span>
@@ -1306,12 +1306,12 @@ function HomeBottomActionCards() {
         <Link
           href="/create"
           aria-label="Create a ride"
-          className="group grid min-h-[128px] content-between rounded-[20px] border border-[var(--rp-primary)]/70 bg-[linear-gradient(145deg,rgba(31,24,8,0.86),rgba(8,15,24,0.98))] p-4 shadow-[0_18px_42px_rgba(242,193,91,0.14)] transition hover:-translate-y-0.5 hover:border-[var(--rp-primary)] hover:shadow-[0_22px_50px_rgba(242,193,91,0.2)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
+          className="group grid min-h-[128px] place-items-center gap-3 rounded-[20px] border border-[var(--rp-primary)]/70 bg-[linear-gradient(145deg,rgba(31,24,8,0.86),rgba(8,15,24,0.98))] p-4 text-center shadow-[0_18px_42px_rgba(242,193,91,0.14)] transition hover:-translate-y-0.5 hover:border-[var(--rp-primary)] hover:shadow-[0_22px_50px_rgba(242,193,91,0.2)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
         >
           <span className="grid h-11 w-11 place-items-center rounded-[14px] bg-[linear-gradient(180deg,#fff0b8,#f2c15b)] text-[#07111a] shadow-[0_14px_28px_rgba(242,193,91,0.2)]">
             <CarFront className="h-5 w-5" />
           </span>
-          <span>
+          <span className="grid justify-items-center">
             <span className="block whitespace-nowrap text-[15px] font-black leading-tight text-white min-[390px]:text-base">Want to offer a ride?</span>
             <span className="mt-2 inline-flex items-center gap-1 text-sm font-black text-[var(--rp-primary)]">
               Create a Ride
