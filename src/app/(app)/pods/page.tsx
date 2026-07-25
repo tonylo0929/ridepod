@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   AlertCircle,
   CarFront,
@@ -12,10 +12,12 @@ import {
   Clock3,
   Grid2X2,
   LogIn,
+  MessageCircle,
   Plane,
   RefreshCcw,
   SlidersHorizontal,
   Smartphone,
+  Star,
   UserPlus,
   XCircle,
   type LucideIcon,
@@ -37,11 +39,40 @@ import {
   type CalendarRide,
   type MyRideCalendarStatus,
 } from "@/lib/my-ride-calendar-mock";
-import { getDraftPodInvitationCards, useRideGroupsState } from "@/lib/ride-groups";
+import {
+  getDraftPodInvitationCards,
+  getRideCallInterests,
+  getViewerInterest,
+  rideTypeLabel as rideCallRideTypeLabel,
+  useRideGroupsState,
+  type RideCall,
+} from "@/lib/ride-groups";
 
 type StatusTone = "action" | "upcoming" | "completed" | "cancelled";
 type RideTypeTone = "taxi" | "ride_app" | "airport" | "recurring";
 type MyRideFilter = "all" | RideTypeTone;
+type ActivityItemKind = "request" | "ride";
+type MyActivityView = "all" | "requests" | "rides" | "bookmarked" | "joined" | "interested" | "tracked";
+type MyActivityTone = RideTypeTone | "request";
+type MyActivityItem = {
+  key: string;
+  id: string;
+  kind: ActivityItemKind;
+  title: string;
+  subtitle: string;
+  meta: string;
+  badge: string;
+  relationship: string;
+  href: string;
+  tone: MyActivityTone;
+  bookmarked: boolean;
+  isMine: boolean;
+  isJoined: boolean;
+  isInterested: boolean;
+};
+
+const myActivityBookmarkStorageKey = "ridepod-my-activity-bookmarks-v1";
+const myActivityBookmarkUpdateEventName = "ridepod-my-activity-bookmarks-updated";
 
 const primaryFilters: Array<{ id: MyRideFilter; label: string; icon: LucideIcon; tone: RideTypeTone | "all" }> = [
   { id: "all", label: "All", icon: Grid2X2, tone: "all" },
@@ -58,6 +89,16 @@ const statusLegendItems: Array<{ id: StatusTone; label: string; tone: StatusTone
   { id: "cancelled", label: "Cancelled", tone: "cancelled" },
 ];
 
+const activityViews: Array<{ id: MyActivityView; label: string; icon: LucideIcon }> = [
+  { id: "all", label: "All", icon: Grid2X2 },
+  { id: "requests", label: "Requests", icon: MessageCircle },
+  { id: "rides", label: "Rides", icon: CarFront },
+  { id: "bookmarked", label: "Bookmarked", icon: Star },
+  { id: "joined", label: "Joined", icon: UserPlus },
+  { id: "interested", label: "Interested", icon: CheckCircle2 },
+  { id: "tracked", label: "Following", icon: SlidersHorizontal },
+];
+
 function ridesByDateMap(rides: CalendarRide[]) {
   return rides.reduce<Record<string, CalendarRide[]>>((groups, ride) => {
     groups[ride.date] = [...(groups[ride.date] ?? []), ride].sort((first, second) =>
@@ -65,6 +106,55 @@ function ridesByDateMap(rides: CalendarRide[]) {
     );
     return groups;
   }, {});
+}
+
+function readMyActivityBookmarks() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(myActivityBookmarkStorageKey) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeMyActivityBookmarks(keys: string[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(myActivityBookmarkStorageKey, JSON.stringify(keys));
+  window.dispatchEvent(new Event(myActivityBookmarkUpdateEventName));
+}
+
+function bookmarkSnapshotFromKeys(keys: string[]) {
+  return keys.join("\n");
+}
+
+function readMyActivityBookmarkSnapshot() {
+  return bookmarkSnapshotFromKeys(readMyActivityBookmarks());
+}
+
+function subscribeToMyActivityBookmarks(onStoreChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === myActivityBookmarkStorageKey) onStoreChange();
+  };
+
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener(myActivityBookmarkUpdateEventName, onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(myActivityBookmarkUpdateEventName, onStoreChange);
+  };
+}
+
+function emptyMyActivityBookmarkSnapshot() {
+  return "";
+}
+
+function parseMyActivityBookmarkSnapshot(snapshot: string) {
+  return snapshot ? snapshot.split("\n").filter(Boolean) : [];
 }
 
 function selectedDateLabel(date: string) {
@@ -253,6 +343,52 @@ function matchesFilter(ride: CalendarRide, filter: MyRideFilter) {
   return true;
 }
 
+function activityToneClass(tone: MyActivityTone) {
+  const classes: Record<MyActivityTone, string> = {
+    request: "border-emerald-300/42 bg-emerald-300/10 text-emerald-100",
+    taxi: "border-[color-mix(in_srgb,var(--rp-primary)_55%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] text-[var(--rp-primary)]",
+    ride_app: "border-cyan-300/45 bg-cyan-300/10 text-cyan-100",
+    airport: "border-blue-300/45 bg-blue-400/10 text-blue-100",
+    recurring: "border-emerald-300/45 bg-emerald-300/10 text-emerald-100",
+  };
+
+  return classes[tone];
+}
+
+function activityViewChipClass(active: boolean) {
+  return active
+    ? "border-[color-mix(in_srgb,var(--rp-primary)_66%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)] shadow-[0_0_22px_rgba(242,193,91,0.14)]"
+    : "border-[var(--rp-border)] bg-[rgba(255,255,255,0.045)] text-[var(--rp-muted-strong)] hover:border-[var(--rp-border-strong)] hover:bg-[var(--rp-card-muted)]";
+}
+
+function getActivityViewItems(items: MyActivityItem[], view: MyActivityView) {
+  if (view === "requests") return items.filter((item) => item.kind === "request");
+  if (view === "rides") return items.filter((item) => item.kind === "ride");
+  if (view === "bookmarked") return items.filter((item) => item.bookmarked);
+  if (view === "joined") return items.filter((item) => item.isJoined);
+  if (view === "interested") return items.filter((item) => item.isInterested);
+  if (view === "tracked") return items.filter((item) => item.bookmarked || item.isJoined || item.isInterested);
+  return items;
+}
+
+function getActivityViewEmptyCopy(view: MyActivityView) {
+  if (view === "requests") return "No requests from you yet.";
+  if (view === "rides") return "No active rides yet.";
+  if (view === "bookmarked") return "Tap the star on any request or ride to save it here.";
+  if (view === "joined") return "Joined rides will show here after you take a seat.";
+  if (view === "interested") return "Requests you mark interested will show here.";
+  if (view === "tracked") return "Bookmarked, joined, and interested items will show here together.";
+  return "Your requests, rides, bookmarks, joined rides, and interested requests will show here.";
+}
+
+function getRequestStatusLabel(rideCall: RideCall, interestCount: number) {
+  if (rideCall.status === "ready_to_convert" || interestCount >= rideCall.targetPeopleCount) return "Ready";
+  if (rideCall.status === "converted") return "Converted";
+  if (rideCall.status === "cancelled") return "Cancelled";
+  if (rideCall.status === "expired") return "Expired";
+  return "Open";
+}
+
 function FilterChip({
   id,
   label,
@@ -281,6 +417,159 @@ function FilterChip({
       <Icon className="h-4 w-4 shrink-0" />
       <span className="min-w-0 max-w-full whitespace-nowrap leading-[1.05]">{label}</span>
     </button>
+  );
+}
+
+function ActivityBookmarkButton({
+  bookmarked,
+  label,
+  onClick,
+}: {
+  bookmarked: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={bookmarked ? `Remove ${label} bookmark` : `Bookmark ${label}`}
+      aria-pressed={bookmarked}
+      onClick={onClick}
+      className={cn(
+        "grid h-10 w-10 place-items-center rounded-full border bg-[#07121c]/92 text-[var(--rp-muted-strong)] shadow-[0_12px_26px_rgba(0,0,0,0.26)] transition hover:border-[var(--rp-primary)] hover:text-[var(--rp-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--rp-primary)]",
+        bookmarked &&
+          "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,#07121c)] text-[var(--rp-primary)]",
+      )}
+    >
+      <Star className={cn("h-5 w-5", bookmarked && "fill-current")} />
+    </button>
+  );
+}
+
+function MyActivityCard({
+  item,
+  onToggleBookmark,
+}: {
+  item: MyActivityItem;
+  onToggleBookmark: (key: string) => void;
+}) {
+  const Icon =
+    item.kind === "request"
+      ? MessageCircle
+      : item.tone === "ride_app"
+        ? Smartphone
+        : item.tone === "airport"
+          ? Plane
+          : item.tone === "recurring"
+            ? RefreshCcw
+            : CarFront;
+
+  return (
+    <article className="relative min-w-0 overflow-hidden rounded-[20px] border border-[var(--rp-border)] bg-[linear-gradient(135deg,rgba(255,255,255,0.065),rgba(255,255,255,0.026))] shadow-[var(--rp-shadow-soft)] transition hover:border-[var(--rp-border-strong)]">
+      <div className="absolute right-3 top-3 z-10">
+        <ActivityBookmarkButton bookmarked={item.bookmarked} label={item.kind} onClick={() => onToggleBookmark(item.key)} />
+      </div>
+      <Link href={item.href} className="grid min-w-0 gap-3 p-4 pr-14">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border", activityToneClass(item.tone))}>
+            <Icon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <span className={cn("inline-flex min-h-6 max-w-full items-center rounded-full border px-2 text-[10px] font-black uppercase tracking-[0.08em]", activityToneClass(item.tone))}>
+              <span className="min-w-0 truncate">{item.relationship}</span>
+            </span>
+            <h3 className="mt-2 line-clamp-2 text-left text-base font-black leading-5 text-[var(--rp-text)]">
+              {item.title}
+            </h3>
+            <p className="mt-1 line-clamp-2 text-left text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              {item.subtitle}
+            </p>
+          </div>
+        </div>
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-white/[0.07] pt-3">
+          <p className="min-w-0 truncate text-left text-xs font-black text-[var(--rp-muted-strong)]">{item.meta}</p>
+          <span className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-muted)] px-2.5 py-1 text-[11px] font-black text-[var(--rp-text)]">
+            {item.badge}
+          </span>
+        </div>
+      </Link>
+    </article>
+  );
+}
+
+function MyActivityHub({
+  items,
+  activeView,
+  counts,
+  onViewChange,
+  onToggleBookmark,
+}: {
+  items: MyActivityItem[];
+  activeView: MyActivityView;
+  counts: Record<MyActivityView, number>;
+  onViewChange: (view: MyActivityView) => void;
+  onToggleBookmark: (key: string) => void;
+}) {
+  const visibleItems = getActivityViewItems(items, activeView);
+  const featuredItems = visibleItems.slice(0, 4);
+
+  return (
+    <section className="min-w-0 overflow-hidden rounded-[26px] border border-[var(--rp-border)] bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.12),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.062),rgba(255,255,255,0.024))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),var(--rp-shadow-soft)]">
+      <div className="grid min-w-0 gap-3 min-[520px]:grid-cols-[minmax(0,1fr)_auto] min-[520px]:items-start">
+        <div className="min-w-0">
+          <p className="text-left text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">View my</p>
+          <h2 className="mt-1 text-left text-2xl font-black leading-7 text-[var(--rp-text)]">Requests, rides, and saved items</h2>
+          <p className="mt-2 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+            Bookmark with the star, then use the chips to see joined, interested, or saved rides fast.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onViewChange("tracked")}
+          className={cn(
+            "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-4 text-sm font-black transition",
+            activeView === "tracked"
+              ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)]"
+              : "border-cyan-300/45 bg-cyan-300/10 text-cyan-100 hover:bg-cyan-300/15",
+          )}
+        >
+          <Star className={cn("h-4 w-4", activeView === "tracked" && "fill-current")} />
+          Saved / joined / interested
+        </button>
+      </div>
+
+      <div className="mt-4 grid min-w-0 grid-cols-2 gap-2 min-[520px]:grid-cols-4">
+        {activityViews.map((view) => {
+          const Icon = view.icon;
+          const active = activeView === view.id;
+          return (
+            <button
+              key={view.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onViewChange(view.id)}
+              className={cn("grid min-h-[64px] min-w-0 content-center gap-1 rounded-[16px] border px-3 text-left transition", activityViewChipClass(active))}
+            >
+              <span className="flex min-w-0 items-center justify-between gap-2">
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="rounded-full bg-black/20 px-2 py-0.5 text-[10px] font-black">{counts[view.id]}</span>
+              </span>
+              <span className="min-w-0 truncate text-xs font-black">{view.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-4 grid gap-3">
+        {featuredItems.length ? (
+          featuredItems.map((item) => <MyActivityCard key={item.key} item={item} onToggleBookmark={onToggleBookmark} />)
+        ) : (
+          <div className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-5 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+            {getActivityViewEmptyCopy(activeView)}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -369,7 +658,17 @@ function StatusBadge({ status }: { status: MyRideCalendarStatus }) {
   );
 }
 
-function MyRideDayPodCard({ ride, currentUserId }: { ride: CalendarRide; currentUserId?: string | null }) {
+function MyRideDayPodCard({
+  ride,
+  currentUserId,
+  bookmarked,
+  onToggleBookmark,
+}: {
+  ride: CalendarRide;
+  currentUserId?: string | null;
+  bookmarked: boolean;
+  onToggleBookmark: () => void;
+}) {
   const role = getMyRideCalendarRole(ride, currentUserId);
   const status = getMyRideCalendarStatus({ pod: ride, currentUserId, role });
   const routeStops = getRouteStops(ride.route);
@@ -377,7 +676,10 @@ function MyRideDayPodCard({ ride, currentUserId }: { ride: CalendarRide; current
   const Icon = rideTypeTone === "ride_app" ? Smartphone : CarFront;
 
   return (
-    <article className="min-w-0 overflow-hidden rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.035))] p-3 shadow-[var(--rp-shadow-soft)] min-[390px]:p-4">
+    <article className="relative min-w-0 overflow-hidden rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.035))] p-3 shadow-[var(--rp-shadow-soft)] min-[390px]:p-4">
+      <div className="absolute right-3 top-3 z-10">
+        <ActivityBookmarkButton bookmarked={bookmarked} label="ride" onClick={onToggleBookmark} />
+      </div>
       <div className="grid min-w-0 grid-cols-[58px_minmax(0,1fr)] gap-3 min-[390px]:grid-cols-[68px_minmax(0,1fr)]">
         <div
           className={cn(
@@ -390,7 +692,7 @@ function MyRideDayPodCard({ ride, currentUserId }: { ride: CalendarRide; current
           <Icon className="h-7 w-7" />
         </div>
 
-        <div className="min-w-0 overflow-hidden">
+        <div className="min-w-0 overflow-hidden pr-11">
           <div className="ridepod-my-ride-card-heading grid min-w-0 gap-2">
             <p className="shrink-0 whitespace-nowrap text-left text-xl font-black leading-6 text-[var(--rp-text)]">{timeLabel(ride.time)}</p>
             <div className="flex min-w-0 flex-wrap gap-1.5">
@@ -467,11 +769,20 @@ function DraftRidePodInvitationCard({
 
 export default function MyRidePage() {
   const { user, profile, isLoading } = useAuth();
+  const currentUserId = user?.id ?? null;
   const viewerIdentity = useMemo(() => createdHomeRideViewerIdentityFromAuth({ profile, user }), [profile, user]);
-  const createdCalendarRides = useCreatedCalendarRides(user?.id ?? null, viewerIdentity);
+  const createdCalendarRides = useCreatedCalendarRides(currentUserId, viewerIdentity);
   const { state: rideGroupsState } = useRideGroupsState();
   const today = useMemo(() => new Date(), []);
   const todayKey = dateKey(today);
+  const bookmarkSnapshot = useSyncExternalStore(
+    subscribeToMyActivityBookmarks,
+    readMyActivityBookmarkSnapshot,
+    emptyMyActivityBookmarkSnapshot,
+  );
+  const bookmarkedActivityKeys = useMemo(() => parseMyActivityBookmarkSnapshot(bookmarkSnapshot), [bookmarkSnapshot]);
+  const bookmarkedActivityKeySet = useMemo(() => new Set(bookmarkedActivityKeys), [bookmarkedActivityKeys]);
+  const [activeActivityView, setActiveActivityView] = useState<MyActivityView>("all");
   const [activeFilter, setActiveFilter] = useState<MyRideFilter>("all");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -480,11 +791,11 @@ export default function MyRidePage() {
   const myRideItems = useMemo(
     () => [
       ...createdCalendarRides,
-      ...getMyRideCalendarItems(user?.id).filter(
+      ...getMyRideCalendarItems(currentUserId).filter(
         (ride) => !createdCalendarRides.some((createdRide) => createdRide.id === ride.id),
       ),
     ],
-    [createdCalendarRides, user?.id],
+    [createdCalendarRides, currentUserId],
   );
   const activeRideItems = useMemo(
     () => myRideItems.filter((ride) => !isHistoryRide(ride, todayKey)),
@@ -498,10 +809,10 @@ export default function MyRidePage() {
   const ridesByDate = useMemo(() => ridesByDateMap(filteredItems), [filteredItems]);
   const defaultSelectedDate = useMemo(() => {
     const actionRide = filteredItems.find((ride) =>
-      getMyRideCalendarStatus({ pod: ride, currentUserId: user?.id }).isActionNeeded,
+      getMyRideCalendarStatus({ pod: ride, currentUserId }).isActionNeeded,
     );
     return actionRide?.date ?? filteredItems[0]?.date ?? todayKey;
-  }, [filteredItems, todayKey, user?.id]);
+  }, [currentUserId, filteredItems, todayKey]);
   const effectiveSelectedDate = selectedDate ?? defaultSelectedDate;
   const selectedRides = useMemo(() => {
     const rides = ridesByDate[effectiveSelectedDate] ?? [];
@@ -510,8 +821,80 @@ export default function MyRidePage() {
     );
   }, [effectiveSelectedDate, ridesByDate, sortAscending]);
   const draftInvitations = useMemo(
-    () => getDraftPodInvitationCards(rideGroupsState, user?.id),
-    [rideGroupsState, user?.id],
+    () => getDraftPodInvitationCards(rideGroupsState, currentUserId),
+    [currentUserId, rideGroupsState],
+  );
+  const rideActivityItems = useMemo<MyActivityItem[]>(
+    () =>
+      activeRideItems.map((ride) => {
+        const role = getMyRideCalendarRole(ride, currentUserId);
+        const status = getMyRideCalendarStatus({ pod: ride, currentUserId, role });
+        const key = `ride:${ride.id}`;
+        const tone = getRideTypeTone(ride);
+
+        return {
+          key,
+          id: ride.id,
+          kind: "ride" as const,
+          title: ride.route,
+          subtitle: `${selectedDateLabel(ride.date)} at ${timeLabel(ride.time)}`,
+          meta: `${tone === "ride_app" ? "Ride app" : "Taxi"} / ${status.label}`,
+          badge: `${ride.seatsFilled}/${ride.seatsTotal} seats`,
+          relationship: role === "host" ? "My ride" : "Joined ride",
+          href: `/pods/${ride.id}`,
+          tone,
+          bookmarked: bookmarkedActivityKeySet.has(key),
+          isMine: role === "host",
+          isJoined: role !== "host",
+          isInterested: false,
+        };
+      }),
+    [activeRideItems, bookmarkedActivityKeySet, currentUserId],
+  );
+  const requestActivityItems = useMemo<MyActivityItem[]>(
+    () =>
+      rideGroupsState.rideCalls
+        .map((rideCall) => {
+          const key = `request:${rideCall.id}`;
+          const interests = getRideCallInterests(rideGroupsState, rideCall.id);
+          const viewerInterest = getViewerInterest(rideGroupsState, rideCall.id, currentUserId);
+          const isMine = Boolean(currentUserId && rideCall.createdBy === currentUserId);
+          const isInterested = Boolean(viewerInterest);
+          const bookmarked = bookmarkedActivityKeySet.has(key);
+          const statusLabel = getRequestStatusLabel(rideCall, interests.length);
+
+          return {
+            key,
+            id: rideCall.id,
+            kind: "request" as const,
+            title: `${rideCall.fromLabel} -> ${rideCall.toLabel}`,
+            subtitle: rideCall.approximateTimeLabel,
+            meta: `${rideCall.creatorName} / ${rideCallRideTypeLabel(rideCall.rideType)} / ${statusLabel}`,
+            badge: `${interests.length}/${rideCall.targetPeopleCount} interested`,
+            relationship: isMine ? "My request" : isInterested ? "Interested" : "Bookmarked request",
+            href: `/ride-calls/${rideCall.id}`,
+            tone: "request" as const,
+            bookmarked,
+            isMine,
+            isJoined: viewerInterest?.status === "converted",
+            isInterested,
+          };
+        })
+        .filter((item) => item.isMine || item.isInterested || item.bookmarked),
+    [bookmarkedActivityKeySet, currentUserId, rideGroupsState],
+  );
+  const activityItems = useMemo(() => [...requestActivityItems, ...rideActivityItems], [requestActivityItems, rideActivityItems]);
+  const activityCounts = useMemo<Record<MyActivityView, number>>(
+    () => ({
+      all: activityItems.length,
+      requests: activityItems.filter((item) => item.kind === "request").length,
+      rides: activityItems.filter((item) => item.kind === "ride").length,
+      bookmarked: activityItems.filter((item) => item.bookmarked).length,
+      joined: activityItems.filter((item) => item.isJoined).length,
+      interested: activityItems.filter((item) => item.isInterested).length,
+      tracked: activityItems.filter((item) => item.bookmarked || item.isJoined || item.isInterested).length,
+    }),
+    [activityItems],
   );
 
   function changeMonth(delta: number) {
@@ -521,6 +904,13 @@ export default function MyRidePage() {
   function handleFilterChange(filter: MyRideFilter) {
     setActiveFilter(filter);
     setSelectedDate(null);
+  }
+
+  function toggleActivityBookmark(key: string) {
+    const next = bookmarkedActivityKeys.includes(key)
+      ? bookmarkedActivityKeys.filter((item) => item !== key)
+      : [...bookmarkedActivityKeys, key];
+    writeMyActivityBookmarks(next);
   }
 
   return (
@@ -557,6 +947,14 @@ export default function MyRidePage() {
               </div>
             </section>
           ) : null}
+
+          <MyActivityHub
+            items={activityItems}
+            activeView={activeActivityView}
+            counts={activityCounts}
+            onViewChange={setActiveActivityView}
+            onToggleBookmark={toggleActivityBookmark}
+          />
 
           <section className="min-w-0 overflow-hidden rounded-[24px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.065),rgba(255,255,255,0.025))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),var(--rp-shadow-soft)] min-[390px]:p-3">
             <div className="grid min-w-0 grid-cols-5 gap-1.5 min-[390px]:gap-2">
@@ -621,7 +1019,7 @@ export default function MyRidePage() {
                     rides={day ? ridesByDate[dateKey(day)] ?? [] : []}
                     today={day ? dateKey(day) === todayKey : false}
                     selected={day ? dateKey(day) === effectiveSelectedDate : false}
-                    currentUserId={user.id}
+                    currentUserId={currentUserId}
                     onSelect={setSelectedDate}
                   />
                 );
@@ -653,7 +1051,18 @@ export default function MyRidePage() {
 
             <div className="mt-4 grid gap-3">
               {selectedRides.length ? (
-                selectedRides.map((ride) => <MyRideDayPodCard key={ride.id} ride={ride} currentUserId={user.id} />)
+                selectedRides.map((ride) => {
+                  const activityKey = `ride:${ride.id}`;
+                  return (
+                    <MyRideDayPodCard
+                      key={ride.id}
+                      ride={ride}
+                      currentUserId={currentUserId}
+                      bookmarked={bookmarkedActivityKeySet.has(activityKey)}
+                      onToggleBookmark={() => toggleActivityBookmark(activityKey)}
+                    />
+                  );
+                })
               ) : (
                 <div className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-5 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
                   No pods for this date.
