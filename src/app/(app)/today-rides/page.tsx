@@ -1142,13 +1142,51 @@ function matchesRideBoardTagSearch(request: RideRequest, tagSearch: string) {
   return terms.every((term) => searchableTags.some((tag) => tag.includes(term)));
 }
 
+function normalizeRideBoardChip(chip: string) {
+  return normalizeRequestTag(chip).toLowerCase();
+}
+
+function isRideDateTomorrow(request: RideRequest) {
+  const dateLabel = request.dateLabel.trim().toLowerCase();
+  return request.departureDate === getTomorrowInputValue() || dateLabel === "tomorrow" || dateLabel.includes("tomorrow");
+}
+
+function isRideDateThisWeek(request: RideRequest) {
+  const departure = new Date(`${request.departureDate}T${request.departureTime || "00:00"}`);
+  if (Number.isNaN(departure.getTime())) return false;
+
+  const today = new Date(getTodayInputValue());
+  const endOfWeekWindow = new Date(today);
+  endOfWeekWindow.setDate(today.getDate() + 6);
+
+  return departure >= today && departure <= endOfWeekWindow;
+}
+
+function matchesRideBoardChip(request: RideRequest, chip: string | null) {
+  if (!chip) return true;
+
+  const normalizedChip = normalizeRideBoardChip(chip);
+  const signalText = getRequestSignalText(request);
+
+  if (normalizedChip === "tomorrow") return isRideDateTomorrow(request);
+  if (normalizedChip === "thisweek") return isRideDateThisWeek(request);
+  if (normalizedChip === "afterwork") return signalText.includes("after work") || getSearchableRequestTags(request).some((tag) => tag === "afterwork");
+  if (normalizedChip === "event") return matchesRideBoardCategory(request, "events");
+  if (normalizedChip === "commute") return matchesRideBoardCategory(request, "commute");
+
+  return getSearchableRequestTags(request).some((tag) => tag.includes(normalizedChip)) || signalText.includes(normalizedChip);
+}
+
 function getFilteredRideBoardRequests(
   requests: RideRequest[],
   filter: RideBoardFilter,
   districtFilter: RideBoardDistrictFilter = "all_hk",
   tagSearch = "",
+  activeChip: string | null = null,
 ) {
-  return getVisibleRequests(requests, filter, districtFilter).filter((request) => matchesRideBoardTagSearch(request, tagSearch));
+  return getVisibleRequests(requests, filter, districtFilter).filter(
+    (request) => matchesRideBoardTagSearch(request, tagSearch) && matchesRideBoardChip(request, activeChip),
+  );
 }
 
 function getVisiblePreviewRequests(requests: RideRequest[], filter: RideBoardPreviewCategory, districtFilter: RideBoardDistrictFilter = "all_hk") {
@@ -1612,8 +1650,10 @@ function RideBoardCategoryDetailView({
   totalCount,
   districtFilter,
   tagSearch,
+  activeChip,
   onDistrictFilterOpen,
   onTagSearchChange,
+  onChipSelect,
   onOpen,
   onPostClick,
   sectionRef,
@@ -1624,8 +1664,10 @@ function RideBoardCategoryDetailView({
   totalCount: number;
   districtFilter: RideBoardDistrictFilter;
   tagSearch: string;
+  activeChip: string | null;
   onDistrictFilterOpen: () => void;
   onTagSearchChange: (value: string) => void;
+  onChipSelect: (chip: string) => void;
   onOpen: (id: string) => void;
   onPostClick: () => void;
   sectionRef: RefObject<HTMLElement | null>;
@@ -1682,20 +1724,26 @@ function RideBoardCategoryDetailView({
 
       <div className="scrollbar-hide -mx-4 overflow-x-auto px-4" aria-label={`${detail.title} filters`}>
         <div className="flex min-w-max gap-2.5">
-          {detail.chips.map((chip, index) => (
-            <button
-              key={chip}
-              type="button"
-              className={cn(
-                "inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-black shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition",
-                index === 0
-                  ? styles.activeChip
-                  : "border-white/10 bg-white/[0.075] text-[var(--rp-text)] hover:border-white/20",
-              )}
-            >
-              {chip}
-            </button>
-          ))}
+          {detail.chips.map((chip, index) => {
+            const selected = activeChip ? activeChip === chip : index === 0;
+
+            return (
+              <button
+                key={chip}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => onChipSelect(chip)}
+                className={cn(
+                  "inline-flex min-h-11 items-center rounded-full border px-4 text-sm font-black shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition",
+                  selected
+                    ? styles.activeChip
+                    : "border-white/10 bg-white/[0.075] text-[var(--rp-text)] hover:border-white/20",
+                )}
+              >
+                {chip}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -2439,6 +2487,7 @@ export default function RideBoardPage() {
   const [previewCategory, setPreviewCategory] = useState<RideBoardPreviewCategory>("today");
   const [districtFilter, setDistrictFilter] = useState<RideBoardDistrictFilter>("all_hk");
   const [tagSearch, setTagSearch] = useState("");
+  const [activeChip, setActiveChip] = useState<string | null>(null);
   const [showDistrictFilter, setShowDistrictFilter] = useState(false);
   const [showPostForm, setShowPostForm] = useState(false);
   const [postFormCategory, setPostFormCategory] = useState<RideRequestCategory>(defaultFormValues.category);
@@ -2447,17 +2496,21 @@ export default function RideBoardPage() {
   const previewListRef = useRef<HTMLElement | null>(null);
   const requestListRef = useRef<HTMLElement | null>(null);
   const requestListHeadingRef = useRef<HTMLHeadingElement | null>(null);
+  const isCategoryPage = activeFilter !== "all";
+  const activeCategory = isCategoryPage ? (activeFilter as RideBoardCategory) : null;
+  const effectiveActiveChip =
+    activeCategory && activeChip && rideBoardCategoryDetails[activeCategory].chips.includes(activeChip)
+      ? activeChip
+      : null;
 
   const visibleRequests = useMemo(
-    () => getFilteredRideBoardRequests(requests, activeFilter, districtFilter, activeFilter === "all" ? "" : tagSearch),
-    [requests, activeFilter, districtFilter, tagSearch],
+    () => getFilteredRideBoardRequests(requests, activeFilter, districtFilter, activeFilter === "all" ? "" : tagSearch, effectiveActiveChip),
+    [requests, activeFilter, districtFilter, tagSearch, effectiveActiveChip],
   );
   const previewRequests = useMemo(() => getVisiblePreviewRequests(requests, previewCategory, districtFilter), [previewCategory, requests, districtFilter]);
   const previewTopRequests = useMemo(() => previewRequests.slice(0, 3), [previewRequests]);
   const previewCategoryCounts = useMemo(() => getRideBoardPreviewCounts(requests, districtFilter), [requests, districtFilter]);
   const selectedRequest = selectedRequestId ? requests.find((request) => request.id === selectedRequestId) ?? null : null;
-  const isCategoryPage = activeFilter !== "all";
-  const activeCategory = isCategoryPage ? (activeFilter as RideBoardCategory) : null;
 
   useEffect(() => {
     return () => {
@@ -2496,6 +2549,11 @@ export default function RideBoardPage() {
     window.requestAnimationFrame(() => {
       previewListRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
+  };
+
+  const handleCategoryChipSelect = (chip: string) => {
+    setActiveChip((current) => (current === chip ? null : chip));
+    focusRideList();
   };
 
   const openPostForm = (category?: RideRequestCategory) => {
@@ -2594,8 +2652,10 @@ export default function RideBoardPage() {
             totalCount={visibleRequests.length}
             districtFilter={districtFilter}
             tagSearch={tagSearch}
+            activeChip={effectiveActiveChip}
             onDistrictFilterOpen={() => setShowDistrictFilter(true)}
             onTagSearchChange={setTagSearch}
+            onChipSelect={handleCategoryChipSelect}
             onOpen={setSelectedRequestId}
             onPostClick={() => openPostForm()}
             sectionRef={requestListRef}
