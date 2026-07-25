@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowRightLeft,
+  Building2,
   CalendarDays,
   CarFront,
   ChevronDown,
@@ -13,11 +14,14 @@ import {
   CheckCircle2,
   CircleDollarSign,
   Gift,
+  Landmark,
   Plane,
   RefreshCcw,
+  Sailboat,
   ShieldCheck,
   SlidersHorizontal,
   Smartphone,
+  Sprout,
   Star,
   UsersRound,
   X,
@@ -44,6 +48,12 @@ import {
   useCreatedHomeRides,
 } from "@/lib/created-home-rides";
 import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
+import {
+  buildRideExploreHref,
+  popularRouteSummaries,
+  startingAreaSummaries,
+  type StartingAreaIconKey,
+} from "@/lib/ride-explorer";
 import { useAuth } from "@/providers/AuthProvider";
 
 type AirportDirectionFilter = "all" | "to_airport" | "from_airport";
@@ -727,8 +737,8 @@ function CategoryCard({
   const cardStyle: CSSProperties | undefined = selected ? { ...style, zIndex: 30 } : style;
   const rideCountLabel = typeof rideCount === "number" ? `${rideCount} ${rideCount === 1 ? "ride" : "rides"}` : "";
   const cardLabel = rideCountLabel
-    ? `Show ${categoryRecommendationLabels[id]} recommendations, ${rideCountLabel}`
-    : `Show ${categoryRecommendationLabels[id]} recommendations`;
+    ? `Open ${categoryRecommendationLabels[id]}, ${rideCountLabel}`
+    : `Open ${categoryRecommendationLabels[id]}`;
   const content = (
     <>
       <Image
@@ -1273,6 +1283,114 @@ function RideSearchResultCard(props: {
   return <HomeRideCard {...props} />;
 }
 
+const startingAreaIcons: Record<StartingAreaIconKey, typeof Building2> = {
+  airport: Plane,
+  building: Building2,
+  landmark: Landmark,
+  sailboat: Sailboat,
+  sprout: Sprout,
+};
+
+function HomeSectionHeader({
+  id,
+  title,
+  subtitle,
+  href,
+}: {
+  id: string;
+  title: string;
+  subtitle?: string;
+  href: string;
+}) {
+  return (
+    <div className="mb-3 flex items-end justify-between gap-3">
+      <div className="min-w-0">
+        <h2 id={id} className="text-[18px] font-black leading-tight text-[var(--rp-text)]">{title}</h2>
+        {subtitle ? <p className="mt-1 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">{subtitle}</p> : null}
+      </div>
+      <Link
+        href={href}
+        className="inline-flex min-h-8 shrink-0 items-center gap-1.5 rounded-full px-2 text-xs font-black text-[#65e6d0] transition hover:bg-[#65e6d0]/10"
+      >
+        See all
+        <ChevronRight className="h-4 w-4" />
+      </Link>
+    </div>
+  );
+}
+
+function StartingAreaSection() {
+  return (
+    <section aria-labelledby="browse-starting-area-title">
+      <HomeSectionHeader
+        id="browse-starting-area-title"
+        title="Browse by starting area"
+        subtitle="See where rides begin"
+        href={buildRideExploreHref()}
+      />
+      <div className="grid grid-cols-2 gap-2.5">
+        {startingAreaSummaries.map((area) => {
+          const Icon = startingAreaIcons[area.icon];
+
+          return (
+            <Link
+              key={area.id}
+              href={buildRideExploreHref({ from: area.queryValue })}
+              aria-label={`Browse rides from ${area.name}`}
+              className="group relative flex min-h-[94px] flex-col justify-center overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(145deg,rgba(12,26,39,0.96),rgba(5,15,24,0.98))] px-3 py-3 pr-8 text-left shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:border-[#65e6d0]/34 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-3 focus-visible:outline-[#65e6d0]"
+            >
+              <span className="flex min-w-0 items-start gap-2.5">
+                <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br ${area.accentClassName} shadow-[0_10px_22px_rgba(0,0,0,0.24)]`}>
+                  <Icon className="h-4.5 w-4.5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-black leading-tight text-white">{area.name}</span>
+                  <span className="mt-1.5 block text-[11px] font-black leading-tight text-[#65e6d0]">
+                    {area.rideCount} upcoming rides
+                  </span>
+                </span>
+              </span>
+              <ChevronRight className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/48 transition group-hover:translate-x-0.5 group-hover:text-[#65e6d0]" />
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function PopularRoutesSection() {
+  return (
+    <section aria-labelledby="popular-routes-title" className="mt-5">
+      <HomeSectionHeader id="popular-routes-title" title="Popular routes near you" href={buildRideExploreHref()} />
+      <div className="grid gap-2.5">
+        {popularRouteSummaries.map((route) => (
+          <Link
+            key={route.id}
+            href={buildRideExploreHref({ from: route.fromQuery, to: route.toQuery })}
+            aria-label={`Browse ${route.from} to ${route.to} rides`}
+            className="group grid min-h-[74px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-white/10 bg-[linear-gradient(145deg,rgba(11,25,38,0.96),rgba(5,15,24,0.98))] px-3 py-3 shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:border-[var(--rp-primary)]/46 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-3 focus-visible:outline-[var(--rp-primary)]"
+          >
+            <span className="min-w-0">
+              <span className="flex min-w-0 items-start gap-2">
+                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${route.accentClassName} shadow-[0_0_14px_rgba(101,230,208,0.42)]`} />
+                <span className="text-sm font-black leading-tight text-white">
+                  {route.from} <span className="text-[#65e6d0]">-&gt;</span> {route.to}
+                </span>
+              </span>
+              <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[var(--rp-primary)]/24 bg-[var(--rp-primary)]/10 px-2 py-1 text-[11px] font-black text-[var(--rp-primary)]">
+                <UsersRound className="h-3.5 w-3.5" />
+                {route.rideCount} rides
+              </span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-white/48 transition group-hover:translate-x-0.5 group-hover:text-[var(--rp-primary)]" />
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function HomeBottomActionCards() {
   return (
     <section className="mx-auto w-full max-w-[560px]" aria-labelledby="home-bottom-actions-title">
@@ -1312,7 +1430,7 @@ function HomeBottomActionCards() {
             <CarFront className="h-5 w-5" />
           </span>
           <span className="grid justify-items-center">
-            <span className="block whitespace-nowrap text-[15px] font-black leading-tight text-white min-[390px]:text-base">Want to offer a ride?</span>
+            <span className="block max-w-[116px] text-center text-[15px] font-black leading-tight text-white min-[390px]:max-w-[132px] min-[390px]:text-base">Want to offer a ride?</span>
             <span className="mt-2 inline-flex items-center gap-1 text-sm font-black text-[var(--rp-primary)]">
               Create a Ride
               <ChevronRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
@@ -2524,8 +2642,6 @@ function HomePageContent() {
   }
 
   function handleCategoryCardSelect(tab: HomeCategoryCardId) {
-    setExpandedCategoryId((current) => (current === tab ? null : tab));
-
     if (tab !== "airport" && (airportDirectionFilter !== "all" || airportFlightQuery)) {
       setAirportDirectionFilter("all");
       setAirportFlightQuery("");
@@ -2533,10 +2649,8 @@ function HomePageContent() {
       setToDistrict("All districts");
     }
 
-    handleTabChange(tab);
-    window.requestAnimationFrame(() => {
-      scrollElementToTop(recommendationsRef.current);
-    });
+    setExpandedCategoryId(null);
+    openCategoryResultsScreen(categoryResultScreenByCardId[tab]);
   }
 
   function handleCategoryBoardClick(event: MouseEvent<HTMLDivElement>) {
@@ -2870,69 +2984,11 @@ function HomePageContent() {
         </div>
         ) : null}
 
-        <div className="relative z-10 mx-auto mt-3 w-full max-w-[704px] px-4 sm:px-6 lg:px-0">
-          <RideTypeInfoStrip />
+        <div className="relative z-10 mx-auto mt-4 w-full max-w-[704px] px-4 sm:px-6 lg:px-0">
+          <StartingAreaSection />
+          <PopularRoutesSection />
         </div>
       </section>
-
-      {showRideRecommendations ? (
-        <section ref={recommendationsRef} className="relative mx-auto mt-4 w-full max-w-[712px] scroll-mt-[88px] px-4 pb-4 sm:px-6 lg:px-4 min-[720px]:pb-64">
-          <div className="mb-4 flex items-center justify-between gap-3">
-            {showScheduleRecommendationHeader ? (
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[12px] border border-[color-mix(in_srgb,var(--rp-primary)_42%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_10%,transparent)] text-[var(--rp-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-                  <CalendarDays className="h-5 w-5" />
-                </span>
-                <span className="min-w-0">
-                  <h1 className="truncate text-base font-black tracking-tight text-[var(--rp-text)]">Schedule rides for you</h1>
-                  <span className="mt-0.5 block truncate text-xs font-bold text-[var(--rp-muted-strong)]">One-off trips ready to join</span>
-                </span>
-              </div>
-            ) : (
-              <div className="min-w-0">
-                <h1 className="whitespace-nowrap text-base font-black tracking-tight text-[var(--rp-text)]">Recommended for you</h1>
-                <span className="mt-1 inline-flex max-w-full items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_35%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] px-3 py-1 text-[11px] font-black text-[var(--rp-primary)]">
-                  {activeRecommendationLabel}
-                </span>
-              </div>
-            )}
-          </div>
-
-          <div className="grid gap-3">
-            {visibleRides.length > 0 ? (
-              previewRecommendationRides.map((ride) => (
-                <RideSearchResultCard
-                  key={ride.id}
-                  ride={ride}
-                  currentUserAvatar={currentUserAvatar}
-                  isAuthenticated={isAuthenticated}
-                  sourceTab={activeTab}
-                />
-              ))
-            ) : (
-              <EmptyRides tab={activeTab} rideModeFilter={rideModeFilter} hasAnyRides={filteredRides.length > 0} />
-            )}
-          </div>
-          {canSeeMoreRecommendations ? (
-            <div className="mt-3 grid gap-2">
-              <button
-                type="button"
-                onClick={handleRecommendationSeeMore}
-                className={cn(
-                  "group relative inline-flex min-h-[58px] w-full items-center justify-center rounded-[24px] px-14 text-center text-lg font-black transition focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]",
-                  "border border-transparent bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] text-[#07131C] shadow-[0_8px_22px_rgba(255,193,55,0.25)] hover:brightness-105",
-                )}
-              >
-                <SeeMoreCtaIcon className="absolute left-5 h-5 w-5 shrink-0" />
-                <span className="min-w-0 truncate">{seeMoreRideLabel}</span>
-                <span className="absolute right-5 inline-flex items-center">
-                  <ChevronRight className="h-6 w-6 transition group-hover:translate-x-0.5" />
-                </span>
-              </button>
-            </div>
-          ) : null}
-        </section>
-      ) : null}
 
       <section className="relative z-10 mx-auto mt-5 w-full max-w-[712px] px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-4">
         <HomeBottomActionCards />
