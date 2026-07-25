@@ -1442,6 +1442,9 @@ function getMapboxAccessToken() {
   return process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim() || process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim() || "";
 }
 
+const hongKongSearchBbox = "113.825,22.13,114.47,22.57";
+const hongKongSearchProximity = "114.1694,22.3193";
+
 function getMapboxFeatureCoordinates(feature: MapboxFeature): RouteCoordinates | null {
   const longitude = feature.properties?.coordinates?.longitude;
   const latitude = feature.properties?.coordinates?.latitude;
@@ -1490,9 +1493,11 @@ function makeForwardGeocodeUrl(query: string, token: string) {
   const params = new URLSearchParams({
     access_token: token,
     autocomplete: "true",
+    bbox: hongKongSearchBbox,
+    country: "HK",
     language: "en",
     limit: "5",
-    proximity: "ip",
+    proximity: hongKongSearchProximity,
     q: query,
     types: "address,poi,place,locality,neighborhood",
   });
@@ -2047,7 +2052,7 @@ function MapboxPlaceField({
           onChange={onChange}
         />
         <p className="px-1 text-xs font-bold leading-5 text-slate-500">
-          Type the pickup or dropoff address manually.
+          Live HK address search needs the map service connection. Type the address manually for now.
         </p>
       </div>
     );
