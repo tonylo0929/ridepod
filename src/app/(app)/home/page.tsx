@@ -2924,13 +2924,13 @@ function HomePageContent() {
                 type="button"
                 onClick={handleRecommendationSeeMore}
                 className={cn(
-                  "group inline-flex min-h-[58px] w-full items-center justify-center rounded-[24px] px-5 text-lg font-black transition focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]",
-                  "gap-3 border border-transparent bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] text-[#07131C] shadow-[0_8px_22px_rgba(255,193,55,0.25)] hover:brightness-105",
+                  "group relative inline-flex min-h-[58px] w-full items-center justify-center rounded-[24px] px-14 text-center text-lg font-black transition focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]",
+                  "border border-transparent bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] text-[#07131C] shadow-[0_8px_22px_rgba(255,193,55,0.25)] hover:brightness-105",
                 )}
               >
-                <SeeMoreCtaIcon className="h-5 w-5 shrink-0" />
-                <span className="min-w-0 flex-1 truncate text-left">{seeMoreRideLabel}</span>
-                <span className="inline-flex items-center gap-1.5">
+                <SeeMoreCtaIcon className="absolute left-5 h-5 w-5 shrink-0" />
+                <span className="min-w-0 truncate">{seeMoreRideLabel}</span>
+                <span className="absolute right-5 inline-flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full bg-[#07131C]" />
                   <ChevronRight className="h-6 w-6 transition group-hover:translate-x-0.5" />
                 </span>
