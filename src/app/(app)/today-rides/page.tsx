@@ -292,7 +292,7 @@ const rideBoardCategoryDetails: Record<RideBoardCategory, RideBoardCategoryDetai
     image: "/images/ride-board/schedule-later-plan-ahead-20260724.jpg",
     imagePosition: "center center",
     icon: CalendarDays,
-    chips: ["Tomorrow", "This Week", "Commute", "Events"],
+    chips: ["#Tomorrow", "#ThisWeek", "#AfterWork", "#Event"],
     listHeading: "Upcoming scheduled requests",
     ctaLabel: "Post scheduled request",
     accent: "indigo",
