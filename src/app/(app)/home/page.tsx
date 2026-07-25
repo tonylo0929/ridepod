@@ -2925,8 +2925,7 @@ function HomePageContent() {
               >
                 <SeeMoreCtaIcon className="absolute left-5 h-5 w-5 shrink-0" />
                 <span className="min-w-0 truncate">{seeMoreRideLabel}</span>
-                <span className="absolute right-5 inline-flex items-center gap-1.5">
-                  <span className="h-2.5 w-2.5 rounded-full bg-[#07131C]" />
+                <span className="absolute right-5 inline-flex items-center">
                   <ChevronRight className="h-6 w-6 transition group-hover:translate-x-0.5" />
                 </span>
               </button>
