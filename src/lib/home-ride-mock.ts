@@ -463,7 +463,7 @@ const recurringRideAppSearchRides: HomeRide[] = [
     airportTerminal: "Terminal 1",
     status: "available",
     quoteStatus: "quote_pending",
-    taxiType: "Ride app",
+    taxiType: "Uber",
     platformFee: 5,
     splitMethod: "Even split",
     paymentMethod: "Outside RidePod after each ride",

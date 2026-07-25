@@ -1586,6 +1586,8 @@ function CategoryCompactResultCard({
         ? "From airport"
         : null;
   const isAirportRide = ride.rideKind === "airport" || Boolean(ride.airportDirection);
+  const isRideAppRide = isRideAppSelfSettle(ride);
+  const airportRideAppProviderLabel = isAirportRide && isRideAppRide ? getRideAppProviderLabel(ride) ?? "Ride app" : null;
   const isRecurringRide = ride.rideKind === "recurring" || ride.is_recurring === true;
   const TypeIcon = isAirportRide ? Plane : isRecurringRide ? RefreshCcw : CarFront;
   const typeIconLabel = isAirportRide ? "Airport ride" : isRecurringRide ? "Recurring ride" : "Ride";
@@ -1593,14 +1595,22 @@ function CategoryCompactResultCard({
   return (
     <Link
       href={cardHref}
-      className="grid min-h-[82px] grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[color-mix(in_srgb,var(--rp-primary)_52%,var(--rp-border))] bg-[linear-gradient(145deg,rgba(7,16,24,0.98),rgba(18,31,44,0.92))] px-3 py-3 shadow-[0_16px_34px_rgba(0,0,0,0.28)] transition hover:border-[var(--rp-primary)] hover:shadow-[0_18px_40px_color-mix(in_srgb,var(--rp-primary)_14%,transparent)] min-[390px]:grid-cols-[44px_minmax(0,1fr)_auto] min-[390px]:px-4"
+      className={cn(
+        "group relative grid min-h-[92px] grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 overflow-hidden rounded-[20px] border px-3 py-3 shadow-[0_16px_34px_rgba(0,0,0,0.28)] transition min-[390px]:grid-cols-[46px_minmax(0,1fr)_auto] min-[390px]:px-4",
+        isAirportRide
+          ? "border-[#f6c453]/62 bg-[radial-gradient(circle_at_14%_18%,rgba(255,217,104,0.16),transparent_32%),linear-gradient(145deg,rgba(8,17,25,0.99),rgba(15,29,43,0.95))] shadow-[0_18px_42px_rgba(246,196,83,0.10)] hover:border-[#ffd968] hover:shadow-[0_20px_46px_rgba(246,196,83,0.16)]"
+          : "border-[color-mix(in_srgb,var(--rp-primary)_52%,var(--rp-border))] bg-[linear-gradient(145deg,rgba(7,16,24,0.98),rgba(18,31,44,0.92))] hover:border-[var(--rp-primary)] hover:shadow-[0_18px_40px_color-mix(in_srgb,var(--rp-primary)_14%,transparent)]",
+      )}
     >
+      {isAirportRide ? (
+        <span className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-[#ffd968]/10 blur-2xl transition group-hover:bg-[#ffd968]/16" />
+      ) : null}
       <span
         aria-label={typeIconLabel}
         className={cn(
-          "grid h-9 w-9 shrink-0 place-items-center rounded-full border shadow-[0_10px_22px_rgba(0,0,0,0.24)] min-[390px]:h-10 min-[390px]:w-10",
+          "relative z-10 grid h-10 w-10 shrink-0 place-items-center rounded-full border shadow-[0_10px_22px_rgba(0,0,0,0.24)] min-[390px]:h-11 min-[390px]:w-11",
           isAirportRide
-            ? "border-[#f6d7ad]/55 bg-[#f6d7ad]/18 text-[#ffe5bd]"
+            ? "border-[#ffd968]/60 bg-[linear-gradient(180deg,rgba(255,217,104,0.24),rgba(246,196,83,0.10))] text-[#ffd968]"
             : isRecurringRide
               ? "border-emerald-200/55 bg-emerald-400/16 text-emerald-200"
               : "border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]",
@@ -1608,32 +1618,48 @@ function CategoryCompactResultCard({
       >
         <TypeIcon className="h-5 w-5 stroke-[2.3]" />
       </span>
-      <div className="min-w-0">
-        <div className="flex min-w-0 flex-wrap items-center gap-2">
-          {airportDirectionLabel ? (
-            <span className="inline-flex min-h-6 shrink-0 items-center rounded-full border border-sky-300/42 bg-sky-400/14 px-2.5 text-[11px] font-black text-sky-200">
-              {airportDirectionLabel}
-            </span>
-          ) : null}
-          <h2 className="min-w-0 flex-1 truncate text-[15px] font-black leading-5 text-[var(--rp-text)] min-[390px]:text-base">
-            {ride.fromLabel} <span className="text-[var(--rp-primary)]">{"\u2192"}</span> {ride.toLabel}
-          </h2>
-        </div>
+      <div className="relative z-10 min-w-0">
+        {airportDirectionLabel || airportRideAppProviderLabel ? (
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            {airportDirectionLabel ? (
+              <span className="inline-flex min-h-6 shrink-0 items-center gap-1.5 rounded-full border border-[#ffd968]/44 bg-[#ffd968]/12 px-2.5 text-[11px] font-black text-[#ffe7a3]">
+                <Plane className="h-3.5 w-3.5 stroke-[2.5]" />
+                {airportDirectionLabel}
+              </span>
+            ) : null}
+            {airportRideAppProviderLabel ? (
+              <span className="inline-flex min-h-6 shrink-0 items-center gap-1.5 rounded-full border border-cyan-300/36 bg-cyan-300/12 px-2.5 text-[11px] font-black text-cyan-100">
+                <Smartphone className="h-3.5 w-3.5 stroke-[2.5]" />
+                {airportRideAppProviderLabel}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+        <h2 className={cn("min-w-0 truncate text-[15px] font-black leading-5 text-[var(--rp-text)] min-[390px]:text-base", airportDirectionLabel || airportRideAppProviderLabel ? "mt-1.5" : "")}>
+          {ride.fromLabel} <span className="text-[var(--rp-primary)]">{"\u2192"}</span> {ride.toLabel}
+        </h2>
         <p className="mt-1 truncate text-xs font-bold leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-sm">
           {ride.dateLabel} - {ride.timeLabel}
         </p>
         <div className="mt-1.5 flex min-w-0 items-center gap-2">
           <ScheduleRideParticipantStack ride={ride} currentUserAvatar={currentUserAvatar} />
-          <span className="truncate text-xs font-black leading-4 text-sky-300 min-[390px]:text-sm">
+          <span className={cn("truncate text-xs font-black leading-4 min-[390px]:text-sm", isAirportRide ? "text-cyan-200" : "text-sky-300")}>
             HK${ride.pricePerPerson} / seat
           </span>
         </div>
       </div>
-      <div className="grid shrink-0 justify-items-end gap-2 border-l border-white/10 pl-3">
-        <span className="inline-flex min-h-8 items-center rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_52%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] px-3 text-xs font-black text-[var(--rp-primary)]">
+      <div className={cn("relative z-10 grid shrink-0 justify-items-end gap-2 border-l pl-3", isAirportRide ? "border-[#f6c453]/18" : "border-white/10")}>
+        <span
+          className={cn(
+            "inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-black",
+            isAirportRide
+              ? "border-[#ffd968]/42 bg-[#ffd968]/12 text-[#ffd968]"
+              : "border-[color-mix(in_srgb,var(--rp-primary)_52%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] text-[var(--rp-primary)]",
+          )}
+        >
           {seatLabel}
         </span>
-        <ChevronRight className="h-4 w-4 text-[var(--rp-muted-strong)]" />
+        <ChevronRight className={cn("h-4 w-4 transition group-hover:translate-x-0.5", isAirportRide ? "text-[#ffd968]" : "text-[var(--rp-muted-strong)]")} />
       </div>
     </Link>
   );
