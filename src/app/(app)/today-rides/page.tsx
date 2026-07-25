@@ -1230,7 +1230,7 @@ function getRideBoardDisplayTags(request: RideRequest) {
 function getActionState(request: RideRequest) {
   if (request.status === "closed") return { label: "Closed", disabled: true, icon: Lock };
   if (request.status === "expired") return { label: "Expired", disabled: true, icon: Clock3 };
-  if (request.userInterested) return { label: "Interested", disabled: true, icon: CheckCircle2 };
+  if (request.userInterested) return { label: "Withdraw interest", disabled: false, icon: X };
   return { label: "I'm interested", disabled: false, icon: MessageCircle };
 }
 
@@ -2100,9 +2100,9 @@ function RideRequestDetailModal({
               "inline-flex min-h-[54px] w-full items-center justify-center gap-2 rounded-[18px] px-5 text-base font-black transition",
               request.userInterested
                 ? accentClass(
-                    "border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]",
-                    "border border-[#60A5FA]/48 bg-[#60A5FA]/14 text-[#93C5FD]",
-                    "border border-[rgba(152,251,203,0.32)] bg-[rgba(152,251,203,0.12)] text-[#98FBCB]",
+                    "border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)] hover:bg-[var(--rp-primary)]/20",
+                    "border border-[#60A5FA]/48 bg-[#60A5FA]/14 text-[#93C5FD] hover:bg-[#60A5FA]/20",
+                    "border border-[rgba(152,251,203,0.32)] bg-[rgba(152,251,203,0.12)] text-[#98FBCB] hover:bg-[rgba(152,251,203,0.18)]",
                   )
                 : actionState.disabled
                   ? "cursor-not-allowed border border-white/10 bg-white/[0.05] text-[var(--rp-muted)]"
@@ -2563,20 +2563,25 @@ export default function RideBoardPage() {
   };
 
   const handleInterested = (requestId: string) => {
+    const selectedRequest = requests.find((request) => request.id === requestId);
+    if (!selectedRequest || selectedRequest.status === "closed" || selectedRequest.status === "expired") return;
+
+    const isWithdrawing = selectedRequest.userInterested === true;
+
     setRequests((currentRequests) =>
       currentRequests.map((request) => {
-        if (request.id !== requestId || request.userInterested || request.status === "closed" || request.status === "expired") {
+        if (request.id !== requestId || request.status === "closed" || request.status === "expired") {
           return request;
         }
 
         return {
           ...request,
-          interestedCount: request.interestedCount + 1,
-          userInterested: true,
+          interestedCount: request.userInterested ? Math.max(0, request.interestedCount - 1) : request.interestedCount + 1,
+          userInterested: !request.userInterested,
         };
       }),
     );
-    showToast("You're interested. We'll notify you if this ride forms.");
+    showToast(isWithdrawing ? "Interest withdrawn." : "You're interested. We'll notify you if this ride forms.");
   };
 
   const handlePostSubmit = (values: RideRequestFormValues) => {
