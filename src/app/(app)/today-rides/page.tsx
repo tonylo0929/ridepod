@@ -1234,6 +1234,39 @@ function getActionState(request: RideRequest) {
   return { label: "I'm interested", disabled: false, icon: MessageCircle };
 }
 
+function getHostTrustProfile(host: RideRequestHost) {
+  const hostReviews = Math.max(5, Math.round(host.rideCount * 0.32));
+  const riderReviews = Math.max(6, Math.round(host.rideCount * 0.56));
+  const hostCompleted = Math.max(2, Math.round(host.rideCount * 0.3));
+  const riderCompleted = Math.max(3, host.rideCount - hostCompleted);
+  const hostReliability = host.rating >= 4.9 ? 96 : host.rating >= 4.8 ? 94 : 92;
+  const riderReliability = host.rating >= 4.9 ? 95 : host.rating >= 4.8 ? 93 : 91;
+  const hostNoShows = host.rating >= 4.8 ? 0 : 1;
+  const riderNoShows = host.rating >= 4.85 ? 0 : 1;
+
+  return {
+    memberSince: "2026",
+    host: {
+      rating: host.rating,
+      reviews: hostReviews,
+      reliability: hostReliability,
+      completed: hostCompleted,
+      cancellations: host.rating >= 4.9 ? 0 : 1,
+      noShows: hostNoShows,
+      tags: ["Well organised", "Responsive", "Clear instructions", "Fair cost split"],
+    },
+    rider: {
+      rating: Math.max(4.6, Number((host.rating - 0.1).toFixed(1))),
+      reviews: riderReviews,
+      reliability: riderReliability,
+      completed: riderCompleted,
+      cancellations: host.rideCount > 12 ? 1 : 0,
+      noShows: riderNoShows,
+      tags: ["On time", "Responsive", "Friendly", "Reliable"],
+    },
+  };
+}
+
 function PostRideRequestButton({
   onClick,
   compact = false,
@@ -1908,11 +1941,13 @@ function RideRequestDetailModal({
   variant,
   onClose,
   onInterested,
+  onHostOpen,
 }: {
   request: RideRequest;
   variant?: RideBoardPreviewCategory;
   onClose: () => void;
   onInterested: (id: string) => void;
+  onHostOpen: () => void;
 }) {
   const actionState = getActionState(request);
   const ActionIcon = actionState.icon;
@@ -2049,7 +2084,11 @@ function RideRequestDetailModal({
             </dl>
           </div>
 
-          <div className="rounded-[18px] border border-white/10 bg-white/[0.055] p-4">
+          <button
+            type="button"
+            onClick={onHostOpen}
+            className="group w-full rounded-[18px] border border-white/10 bg-white/[0.055] p-4 text-left transition hover:border-[var(--rp-primary)]/40 hover:bg-white/[0.08] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[rgba(242,193,91,0.75)]"
+          >
             <div className="flex items-center gap-3">
               <span
                 className={cn(
@@ -2070,6 +2109,7 @@ function RideRequestDetailModal({
                   {request.host.rating.toFixed(1)} rating, {request.host.rideCount} rides
                 </p>
               </div>
+              <ChevronRight className={cn("h-5 w-5 shrink-0 transition group-hover:translate-x-0.5", accentClass("text-[var(--rp-primary)]", "text-[#93C5FD]", "text-[#98FBCB]"))} />
             </div>
             <div
               className={cn(
@@ -2084,7 +2124,7 @@ function RideRequestDetailModal({
               <ShieldCheck className="h-4 w-4" />
               {request.host.trustLabel}
             </div>
-          </div>
+          </button>
 
           <p className="rounded-[16px] border border-white/10 bg-[#06111d]/78 px-4 py-3 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
             {request.note}
@@ -2128,6 +2168,223 @@ function RideRequestDetailModal({
               Message / View chat
             </button>
           ) : null}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function HostTrustSummaryCard({
+  title,
+  tone,
+  rating,
+  reviews,
+  reliability,
+  completed,
+  noShows,
+  tags,
+}: {
+  title: string;
+  tone: "host" | "rider";
+  rating: number;
+  reviews: number;
+  reliability: number;
+  completed: number;
+  noShows: number;
+  tags: string[];
+}) {
+  const isHost = tone === "host";
+
+  return (
+    <article className="rounded-[18px] border border-white/10 bg-white/[0.055] p-4 shadow-[0_12px_30px_rgba(0,0,0,0.22)]">
+      <div className="flex items-start gap-3">
+        <span
+          className={cn(
+            "grid h-11 w-11 shrink-0 place-items-center rounded-full border",
+            isHost
+              ? "border-[#7aa7ff]/28 bg-[#7aa7ff]/14 text-[#bcd4ff]"
+              : "border-[#98FBCB]/26 bg-[#98FBCB]/12 text-[#b8ffdc]",
+          )}
+        >
+          {isHost ? <ShieldCheck className="h-5 w-5" /> : <UserRound className="h-5 w-5" />}
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-base font-black text-[var(--rp-text)]">{title}</h3>
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-bold text-[var(--rp-muted-strong)]">
+            <span className="inline-flex items-center gap-1">
+              {rating.toFixed(1)}
+              <Star className="h-3.5 w-3.5 fill-[var(--rp-primary)] text-[var(--rp-primary)]" />
+            </span>
+            <span>{reviews} reviews</span>
+          </p>
+          <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+            {reliability}% reliable - {completed} completed rides - {noShows} no-shows
+          </p>
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {tags.map((tag) => (
+          <span
+            key={`${title}-${tag}`}
+            className={cn(
+              "inline-flex min-h-7 items-center rounded-full border px-2.5 text-[11px] font-black",
+              isHost
+                ? "border-[#7aa7ff]/18 bg-[#7aa7ff]/10 text-[#caddff]"
+                : "border-[#98FBCB]/18 bg-[#98FBCB]/10 text-[#c8ffe3]",
+            )}
+          >
+            {tag}
+          </span>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+function HostTrustRecordPanel({
+  title,
+  tone,
+  reliability,
+  completed,
+  cancellations,
+  noShows,
+  rating,
+  reviews,
+}: {
+  title: string;
+  tone: "host" | "rider";
+  reliability: number;
+  completed: number;
+  cancellations: number;
+  noShows: number;
+  rating: number;
+  reviews: number;
+}) {
+  const isHost = tone === "host";
+  const recordRows = [
+    ["Completed rides", completed],
+    ["Confirmed cancellations", cancellations],
+    ["No-shows", noShows],
+  ] as const;
+
+  return (
+    <section
+      className={cn(
+        "rounded-[18px] border bg-white/[0.045] p-4",
+        isHost ? "border-[#7aa7ff]/22" : "border-[#98FBCB]/22",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span
+            className={cn(
+              "grid h-10 w-10 shrink-0 place-items-center rounded-full border",
+              isHost
+                ? "border-[#7aa7ff]/28 bg-[#7aa7ff]/14 text-[#bcd4ff]"
+                : "border-[#98FBCB]/26 bg-[#98FBCB]/12 text-[#b8ffdc]",
+            )}
+          >
+            {isHost ? <ShieldCheck className="h-5 w-5" /> : <UserRound className="h-5 w-5" />}
+          </span>
+          <div>
+            <h3 className="text-base font-black text-[var(--rp-text)]">{title}</h3>
+            <p className={cn("mt-1 text-xs font-black", isHost ? "text-[#bcd4ff]" : "text-[#b8ffdc]")}>
+              {reliability}% reliability
+            </p>
+            <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              Based on confirmed rides where this member was {isHost ? "the host" : "a rider"}.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <dl className="mt-3 overflow-hidden rounded-[14px] border border-white/10 bg-black/18">
+        {recordRows.map(([label, value]) => (
+          <div key={label} className="flex min-h-9 items-center justify-between gap-3 border-b border-white/10 px-3 last:border-b-0">
+            <dt className="text-xs font-bold text-[var(--rp-muted-strong)]">{label}</dt>
+            <dd className="text-sm font-black text-[var(--rp-text)]">{value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div className="mt-3 flex items-center justify-between gap-3">
+        <p className="text-xs font-bold text-[var(--rp-muted-strong)]">
+          Reviews as {isHost ? "a host" : "a rider"}:{" "}
+          <span className="font-black text-[var(--rp-text)]">{rating.toFixed(1)}</span>{" "}
+          <Star className="inline h-3.5 w-3.5 fill-[var(--rp-primary)] text-[var(--rp-primary)]" /> from {reviews} reviews
+        </p>
+        <button
+          type="button"
+          className={cn(
+            "shrink-0 rounded-full border px-3 py-2 text-[11px] font-black transition hover:bg-white/[0.08]",
+            isHost
+              ? "border-[#7aa7ff]/34 text-[#caddff]"
+              : "border-[#98FBCB]/34 text-[#c8ffe3]",
+          )}
+        >
+          View all
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function RideHostTrustModal({
+  request,
+  onClose,
+}: {
+  request: RideRequest;
+  onClose: () => void;
+}) {
+  const profile = getHostTrustProfile(request.host);
+
+  return (
+    <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/78 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-8 backdrop-blur-md sm:grid sm:place-items-center sm:py-8">
+      <button type="button" aria-label="Close host trust profile" className="fixed inset-0 cursor-default" onClick={onClose} />
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="host-trust-profile-title"
+        className="relative z-10 mx-auto w-full max-w-md rounded-[26px] border border-[rgba(152,251,203,0.26)] bg-[linear-gradient(180deg,#0d1824,#07111a)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.6),0_0_48px_rgba(52,233,206,0.08)]"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)]/32 bg-[var(--rp-primary)]/12 text-xl font-black text-[var(--rp-primary)]">
+              {request.host.name.charAt(0).toUpperCase()}
+            </span>
+            <div className="min-w-0">
+              <h2 id="host-trust-profile-title" className="truncate text-2xl font-black leading-tight text-[var(--rp-text)]">
+                {request.host.name}
+              </h2>
+              <p className="mt-1 text-sm font-bold text-[var(--rp-muted-strong)]">Member since {profile.memberSince}</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close host trust profile"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="mt-4 inline-flex min-h-9 items-center gap-2 rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/12 px-3 text-xs font-black text-[var(--rp-primary)]">
+          <ShieldCheck className="h-4 w-4" />
+          {request.host.trustLabel}
+        </div>
+
+        <div className="mt-5">
+          <p className="text-left text-xs font-black uppercase tracking-[0.14em] text-[#98FBCB]">Trust & Ride History</p>
+          <div className="mt-3 grid gap-3">
+            <HostTrustSummaryCard title="As Host" tone="host" {...profile.host} />
+            <HostTrustSummaryCard title="As Rider" tone="rider" {...profile.rider} />
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3">
+          <HostTrustRecordPanel title="Host record" tone="host" {...profile.host} />
+          <HostTrustRecordPanel title="Rider record" tone="rider" {...profile.rider} />
         </div>
       </section>
     </div>
@@ -2484,6 +2741,7 @@ export default function RideBoardPage() {
   const activeFilter = routeFilter;
   const [requests, setRequests] = useState<RideRequest[]>(initialRideRequests);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [selectedHostRequestId, setSelectedHostRequestId] = useState<string | null>(null);
   const [previewCategory, setPreviewCategory] = useState<RideBoardPreviewCategory>("today");
   const [districtFilter, setDistrictFilter] = useState<RideBoardDistrictFilter>("all_hk");
   const [tagSearch, setTagSearch] = useState("");
@@ -2511,6 +2769,7 @@ export default function RideBoardPage() {
   const previewTopRequests = useMemo(() => previewRequests.slice(0, 3), [previewRequests]);
   const previewCategoryCounts = useMemo(() => getRideBoardPreviewCounts(requests, districtFilter), [requests, districtFilter]);
   const selectedRequest = selectedRequestId ? requests.find((request) => request.id === selectedRequestId) ?? null : null;
+  const selectedHostRequest = selectedHostRequestId ? requests.find((request) => request.id === selectedHostRequestId) ?? null : null;
 
   useEffect(() => {
     return () => {
@@ -2703,9 +2962,16 @@ export default function RideBoardPage() {
         <RideRequestDetailModal
           request={selectedRequest}
           variant={activeCategory === "scheduled" ? "schedule_later" : activeCategory === "today" ? "today" : activeCategory ? undefined : previewCategory}
-          onClose={() => setSelectedRequestId(null)}
+          onClose={() => {
+            setSelectedRequestId(null);
+            setSelectedHostRequestId(null);
+          }}
           onInterested={handleInterested}
+          onHostOpen={() => setSelectedHostRequestId(selectedRequest.id)}
         />
+      ) : null}
+      {selectedHostRequest ? (
+        <RideHostTrustModal request={selectedHostRequest} onClose={() => setSelectedHostRequestId(null)} />
       ) : null}
       {showPostForm ? (
         <PostRideRequestForm
