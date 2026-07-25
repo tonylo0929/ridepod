@@ -1858,6 +1858,7 @@ function RideRequestDetailModal({
   const actionState = getActionState(request);
   const ActionIcon = actionState.icon;
   const tags = getRequestTags(request);
+  const isTodayRequest = isRideDateToday(request);
 
   return (
     <div className="fixed inset-0 z-[90] overflow-y-auto bg-black/72 px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-10 backdrop-blur-sm sm:grid sm:place-items-center sm:py-8">
@@ -1866,11 +1867,23 @@ function RideRequestDetailModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="ride-request-detail-title"
-        className="relative z-10 mx-auto w-full max-w-md rounded-[26px] border border-[rgba(152,251,203,0.28)] bg-[linear-gradient(180deg,#0c1824,#07111a)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.55)]"
+        className={cn(
+          "relative z-10 mx-auto w-full max-w-md rounded-[26px] border bg-[linear-gradient(180deg,#0c1824,#07111a)] p-5 shadow-[0_28px_80px_rgba(0,0,0,0.55)]",
+          isTodayRequest
+            ? "border-[var(--rp-primary)]/45 shadow-[0_28px_80px_rgba(0,0,0,0.55),0_0_38px_rgba(242,193,91,0.12)]"
+            : "border-[rgba(152,251,203,0.28)]",
+        )}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-left text-xs font-black uppercase tracking-[0.14em] text-[#98FBCB]">Ride request</p>
+            <p
+              className={cn(
+                "text-left text-xs font-black uppercase tracking-[0.14em]",
+                isTodayRequest ? "text-[var(--rp-primary)]" : "text-[#98FBCB]",
+              )}
+            >
+              {isTodayRequest ? "Today Request" : "Ride Request"}
+            </p>
             <h2 id="ride-request-detail-title" className="mt-2 text-left text-2xl font-black leading-tight text-[var(--rp-text)]">
               {request.from} -&gt; {request.to}
             </h2>
@@ -1906,7 +1919,12 @@ function RideRequestDetailModal({
                 {tags.map((tag) => (
                   <span
                     key={`${request.id}-detail-${tag}`}
-                    className="inline-flex min-h-7 items-center rounded-full border border-[#34e9ce]/30 bg-[#34e9ce]/10 px-3 text-xs font-black text-[#98FBCB]"
+                    className={cn(
+                      "inline-flex min-h-7 items-center rounded-full border px-3 text-xs font-black",
+                      isTodayRequest
+                        ? "border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]"
+                        : "border-[#34e9ce]/30 bg-[#34e9ce]/10 text-[#98FBCB]",
+                    )}
                   >
                     {tag}
                   </span>
@@ -1916,21 +1934,25 @@ function RideRequestDetailModal({
 
             <dl className="mt-4 grid gap-3 text-left">
               <div>
-                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[#98FBCB]">{request.extraLabel ?? "Request details"}</dt>
+                <dt className={cn("text-[11px] font-black uppercase tracking-[0.14em]", isTodayRequest ? "text-[var(--rp-primary)]" : "text-[#98FBCB]")}>
+                  {request.extraLabel ?? "Request details"}
+                </dt>
                 <dd className="mt-1 text-sm font-bold leading-5 text-[var(--rp-text)]">{request.detailLine}</dd>
               </div>
               <div>
-                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[#98FBCB]">Interested users</dt>
+                <dt className={cn("text-[11px] font-black uppercase tracking-[0.14em]", isTodayRequest ? "text-[var(--rp-primary)]" : "text-[#98FBCB]")}>
+                  Interested users
+                </dt>
                 <dd className="mt-1 text-sm font-bold leading-5 text-[var(--rp-text)]">
                   {getInterestedLabel(request.interestedCount)} of {request.maxPeople} target riders
                 </dd>
               </div>
               <div>
-                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[#98FBCB]">Expiry</dt>
+                <dt className={cn("text-[11px] font-black uppercase tracking-[0.14em]", isTodayRequest ? "text-[var(--rp-primary)]" : "text-[#98FBCB]")}>Expiry</dt>
                 <dd className="mt-1 text-sm font-bold leading-5 text-[var(--rp-text)]">{request.expiryLabel}</dd>
               </div>
               <div>
-                <dt className="text-[11px] font-black uppercase tracking-[0.14em] text-[#98FBCB]">Visibility</dt>
+                <dt className={cn("text-[11px] font-black uppercase tracking-[0.14em]", isTodayRequest ? "text-[var(--rp-primary)]" : "text-[#98FBCB]")}>Visibility</dt>
                 <dd className="mt-1 text-sm font-bold leading-5 text-[var(--rp-text)]">{request.visibilityLabel}</dd>
               </div>
             </dl>
@@ -1938,7 +1960,14 @@ function RideRequestDetailModal({
 
           <div className="rounded-[18px] border border-white/10 bg-white/[0.055] p-4">
             <div className="flex items-center gap-3">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full border border-[rgba(152,251,203,0.32)] bg-[rgba(152,251,203,0.1)] text-[#98FBCB]">
+              <span
+                className={cn(
+                  "grid h-12 w-12 shrink-0 place-items-center rounded-full border",
+                  isTodayRequest
+                    ? "border-[var(--rp-primary)]/42 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]"
+                    : "border-[rgba(152,251,203,0.32)] bg-[rgba(152,251,203,0.1)] text-[#98FBCB]",
+                )}
+              >
                 <UserRound className="h-6 w-6" />
               </span>
               <div className="min-w-0 flex-1">
@@ -1949,7 +1978,14 @@ function RideRequestDetailModal({
                 </p>
               </div>
             </div>
-            <div className="mt-3 inline-flex min-h-9 items-center gap-2 rounded-full border border-[rgba(152,251,203,0.24)] bg-[rgba(152,251,203,0.1)] px-3 text-xs font-black text-[#98FBCB]">
+            <div
+              className={cn(
+                "mt-3 inline-flex min-h-9 items-center gap-2 rounded-full border px-3 text-xs font-black",
+                isTodayRequest
+                  ? "border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]"
+                  : "border-[rgba(152,251,203,0.24)] bg-[rgba(152,251,203,0.1)] text-[#98FBCB]",
+              )}
+            >
               <ShieldCheck className="h-4 w-4" />
               {request.host.trustLabel}
             </div>
@@ -1968,10 +2004,14 @@ function RideRequestDetailModal({
             className={cn(
               "inline-flex min-h-[54px] w-full items-center justify-center gap-2 rounded-[18px] px-5 text-base font-black transition",
               request.userInterested
-                ? "border border-[rgba(152,251,203,0.32)] bg-[rgba(152,251,203,0.12)] text-[#98FBCB]"
+                ? isTodayRequest
+                  ? "border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]"
+                  : "border border-[rgba(152,251,203,0.32)] bg-[rgba(152,251,203,0.12)] text-[#98FBCB]"
                 : actionState.disabled
                   ? "cursor-not-allowed border border-white/10 bg-white/[0.05] text-[var(--rp-muted)]"
-                  : "border border-[rgba(152,251,203,0.72)] bg-[linear-gradient(180deg,rgba(152,251,203,0.14),rgba(152,251,203,0.06))] text-[#98FBCB] shadow-[0_18px_36px_rgba(152,251,203,0.12)] hover:bg-[rgba(152,251,203,0.16)]",
+                  : isTodayRequest
+                    ? "border border-[var(--rp-primary)]/72 bg-[linear-gradient(180deg,rgba(242,193,91,0.18),rgba(242,193,91,0.08))] text-[var(--rp-primary)] shadow-[0_18px_36px_rgba(242,193,91,0.14)] hover:bg-[rgba(242,193,91,0.2)]"
+                    : "border border-[rgba(152,251,203,0.72)] bg-[linear-gradient(180deg,rgba(152,251,203,0.14),rgba(152,251,203,0.06))] text-[#98FBCB] shadow-[0_18px_36px_rgba(152,251,203,0.12)] hover:bg-[rgba(152,251,203,0.16)]",
             )}
           >
             <ActionIcon className="h-5 w-5" />
@@ -1983,7 +2023,7 @@ function RideRequestDetailModal({
               type="button"
               className="inline-flex min-h-[50px] w-full items-center justify-center gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-5 text-sm font-black text-[var(--rp-text)] transition hover:bg-[var(--rp-card-muted)]"
             >
-              <MessageCircle className="h-5 w-5 text-[#98FBCB]" />
+              <MessageCircle className={cn("h-5 w-5", isTodayRequest ? "text-[var(--rp-primary)]" : "text-[#98FBCB]")} />
               Message / View chat
             </button>
           ) : null}
