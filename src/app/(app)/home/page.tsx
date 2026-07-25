@@ -720,7 +720,7 @@ function CategoryCard({
   const cardClassName = cn(
     "group block origin-center overflow-hidden text-left shadow-[0_22px_46px_rgba(0,0,0,0.26)] outline-none transition-[transform,box-shadow,filter,opacity] duration-[220ms] ease-out active:scale-[0.99] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[rgba(255,200,60,0.95)]",
     selected
-      ? "scale-100 opacity-100 ring-[3px] ring-[color-mix(in_srgb,var(--rp-primary)_82%,white_18%)] shadow-[0_26px_58px_rgba(0,0,0,0.46),0_0_38px_color-mix(in_srgb,var(--rp-primary)_34%,transparent)] brightness-[1.05] saturate-[1.05]"
+      ? "scale-100 opacity-100 shadow-[0_26px_58px_rgba(0,0,0,0.46)] brightness-[1.05] saturate-[1.05]"
       : "scale-100 opacity-[0.82] saturate-[0.9] hover:opacity-95",
     className,
   );
