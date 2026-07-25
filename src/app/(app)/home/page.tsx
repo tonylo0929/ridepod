@@ -2690,8 +2690,7 @@ function HomePageContent() {
       }
     />
   );
-  const OptionsFrameIcon = optionsFrameTone === "ride_app" ? Smartphone : optionsFrameTone === "taxi" ? CarFront : ArrowRightLeft;
-  const optionsFrameLabel = optionsFrameTone === "ride_app" ? "Ride app options" : optionsFrameTone === "taxi" ? "Taxi options" : "Ride options";
+  const optionsFrameLabel = "Choose your mode";
   const homepageExitingForSchedule = selectedCategory !== null && categoryTransitionPhase !== "exiting";
 
   return (
@@ -2798,9 +2797,6 @@ function HomePageContent() {
           <div className="absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,rgba(3,9,15,0.38),transparent)]" />
         </div>
         <div className="relative z-10 mx-auto mt-3 w-full max-w-[680px] px-4 min-[420px]:px-8">
-          <p className="mb-2 text-center text-xs font-black uppercase tracking-[0.16em] text-[var(--rp-muted-strong)]">
-            Choose your mode first
-          </p>
           <RideModeSwitch
             value={selectedRideMode}
             onChange={handleRideModeChange}
@@ -2837,7 +2833,6 @@ function HomePageContent() {
                       : "border-white/18 bg-[#07111a]/92 text-white/76",
                 )}
               >
-                <OptionsFrameIcon className="h-4 w-4" />
                 {optionsFrameLabel}
               </span>
             ) : null}
