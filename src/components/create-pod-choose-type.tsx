@@ -3,10 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useRidePodAvatarPreference, type RidePodAvatarPreference } from "@/components/animal-avatar";
-import type { GeoJSONSource, Map as MapboxMap } from "mapbox-gl";
+import type { GeoJSONSource, Map as MapboxMap, StyleSpecification } from "mapbox-gl";
 import {
   ArrowLeft,
   ArrowRight,
@@ -137,6 +137,24 @@ type MapboxFeature = {
 };
 type MapboxFeatureCollection = {
   features?: MapboxFeature[];
+};
+type NominatimPlace = {
+  place_id?: number;
+  osm_type?: string;
+  osm_id?: number;
+  display_name?: string;
+  name?: string;
+  lat?: string;
+  lon?: string;
+  address?: {
+    name?: string;
+    road?: string;
+    suburb?: string;
+    neighbourhood?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+  };
 };
 type MapboxDirectionsResponse = {
   routes?: Array<{
@@ -1443,7 +1461,28 @@ function getMapboxAccessToken() {
 }
 
 const hongKongSearchBbox = "113.825,22.13,114.47,22.57";
+const hongKongNominatimViewbox = "113.825,22.57,114.47,22.13";
 const hongKongSearchProximity = "114.1694,22.3193";
+const cartoDarkMapStyle: StyleSpecification = {
+  version: 8,
+  sources: {
+    "carto-dark": {
+      type: "raster",
+      tiles: ["https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"],
+      tileSize: 256,
+      attribution: "© OpenStreetMap © CARTO",
+    },
+  },
+  layers: [
+    {
+      id: "carto-dark",
+      type: "raster",
+      source: "carto-dark",
+      minzoom: 0,
+      maxzoom: 19,
+    },
+  ],
+};
 
 function getMapboxFeatureCoordinates(feature: MapboxFeature): RouteCoordinates | null {
   const longitude = feature.properties?.coordinates?.longitude;
@@ -1489,6 +1528,47 @@ function mapboxFeatureToSuggestion(feature: MapboxFeature, index: number): Mapbo
   };
 }
 
+function getNominatimPlaceCoordinates(place: NominatimPlace): RouteCoordinates | null {
+  const lng = Number.parseFloat(place.lon ?? "");
+  const lat = Number.parseFloat(place.lat ?? "");
+
+  if (Number.isFinite(lng) && Number.isFinite(lat)) return { lng, lat };
+  return null;
+}
+
+function getNominatimPlaceLabel(place: NominatimPlace) {
+  return place.display_name?.trim() || place.name?.trim() || "Selected place";
+}
+
+function getNominatimPlaceShortLabel(place: NominatimPlace, label: string) {
+  return (
+    place.name ||
+    place.address?.name ||
+    place.address?.road ||
+    place.address?.suburb ||
+    place.address?.neighbourhood ||
+    place.address?.city ||
+    place.address?.town ||
+    place.address?.village ||
+    routePointSummary(label, "Place")
+  );
+}
+
+function nominatimPlaceToSuggestion(place: NominatimPlace, index: number): MapboxPlaceSuggestion | null {
+  const coordinates = getNominatimPlaceCoordinates(place);
+  if (!coordinates) return null;
+
+  const label = getNominatimPlaceLabel(place);
+  const shortLabel = getNominatimPlaceShortLabel(place, label);
+
+  return {
+    id: `${place.place_id ?? `${place.osm_type ?? "osm"}-${place.osm_id ?? index}`}`,
+    label,
+    shortLabel,
+    coordinates,
+  };
+}
+
 function makeForwardGeocodeUrl(query: string, token: string) {
   const params = new URLSearchParams({
     access_token: token,
@@ -1505,6 +1585,20 @@ function makeForwardGeocodeUrl(query: string, token: string) {
   return `https://api.mapbox.com/search/geocode/v6/forward?${params.toString()}`;
 }
 
+function makeNominatimForwardGeocodeUrl(query: string) {
+  const params = new URLSearchParams({
+    addressdetails: "1",
+    bounded: "1",
+    countrycodes: "hk",
+    format: "jsonv2",
+    limit: "5",
+    q: query,
+    viewbox: hongKongNominatimViewbox,
+  });
+
+  return `https://nominatim.openstreetmap.org/search?${params.toString()}`;
+}
+
 function makeReverseGeocodeUrl(coordinates: RouteCoordinates, token: string) {
   const params = new URLSearchParams({
     access_token: token,
@@ -1517,6 +1611,18 @@ function makeReverseGeocodeUrl(coordinates: RouteCoordinates, token: string) {
   return `https://api.mapbox.com/search/geocode/v6/reverse?${params.toString()}`;
 }
 
+function makeNominatimReverseGeocodeUrl(coordinates: RouteCoordinates) {
+  const params = new URLSearchParams({
+    addressdetails: "1",
+    format: "jsonv2",
+    lat: String(coordinates.lat),
+    lon: String(coordinates.lng),
+    zoom: "18",
+  });
+
+  return `https://nominatim.openstreetmap.org/reverse?${params.toString()}`;
+}
+
 function makeDirectionsUrl(pickup: RouteCoordinates, dropoff: RouteCoordinates, token: string) {
   const coordinates = `${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}`;
   const params = new URLSearchParams({
@@ -1527,6 +1633,18 @@ function makeDirectionsUrl(pickup: RouteCoordinates, dropoff: RouteCoordinates, 
   });
 
   return `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?${params.toString()}`;
+}
+
+function makeOsrmDirectionsUrl(pickup: RouteCoordinates, dropoff: RouteCoordinates) {
+  const coordinates = `${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}`;
+  const params = new URLSearchParams({
+    alternatives: "false",
+    geometries: "geojson",
+    overview: "full",
+    steps: "false",
+  });
+
+  return `https://router.project-osrm.org/route/v1/driving/${coordinates}?${params.toString()}`;
 }
 
 function lngLatToTile(lng: number, lat: number, zoom: number) {
@@ -1607,6 +1725,13 @@ function RouteJourneyPreview({
   const pickupLat = pickupPoint?.coordinates.lat;
   const dropoffLng = dropoffPoint?.coordinates.lng;
   const dropoffLat = dropoffPoint?.coordinates.lat;
+  const hasGeocodedRoute =
+    pickupLng != null &&
+    pickupLat != null &&
+    dropoffLng != null &&
+    dropoffLat != null;
+  const visibleRouteError = hasGeocodedRoute ? routeError : null;
+  const visibleIsRouteLoading = hasGeocodedRoute && isRouteLoading;
   const hasRoutePoints =
     pickupAddress.trim().length > 0 ||
     dropoffAddress.trim().length > 0 ||
@@ -1637,7 +1762,7 @@ function RouteJourneyPreview({
   ];
 
   useEffect(() => {
-    if (!mapboxToken || !mapContainerRef.current || mapRef.current) return;
+    if (!mapContainerRef.current || mapRef.current) return;
     let cancelled = false;
 
     async function loadMap() {
@@ -1654,7 +1779,7 @@ function RouteJourneyPreview({
           container: mapContainerRef.current,
           interactive: true,
           pitchWithRotate: false,
-          style: "mapbox://styles/mapbox/dark-v11",
+          style: mapboxToken ? "mapbox://styles/mapbox/dark-v11" : cartoDarkMapStyle,
           zoom: 10.5,
         });
 
@@ -1681,7 +1806,7 @@ function RouteJourneyPreview({
   }, [mapboxToken]);
 
   useEffect(() => {
-    if (!mapboxToken || pickupLng == null || pickupLat == null || dropoffLng == null || dropoffLat == null) return;
+    if (!hasGeocodedRoute) return;
 
     const controller = new AbortController();
     const pickupCoordinates = { lng: pickupLng, lat: pickupLat };
@@ -1696,7 +1821,9 @@ function RouteJourneyPreview({
     async function loadRoute() {
       try {
         const response = await fetch(
-          makeDirectionsUrl(pickupCoordinates, dropoffCoordinates, mapboxToken),
+          mapboxToken
+            ? makeDirectionsUrl(pickupCoordinates, dropoffCoordinates, mapboxToken)
+            : makeOsrmDirectionsUrl(pickupCoordinates, dropoffCoordinates),
           { signal: controller.signal },
         );
         if (!response.ok) throw new Error("Directions request failed");
@@ -1723,6 +1850,7 @@ function RouteJourneyPreview({
   }, [
     dropoffLat,
     dropoffLng,
+    hasGeocodedRoute,
     mapboxToken,
     pickupLat,
     pickupLng,
@@ -1857,33 +1985,28 @@ function RouteJourneyPreview({
       </div>
 
       <div className="relative h-[150px] overflow-hidden rounded-[18px] border border-white/10 bg-[#06111d]">
-        {mapboxToken ? (
-          <>
-            <div ref={mapContainerRef} className="absolute inset-0" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,9,18,0.02),rgba(2,9,18,0.2))]" />
-            {!pickupPoint || !dropoffPoint ? (
-              <div className="absolute left-3 top-3 rounded-full border border-white/10 bg-[#06111d]/80 px-3 py-1 text-[11px] font-black text-slate-200 backdrop-blur">
-                Select pickup and dropoff
-              </div>
-            ) : null}
-            {isRouteLoading ? (
-              <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full border border-[#56d9ef]/25 bg-[#06111d]/86 px-3 py-1 text-[11px] font-black text-[#a7f3ff] backdrop-blur">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Routing
-              </div>
-            ) : null}
-            {routeError || mapError ? (
-              <div className="absolute inset-x-3 bottom-3 rounded-[12px] border border-amber-300/20 bg-[#19170d]/88 px-3 py-2 text-[11px] font-bold leading-4 text-amber-100 backdrop-blur">
-                {routeError ?? mapError}
-              </div>
-            ) : null}
-            <div className="absolute bottom-1.5 right-2 rounded bg-[#06111d]/70 px-1.5 py-0.5 text-[9px] font-bold text-slate-300">
-              © Mapbox © OpenStreetMap
-            </div>
-          </>
-        ) : (
-          <FallbackRouteMap />
-        )}
+        {mapError && !mapReady ? <FallbackRouteMap /> : null}
+        <div ref={mapContainerRef} className={cn("absolute inset-0", mapError && !mapReady ? "hidden" : "")} />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,9,18,0.02),rgba(2,9,18,0.2))]" />
+        {!pickupPoint || !dropoffPoint ? (
+          <div className="absolute left-3 top-3 rounded-full border border-white/10 bg-[#06111d]/80 px-3 py-1 text-[11px] font-black text-slate-200 backdrop-blur">
+            Select pickup and dropoff
+          </div>
+        ) : null}
+        {visibleIsRouteLoading ? (
+          <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full border border-[#56d9ef]/25 bg-[#06111d]/86 px-3 py-1 text-[11px] font-black text-[#a7f3ff] backdrop-blur">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Routing
+          </div>
+        ) : null}
+        {visibleRouteError || mapError ? (
+          <div className="absolute inset-x-3 bottom-3 rounded-[12px] border border-amber-300/20 bg-[#19170d]/88 px-3 py-2 text-[11px] font-bold leading-4 text-amber-100 backdrop-blur">
+            {visibleRouteError ?? mapError}
+          </div>
+        ) : null}
+        <div className="absolute bottom-1.5 right-2 rounded bg-[#06111d]/70 px-1.5 py-0.5 text-[9px] font-bold text-slate-300">
+          {mapboxToken ? "© Mapbox © OpenStreetMap" : "© OpenStreetMap © CARTO"}
+        </div>
       </div>
 
       <div className="mt-3 grid gap-1.5">
@@ -1917,7 +2040,6 @@ function RouteJourneyPreview({
 
 function MapboxPlaceField({
   label,
-  type,
   value,
   selectedPoint,
   placeholder,
@@ -1926,7 +2048,6 @@ function MapboxPlaceField({
   onPlaceSelect,
 }: {
   label: string;
-  type: "pickup" | "dropoff";
   value: string;
   selectedPoint: RoutePointSelection | null;
   placeholder: string;
@@ -1942,28 +2063,28 @@ function MapboxPlaceField({
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const cleanValue = value.trim();
   const hasSelectedPoint = Boolean(selectedPoint && selectedPoint.label.trim() === cleanValue);
-  const visibleSuggestions = mapboxToken && cleanValue.length >= 3 && !hasSelectedPoint ? suggestions : [];
-  const showSearching = isSearching && mapboxToken && cleanValue.length >= 3 && !hasSelectedPoint;
+  const visibleSuggestions = cleanValue.length >= 3 && !hasSelectedPoint ? suggestions : [];
+  const showSearching = isSearching && cleanValue.length >= 3 && !hasSelectedPoint;
+  const visibleStatusMessage = cleanValue.length >= 3 && !hasSelectedPoint ? statusMessage : null;
 
   useEffect(() => {
-    if (!mapboxToken || cleanValue.length < 3 || hasSelectedPoint) {
-      return;
-    }
+    if (cleanValue.length < 3 || hasSelectedPoint) return;
 
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => {
       setIsSearching(true);
       setStatusMessage(null);
 
-      fetch(makeForwardGeocodeUrl(cleanValue, mapboxToken), { signal: controller.signal })
+      fetch(mapboxToken ? makeForwardGeocodeUrl(cleanValue, mapboxToken) : makeNominatimForwardGeocodeUrl(cleanValue), { signal: controller.signal })
         .then((response) => {
           if (!response.ok) throw new Error("Place search failed");
-          return response.json() as Promise<MapboxFeatureCollection>;
+          return response.json() as Promise<MapboxFeatureCollection | NominatimPlace[]>;
         })
         .then((data) => {
-          const nextSuggestions = (data.features ?? [])
-            .map((feature, index) => mapboxFeatureToSuggestion(feature, index))
-            .filter((suggestion): suggestion is MapboxPlaceSuggestion => Boolean(suggestion));
+          const nextSuggestions = (mapboxToken
+            ? ((data as MapboxFeatureCollection).features ?? []).map((feature, index) => mapboxFeatureToSuggestion(feature, index))
+            : (Array.isArray(data) ? data : []).map((place, index) => nominatimPlaceToSuggestion(place, index))
+          ).filter((suggestion): suggestion is MapboxPlaceSuggestion => Boolean(suggestion));
           setSuggestions(nextSuggestions);
           setStatusMessage(nextSuggestions.length ? null : "No matching places found.");
         })
@@ -1998,8 +2119,14 @@ function MapboxPlaceField({
     setStatusMessage(null);
   }
 
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key !== "Enter" || !visibleSuggestions[0]) return;
+    event.preventDefault();
+    handleSelect(visibleSuggestions[0]);
+  }
+
   function handleUseCurrentLocation() {
-    if (!mapboxToken || !navigator.geolocation) {
+    if (!navigator.geolocation) {
       setStatusMessage("Current location is not available in this browser.");
       return;
     }
@@ -2015,12 +2142,14 @@ function MapboxPlaceField({
         };
 
         try {
-          const response = await fetch(makeReverseGeocodeUrl(coordinates, mapboxToken));
+          const response = await fetch(mapboxToken ? makeReverseGeocodeUrl(coordinates, mapboxToken) : makeNominatimReverseGeocodeUrl(coordinates));
           if (!response.ok) throw new Error("Reverse geocode failed");
-          const data = (await response.json()) as MapboxFeatureCollection;
-          const suggestion = data.features
-            ?.map((feature, index) => mapboxFeatureToSuggestion(feature, index))
-            .find(Boolean);
+          const data = (await response.json()) as MapboxFeatureCollection | NominatimPlace;
+          const suggestion = mapboxToken
+            ? (data as MapboxFeatureCollection).features
+                ?.map((feature, index) => mapboxFeatureToSuggestion(feature, index))
+                .find(Boolean)
+            : nominatimPlaceToSuggestion(data as NominatimPlace, 0);
           const label = suggestion?.label ?? "Current location";
           onChange(label);
           onPlaceSelect({ label, coordinates });
@@ -2041,23 +2170,6 @@ function MapboxPlaceField({
     );
   }
 
-  if (!mapboxToken) {
-    return (
-      <div className="grid gap-2">
-        <AddressField
-          label={label}
-          type={type}
-          value={value}
-          placeholder={placeholder}
-          onChange={onChange}
-        />
-        <p className="px-1 text-xs font-bold leading-5 text-slate-500">
-          Live HK address search needs the map service connection. Type the address manually for now.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="grid gap-2 rounded-[18px] border border-white/10 bg-[rgba(15,27,39,0.9)] px-3 py-3 shadow-[0_12px_28px_rgba(0,0,0,0.2)] transition focus-within:border-[#f6c453] focus-within:shadow-[0_0_0_1px_rgba(246,196,83,0.38),0_16px_34px_rgba(0,0,0,0.24)]">
       <div className="grid grid-cols-[42px_1fr] items-center gap-3">
@@ -2075,6 +2187,7 @@ function MapboxPlaceField({
               type="text"
               value={value}
               onChange={(event) => handleChange(event.target.value)}
+              onKeyDown={handleKeyDown}
               placeholder={placeholder}
               autoComplete="off"
               className="min-h-8 min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-black leading-5 text-[#f8fafc] outline-none placeholder:text-slate-500"
@@ -2112,8 +2225,8 @@ function MapboxPlaceField({
         </div>
       ) : null}
 
-      {statusMessage ? (
-        <p className="ml-[52px] text-xs font-bold leading-5 text-slate-500">{statusMessage}</p>
+      {visibleStatusMessage ? (
+        <p className="ml-[52px] text-xs font-bold leading-5 text-slate-500">{visibleStatusMessage}</p>
       ) : null}
     </div>
   );
@@ -3016,7 +3129,6 @@ function RouteStopsStep({
               <div className="grid gap-3">
                 <MapboxPlaceField
                   label={pickupFieldLabel}
-                  type="pickup"
                   value={pickupAddress}
                   selectedPoint={pickupRoutePoint}
                   placeholder={pickupPlaceholder}
@@ -3051,7 +3163,6 @@ function RouteStopsStep({
                 ))}
                 <MapboxPlaceField
                   label={dropoffFieldLabel}
-                  type="dropoff"
                   value={dropoffAddress}
                   selectedPoint={dropoffRoutePoint}
                   placeholder={dropoffPlaceholder}
