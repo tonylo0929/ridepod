@@ -1759,6 +1759,15 @@ function RideBoardCategoryDetailView({
         )}
       </section>
 
+      {category === "scheduled" ? (
+        <div className="grid gap-1.5 rounded-[22px] border border-[var(--rp-primary)]/22 bg-[rgba(242,193,91,0.08)] px-4 py-3 text-center shadow-[0_16px_34px_rgba(0,0,0,0.18)]">
+          <h2 className="text-lg font-black leading-tight text-[var(--rp-text)]">Can&apos;t find your route?</h2>
+          <p className="text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">
+            Post it and let matching riders find you.
+          </p>
+        </div>
+      ) : null}
+
       <PostRideRequestButton onClick={onPostClick} compact label={detail.ctaLabel} />
     </section>
   );
