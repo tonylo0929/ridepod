@@ -2724,7 +2724,7 @@ function HomePageContent() {
               )}
             </p>
             <p className="mt-1 text-[15px] font-semibold text-white/72 min-[720px]:text-base">
-              {isAuthenticated ? "Your ride, together." : "First Local Shared Ride in Hong Kong"}
+              {isAuthenticated ? "Your ride, together." : "Meet nearby riders. Split the fare."}
             </p>
           </div>
           {!isAuthenticated ? (
