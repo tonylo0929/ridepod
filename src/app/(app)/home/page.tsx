@@ -2886,7 +2886,7 @@ function HomePageContent() {
       }
     />
   );
-  const optionsFrameLabel = selectedRideMode === "taxi" ? "Coming soon" : "Choose your mode";
+  const optionsFrameLabel = selectedRideMode === "taxi" ? "Taxi Mode - Coming Soon" : "Choose your mode";
   const homepageExitingForSchedule = selectedCategory !== null && categoryTransitionPhase !== "exiting";
 
   return (
