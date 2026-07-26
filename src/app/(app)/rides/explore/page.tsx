@@ -97,7 +97,7 @@ function RideExploreContent() {
 
       <section aria-labelledby="matching-routes-title" className="grid gap-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 id="matching-routes-title" className="text-lg font-black text-[var(--rp-text)]">Popular routes near you</h2>
+          <h2 id="matching-routes-title" className="scroll-mt-24 text-lg font-black text-[var(--rp-text)]">Popular routes near you</h2>
           <UsersRound className="h-5 w-5 text-[var(--rp-primary)]" />
         </div>
 
@@ -125,7 +125,7 @@ function RideExploreContent() {
 
       <section aria-labelledby="districts-title" className="grid gap-3">
         <div>
-          <h2 id="districts-title" className="text-lg font-black text-[var(--rp-text)]">Browse all districts</h2>
+          <h2 id="districts-title" className="scroll-mt-24 text-lg font-black text-[var(--rp-text)]">Browse all districts</h2>
           <p className="mt-1 text-sm font-bold text-[var(--rp-muted-strong)]">Official Hong Kong districts</p>
         </div>
 

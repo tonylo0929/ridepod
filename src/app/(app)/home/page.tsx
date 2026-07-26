@@ -1295,6 +1295,61 @@ const startingAreaIcons: Record<StartingAreaIconKey, typeof Building2> = {
   sprout: Sprout,
 };
 
+const browseByOptions = [
+  {
+    label: "Mode",
+    href: "#choose-ride-mode-title",
+    icon: Smartphone,
+    iconClassName: "border-sky-300/38 bg-sky-400/14 text-sky-200",
+    hoverClassName: "hover:border-sky-300/42 hover:bg-sky-400/10 focus-visible:outline-sky-300",
+  },
+  {
+    label: "District",
+    href: `${buildRideExploreHref()}#districts-title`,
+    icon: Building2,
+    iconClassName: "border-[#65e6d0]/38 bg-[#65e6d0]/12 text-[#98FBCB]",
+    hoverClassName: "hover:border-[#65e6d0]/42 hover:bg-[#65e6d0]/9 focus-visible:outline-[#65e6d0]",
+  },
+  {
+    label: "Popular",
+    href: `${buildRideExploreHref()}#matching-routes-title`,
+    icon: ArrowRightLeft,
+    iconClassName: "border-[var(--rp-primary)]/38 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]",
+    hoverClassName: "hover:border-[var(--rp-primary)]/48 hover:bg-[var(--rp-primary)]/10 focus-visible:outline-[var(--rp-primary)]",
+  },
+] as const;
+
+function BrowseByStrip() {
+  return (
+    <section aria-labelledby="browse-by-title">
+      <h2 id="browse-by-title" className="text-sm font-black text-[var(--rp-text)]">
+        Browse by
+      </h2>
+      <div className="mt-2.5 grid grid-cols-3 gap-2.5">
+        {browseByOptions.map((option) => {
+          const Icon = option.icon;
+
+          return (
+            <Link
+              key={option.label}
+              href={option.href}
+              className={cn(
+                "group flex min-h-[82px] min-w-0 flex-col items-center justify-center gap-2 rounded-[16px] border border-white/10 bg-white/[0.045] px-2 py-3 text-center transition focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-3",
+                option.hoverClassName,
+              )}
+            >
+              <span className={cn("grid h-10 w-10 place-items-center rounded-[14px] border transition group-hover:-translate-y-0.5", option.iconClassName)}>
+                <Icon className="h-5 w-5" />
+              </span>
+              <span className="truncate text-xs font-black text-white min-[390px]:text-sm">{option.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function HomeSectionHeader({
   id,
   title,
@@ -1352,7 +1407,7 @@ function HomeSectionHeader({
         </span>
         <div className="min-w-0 flex-1">
           <p className={cn("text-[10px] font-black uppercase tracking-[0.16em]", styles.accent)}>Option</p>
-          <h2 id={id} className={cn("mt-0.5 text-[18px] font-black leading-tight", styles.title)}>{title}</h2>
+          <h2 id={id} className={cn("mt-0.5 scroll-mt-24 text-[18px] font-black leading-tight", styles.title)}>{title}</h2>
           {subtitle ? <p className="mt-1 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">{subtitle}</p> : null}
         </div>
         {href ? (
@@ -2998,6 +3053,9 @@ function HomePageContent() {
             )}
           />
           <div className="absolute inset-x-0 top-0 h-16 bg-[linear-gradient(180deg,rgba(3,9,15,0.38),transparent)]" />
+        </div>
+        <div className="relative z-10 mx-auto mt-4 w-full max-w-[704px] px-4 sm:px-6 lg:px-0">
+          <BrowseByStrip />
         </div>
         <div className="relative z-10 mx-auto mt-5 w-full max-w-[704px] px-4 sm:px-6 lg:px-0">
           <HomeSectionHeader
