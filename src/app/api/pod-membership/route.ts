@@ -39,42 +39,76 @@ function isTerminalPod(pod: Pick<RidePodPodRow, "lifecycle_state">) {
   return ["COMPLETED", "SETTLED", "CLOSED", "CANCELED", "CANCELLED"].includes(pod.lifecycle_state);
 }
 
-async function notifyHostMemberLeft(input: {
+async function getJoinedMemberUserIds(input: {
+  client: ReturnType<typeof getSupabaseAdminClient>;
+  podId: string;
+}) {
+  const result = await input.client
+    .from("pod_members")
+    .select("user_id")
+    .eq("pod_id", input.podId)
+    .eq("status", "joined");
+
+  if (result.error) throw result.error;
+
+  return Array.from(
+    new Set((result.data ?? []).map((member) => member.user_id).filter((userId): userId is string => Boolean(userId))),
+  );
+}
+
+async function notifyMembershipAudience(input: {
   client: ReturnType<typeof getSupabaseAdminClient>;
   pod: RidePodPodRow;
   actorUserId: string;
+  memberUserIds: string[];
+  action: "joined" | "left";
 }) {
-  const hostUserId = input.pod.host_user_id;
-  if (!hostUserId || hostUserId === input.actorUserId) return;
+  const recipients = Array.from(
+    new Set([
+      input.pod.host_user_id,
+      ...input.memberUserIds,
+    ].filter((userId): userId is string => Boolean(userId && userId !== input.actorUserId))),
+  );
+
+  if (!recipients.length) return;
 
   const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const notificationType = input.action === "joined" ? "pod_joined" : "pod_member_left";
   const existingResult = await input.client
     .from("user_notifications")
-    .select("id")
-    .eq("recipient_user_id", hostUserId)
+    .select("recipient_user_id")
+    .in("recipient_user_id", recipients)
     .eq("actor_user_id", input.actorUserId)
     .eq("related_pod_id", input.pod.id)
-    .eq("type", "pod_member_left")
+    .eq("type", notificationType)
     .gte("created_at", since)
-    .limit(1);
+    .limit(recipients.length);
 
   if (existingResult.error) throw existingResult.error;
-  if (existingResult.data?.length) return;
+  const existingRecipients = new Set((existingResult.data ?? []).map((notification) => notification.recipient_user_id));
+  const title = input.action === "joined" ? "Rider joined this ride" : "Rider left this ride";
+  const body = input.action === "joined" ? `A rider joined ${input.pod.route_label}.` : `A rider left ${input.pod.route_label}.`;
+  const metadataAction = input.action === "joined" ? "pod_joined" : "pod_member_left";
+  const rows = recipients
+    .filter((recipientUserId) => !existingRecipients.has(recipientUserId))
+    .map((recipientUserId) => ({
+      recipient_user_id: recipientUserId,
+      actor_user_id: input.actorUserId,
+      type: notificationType,
+      title,
+      body,
+      related_pod_id: input.pod.id,
+      related_url: `/pods/${input.pod.id}`,
+      metadata: {
+        action: metadataAction,
+        route: input.pod.route_label,
+        source: "pod_membership",
+      },
+    }));
 
-  const insertResult = await input.client.from("user_notifications").insert({
-    recipient_user_id: hostUserId,
-    actor_user_id: input.actorUserId,
-    type: "pod_member_left",
-    title: "Rider left your ride",
-    body: `A rider left ${input.pod.route_label}.`,
-    related_pod_id: input.pod.id,
-    related_url: `/pods/${input.pod.id}`,
-    metadata: {
-      action: "pod_member_left",
-      route: input.pod.route_label,
-      source: "pod_membership_cancel",
-    },
-  });
+  if (!rows.length) return;
+
+  const insertResult = await input.client.from("user_notifications").insert(rows);
 
   if (insertResult.error) throw insertResult.error;
 }
@@ -118,6 +152,8 @@ export async function POST(request: NextRequest) {
       .eq("user_id", userId)
       .maybeSingle();
     if (existingResult.error) throw existingResult.error;
+    const joinedMemberUserIdsBeforeAction = await getJoinedMemberUserIds({ client, podId });
+
     if (action === "cancel") {
       if (!existingResult.data || existingResult.data.status !== "joined") {
         return noStoreJson({ error: "No joined membership found." }, { status: 404 });
@@ -137,7 +173,13 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (result.error) throw result.error;
-      await notifyHostMemberLeft({ client, pod: podResult.data as RidePodPodRow, actorUserId: userId });
+      await notifyMembershipAudience({
+        client,
+        pod: podResult.data as RidePodPodRow,
+        actorUserId: userId,
+        memberUserIds: joinedMemberUserIdsBeforeAction,
+        action: "left",
+      });
       return noStoreJson({ membership: result.data as RidePodMemberRow | null, pod: podResult.data as RidePodPodRow });
     }
 
@@ -145,14 +187,7 @@ export async function POST(request: NextRequest) {
       return noStoreJson({ membership: existingResult.data as RidePodMemberRow, pod: podResult.data as RidePodPodRow });
     }
 
-    const membersResult = await client
-      .from("pod_members")
-      .select("id")
-      .eq("pod_id", podId)
-      .eq("status", "joined");
-    if (membersResult.error) throw membersResult.error;
-
-    const activeRiderCount = membersResult.data?.length ?? 0;
+    const activeRiderCount = joinedMemberUserIdsBeforeAction.length;
     const riderCapacity = Math.max(0, (podResult.data.ideal_pod_size || 1) - 1);
     if (activeRiderCount >= riderCapacity) return noStoreJson({ error: "Pod full" }, { status: 409 });
 
@@ -185,6 +220,13 @@ export async function POST(request: NextRequest) {
           .maybeSingle();
 
     if (result.error) throw result.error;
+    await notifyMembershipAudience({
+      client,
+      pod: podResult.data as RidePodPodRow,
+      actorUserId: userId,
+      memberUserIds: [...joinedMemberUserIdsBeforeAction, userId],
+      action: "joined",
+    });
     return noStoreJson({ membership: result.data as RidePodMemberRow | null, pod: podResult.data as RidePodPodRow });
   } catch (error) {
     console.warn("RidePod membership join failed", error);
