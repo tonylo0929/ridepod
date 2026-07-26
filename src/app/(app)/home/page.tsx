@@ -1295,16 +1295,33 @@ const startingAreaIcons: Record<StartingAreaIconKey, typeof Building2> = {
   sprout: Sprout,
 };
 
+function HomeSectionTitle({
+  id,
+  children,
+}: {
+  id: string;
+  children: ReactNode;
+}) {
+  return (
+    <h2
+      id={id}
+      className="flex scroll-mt-24 flex-wrap items-baseline gap-x-[0.28em] gap-y-0 text-[clamp(21px,5.4vw,24px)] font-extrabold leading-[1.1] tracking-[-0.025em] text-[var(--rp-text)]"
+    >
+      {children}
+    </h2>
+  );
+}
+
 function StartingAreaSection() {
   return (
     <section aria-labelledby="browse-starting-area-title">
-      <h2
-        id="browse-starting-area-title"
-        className="mb-4 scroll-mt-24 text-[24px] font-black leading-tight text-white"
-      >
-        Browse by District
-      </h2>
-      <div className="grid grid-cols-2 gap-2.5">
+      <HomeSectionTitle id="browse-starting-area-title">
+        <span>Browse by</span>
+        <span className="text-[1.1em] font-black tracking-[-0.035em] text-[#65e6d0]">
+          District
+        </span>
+      </HomeSectionTitle>
+      <div className="mt-4 grid grid-cols-2 gap-2.5">
         {startingAreaSummaries.map((area) => {
           const Icon = startingAreaIcons[area.icon];
 
@@ -1320,8 +1337,8 @@ function StartingAreaSection() {
                   <Icon className="h-4.5 w-4.5" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-black leading-tight text-white">{area.name}</span>
-                  <span className="mt-1.5 block text-[11px] font-black leading-tight text-[#65e6d0]">
+                  <span className="block text-[clamp(15px,3.8vw,16px)] font-extrabold leading-[1.15] tracking-[-0.015em] text-[var(--rp-text)]">{area.name}</span>
+                  <span className="mt-1 block text-[clamp(11px,3vw,12px)] font-bold leading-[1.2] text-[#65e6d0]">
                     {area.rideCount} upcoming rides
                   </span>
                 </span>
@@ -1337,15 +1354,15 @@ function StartingAreaSection() {
 
 function PopularRoutesSection() {
   return (
-    <section aria-labelledby="popular-routes-title" className="mt-5">
-      <div className="mb-3">
-        <h2
-          id="popular-routes-title"
-          className="scroll-mt-24 text-[24px] font-black leading-tight text-white"
-        >
-          Popular Routes
-        </h2>
-        <p className="mt-1.5 text-[15px] font-bold leading-5 text-white">
+    <section aria-labelledby="popular-routes-title" className="mt-6">
+      <div className="mb-3.5">
+        <HomeSectionTitle id="popular-routes-title">
+          <span className="text-[1.1em] font-black tracking-[-0.035em] text-[var(--rp-primary)]">
+            Popular
+          </span>
+          <span>Routes</span>
+        </HomeSectionTitle>
+        <p className="mt-[5px] text-[clamp(13px,3.3vw,14px)] font-semibold leading-[1.35] text-slate-200/72">
           Pick a busy route riders already use
         </p>
       </div>
