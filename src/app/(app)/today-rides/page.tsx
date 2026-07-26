@@ -2935,7 +2935,7 @@ export default function RideBoardPage() {
                 Find a ride. Share the journey.
               </p>
             </div>
-            <PostRideRequestButton onClick={() => openPostForm()} compact corner label="Post" />
+            <PostRideRequestButton onClick={() => openPostForm()} compact corner label="Post your request" />
           </section>
         )}
 
