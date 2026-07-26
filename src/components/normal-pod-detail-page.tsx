@@ -5572,7 +5572,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
       rideAppEstimatedFareUpdatedBy: updatedBy,
       rideAppEstimatedFareUpdatedAt: updatedAt,
       rideAppEstimatedFareNote: rideAppEstimateScreenshotDraftName
-        ? `Screenshot uploaded: ${rideAppEstimateScreenshotDraftName}`
+        ? `Fare screenshot uploaded for chat: ${rideAppEstimateScreenshotDraftName}`
         : "Updated by host.",
       rideAppFareEstimateStatus: "accepted" as const,
       rideAppFareEstimateReviewStatus: "confirmed" as const,
@@ -5583,7 +5583,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
             fileName: rideAppEstimateScreenshotDraftName ?? undefined,
             previewUrl: rideAppEstimateScreenshotDraftPreviewUrl ?? undefined,
             addedAt: proofUpdatedAt ?? undefined,
-            note: "Uploaded by host with the ride app fare estimate.",
+            note: "Uploaded by host so riders can review the ride app source in chat.",
           }
         : null,
       rideAppChecklist: updatedChecklist,
@@ -5610,7 +5610,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
       body: fareEstimateChangedMeaningfully || rideAppFareReviewState.needsReview
         ? `The estimated fare is now ${formattedEstimate} after the route update.`
         : screenshotOnlyUpdate
-          ? `${detailActorName} added a fare estimate screenshot.`
+          ? `${detailActorName} added a fare screenshot for riders to review in chat.`
           : `${detailActorName} updated the fare estimate to ${formattedEstimate}.`,
       action: fareEstimateChangedMeaningfully || rideAppFareReviewState.needsReview ? "fare_estimate_updated" : screenshotOnlyUpdate ? "fare_screenshot_added" : "estimate_updated",
       dedupe: false,
@@ -6446,14 +6446,14 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                 ? "Route changed. Review the external ride app estimate, adjust fare if needed, then confirm."
                 : rideAppFareReviewState.confirmed
                   ? "This estimate has been confirmed for the current route. Ride fare is paid outside RidePod."
-                  : "Enter the estimate from Ride App. Final ride fare is paid after the ride."}
+                  : "After riders confirm, you can still update the total ride-app estimate here. Uploading the fare screenshot is preferred so riders see the source in chat and know the ride is really being arranged."}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <span className="rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-3 py-1 text-[11px] font-black text-[var(--rp-primary)]">
-                {rideAppFareReviewState.confirmed ? "Fare confirmed" : rideAppFareReviewState.needsReview ? "Fare updated" : "Fare review"}
+                {rideAppFareReviewState.confirmed ? "Fare confirmed" : rideAppFareReviewState.needsReview ? "Fare updated" : "After rider confirmation"}
               </span>
               <span className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-[11px] font-black text-cyan-100">
-                Ride fare is paid outside RidePod
+                Screenshot appears in chat
               </span>
             </div>
             <label className="mt-5 block">
@@ -6479,9 +6479,9 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                   <ImagePlus className="h-5 w-5" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-black text-[var(--rp-primary)]">Screenshot proof</p>
+                  <p className="text-sm font-black text-[var(--rp-primary)]">Fare screenshot for chat</p>
                   <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-                    Optional. Add the ride app fare screen if you want riders to see the source.
+                    Preferred. Upload the ride app fare or booking screen so riders can review the source automatically in chat.
                   </p>
                   {rideAppEstimateScreenshotDraftName ? (
                     <div className="mt-3 flex min-h-10 items-center justify-between gap-3 rounded-[14px] border border-cyan-200/20 bg-cyan-300/8 px-3 py-2">

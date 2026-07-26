@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ArrowLeft, LockKeyhole, MessageCircle, Send, Smartphone, UserCheck } from "lucide-react";
+import { ArrowLeft, ImagePlus, LockKeyhole, MessageCircle, Send, Smartphone, UserCheck } from "lucide-react";
 import { SelfSettleCompletionCard } from "@/components/self-settle-completion-card";
 import { SelfSettleReportIssue } from "@/components/self-settle-report-issue";
 import { getNormalizedRouteRequests, type HomeRide, type RideAppChecklist } from "@/lib/home-ride-mock";
 import { notifyPodAudience } from "@/lib/notifications/pod-notification-fanout";
 import { getRideAppChatAccessState, type RideAppChatAccessState } from "@/lib/ride-app-chat-unlock";
+import { getRideWithStoredSelfSettleJoin } from "@/lib/ride-app-local-join";
 import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
 import type { TaxiPartnerChatAccessState } from "@/lib/taxi-partner-chat-unlock";
 import { getTaxiPartnerLockedChatBody } from "@/lib/taxi-partner-chat-unlock";
@@ -108,6 +109,7 @@ type RideAppTimelineEvent = {
     gatherPoint?: string;
     stopLocation?: string;
     screenshotFileName?: string;
+    screenshotPreviewUrl?: string;
   };
 };
 
@@ -128,8 +130,16 @@ function getRideAppFareEstimateText(ride: HomeRide) {
   return null;
 }
 
-function getRideAppScreenshotFileName(ride: HomeRide) {
-  return ride.fareEstimateScreenshot?.fileName ?? ride.rideAppFareEstimateScreenshotName ?? null;
+function getRideAppScreenshotProof(ride: HomeRide) {
+  const fileName = ride.fareEstimateScreenshot?.fileName ?? ride.rideAppFareEstimateScreenshotName ?? null;
+  const previewUrl = ride.fareEstimateScreenshot?.previewUrl ?? null;
+  if (!fileName && !previewUrl) return null;
+
+  return {
+    fileName,
+    previewUrl,
+    addedAt: ride.fareEstimateScreenshot?.addedAt ?? ride.rideAppFareEstimateScreenshotAddedAt ?? null,
+  };
 }
 
 function addTimelineEvent(events: RideAppTimelineEvent[], event: Omit<RideAppTimelineEvent, "timestampLabel">) {
@@ -237,17 +247,20 @@ function buildRideAppTimelineEvents({
       });
     }
 
-    const screenshotFileName = getRideAppScreenshotFileName(ride);
-    if (screenshotFileName) {
+    const screenshotProof = getRideAppScreenshotProof(ride);
+    if (screenshotProof) {
       addTimelineEvent(events, {
         id: "fare-screenshot-added",
         type: "fare_screenshot_added",
         kind: "system",
         actorName: hostName,
-        text: `${hostName} added a fare estimate screenshot.`,
-        sortTime: safeDateMs(ride.fareEstimateScreenshot?.addedAt ?? ride.rideAppFareEstimateScreenshotAddedAt, -18),
+        text: `${hostName} added a fare screenshot so riders can review the ride app source.`,
+        sortTime: safeDateMs(screenshotProof.addedAt, -18),
         visibility: "pod_members",
-        metadata: { screenshotFileName },
+        metadata: {
+          screenshotFileName: screenshotProof.fileName ?? "Ride app fare screenshot",
+          screenshotPreviewUrl: screenshotProof.previewUrl ?? undefined,
+        },
       });
     }
 
@@ -573,7 +586,7 @@ export function PodChatClient({
   ride?: HomeRide | null;
 }) {
   const { user, profile, isLoading } = useAuth();
-  const effectiveRide = ride ? applyRideAppDemoPersona(ride, { profile, user }) : null;
+  const effectiveRide = ride ? applyRideAppDemoPersona(getRideWithStoredSelfSettleJoin(ride), { profile, user }) : null;
   const effectiveCurrentUserRole = effectiveRide?.currentUserRole ?? currentUserRole;
   const effectiveRideAppChatAccess =
     effectiveRide && isRideAppSelfSettle ? getRideAppChatAccessState(effectiveRide) : rideAppChatAccess;
@@ -1191,17 +1204,40 @@ function RideAppTimelineMessage({ event }: { event: RideAppTimelineEvent }) {
     );
   }
 
+  const hasScreenshotProof = Boolean(event.metadata?.screenshotFileName || event.metadata?.screenshotPreviewUrl);
+
   return (
     <article className="grid justify-items-center px-2">
-      <div className="max-w-full rounded-[16px] border border-white/10 bg-white/[0.055] px-3 py-2 text-center shadow-[0_10px_22px_rgba(0,0,0,0.12)]">
+      <div
+        className={`max-w-full rounded-[16px] border px-3 py-2 text-center shadow-[0_10px_22px_rgba(0,0,0,0.12)] ${
+          hasScreenshotProof
+            ? "border-cyan-300/24 bg-[linear-gradient(180deg,rgba(34,211,238,0.12),rgba(255,255,255,0.055))]"
+            : "border-white/10 bg-white/[0.055]"
+        }`}
+      >
         <div className="flex flex-wrap items-center justify-center gap-2">
           <span className="grid h-5 w-5 place-items-center rounded-full border border-cyan-300/25 bg-cyan-300/10 text-cyan-100">
-            <UserCheck className="h-3 w-3" />
+            {hasScreenshotProof ? <ImagePlus className="h-3 w-3" /> : <UserCheck className="h-3 w-3" />}
           </span>
           <p className="max-w-[36ch] text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">{event.text}</p>
         </div>
-        {event.metadata?.screenshotFileName ? (
-          <p className="mt-1 truncate text-[10px] font-black text-cyan-100">{event.metadata.screenshotFileName}</p>
+        {hasScreenshotProof ? (
+          <div className="mt-2 overflow-hidden rounded-[14px] border border-cyan-200/18 bg-black/24 text-left">
+            {event.metadata?.screenshotPreviewUrl ? (
+              <div
+                className="aspect-[16/10] w-[min(66vw,260px)] bg-black bg-cover bg-center"
+                style={{ backgroundImage: `url(${event.metadata.screenshotPreviewUrl})` }}
+                role="img"
+                aria-label="Ride app fare screenshot shared in chat"
+              />
+            ) : null}
+            <div className="flex items-center gap-2 px-3 py-2">
+              <ImagePlus className="h-3.5 w-3.5 shrink-0 text-cyan-100" />
+              <p className="min-w-0 truncate text-[10px] font-black text-cyan-100">
+                {event.metadata?.screenshotFileName ?? "Ride app fare screenshot"}
+              </p>
+            </div>
+          </div>
         ) : null}
         {event.metadata?.stopLocation ? (
           <p className="mt-1 truncate text-[10px] font-black text-cyan-100">{event.metadata.stopLocation}</p>
