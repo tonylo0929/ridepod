@@ -3845,7 +3845,7 @@ function JoinedRouteInfoRow({
   label: string;
   value: string;
   helper?: string | null;
-  kind: RouteMapPointKind | "policy";
+  kind: RouteMapPointKind | "gather" | "policy";
   action?: boolean;
 }) {
   return (
@@ -3853,7 +3853,11 @@ function JoinedRouteInfoRow({
       <span
         className={cn(
           "grid h-10 w-10 place-items-center rounded-[14px] border",
-          kind === "policy" ? "border-emerald-300/35 bg-emerald-300/10 text-emerald-200" : getRoutePointRowIconClass(kind),
+          kind === "policy"
+            ? "border-emerald-300/35 bg-emerald-300/10 text-emerald-200"
+            : kind === "gather"
+              ? "border-amber-300/35 bg-amber-300/10 text-amber-200"
+              : getRoutePointRowIconClass(kind),
         )}
       >
         {icon}
@@ -3939,6 +3943,7 @@ function CompactRideAppRoutePanel({
   const policyLabel = directRouteOnly ? "Direct route only" : "Stops allowed";
   const routeSectionTitle = directRouteOnly ? "Suggested route" : "Route + stop requests";
   const destinationLabel = getAirportRouteDisplayLabel(ride.dropoffLabel ?? ride.toLabel);
+  const gatherPointLabel = ride.pickupLabel?.trim() || "";
   const plannedStopsLabel = displayedStops.map((stop) => stop.label).join(" · ");
   const stopPolicyHelper = directRouteOnly
     ? "This pod does not allow extra stop requests."
@@ -4066,7 +4071,6 @@ function CompactRideAppRoutePanel({
             icon={<MapPin className="h-5 w-5" />}
             label="Pickup"
             value={ride.fromLabel}
-            helper={ride.pickupLabel && ride.pickupLabel !== ride.fromLabel ? ride.pickupLabel : null}
             kind="pickup"
           />
           {!directRouteOnly && plannedStopsLabel ? (
@@ -4084,6 +4088,13 @@ function CompactRideAppRoutePanel({
             value={destinationLabel}
             helper={ride.dropoffLabel && ride.dropoffLabel !== ride.toLabel ? ride.toLabel : null}
             kind="destination"
+          />
+          <JoinedRouteInfoRow
+            icon={<UsersRound className="h-5 w-5" />}
+            label="Gather point"
+            value={gatherPointLabel || "Not set"}
+            helper={gatherPointLabel ? "Riders meet here before departure." : "The host will set this before riders confirm."}
+            kind="gather"
           />
           <JoinedRouteInfoRow
             icon={<ShieldCheck className="h-5 w-5" />}
