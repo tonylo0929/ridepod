@@ -7,9 +7,7 @@ import type { ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useRidePodAvatarPreference, type RidePodAvatarPreference } from "@/components/animal-avatar";
 import {
-  DistrictDetectionStatus,
   LocationPicker,
-  RideLocationField,
   RoutePreviewMap,
 } from "@/components/ride-location-picker";
 import {
@@ -35,6 +33,7 @@ import {
   Plane,
   Plus,
   RefreshCcw,
+  Search,
   ShieldCheck,
   Smartphone,
   Trash2,
@@ -1394,6 +1393,287 @@ function RouteJourneyPreview({
     />
   );
 }
+
+function routeLocationTitle(location: RideLocation | null, fallbackAddress: string, fallback = "Not set") {
+  if (location?.name?.trim()) return location.name.trim();
+  return routePointSummary(fallbackAddress, fallback);
+}
+
+function routeLocationSubtitle(location: RideLocation | null) {
+  if (!location?.formattedAddress?.trim()) return null;
+  if (location.formattedAddress.trim() === location.name.trim()) return null;
+  return location.formattedAddress.trim();
+}
+
+function RoutePointOverview({
+  pickupLabel,
+  dropoffLabel,
+  pickupTitle,
+  dropoffTitle,
+  onPickupOpen,
+  onDropoffOpen,
+}: {
+  pickupLabel: string;
+  dropoffLabel: string;
+  pickupTitle: string;
+  dropoffTitle: string;
+  onPickupOpen: () => void;
+  onDropoffOpen: () => void;
+}) {
+  return (
+    <section className="grid overflow-hidden rounded-[20px] border border-white/10 bg-[linear-gradient(145deg,rgba(9,20,32,0.96),rgba(5,13,22,0.98))] shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:grid-cols-2">
+      <button
+        type="button"
+        onClick={onPickupOpen}
+        className="group grid min-h-[78px] grid-cols-[46px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/10 px-4 py-3 text-left transition hover:bg-white/[0.035] sm:border-b-0 sm:border-r"
+      >
+        <span className="grid h-11 w-11 place-items-center rounded-[16px] border border-[#f6c453]/24 bg-[#1b2936] text-[#ffc94d]">
+          <MapPin className="h-5 w-5 fill-[#ffc94d]/12 stroke-[2.4]" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[11px] font-black uppercase tracking-[0.14em] text-[#f6c453]">{pickupLabel}</span>
+          <span className="mt-1 block truncate text-base font-medium text-[#f8fafc]">{pickupTitle}</span>
+        </span>
+        <ChevronRight className="h-5 w-5 text-[#f6c453] transition group-hover:translate-x-0.5" />
+      </button>
+      <button
+        type="button"
+        onClick={onDropoffOpen}
+        className="group grid min-h-[78px] grid-cols-[46px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.035]"
+      >
+        <span className="grid h-11 w-11 place-items-center rounded-[16px] border border-[#56d9ef]/24 bg-[#0b2a38] text-[#56d9ef]">
+          <MapPin className="h-5 w-5 fill-[#56d9ef]/12 stroke-[2.4]" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[11px] font-black uppercase tracking-[0.14em] text-[#56d9ef]">{dropoffLabel}</span>
+          <span className="mt-1 block truncate text-base font-medium text-[#f8fafc]">{dropoffTitle}</span>
+        </span>
+        <ChevronRight className="h-5 w-5 text-[#56d9ef] transition group-hover:translate-x-0.5" />
+      </button>
+    </section>
+  );
+}
+
+function InlineDistrictSelect({
+  label,
+  value,
+  tone,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  tone: "pickup" | "dropoff";
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="mt-3 block">
+      <span className={cn(
+        "mb-1.5 block text-[10px] font-black uppercase tracking-[0.12em]",
+        tone === "pickup" ? "text-[#f6c453]" : "text-[#56d9ef]",
+      )}>
+        {label}
+      </span>
+      <span className="relative block">
+        <select
+          value={value}
+          required
+          aria-label={label}
+          onChange={(event) => onChange(event.target.value)}
+          className="min-h-10 w-full min-w-0 appearance-none rounded-[14px] border border-white/10 bg-[#101c29] px-3 pr-9 text-sm font-black text-[#f8fafc] outline-none focus:border-[#56d9ef]/60"
+        >
+          <option value="">Choose district</option>
+          {hk18DistrictOptions.map((district) => (
+            <option key={district} value={district}>
+              {district}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className={cn(
+          "pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2",
+          tone === "pickup" ? "text-[#f6c453]" : "text-[#56d9ef]",
+        )} />
+      </span>
+    </label>
+  );
+}
+
+function RouteLocationCard({
+  label,
+  value,
+  fallbackAddress,
+  placeholder,
+  districtLabel,
+  district,
+  editingDistrict,
+  tone,
+  onOpen,
+  onEditDistrict,
+  onDistrictChange,
+}: {
+  label: string;
+  value: RideLocation | null;
+  fallbackAddress: string;
+  placeholder: string;
+  districtLabel: string;
+  district: string;
+  editingDistrict: boolean;
+  tone: "pickup" | "dropoff";
+  onOpen: () => void;
+  onEditDistrict: () => void;
+  onDistrictChange: (value: string) => void;
+}) {
+  const accent = tone === "pickup" ? "#f6c453" : "#56d9ef";
+  const selectedDistrict = value?.district ?? district;
+  const needsDistrict = Boolean(value) && (!selectedDistrict || editingDistrict);
+  const subtitle = routeLocationSubtitle(value);
+  const fallbackLabel = routePointSummary(fallbackAddress, "");
+
+  return (
+    <section
+      className={cn(
+        "rounded-[20px] border bg-[rgba(15,27,39,0.88)] p-3.5 shadow-[0_14px_32px_rgba(0,0,0,0.22)]",
+        tone === "pickup" ? "border-[#f6c453]/16" : "border-[#56d9ef]/18",
+      )}
+    >
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span
+            className={cn(
+              "grid h-10 w-10 shrink-0 place-items-center rounded-[15px] border",
+              tone === "pickup"
+                ? "border-[#f6c453]/28 bg-[#1b2936] text-[#ffc94d]"
+                : "border-[#56d9ef]/28 bg-[#0b2a38] text-[#56d9ef]",
+            )}
+          >
+            <MapPin className="h-5 w-5 fill-current/10 stroke-[2.4]" />
+          </span>
+          <h3
+            className={cn(
+              "min-w-0 truncate text-[11px] font-black uppercase tracking-[0.14em]",
+              tone === "pickup" ? "text-[#f6c453]" : "text-[#56d9ef]",
+            )}
+          >
+            {label}
+          </h3>
+        </div>
+        <button
+          type="button"
+          onClick={onOpen}
+          aria-label={`Edit ${label.toLowerCase()}`}
+          className={cn(
+            "grid h-9 w-9 shrink-0 place-items-center rounded-full transition hover:bg-white/8",
+            tone === "pickup" ? "text-[#f6c453]" : "text-[#56d9ef]",
+          )}
+        >
+          <LocateFixed className="h-4.5 w-4.5" />
+        </button>
+      </div>
+
+      <button
+        type="button"
+        onClick={onOpen}
+        className="grid min-h-11 w-full grid-cols-[20px_minmax(0,1fr)] items-center gap-2 rounded-[14px] border border-white/12 bg-[#081421] px-3 text-left transition hover:border-white/24 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-3"
+        style={{ outlineColor: accent }}
+      >
+        <Search className="h-4.5 w-4.5 text-slate-400" />
+        <span className="min-w-0">
+          {value ? (
+            <>
+              <span className="block truncate text-sm font-black text-[#f8fafc]">{value.name}</span>
+              {subtitle ? <span className="mt-0.5 block truncate text-[11px] font-semibold text-slate-400">{subtitle}</span> : null}
+            </>
+          ) : fallbackLabel ? (
+            <span className="block truncate text-sm font-black text-[#f8fafc]">{fallbackLabel}</span>
+          ) : (
+            <span className="block truncate text-sm font-medium text-slate-400">{placeholder}</span>
+          )}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onOpen}
+        className={cn(
+          "mt-3 inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-[14px] border px-3 text-[11px] font-black transition",
+          tone === "pickup"
+            ? "border-[#f6c453]/24 bg-[#f6c453]/8 text-[#f6c453] hover:border-[#f6c453]/44"
+            : "border-[#56d9ef]/24 bg-[#56d9ef]/10 text-[#56d9ef] hover:border-[#56d9ef]/44",
+        )}
+      >
+        <LocateFixed className="h-3.5 w-3.5" />
+        Use my current location
+      </button>
+
+      {value && selectedDistrict && !editingDistrict ? (
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-[13px] border border-[#2dd4bf]/18 bg-[#0d2427] px-3 py-2">
+          <span className="min-w-0">
+            <span className="block truncate text-xs font-black text-[#86efac]">{selectedDistrict}</span>
+            <span className="mt-0.5 block text-[10px] font-bold text-[#9be7d7]">District detected</span>
+          </span>
+          <button
+            type="button"
+            onClick={onEditDistrict}
+            className="shrink-0 rounded-full border border-[#5eead4]/25 px-2.5 py-1 text-[10px] font-black text-[#a7f3ff]"
+          >
+            Edit
+          </button>
+        </div>
+      ) : null}
+
+      {needsDistrict ? (
+        <InlineDistrictSelect
+          label={districtLabel}
+          value={district}
+          tone={tone}
+          onChange={onDistrictChange}
+        />
+      ) : null}
+    </section>
+  );
+}
+
+function RouteMeetingPointCard({
+  value,
+  required,
+  placeholder,
+  helper,
+  onChange,
+}: {
+  value: string;
+  required: boolean;
+  placeholder: string;
+  helper: string;
+  onChange: (value: string) => void;
+}) {
+  const fieldId = useId();
+
+  return (
+    <section className="rounded-[20px] border border-[#c084fc]/20 bg-[rgba(15,27,39,0.88)] p-3.5 shadow-[0_14px_32px_rgba(0,0,0,0.22)]">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[15px] border border-[#c084fc]/26 bg-[#2a1742]/64 text-[#d8b4fe]">
+            <UsersRound className="h-5 w-5" />
+          </span>
+          <label htmlFor={fieldId} className="min-w-0 truncate text-[11px] font-black uppercase tracking-[0.14em] text-[#d8b4fe]">
+            Meeting point {required ? "(required)" : "(optional)"}
+          </label>
+        </div>
+        <Info className="h-4.5 w-4.5 shrink-0 text-slate-400" />
+      </div>
+      <input
+        id={fieldId}
+        type="text"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        required={required}
+        aria-required={required}
+        className="min-h-11 w-full min-w-0 rounded-[14px] border border-white/12 bg-[#081421] px-3 text-sm font-medium text-[#f8fafc] outline-none placeholder:text-slate-500 focus:border-[#c084fc]/55"
+      />
+      <p className="mt-2 text-xs font-semibold leading-5 text-slate-400">{helper}</p>
+    </section>
+  );
+}
 function AddressField({
   label,
   type,
@@ -1609,45 +1889,6 @@ function AirportTimeSelectField({
       </div>
       <span className="text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">Hong Kong time. Choose hour, minute, and AM/PM.</span>
     </fieldset>
-  );
-}
-
-function DistrictSelectField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const fieldId = useId();
-
-  return (
-    <label htmlFor={fieldId} className="grid min-w-0 gap-2 rounded-[18px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-left">
-      <span className="text-xs font-black uppercase tracking-[0.13em] text-[var(--rp-primary)]">
-        {label}
-        <span className="ml-1 text-[#f6c453]">*</span>
-      </span>
-      <span className="relative block">
-        <select
-          id={fieldId}
-          value={value}
-          required
-          aria-required="true"
-          onChange={(event) => onChange(event.target.value)}
-          className="min-h-11 w-full min-w-0 appearance-none rounded-xl border border-[var(--rp-border)] bg-[rgba(5,12,20,0.48)] px-3 pr-10 text-base font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
-        >
-          <option value="">Choose district</option>
-          {hk18DistrictOptions.map((district) => (
-            <option key={district} value={district}>
-              {district}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--rp-primary)]" />
-      </span>
-    </label>
   );
 }
 
@@ -2194,6 +2435,14 @@ function RouteStopsStep({
       ? "Mong Kok"
       : "HKIA Terminal 1 Departures"
     : "None yet";
+  const pickupTitle = routeLocationTitle(pickupLocation, pickupAddress);
+  const dropoffTitle = routeLocationTitle(dropoffLocation, dropoffAddress);
+  const showRouteMapPreview = Boolean(pickupLocation || dropoffLocation || stops.length > 0);
+  const meetingPointHelper = gatherPointRequired
+    ? isAirport
+      ? "Required. Tell riders exactly where to meet before the host books the external ride app."
+      : "Required. Tell riders where to meet before the external ride app booking."
+    : "Add details to help riders find the exact meeting spot easily.";
 
   function handleRouteBack() {
     if (!isRoutePanel) {
@@ -2276,84 +2525,79 @@ function RouteStopsStep({
         {isRoutePanel ? (
           <>
             <section className="mt-6 grid gap-4">
-              <RouteJourneyPreview
-                pickupAddress={pickupAddress}
-                dropoffAddress={dropoffAddress}
-                pickupLocation={pickupLocation}
-                dropoffLocation={dropoffLocation}
-                stops={stops}
+              <RoutePointOverview
                 pickupLabel={pickupFieldLabel}
                 dropoffLabel={dropoffFieldLabel}
+                pickupTitle={pickupTitle}
+                dropoffTitle={dropoffTitle}
+                onPickupOpen={() => setActiveLocationPicker("pickup")}
+                onDropoffOpen={() => setActiveLocationPicker("dropoff")}
               />
 
-              <div className="grid gap-3">
-                <RideLocationField
+              <div className="grid gap-3 md:grid-cols-2">
+                <RouteLocationCard
                   label={pickupFieldLabel}
                   value={pickupLocation}
-                  placeholder={pickupLocation ? "Change pickup location" : `Search ${pickupPlaceholder.toLowerCase()}`}
-                  allowCurrentLocation
+                  fallbackAddress={pickupAddress}
+                  placeholder={pickupLocation ? "Change pickup location" : `Search ${pickupPlaceholder.toLowerCase()} location`}
+                  districtLabel="Pickup district"
+                  district={pickupDistrict}
+                  editingDistrict={editingDistrict === "pickup"}
                   onOpen={() => setActiveLocationPicker("pickup")}
+                  onEditDistrict={() => setEditingDistrict("pickup")}
+                  onDistrictChange={onPickupDistrictChange}
+                  tone="pickup"
                 />
-                <DistrictDetectionStatus
-                  district={(pickupLocation?.district ?? pickupDistrict) || null}
-                  editing={editingDistrict === "pickup"}
-                  onEdit={() => setEditingDistrict("pickup")}
-                >
-                  <DistrictSelectField
-                    label="Pickup district"
-                    value={pickupDistrict}
-                    onChange={onPickupDistrictChange}
-                  />
-                </DistrictDetectionStatus>
-                {!isRideAppSelfSettle ? (
-                  <SelfSettleTextField
-                    label="Gather point"
-                    value={pickupVenue}
-                    placeholder="MTR exit, lobby, gate, or landmark"
-                    helper="Optional. Where riders meet before pickup."
-                    onChange={onPickupVenueChange}
-                  />
-                ) : null}
-                {stops.map((stop, index) => (
-                  <AddressField
-                    key={stop.id}
-                    label={`Stop ${index + 1}`}
-                    type="stop"
-                    value={stop.address}
-                    placeholder="Enter stop address"
-                    onChange={(value) => onStopChange(stop.id, value)}
-                    onRemove={() => onRemoveStop(stop.id)}
-                  />
-                ))}
-                <RideLocationField
+                <RouteLocationCard
                   label={dropoffFieldLabel}
                   value={dropoffLocation}
-                  placeholder={dropoffLocation ? "Change drop-off location" : `Search ${dropoffPlaceholder.toLowerCase()}`}
+                  fallbackAddress={dropoffAddress}
+                  placeholder={dropoffLocation ? "Change drop-off location" : `Search ${dropoffPlaceholder.toLowerCase()} location`}
+                  districtLabel="Destination district"
+                  district={dropoffDistrict}
+                  editingDistrict={editingDistrict === "dropoff"}
                   onOpen={() => setActiveLocationPicker("dropoff")}
+                  onEditDistrict={() => setEditingDistrict("dropoff")}
+                  onDistrictChange={onDropoffDistrictChange}
+                  tone="dropoff"
                 />
-                <DistrictDetectionStatus
-                  district={(dropoffLocation?.district ?? dropoffDistrict) || null}
-                  editing={editingDistrict === "dropoff"}
-                  onEdit={() => setEditingDistrict("dropoff")}
-                >
-                  <DistrictSelectField
-                    label="Destination district"
-                    value={dropoffDistrict}
-                    onChange={onDropoffDistrictChange}
-                  />
-                </DistrictDetectionStatus>
-                {isRideAppSelfSettle ? (
-                  <SelfSettleTextField
-                    label={isAirport ? "Gather point" : "Gather point"}
-                    value={pickupVenue}
-                    placeholder={isAirport && isFromAirport ? "Arrival Hall A pillar 4" : "Required"}
-                    helper={isAirport ? "Required. Where riders meet before the host books." : "Required. Tell riders where to meet before the external ride app booking."}
-                    required
-                    onChange={onPickupVenueChange}
-                  />
-                ) : null}
               </div>
 
+              {stops.length > 0 ? (
+                <div className="grid gap-3">
+                  {stops.map((stop, index) => (
+                    <AddressField
+                      key={stop.id}
+                      label={`Stop ${index + 1}`}
+                      type="stop"
+                      value={stop.address}
+                      placeholder="Enter stop address"
+                      onChange={(value) => onStopChange(stop.id, value)}
+                      onRemove={() => onRemoveStop(stop.id)}
+                    />
+                  ))}
+                </div>
+              ) : null}
+
+              <RouteMeetingPointCard
+                value={pickupVenue}
+                required={gatherPointRequired}
+                placeholder={isAirport && isFromAirport ? "E.g., Arrival Hall A pillar 4" : "E.g., Meet at the main entrance, near Gate 3"}
+                helper={meetingPointHelper}
+                onChange={onPickupVenueChange}
+              />
+
+              {showRouteMapPreview ? (
+                <RouteJourneyPreview
+                  pickupAddress={pickupAddress}
+                  dropoffAddress={dropoffAddress}
+                  pickupLocation={pickupLocation}
+                  dropoffLocation={dropoffLocation}
+                  stops={stops}
+                  pickupLabel={pickupFieldLabel}
+                  dropoffLabel={dropoffFieldLabel}
+                />
+              ) : null}
             </section>
 
             {!isRideAppSelfSettle ? <div className="mt-4">
