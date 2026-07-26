@@ -1395,64 +1395,10 @@ function RouteJourneyPreview({
   );
 }
 
-function routeLocationTitle(location: RideLocation | null, fallbackAddress: string, fallback = "Not set") {
-  if (location?.name?.trim()) return location.name.trim();
-  return routePointSummary(fallbackAddress, fallback);
-}
-
 function routeLocationSubtitle(location: RideLocation | null) {
   if (!location?.formattedAddress?.trim()) return null;
   if (location.formattedAddress.trim() === location.name.trim()) return null;
   return location.formattedAddress.trim();
-}
-
-function RoutePointOverview({
-  pickupLabel,
-  dropoffLabel,
-  pickupTitle,
-  dropoffTitle,
-  onPickupOpen,
-  onDropoffOpen,
-}: {
-  pickupLabel: string;
-  dropoffLabel: string;
-  pickupTitle: string;
-  dropoffTitle: string;
-  onPickupOpen: () => void;
-  onDropoffOpen: () => void;
-}) {
-  return (
-    <section className="grid grid-cols-2 overflow-hidden rounded-[20px] border border-white/10 bg-[linear-gradient(145deg,rgba(9,20,32,0.96),rgba(5,13,22,0.98))] shadow-[0_18px_40px_rgba(0,0,0,0.24)]">
-      <button
-        type="button"
-        onClick={onPickupOpen}
-        className="group grid min-h-[78px] grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-2 border-r border-white/10 px-3 py-3 text-left transition hover:bg-white/[0.035] sm:grid-cols-[46px_minmax(0,1fr)_auto] sm:gap-3 sm:px-4"
-      >
-        <span className="grid h-9 w-9 place-items-center rounded-[14px] border border-[#f6c453]/24 bg-[#1b2936] text-[#ffc94d] sm:h-11 sm:w-11 sm:rounded-[16px]">
-          <MapPin className="h-5 w-5 fill-[#ffc94d]/12 stroke-[2.4]" />
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate text-[10px] font-black uppercase tracking-[0.12em] text-[#f6c453] sm:text-[11px]">{pickupLabel}</span>
-          <span className="mt-1 block truncate text-sm font-black text-[#f8fafc] sm:text-base sm:font-medium">{pickupTitle}</span>
-        </span>
-        <ChevronRight className="h-5 w-5 text-[#f6c453] transition group-hover:translate-x-0.5" />
-      </button>
-      <button
-        type="button"
-        onClick={onDropoffOpen}
-        className="group grid min-h-[78px] grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-2 px-3 py-3 text-left transition hover:bg-white/[0.035] sm:grid-cols-[46px_minmax(0,1fr)_auto] sm:gap-3 sm:px-4"
-      >
-        <span className="grid h-9 w-9 place-items-center rounded-[14px] border border-[#56d9ef]/24 bg-[#0b2a38] text-[#56d9ef] sm:h-11 sm:w-11 sm:rounded-[16px]">
-          <MapPin className="h-5 w-5 fill-[#56d9ef]/12 stroke-[2.4]" />
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate text-[10px] font-black uppercase tracking-[0.12em] text-[#56d9ef] sm:text-[11px]">{dropoffLabel}</span>
-          <span className="mt-1 block truncate text-sm font-black text-[#f8fafc] sm:text-base sm:font-medium">{dropoffTitle}</span>
-        </span>
-        <ChevronRight className="h-5 w-5 text-[#56d9ef] transition group-hover:translate-x-0.5" />
-      </button>
-    </section>
-  );
 }
 
 function InlineDistrictSelect({
@@ -2436,10 +2382,6 @@ function RouteStopsStep({
       ? "Mong Kok"
       : "HKIA Terminal 1 Departures"
     : "dropoff";
-  const pickupTitle = routeLocationTitle(pickupLocation, pickupAddress);
-  const dropoffTitle = routeLocationTitle(dropoffLocation, dropoffAddress);
-  const pickupOverviewLabel = isAirport ? pickupFieldLabel : "Pickup";
-  const dropoffOverviewLabel = isAirport ? dropoffFieldLabel : "Dropoff";
   const pickupDetailLabel = isAirport ? pickupFieldLabel : "Pickup";
   const dropoffDetailLabel = isAirport ? dropoffFieldLabel : "Dropoff";
   const pickupSearchPlaceholder = pickupLocation
@@ -2547,15 +2489,6 @@ function RouteStopsStep({
                 stops={stops}
                 pickupLabel={pickupFieldLabel}
                 dropoffLabel={dropoffFieldLabel}
-              />
-
-              <RoutePointOverview
-                pickupLabel={pickupOverviewLabel}
-                dropoffLabel={dropoffOverviewLabel}
-                pickupTitle={pickupTitle}
-                dropoffTitle={dropoffTitle}
-                onPickupOpen={() => setActiveLocationPicker("pickup")}
-                onDropoffOpen={() => setActiveLocationPicker("dropoff")}
               />
 
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
