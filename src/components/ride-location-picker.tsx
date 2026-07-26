@@ -49,6 +49,23 @@ type PlaceSuggestion = {
   prediction: google.maps.places.PlacePrediction;
 };
 
+type LocalPlaceSeed = {
+  id: string;
+  name: string;
+  formattedAddress: string;
+  district: Hk18District;
+  coordinates: RideCoordinates;
+  aliases: string[];
+};
+
+type LocalLocationSuggestion = {
+  id: string;
+  mainText: string;
+  secondaryText: string;
+  distanceMeters: number | null;
+  location: RideLocation;
+};
+
 const hongKongDefaultCenter: RideCoordinates = { lat: 22.3193, lng: 114.1694 };
 const hongKongBounds = {
   north: 22.57,
@@ -56,6 +73,97 @@ const hongKongBounds = {
   east: 114.47,
   west: 113.825,
 };
+
+const localHongKongPlaceSeeds: LocalPlaceSeed[] = [
+  {
+    id: "k-city-kai-tak",
+    name: "K City",
+    formattedAddress: "7 Muk Ning Street, Kai Tak",
+    district: "Kowloon City",
+    coordinates: { lat: 22.331, lng: 114.2034 },
+    aliases: ["k city", "k.city", "kcity", "kai tak k city", "muk ning street"],
+  },
+  {
+    id: "kai-tak-station",
+    name: "Kai Tak Station",
+    formattedAddress: "Kai Tak MTR Station, Kai Tak",
+    district: "Kowloon City",
+    coordinates: { lat: 22.3313, lng: 114.1997 },
+    aliases: ["kai tak", "kai tak mtr", "kai tak station"],
+  },
+  {
+    id: "airside",
+    name: "AIRSIDE",
+    formattedAddress: "2 Concorde Road, Kai Tak",
+    district: "Kowloon City",
+    coordinates: { lat: 22.3291, lng: 114.1987 },
+    aliases: ["airside", "kai tak mall", "concorde road"],
+  },
+  {
+    id: "hong-kong-airport",
+    name: "Hong Kong International Airport",
+    formattedAddress: "Hong Kong International Airport, Chek Lap Kok",
+    district: "Islands",
+    coordinates: { lat: 22.308, lng: 113.9185 },
+    aliases: ["hkia", "hkg", "airport", "chek lap kok", "hong kong airport"],
+  },
+  {
+    id: "central-station",
+    name: "Central Station",
+    formattedAddress: "Central MTR Station, Central",
+    district: "Central and Western",
+    coordinates: { lat: 22.2819, lng: 114.1585 },
+    aliases: ["central", "central mtr", "central station"],
+  },
+  {
+    id: "causeway-bay",
+    name: "Causeway Bay",
+    formattedAddress: "Causeway Bay, Hong Kong Island",
+    district: "Wan Chai",
+    coordinates: { lat: 22.2802, lng: 114.1847 },
+    aliases: ["causeway bay", "cwb", "sogo"],
+  },
+  {
+    id: "hku-station",
+    name: "HKU Station",
+    formattedAddress: "HKU Station, Pok Fu Lam Road",
+    district: "Central and Western",
+    coordinates: { lat: 22.283, lng: 114.1355 },
+    aliases: ["hku", "hong kong university", "hku station"],
+  },
+  {
+    id: "mong-kok",
+    name: "Mong Kok",
+    formattedAddress: "Mong Kok, Kowloon",
+    district: "Yau Tsim Mong",
+    coordinates: { lat: 22.3193, lng: 114.1694 },
+    aliases: ["mong kok", "mk", "mongkok"],
+  },
+  {
+    id: "tsim-sha-tsui",
+    name: "Tsim Sha Tsui",
+    formattedAddress: "Tsim Sha Tsui, Kowloon",
+    district: "Yau Tsim Mong",
+    coordinates: { lat: 22.2988, lng: 114.1722 },
+    aliases: ["tsim sha tsui", "tst", "尖沙咀"],
+  },
+  {
+    id: "tseung-kwan-o",
+    name: "Tseung Kwan O",
+    formattedAddress: "Tseung Kwan O, New Territories",
+    district: "Sai Kung",
+    coordinates: { lat: 22.307, lng: 114.2605 },
+    aliases: ["tseung kwan o", "tko", "hang hau", "lohas"],
+  },
+  {
+    id: "sha-tin",
+    name: "Sha Tin",
+    formattedAddress: "Sha Tin, New Territories",
+    district: "Sha Tin",
+    coordinates: { lat: 22.3828, lng: 114.1885 },
+    aliases: ["sha tin", "shatin", "new town plaza"],
+  },
+];
 
 const googleDarkMapStyle: google.maps.MapTypeStyle[] = [
   { elementType: "geometry", stylers: [{ color: "#07111d" }] },
@@ -163,6 +271,66 @@ function makeRideLocation({
     source,
     meetingPointNote,
   };
+}
+
+function normalizeLocationSearchText(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9\u3400-\u9fff]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function scoreLocalPlaceSeed(seed: LocalPlaceSeed, normalizedQuery: string) {
+  const seedName = normalizeLocationSearchText(seed.name);
+  const haystack = normalizeLocationSearchText([
+    seed.name,
+    seed.formattedAddress,
+    seed.district,
+    ...seed.aliases,
+  ].join(" "));
+  const tokens = normalizedQuery.split(" ").filter(Boolean);
+  if (!tokens.length) return 0;
+
+  let score = 0;
+  if (seedName === normalizedQuery) score += 90;
+  if (seedName.startsWith(normalizedQuery)) score += 55;
+  if (seed.aliases.some((alias) => normalizeLocationSearchText(alias) === normalizedQuery)) score += 70;
+  if (haystack.includes(normalizedQuery)) score += 35;
+  score += tokens.filter((token) => haystack.includes(token)).length * 12;
+
+  return score;
+}
+
+function getLocalLocationSuggestions(query: string, origin: RideCoordinates | null): LocalLocationSuggestion[] {
+  const normalizedQuery = normalizeLocationSearchText(query);
+  if (normalizedQuery.length < 2) return [];
+
+  return localHongKongPlaceSeeds
+    .map((seed) => ({ seed, score: scoreLocalPlaceSeed(seed, normalizedQuery) }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || a.seed.name.localeCompare(b.seed.name))
+    .slice(0, 5)
+    .map(({ seed }) => {
+      const distanceMeters = origin ? Math.round(distanceBetweenCoordinates(origin, seed.coordinates)) : null;
+
+      return {
+        id: seed.id,
+        mainText: seed.name,
+        secondaryText: `${seed.formattedAddress} · ${seed.district}`,
+        distanceMeters,
+        location: makeRideLocation({
+          placeId: `local:${seed.id}`,
+          name: seed.name,
+          formattedAddress: seed.formattedAddress,
+          latitude: seed.coordinates.lat,
+          longitude: seed.coordinates.lng,
+          district: seed.district,
+          source: "autocomplete",
+        }),
+      };
+    });
 }
 
 async function createRideLocationFromPlace(
@@ -619,6 +787,35 @@ function LocationResultButton({
   );
 }
 
+function LocalLocationResultButton({
+  suggestion,
+  onSelect,
+}: {
+  suggestion: LocalLocationSuggestion;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className="grid w-full grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-white/8 px-3 py-3 text-left last:border-b-0 hover:bg-white/5"
+    >
+      <span className="grid h-10 w-10 place-items-center rounded-full border border-[#56d9ef]/25 bg-[#0b2a38] text-[#56d9ef]">
+        <MapPin className="h-4.5 w-4.5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-black text-[#f8fafc]">{suggestion.mainText}</span>
+        <span className="mt-1 block line-clamp-2 text-xs font-semibold leading-4 text-slate-400">
+          {suggestion.secondaryText}
+        </span>
+      </span>
+      <span className="rounded-full border border-[#56d9ef]/20 bg-[#0b2a38] px-2 py-1 text-[10px] font-black text-[#a7f3ff]">
+        {formatDistance(suggestion.distanceMeters) ?? "HK"}
+      </span>
+    </button>
+  );
+}
+
 function ExistingLocationButton({
   location,
   icon,
@@ -925,6 +1122,21 @@ export function LocationPicker({
   const [userCoordinates, setUserCoordinates] = useState<RideCoordinates | null>(null);
   const cleanQuery = query.trim();
   const hasGoogleKey = hasGoogleMapsApiKey();
+  const localSuggestions = useMemo(
+    () => getLocalLocationSuggestions(cleanQuery, userCoordinates),
+    [cleanQuery, userCoordinates],
+  );
+  const visibleLocalSuggestions = useMemo(() => {
+    const googleResultText = new Set(
+      suggestions.map((suggestion) => normalizeLocationSearchText(`${suggestion.mainText} ${suggestion.secondaryText}`)),
+    );
+
+    return localSuggestions.filter((suggestion) => {
+      const localText = normalizeLocationSearchText(`${suggestion.mainText} ${suggestion.secondaryText}`);
+      return !googleResultText.has(localText);
+    });
+  }, [localSuggestions, suggestions]);
+  const hasVisibleSuggestions = suggestions.length > 0 || visibleLocalSuggestions.length > 0;
 
   useEffect(() => {
     if (!open) return;
@@ -1219,7 +1431,7 @@ export function LocationPicker({
                 ))}
               </div>
 
-              {statusMessage ? (
+              {statusMessage && visibleLocalSuggestions.length === 0 ? (
                 <p className="mt-4 rounded-[16px] border border-amber-300/20 bg-[#19170d] px-4 py-3 text-xs font-bold leading-5 text-amber-100">
                   {statusMessage}
                 </p>
@@ -1232,15 +1444,24 @@ export function LocationPicker({
                     {isSearching ? <span className="text-xs font-bold text-slate-500">Searching...</span> : null}
                   </div>
                   <div className="mt-2 overflow-hidden rounded-[18px] border border-white/10 bg-[#0c1825]">
-                    {suggestions.length > 0 ? (
-                      suggestions.map((suggestion, index) => (
-                        <LocationResultButton
-                          key={suggestion.id}
-                          suggestion={suggestion}
-                          active={index === activeIndex}
-                          onSelect={() => handleSelectSuggestion(suggestion)}
-                        />
-                      ))
+                    {hasVisibleSuggestions ? (
+                      <>
+                        {suggestions.map((suggestion, index) => (
+                          <LocationResultButton
+                            key={suggestion.id}
+                            suggestion={suggestion}
+                            active={index === activeIndex}
+                            onSelect={() => handleSelectSuggestion(suggestion)}
+                          />
+                        ))}
+                        {visibleLocalSuggestions.map((suggestion) => (
+                          <LocalLocationResultButton
+                            key={suggestion.id}
+                            suggestion={suggestion}
+                            onSelect={() => openMapWithLocation(suggestion.location)}
+                          />
+                        ))}
+                      </>
                     ) : !isSearching && !statusMessage ? (
                       <div className="px-4 py-5 text-sm font-bold text-slate-400">No results yet.</div>
                     ) : null}
