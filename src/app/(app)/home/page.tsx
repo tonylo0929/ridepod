@@ -1372,15 +1372,12 @@ function HomeSectionHeader({
 function StartingAreaSection() {
   return (
     <section aria-labelledby="browse-starting-area-title">
-      <HomeSectionHeader
+      <h2
         id="browse-starting-area-title"
-        title="Browse by starting area"
-        subtitle="See where rides begin"
-        stepLabel="2"
-        icon={Building2}
-        tone="mint"
-        href={buildRideExploreHref()}
-      />
+        className="mb-3 scroll-mt-24 text-lg font-black text-[var(--rp-text)]"
+      >
+        Browse by District
+      </h2>
       <div className="grid grid-cols-2 gap-2.5">
         {startingAreaSummaries.map((area) => {
           const Icon = startingAreaIcons[area.icon];
