@@ -174,6 +174,8 @@ const categoryResultsScreenConfigs: Record<
       { id: "commute", label: "Commute" },
       { id: "school", label: "School" },
       { id: "routine", label: "Regular Routine" },
+      { id: "created", label: "Your Rides" },
+      { id: "joined", label: "Joined Rides" },
     ],
     resultTitle: "Your upcoming rides",
     ctaLabel: "Manage recurring",
@@ -192,6 +194,8 @@ const categoryResultsScreenConfigs: Record<
       { id: "departures", label: "Departures" },
       { id: "arrivals", label: "Arrivals" },
       { id: "early", label: "Early Morning" },
+      { id: "created", label: "Your Rides" },
+      { id: "joined", label: "Joined Rides" },
     ],
     resultTitle: "Popular routes",
     ctaLabel: "Find airport ride",
@@ -421,6 +425,12 @@ function rideMatchesScheduleRideQuickFilter(ride: HomeRide, filter: ScheduleRide
   const endOfWeekWindow = new Date(today);
   endOfWeekWindow.setDate(today.getDate() + 6);
   return rideDay >= todayTime && rideDay <= endOfWeekWindow.getTime();
+}
+
+function rideMatchesCategoryOwnershipFilter(ride: HomeRide, filter: string | null) {
+  if (filter === "created") return matchesOwnershipFilter(ride, "mine");
+  if (filter === "joined") return matchesOwnershipFilter(ride, "joined");
+  return true;
 }
 
 function FilterSelect({
@@ -2480,6 +2490,8 @@ function HomePageContent() {
       ),
     [scheduleRideQuickFilter, scheduleRideRides, today],
   );
+  const activeCategoryResultFilter =
+    selectedCategory && selectedCategory !== "schedule" ? categoryResultFilters[selectedCategory] : null;
   const categoryScreenRides = useMemo(() => {
     if (!selectedCategory) return [];
     if (selectedCategory === "schedule") return scheduleRideVisibleRides;
@@ -2487,7 +2499,8 @@ function HomePageContent() {
       const exactAirportRides = filteredRides
         .filter((ride) => rideMatchesTab("airport", ride))
         .filter((ride) => matchesAirportDirectionFilter(ride, airportDirectionFilter))
-        .filter((ride) => matchesAirportFlightQuery(ride, airportFlightQuery));
+        .filter((ride) => matchesAirportFlightQuery(ride, airportFlightQuery))
+        .filter((ride) => rideMatchesCategoryOwnershipFilter(ride, activeCategoryResultFilter));
 
       if (exactAirportRides.length > 0) return exactAirportRides;
 
@@ -2511,12 +2524,16 @@ function HomePageContent() {
             isRideAppSelfSettle(ride) ||
             (taxiDriverFilter === "accepted" && ride.driverAssignmentStatus === "PARTNER_ACCEPTED") ||
             (taxiDriverFilter === "waiting" && ride.driverAssignmentStatus !== "PARTNER_ACCEPTED")) &&
-          (taxiTypeFilter === "all" || isRideAppSelfSettle(ride) || ride.taxiType === taxiTypeFilter),
+          (taxiTypeFilter === "all" || isRideAppSelfSettle(ride) || ride.taxiType === taxiTypeFilter) &&
+          rideMatchesCategoryOwnershipFilter(ride, activeCategoryResultFilter),
       );
     }
 
-    return filteredRides.filter((ride) => rideMatchesTab(categoryResultsScreenConfigs[selectedCategory].tab, ride));
+    return filteredRides
+      .filter((ride) => rideMatchesTab(categoryResultsScreenConfigs[selectedCategory].tab, ride))
+      .filter((ride) => rideMatchesCategoryOwnershipFilter(ride, activeCategoryResultFilter));
   }, [
+    activeCategoryResultFilter,
     airportDirectionFilter,
     airportFlightQuery,
     allHomeRides,
