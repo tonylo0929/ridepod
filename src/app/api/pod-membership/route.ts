@@ -39,6 +39,46 @@ function isTerminalPod(pod: Pick<RidePodPodRow, "lifecycle_state">) {
   return ["COMPLETED", "SETTLED", "CLOSED", "CANCELED", "CANCELLED"].includes(pod.lifecycle_state);
 }
 
+async function notifyHostMemberLeft(input: {
+  client: ReturnType<typeof getSupabaseAdminClient>;
+  pod: RidePodPodRow;
+  actorUserId: string;
+}) {
+  const hostUserId = input.pod.host_user_id;
+  if (!hostUserId || hostUserId === input.actorUserId) return;
+
+  const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+  const existingResult = await input.client
+    .from("user_notifications")
+    .select("id")
+    .eq("recipient_user_id", hostUserId)
+    .eq("actor_user_id", input.actorUserId)
+    .eq("related_pod_id", input.pod.id)
+    .eq("type", "pod_member_left")
+    .gte("created_at", since)
+    .limit(1);
+
+  if (existingResult.error) throw existingResult.error;
+  if (existingResult.data?.length) return;
+
+  const insertResult = await input.client.from("user_notifications").insert({
+    recipient_user_id: hostUserId,
+    actor_user_id: input.actorUserId,
+    type: "pod_member_left",
+    title: "Rider left your ride",
+    body: `A rider left ${input.pod.route_label}.`,
+    related_pod_id: input.pod.id,
+    related_url: `/pods/${input.pod.id}`,
+    metadata: {
+      action: "pod_member_left",
+      route: input.pod.route_label,
+      source: "pod_membership_cancel",
+    },
+  });
+
+  if (insertResult.error) throw insertResult.error;
+}
+
 export async function POST(request: NextRequest) {
   let client: ReturnType<typeof getSupabaseAdminClient>;
 
@@ -97,6 +137,7 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (result.error) throw result.error;
+      await notifyHostMemberLeft({ client, pod: podResult.data as RidePodPodRow, actorUserId: userId });
       return noStoreJson({ membership: result.data as RidePodMemberRow | null, pod: podResult.data as RidePodPodRow });
     }
 

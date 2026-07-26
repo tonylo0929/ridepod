@@ -2,6 +2,11 @@ import { getHomeRide } from "@/lib/home-ride-mock";
 import { getHostedPods, getPod, getUserPods, type RidePod } from "@/lib/mock-data";
 import { notifyPodAudience } from "@/lib/notifications/pod-notification-fanout";
 import { createUserNotificationOnce } from "@/lib/notifications/ridepod-notifications";
+import {
+  publicCreatedPodToHomeRide,
+  publicCreatedRideSignature,
+  type PublicCreatedRidePod,
+} from "@/lib/public-created-rides";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import type { RidePodMemberRow, RidePodPodRow } from "@/lib/supabase/types";
 import { createPodLiveUpdate } from "@/lib/updates/ridepod-live-updates";
@@ -357,6 +362,48 @@ function getMockCancelContext(input: RidePodMembershipInput) {
   };
 }
 
+async function getPublishedCreatedRideNotificationTarget(input: RidePodMembershipInput) {
+  if (isUuid(input.podId) || input.hostUserId) return null;
+
+  const homeRide = getHomeRide(input.podId);
+  if (!homeRide) return null;
+
+  try {
+    const response = await fetch("/api/public-created-rides", { cache: "no-store" });
+    if (!response.ok) throw new Error(`Public ride lookup failed with ${response.status}`);
+
+    const payload = (await response.json()) as { pods?: PublicCreatedRidePod[] };
+    const rideSignature = publicCreatedRideSignature(homeRide);
+    const matchingPod = (payload.pods ?? []).find(
+      (pod) => publicCreatedRideSignature(publicCreatedPodToHomeRide(pod, input.userId)) === rideSignature,
+    );
+
+    if (!matchingPod) return null;
+
+    return {
+      podId: matchingPod.id,
+      hostUserId: matchingPod.host_user_id?.trim() ?? null,
+      rideTitle: matchingPod.route_label || `${homeRide.fromLabel} -> ${homeRide.toLabel}`,
+    };
+  } catch (error) {
+    console.warn("RidePod published ride lookup failed for host notification", error);
+    return null;
+  }
+}
+
+async function getPublishedMembershipInput(input: RidePodMembershipInput): Promise<RidePodMembershipInput | null> {
+  const publishedTarget = await getPublishedCreatedRideNotificationTarget(input);
+  if (!publishedTarget?.podId) return null;
+
+  return {
+    ...input,
+    podId: publishedTarget.podId,
+    hostUserId: input.hostUserId ?? publishedTarget.hostUserId,
+    podTitle: input.podTitle ?? publishedTarget.rideTitle,
+    relatedUrl: input.relatedUrl ?? `/pods/${input.podId}`,
+  };
+}
+
 async function getSupabaseCancelContext(input: RidePodMembershipInput) {
   const { pod } = await getSupabasePodJoinState(input.podId);
   const client = getSupabaseBrowserClient();
@@ -384,13 +431,16 @@ async function getSupabaseCancelContext(input: RidePodMembershipInput) {
 }
 
 async function publishJoinSideEffects(input: RidePodMembershipInput, pod?: RidePodPodRow | null) {
-  const hostUserId = input.hostUserId ?? pod?.host_user_id ?? getMockJoinContext(input).hostUserId;
-  const rideTitle = input.podTitle ?? pod?.route_label ?? getMockJoinContext(input).rideTitle;
+  const mockContext = getMockJoinContext(input);
+  const publishedTarget = await getPublishedCreatedRideNotificationTarget(input);
+  const notificationPodId = publishedTarget?.podId ?? input.podId;
+  const hostUserId = input.hostUserId ?? pod?.host_user_id ?? publishedTarget?.hostUserId ?? mockContext.hostUserId;
+  const rideTitle = input.podTitle ?? pod?.route_label ?? publishedTarget?.rideTitle ?? mockContext.rideTitle;
   const actorName = normalizeText(input.actorDisplayName) || "Someone";
   const relatedUrl = input.relatedUrl ?? `/pods/${input.podId}`;
   const tasks: Promise<unknown>[] = [
     createPodLiveUpdate({
-      podId: input.podId,
+      podId: notificationPodId,
       userId: input.userId,
       updateType: "joined",
       message: "Joined the ride",
@@ -399,14 +449,14 @@ async function publishJoinSideEffects(input: RidePodMembershipInput, pod?: RideP
 
   tasks.push(
     notifyPodAudience({
-      podId: input.podId,
+      podId: notificationPodId,
       actorUserId: input.userId,
       actorDisplayName: actorName,
       type: "pod_joined",
       audiences: ["actor", "others"],
       selfTitle: "You joined this ride",
       selfBody: `${rideTitle} is now in your rides.`,
-      title: "New rider joined",
+      title: "New rider joined your ride",
       body: `${actorName} joined ${rideTitle}.`,
       relatedUrl,
       metadata: {
@@ -427,8 +477,10 @@ async function publishCancelSideEffects(input: RidePodMembershipInput, context?:
 }) {
   try {
     const mockContext = getMockCancelContext(input);
-    const hostUserId = input.hostUserId ?? context?.pod?.host_user_id ?? mockContext.hostUserId;
-    const rideTitle = input.podTitle ?? context?.pod?.route_label ?? mockContext.rideTitle;
+    const publishedTarget = await getPublishedCreatedRideNotificationTarget(input);
+    const notificationPodId = publishedTarget?.podId ?? input.podId;
+    const hostUserId = input.hostUserId ?? context?.pod?.host_user_id ?? publishedTarget?.hostUserId ?? mockContext.hostUserId;
+    const rideTitle = input.podTitle ?? context?.pod?.route_label ?? publishedTarget?.rideTitle ?? mockContext.rideTitle;
     const actorName = normalizeText(input.actorDisplayName) || "Someone";
     const relatedUrl = input.relatedUrl ?? `/pods/${input.podId}`;
     const joinedMemberIds = context?.joinedMemberIds ?? mockContext.joinedMemberIds;
@@ -437,27 +489,27 @@ async function publishCancelSideEffects(input: RidePodMembershipInput, context?:
     );
     const tasks: Promise<unknown>[] = [
       createPodLiveUpdate({
-        podId: input.podId,
+        podId: notificationPodId,
         userId: input.userId,
         updateType: "attendance_cancelled",
-        message: "Can’t make it",
+        message: "Left the ride",
       }),
     ];
 
     tasks.push(
       notifyPodAudience({
-        podId: input.podId,
+        podId: notificationPodId,
         actorUserId: input.userId,
         actorDisplayName: actorName,
-        type: "attendance_cancelled",
+        type: "pod_member_left",
         audiences: ["actor", "others"],
-        selfTitle: "You cancelled this ride",
+        selfTitle: "You left this ride",
         selfBody: `${rideTitle} was removed from your active rides.`,
-        title: "Rider cancelled attendance",
-        body: `${actorName} can’t make it to ${rideTitle}.`,
+        title: "Rider left your ride",
+        body: `${actorName} left ${rideTitle}.`,
         relatedUrl,
         metadata: {
-          action: "attendance_cancelled",
+          action: "pod_member_left",
           route: rideTitle,
         },
         fallbackRecipientUserIds: [
@@ -472,10 +524,10 @@ async function publishCancelSideEffects(input: RidePodMembershipInput, context?:
         createUserNotificationOnce({
           recipientUserId: hostUserId,
           actorUserId: input.userId,
-          type: "attendance_cancelled",
-          title: "Guest cancelled attendance",
-          body: `${actorName} can’t make it to ${rideTitle}.`,
-          relatedPodId: input.podId,
+          type: "pod_member_left",
+          title: "Rider left your ride",
+          body: `${actorName} left ${rideTitle}.`,
+          relatedPodId: notificationPodId,
           relatedUrl,
         }),
       );
@@ -488,8 +540,8 @@ async function publishCancelSideEffects(input: RidePodMembershipInput, context?:
           actorUserId: input.userId,
           type: "attendance_changed",
           title: "Ride attendance changed",
-          body: `${actorName} can’t make it.`,
-          relatedPodId: input.podId,
+          body: `${actorName} left the ride.`,
+          relatedPodId: notificationPodId,
           relatedUrl: `/pods/${input.podId}/chat`,
         }),
       );
@@ -508,6 +560,19 @@ export async function joinPod(input: RidePodMembershipInput): Promise<RidePodMem
   if (validationError) return { success: false, membership: null, error: validationError };
 
   if (shouldUseLocalFallback(input)) {
+    const publishedInput = await getPublishedMembershipInput(input);
+    if (publishedInput && isUuid(publishedInput.podId) && isUuid(publishedInput.userId)) {
+      try {
+        const serverJoin = await joinPodViaServer(publishedInput);
+        await publishJoinSideEffects(publishedInput, serverJoin.pod);
+        return { success: true, membership: serverJoin.membership };
+      } catch (error) {
+        if (!isMissingSupabaseConfig(error)) {
+          console.warn("RidePod published ride join failed; using local fallback", error);
+        }
+      }
+    }
+
     const mockJoinError = validateMockJoinable(input.podId);
     if (mockJoinError) return { success: false, membership: null, error: mockJoinError };
 
@@ -611,6 +676,19 @@ export async function cancelPodAttendance(input: RidePodMembershipInput): Promis
   if (validationError) return { success: false, membership: null, error: validationError };
 
   if (shouldUseLocalFallback(input)) {
+    const publishedInput = await getPublishedMembershipInput(input);
+    if (publishedInput && isUuid(publishedInput.podId) && isUuid(publishedInput.userId)) {
+      try {
+        const serverCancel = await cancelPodViaServer(publishedInput);
+        await publishCancelSideEffects(publishedInput, { pod: serverCancel.pod });
+        return { success: true, membership: serverCancel.membership };
+      } catch (error) {
+        if (!isMissingSupabaseConfig(error)) {
+          console.warn("RidePod published ride leave failed; using local fallback", error);
+        }
+      }
+    }
+
     const pod = getPod(input.podId);
     const homeRide = getHomeRide(input.podId);
     if (isTerminalMockPod(pod) || homeRide?.pickupStatus === "RIDE_STARTED") {
