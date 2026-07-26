@@ -90,8 +90,8 @@ const categoryCards: Array<{ id: HomeCategoryCardId; imageSrc: string; imageAlt:
 
 const scheduleRideQuickFilters: Array<{ id: ScheduleRideQuickFilter; label: string }> = [
   { id: "recommended", label: "Recommended" },
-  { id: "created", label: "Created Ride" },
-  { id: "joined", label: "Joined Ride" },
+  { id: "created", label: "Your Rides" },
+  { id: "joined", label: "Joined Rides" },
   { id: "today", label: "Today" },
   { id: "tomorrow", label: "Tomorrow" },
   { id: "this_week", label: "This week" },
@@ -279,8 +279,8 @@ const seatFilters: Array<{ id: SeatFilter; label: string }> = [
 
 const ownershipFilters: Array<{ id: OwnershipFilter; label: string }> = [
   { id: "all", label: "All pods" },
-  { id: "mine", label: "Created Ride" },
-  { id: "joined", label: "Joined Ride" },
+  { id: "mine", label: "Your Rides" },
+  { id: "joined", label: "Joined Rides" },
 ];
 
 const stopRequestFilters: Array<{ id: StopRequestFilter; label: string }> = [
@@ -1189,8 +1189,8 @@ function HomeRideCard({
           : null;
   const compactStatusLabel = currentUserRelationship
     ? currentUserRelationship.tone === "host"
-      ? "Created Ride"
-      : "Joined Ride"
+      ? "Your Ride"
+      : "Joined"
     : null;
   const estimateText = isRideApp
     ? rideAppEstimateDisplay.updated
@@ -1774,8 +1774,8 @@ function CategoryCompactResultCard({
   const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
   const ownershipBadgeLabel = currentUserRelationship
     ? currentUserRelationship.tone === "host"
-      ? "Created Ride"
-      : "Joined Ride"
+      ? "Your Ride"
+      : "Joined"
     : null;
 
   return (
