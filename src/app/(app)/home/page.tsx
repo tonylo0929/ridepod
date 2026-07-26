@@ -1399,27 +1399,22 @@ function HomeBottomActionCards() {
         <Link
           href="/today-rides"
           aria-label="Post a quick request"
-          className="group relative grid min-h-[112px] grid-cols-[auto_1fr_auto] items-end gap-3 overflow-hidden rounded-[14px] border border-blue-400/52 bg-[radial-gradient(circle_at_18%_8%,rgba(34,211,238,0.22),transparent_32%),linear-gradient(145deg,rgba(7,42,91,0.98),rgba(4,17,39,0.98))] p-3 text-left shadow-[0_16px_36px_rgba(37,99,235,0.18)] transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_20px_46px_rgba(37,99,235,0.24)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300"
+          className="group relative block aspect-[1102/590] min-h-[124px] overflow-hidden rounded-[14px] border border-blue-400/62 bg-[#061835] text-left shadow-[0_16px_36px_rgba(37,99,235,0.18)] transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-[0_20px_46px_rgba(37,99,235,0.24)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-blue-300"
         >
-          <span className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-blue-300/10 blur-2xl" />
-          <span className="absolute left-3 top-3 grid h-10 w-10 place-items-center rounded-[10px] border border-cyan-200/18 bg-[linear-gradient(135deg,#1fbff4,#1976dd)] text-white shadow-[0_12px_24px_rgba(25,118,221,0.24)]">
-            <CalendarDays className="h-[18px] w-[18px]" />
-          </span>
-          <span className="col-span-2 min-w-0 self-end pt-12">
-            <span className="block truncate text-[15px] font-black leading-tight text-white min-[390px]:text-base">Need a ride?</span>
-            <span className="mt-1 block truncate text-[11px] font-bold leading-4 text-blue-100/78 min-[390px]:text-xs">
-              Post a quick request in seconds
-            </span>
-          </span>
-          <span className="mb-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full border border-blue-200/18 bg-[#07192e]/86 text-blue-100 shadow-[0_10px_20px_rgba(0,0,0,0.22)] transition group-hover:translate-x-0.5 group-hover:border-blue-200/36">
-            <ChevronRight className="h-4 w-4" />
-          </span>
+          <Image
+            src="/images/home/need-ride-card.png"
+            alt=""
+            fill
+            sizes="(max-width: 389px) calc(100vw - 48px), 270px"
+            className="object-cover transition duration-300 group-hover:scale-[1.015]"
+          />
+          <span className="sr-only">Need a ride? Post a quick request in seconds.</span>
         </Link>
 
         <Link
           href="/create"
           aria-label="Create a ride"
-          className="group relative block aspect-[679/337] min-h-[124px] overflow-hidden rounded-[14px] border border-[var(--rp-primary)]/70 bg-[#1c1406] text-left shadow-[0_16px_36px_rgba(242,193,91,0.14)] transition hover:-translate-y-0.5 hover:border-[var(--rp-primary)] hover:shadow-[0_20px_46px_rgba(242,193,91,0.2)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
+          className="group relative block aspect-[1102/590] min-h-[124px] overflow-hidden rounded-[14px] border border-[var(--rp-primary)]/70 bg-[#1c1406] text-left shadow-[0_16px_36px_rgba(242,193,91,0.14)] transition hover:-translate-y-0.5 hover:border-[var(--rp-primary)] hover:shadow-[0_20px_46px_rgba(242,193,91,0.2)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
         >
           <Image
             src="/images/home/offer-ride-card.png"
