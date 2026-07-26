@@ -1543,22 +1543,16 @@ function HomeBottomActionCards() {
         <Link
           href="/create"
           aria-label="Create a ride"
-          className="group relative grid min-h-[124px] grid-cols-[1fr_auto] items-end gap-3 overflow-hidden rounded-[14px] border border-[var(--rp-primary)]/72 bg-[radial-gradient(circle_at_84%_26%,rgba(242,193,91,0.24),transparent_25%),linear-gradient(145deg,rgba(82,59,9,0.9),rgba(22,16,7,0.99))] p-3.5 text-left shadow-[0_16px_36px_rgba(242,193,91,0.14)] transition hover:-translate-y-0.5 hover:border-[var(--rp-primary)] hover:shadow-[0_20px_46px_rgba(242,193,91,0.2)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
+          className="group relative block aspect-[711/377] min-h-[124px] overflow-hidden rounded-[14px] border border-[var(--rp-primary)]/70 bg-[#1c1406] text-left shadow-[0_16px_36px_rgba(242,193,91,0.14)] transition hover:-translate-y-0.5 hover:border-[var(--rp-primary)] hover:shadow-[0_20px_46px_rgba(242,193,91,0.2)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
         >
-          <span className="pointer-events-none absolute right-7 top-7 h-16 w-8 rounded-br-[28px] border-r-2 border-b-2 border-dashed border-[var(--rp-primary)]/24" />
-          <span className="pointer-events-none absolute right-5 top-[26px] h-3.5 w-3.5 rounded-full bg-[var(--rp-primary)]/78 shadow-[0_0_18px_rgba(242,193,91,0.48)]" />
-          <span className="absolute left-3.5 top-7 grid h-10 w-10 place-items-center rounded-[10px] border border-yellow-100/18 bg-[linear-gradient(180deg,rgba(242,193,91,0.48),rgba(115,87,18,0.62))] text-yellow-50 shadow-[0_12px_24px_rgba(242,193,91,0.18)]">
-            <CarFront className="h-[18px] w-[18px]" />
-          </span>
-          <span className="min-w-0 self-end pt-16">
-            <span className="block truncate text-base font-black leading-tight text-white min-[390px]:text-[17px]">Offer a ride?</span>
-            <span className="mt-1 block truncate text-[11px] font-bold leading-4 text-yellow-50/72 min-[390px]:text-xs">
-              Create a ride and connect
-            </span>
-          </span>
-          <span className="mb-2 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)]/30 bg-[#171004]/82 text-[var(--rp-primary)] shadow-[0_10px_20px_rgba(0,0,0,0.24)] transition group-hover:translate-x-0.5 group-hover:border-[var(--rp-primary)]/48">
-            <ChevronRight className="h-4 w-4" />
-          </span>
+          <Image
+            src="/images/home/offer-ride-card.png"
+            alt=""
+            fill
+            sizes="(max-width: 389px) calc(100vw - 48px), 270px"
+            className="object-cover transition duration-300 group-hover:scale-[1.015]"
+          />
+          <span className="sr-only">Offer a ride? Create a ride and connect.</span>
         </Link>
       </div>
     </section>
