@@ -1418,7 +1418,10 @@ function HomeBottomActionCards() {
       <div className="mb-3 flex items-end justify-between gap-3">
         <div>
           <p className="text-xs font-black uppercase tracking-[0.16em] text-[#65E6D0]">Next step</p>
-          <h2 id="home-bottom-actions-title" className="mt-1 text-xl font-black leading-tight text-[var(--rp-text)]">
+          <h2
+            id="home-bottom-actions-title"
+            className="mt-1 text-2xl font-black leading-tight text-[var(--rp-text)] min-[390px]:text-[1.7rem]"
+          >
             Did not find the right ride?
           </h2>
         </div>
