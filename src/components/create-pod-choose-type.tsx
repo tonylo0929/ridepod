@@ -68,7 +68,6 @@ import {
   type Weekday,
 } from "@/lib/pod-schedule";
 import { useAuth } from "@/providers/AuthProvider";
-import { isRidePodAdminUser } from "@/lib/admin-access";
 import { getRideAppAccessNotice, getRideAppTrustSummary } from "@/lib/ride-app-trust";
 import {
   calculateRideAppJoinFee,
@@ -3761,6 +3760,8 @@ function SeatCounter({
 
 type RideCategoryId = "taxi" | "ride_app";
 
+const TAXI_MODE_COMING_SOON: boolean = true;
+
 const rideCategories: Array<{
   id: RideCategoryId;
   title: string;
@@ -3993,8 +3994,8 @@ function RideCategoryCard({
   const Icon = category.icon;
   const taxiCategory = category.id === "taxi";
   const rideAppCategory = category.id === "ride_app";
-  const displayTitle = disabled && taxiCategory ? "Taxi · Coming soon" : category.title;
-  const statusText = disabled && taxiCategory ? "Coming soon" : selected ? "Selected" : "Tap to choose";
+  const displayTitle = disabled && taxiCategory ? "Coming soon" : category.title;
+  const statusText = disabled && taxiCategory ? "Taxi mode is not ready yet" : selected ? "Selected" : "Tap to choose";
 
   return (
     <button
@@ -4081,20 +4082,25 @@ function RideCategoryCard({
 
 function RideOptionSelector({
   value,
-  peopleVehicle,
-  taxiCreateUnlocked,
   onChange,
 }: {
   value: RideOptionId;
-  peopleVehicle: PeopleVehicleState;
-  taxiCreateUnlocked: boolean;
   onChange: (value: RideOptionId) => void;
 }) {
   const selectedRideOption = normalizeRideOptionId(value);
   const selectedCategory: RideCategoryId =
-    selectedRideOption === "taxi_partner_quote" || selectedRideOption === "taxi_meter"
+    !TAXI_MODE_COMING_SOON && (selectedRideOption === "taxi_partner_quote" || selectedRideOption === "taxi_meter")
       ? "taxi"
       : "ride_app";
+
+  useEffect(() => {
+    if (
+      TAXI_MODE_COMING_SOON &&
+      (selectedRideOption === "taxi_partner_quote" || selectedRideOption === "taxi_meter")
+    ) {
+      onChange("ride_app_fixed_quote");
+    }
+  }, [onChange, selectedRideOption]);
 
   return (
     <section className="mt-9">
@@ -4105,7 +4111,7 @@ function RideOptionSelector({
             key={category.id}
             category={category}
             selected={selectedCategory === category.id}
-            disabled={category.id === "taxi" && !taxiCreateUnlocked}
+            disabled={category.id === "taxi" && TAXI_MODE_COMING_SOON}
             onSelect={() => {
               onChange(category.id === "taxi" ? "taxi_partner_quote" : "ride_app_fixed_quote");
             }}
@@ -5252,7 +5258,6 @@ function PeopleVehicleStep({
   stepLabels = baseCreateSteps,
   onRequireAuth,
   rideAppAccessNotice,
-  taxiCreateUnlocked,
   showBackAction = true,
 }: {
   podType: PodType;
@@ -5273,7 +5278,6 @@ function PeopleVehicleStep({
   stepLabels?: string[];
   onRequireAuth?: () => boolean;
   rideAppAccessNotice?: { blocked: boolean; message: string } | null;
-  taxiCreateUnlocked: boolean;
   showBackAction?: boolean;
 }) {
   const selectedRideOptionId = normalizeRideOptionId(peopleVehicle.rideOption);
@@ -5524,8 +5528,6 @@ function PeopleVehicleStep({
                 />
                 <RideOptionSelector
                   value={peopleVehicle.rideOption}
-                  peopleVehicle={peopleVehicle}
-                  taxiCreateUnlocked={taxiCreateUnlocked}
                   onChange={(rideOption) =>
                     {
                       setTaxiDetailsPage("category");
@@ -7940,7 +7942,6 @@ export function CreatePodChooseType() {
   const rideAppAccessNotice = user
     ? getRideAppAccessNotice(getRideAppTrustSummary(user.id))
     : null;
-  const taxiCreateUnlocked = isRidePodAdminUser(user, profile);
   const isAirportPod = podType === "airport";
   const isAirportTrip = isAirportPod || isAirportTaxiRoute(pickupAddress, dropoffAddress);
   const displayedTaxiPartnerPreference =
@@ -8328,7 +8329,6 @@ export function CreatePodChooseType() {
           stepLabels={activeStepLabels}
           onRequireAuth={ensureCreateAuth}
           rideAppAccessNotice={rideAppAccessNotice}
-          taxiCreateUnlocked={taxiCreateUnlocked}
           showBackAction={false}
         />
       )}
