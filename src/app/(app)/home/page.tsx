@@ -2887,7 +2887,7 @@ function HomePageContent() {
       }
     />
   );
-  const optionsFrameLabel = "Ride options";
+  const optionsFrameLabel = "Choose your mode";
   const homepageExitingForSchedule = selectedCategory !== null && categoryTransitionPhase !== "exiting";
 
   return (
