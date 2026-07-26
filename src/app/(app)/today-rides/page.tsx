@@ -1717,10 +1717,10 @@ function RideBoardCategoryDetailView({
       <div className="flex items-center gap-3">
         <Link
           href="/today-rides"
-          className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--rp-primary)]/42 bg-white/[0.055] px-3.5 text-xs font-black text-[var(--rp-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:bg-[var(--rp-primary)]/10"
+          aria-label="Back to Post a Request"
+          className="ridepod-back-button"
         >
           <ArrowLeft className="h-4 w-4" />
-          Post a Request
         </Link>
       </div>
 

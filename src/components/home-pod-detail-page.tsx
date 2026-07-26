@@ -203,10 +203,10 @@ export function HomePodDetailPage({ ride, backHref = "/home" }: { ride: HomeRide
       <div className="relative grid gap-4">
         <Link
           href={backHref}
-          className="inline-flex w-fit items-center gap-2 rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] px-3 py-2 text-sm font-black text-[var(--rp-muted-strong)]"
+          aria-label="Back to Home"
+          className="ridepod-back-button"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back
         </Link>
 
         <section className="rounded-[28px] border border-[var(--rp-border-strong)] bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-card)_94%,transparent),var(--rp-card-soft))] p-5 shadow-[var(--rp-shadow-soft)]">

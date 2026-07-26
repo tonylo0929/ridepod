@@ -3958,10 +3958,10 @@ function CompactRideAppRoutePanel({
           <button
             type="button"
             onClick={() => setRequestScreenOpen(false)}
-            className="inline-flex min-h-10 w-fit items-center gap-2 rounded-[14px] border border-white/12 bg-white/8 px-3 text-xs font-black text-[var(--rp-primary)] transition hover:bg-white/12"
+            aria-label="Back to stop request details"
+            className="ridepod-back-button"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back
           </button>
 
           <div className="mt-5 grid gap-4">

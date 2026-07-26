@@ -273,10 +273,10 @@ export function MyRideDatePage({ date }: { date: string }) {
       <header className="grid gap-2">
         <Link
           href="/pods"
-          className="inline-flex min-h-11 w-fit items-center gap-2 rounded-[16px] border border-[color-mix(in_srgb,var(--rp-primary)_42%,var(--rp-border))] bg-[color-mix(in_srgb,var(--rp-card-muted)_88%,transparent)] px-4 text-sm font-black text-[var(--rp-primary)] shadow-[0_10px_22px_rgba(0,0,0,0.18)] transition hover:bg-[var(--rp-card-soft)]"
+          aria-label="Back to Calendar"
+          className="ridepod-back-button"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to Calendar
         </Link>
         <div>
           <h1 className="text-3xl font-black tracking-tight text-[var(--rp-text)]">{title}</h1>
