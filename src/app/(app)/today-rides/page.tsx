@@ -1563,8 +1563,8 @@ function RideBoardPreviewSection({
         className={cn(
           "inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[18px] border px-4 text-sm font-black shadow-[0_14px_34px_rgba(0,0,0,0.24)] transition focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4",
           isToday
-            ? "border-transparent bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] text-[#07131C] shadow-[0_16px_34px_rgba(255,193,55,0.24)] hover:brightness-105 focus-visible:outline-[var(--rp-primary)]"
-            : "border-[#60A5FA]/48 bg-[#60A5FA]/12 text-[#BAE6FD] hover:border-[#60A5FA]/76 hover:bg-[#60A5FA]/18 focus-visible:outline-[#60A5FA]",
+            ? "border-transparent bg-[#F2C15B] text-[#07131C] shadow-[0_16px_34px_rgba(242,193,91,0.24)] hover:bg-[#FFD166] focus-visible:outline-[var(--rp-primary)]"
+            : "border-transparent bg-[#2563EB] text-white shadow-[0_16px_34px_rgba(37,99,235,0.24)] hover:bg-[#1D4ED8] focus-visible:outline-[#60A5FA]",
         )}
       >
         {seeMoreLabel}
