@@ -538,7 +538,7 @@ function MyActivityHub({
         </button>
       </div>
 
-      <div className="mt-4 grid min-w-0 grid-cols-2 gap-2 min-[520px]:grid-cols-4">
+      <div className="scrollbar-hide mt-4 flex min-w-0 snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain pb-1">
         {activityViews.map((view) => {
           const Icon = view.icon;
           const active = activeView === view.id;
@@ -548,7 +548,10 @@ function MyActivityHub({
               type="button"
               aria-pressed={active}
               onClick={() => onViewChange(view.id)}
-              className={cn("grid min-h-[64px] min-w-0 content-center gap-1 rounded-[16px] border px-3 text-left transition", activityViewChipClass(active))}
+              className={cn(
+                "grid min-h-[64px] w-[128px] shrink-0 snap-start content-center gap-1 rounded-[16px] border px-3 text-left transition",
+                activityViewChipClass(active),
+              )}
             >
               <span className="flex min-w-0 items-center justify-between gap-2">
                 <Icon className="h-4 w-4 shrink-0" />
