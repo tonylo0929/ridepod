@@ -2123,6 +2123,7 @@ const initialRideModeFilter: RideModeFilter = "ride_app";
 const initialSettlementFilter: SettlementFilter = "all";
 const initialFromDistrict = "All districts";
 const initialToDistrict = "All districts";
+const fareEnoughHomeNavigateEvent = "fare-enough:navigate-home";
 const rideAppLaunchOfferSessionKey = "ridepod:ride-app-launch-offer:auto-opened";
 
 function getTimeOfDayGreeting() {
@@ -2595,6 +2596,31 @@ function HomePageContent() {
 
     return () => {
       window.removeEventListener("popstate", handlePopState);
+    };
+  }, [beginScheduleClose, selectedCategory]);
+
+  useEffect(() => {
+    function handleHomeNavigate() {
+      if (selectedCategory === null) return;
+
+      if (scheduleHistoryEntryActiveRef.current) {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("category");
+        window.history.replaceState(
+          { ...(window.history.state ?? {}), ridepodCategoryLayer: undefined },
+          "",
+          `${url.pathname}${url.search}${url.hash}`,
+        );
+        scheduleHistoryEntryActiveRef.current = false;
+      }
+
+      beginScheduleClose();
+    }
+
+    window.addEventListener(fareEnoughHomeNavigateEvent, handleHomeNavigate);
+
+    return () => {
+      window.removeEventListener(fareEnoughHomeNavigateEvent, handleHomeNavigate);
     };
   }, [beginScheduleClose, selectedCategory]);
 

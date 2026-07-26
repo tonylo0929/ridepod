@@ -28,6 +28,8 @@ import { getMembershipTierInfo, useRidePodMembershipState } from "@/lib/ridepod-
 import { useRidePodUnreadCount } from "@/lib/notifications/use-ridepod-unread-count";
 import { useAuth } from "@/providers/AuthProvider";
 
+const fareEnoughHomeNavigateEvent = "fare-enough:navigate-home";
+
 function getProfileDisplayName({
   profile,
   user,
@@ -169,11 +171,21 @@ function PremiumTopNav() {
   const showTaxiQuoteBoard = Boolean(user && accountType && accountType !== "rider");
   const taxiQuoteBoardActive = pathname === "/taxi-partner" || pathname.startsWith("/taxi-partner/");
 
+  function handleHomeLogoClick() {
+    if (pathname !== "/home") return;
+    window.dispatchEvent(new Event(fareEnoughHomeNavigateEvent));
+  }
+
   return (
     <header className="sticky top-0 z-40 border-b border-[var(--rp-border)] bg-[color-mix(in_srgb,var(--rp-shell)_92%,transparent)] px-4 py-3 shadow-[0_12px_30px_rgba(0,0,0,0.14)] backdrop-blur-xl lg:hidden">
       <div className="mx-auto grid max-w-3xl grid-cols-[56px_1fr_auto] items-center gap-3">
         <HomeMenuDrawer />
-        <Link href="/home?tab=one_off" className="inline-flex items-center gap-1.5 justify-self-center" aria-label="Fare Enough home">
+        <Link
+          href="/home?tab=one_off"
+          onClick={handleHomeLogoClick}
+          className="inline-flex items-center gap-1.5 justify-self-center"
+          aria-label="Fare Enough home"
+        >
           {showRideBoardLogo ? (
             <span className="relative inline-flex h-8 w-[136px] items-center overflow-hidden rounded-md min-[390px]:w-[158px]">
               <Image
