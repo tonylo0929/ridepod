@@ -1300,7 +1300,7 @@ function StartingAreaSection() {
     <section aria-labelledby="browse-starting-area-title">
       <h2
         id="browse-starting-area-title"
-        className="mb-3 scroll-mt-24 text-lg font-black text-[var(--rp-text)]"
+        className="mb-4 scroll-mt-24 text-[24px] font-black leading-tight text-white"
       >
         Browse by District
       </h2>
@@ -1341,11 +1341,11 @@ function PopularRoutesSection() {
       <div className="mb-3">
         <h2
           id="popular-routes-title"
-          className="scroll-mt-24 text-lg font-black text-white"
+          className="scroll-mt-24 text-[24px] font-black leading-tight text-white"
         >
           Popular Routes
         </h2>
-        <p className="mt-1 text-sm font-bold leading-5 text-white">
+        <p className="mt-1.5 text-[15px] font-bold leading-5 text-white">
           Pick a busy route riders already use
         </p>
       </div>
@@ -1355,21 +1355,27 @@ function PopularRoutesSection() {
             key={route.id}
             href={buildRideExploreHref({ from: route.fromQuery, to: route.toQuery })}
             aria-label={`Browse ${route.from} to ${route.to} rides`}
-            className="group grid min-h-[74px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-white/10 bg-[linear-gradient(145deg,rgba(11,25,38,0.96),rgba(5,15,24,0.98))] px-3 py-3 shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:border-[var(--rp-primary)]/46 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-3 focus-visible:outline-[var(--rp-primary)]"
+            className="group relative flex min-h-[96px] items-center gap-3 overflow-hidden rounded-[20px] border border-white/12 bg-[radial-gradient(circle_at_0%_50%,rgba(242,193,91,0.11),transparent_38%),linear-gradient(145deg,rgba(13,29,43,0.98),rgba(5,15,24,0.98))] px-3.5 py-3.5 shadow-[0_16px_36px_rgba(0,0,0,0.25)] transition hover:-translate-y-0.5 hover:border-[var(--rp-primary)]/52 hover:shadow-[0_18px_42px_rgba(242,193,91,0.1)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-3 focus-visible:outline-[var(--rp-primary)]"
           >
-            <span className="min-w-0">
-              <span className="flex min-w-0 items-start gap-2">
-                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${route.accentClassName} shadow-[0_0_14px_rgba(101,230,208,0.42)]`} />
-                <span className="text-sm font-black leading-tight text-white">
-                  {route.from} <span className="text-[#65e6d0]">-&gt;</span> {route.to}
-                </span>
+            <span className={cn("absolute inset-y-3 left-0 w-1 rounded-r-full", route.accentClassName)} />
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] border border-[var(--rp-primary)]/28 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(0,0,0,0.22)]">
+              <ArrowRightLeft className="h-5 w-5 stroke-[2.4]" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[16px] font-black leading-tight text-white">
+                <span>{route.from}</span>
+                <ChevronRight className="h-4 w-4 shrink-0 stroke-[3] text-[#65e6d0]" />
+                <span>{route.to}</span>
               </span>
-              <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[var(--rp-primary)]/24 bg-[var(--rp-primary)]/10 px-2 py-1 text-[11px] font-black text-[var(--rp-primary)]">
-                <UsersRound className="h-3.5 w-3.5" />
-                {route.rideCount} rides
+              <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.055] px-2.5 py-1 text-[12px] font-bold text-white/78">
+                <UsersRound className="h-3.5 w-3.5 text-[var(--rp-primary)]" />
+                <span className="font-black text-[var(--rp-primary)]">{route.rideCount}</span>
+                <span>rides available</span>
               </span>
             </span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-white/48 transition group-hover:translate-x-0.5 group-hover:text-[var(--rp-primary)]" />
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)]/28 bg-[var(--rp-primary)]/9 text-[var(--rp-primary)] transition group-hover:translate-x-0.5 group-hover:border-[var(--rp-primary)]/55 group-hover:bg-[var(--rp-primary)]/14">
+              <ChevronRight className="h-5 w-5 stroke-[2.7]" />
+            </span>
           </Link>
         ))}
       </div>
