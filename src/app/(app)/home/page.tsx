@@ -67,7 +67,7 @@ type DeadlineFilter = "any" | "joining_now" | "expiring_soon" | "minimum_reached
 type SeatFilter = "any" | "one_left" | "two_plus_available" | "minimum_not_reached" | "minimum_reached";
 type OwnershipFilter = "all" | "mine" | "joined";
 type StopRequestFilter = "all" | "allowed";
-type ScheduleRideQuickFilter = "recommended" | "today" | "tomorrow" | "this_week";
+type ScheduleRideQuickFilter = "recommended" | "created" | "joined" | "today" | "tomorrow" | "this_week";
 type CategoryResultsScreenId = "schedule" | "recurring" | "airport" | "all";
 type SelectedCategory = CategoryResultsScreenId;
 type CategoryTransitionPhase = "idle" | "entering" | "open" | "exiting";
@@ -90,6 +90,8 @@ const categoryCards: Array<{ id: HomeCategoryCardId; imageSrc: string; imageAlt:
 
 const scheduleRideQuickFilters: Array<{ id: ScheduleRideQuickFilter; label: string }> = [
   { id: "recommended", label: "Recommended" },
+  { id: "created", label: "Created Ride" },
+  { id: "joined", label: "Joined Ride" },
   { id: "today", label: "Today" },
   { id: "tomorrow", label: "Tomorrow" },
   { id: "this_week", label: "This week" },
@@ -277,8 +279,8 @@ const seatFilters: Array<{ id: SeatFilter; label: string }> = [
 
 const ownershipFilters: Array<{ id: OwnershipFilter; label: string }> = [
   { id: "all", label: "All pods" },
-  { id: "mine", label: "My pods" },
-  { id: "joined", label: "Joined" },
+  { id: "mine", label: "Created Ride" },
+  { id: "joined", label: "Joined Ride" },
 ];
 
 const stopRequestFilters: Array<{ id: StopRequestFilter; label: string }> = [
@@ -400,6 +402,8 @@ function getOpenSeatCount(ride: HomeRide) {
 
 function rideMatchesScheduleRideQuickFilter(ride: HomeRide, filter: ScheduleRideQuickFilter, referenceDate: Date) {
   if (filter === "recommended") return true;
+  if (filter === "created") return matchesOwnershipFilter(ride, "mine");
+  if (filter === "joined") return matchesOwnershipFilter(ride, "joined");
 
   const rideDate = parseRideDateLabel(ride.dateLabel, referenceDate);
   if (!rideDate) return false;
@@ -1185,8 +1189,8 @@ function HomeRideCard({
           : null;
   const compactStatusLabel = currentUserRelationship
     ? currentUserRelationship.tone === "host"
-      ? "Created"
-      : "Joined"
+      ? "Created Ride"
+      : "Joined Ride"
     : null;
   const estimateText = isRideApp
     ? rideAppEstimateDisplay.updated
@@ -1766,6 +1770,12 @@ function CategoryCompactResultCard({
   const isRecurringRide = ride.rideKind === "recurring" || ride.is_recurring === true;
   const TypeIcon = isAirportRide ? Plane : isRecurringRide ? RefreshCcw : CarFront;
   const typeIconLabel = isAirportRide ? "Airport ride" : isRecurringRide ? "Recurring ride" : "Ride";
+  const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
+  const ownershipBadgeLabel = currentUserRelationship
+    ? currentUserRelationship.tone === "host"
+      ? "Created Ride"
+      : "Joined Ride"
+    : null;
 
   return (
     <Link
@@ -1802,15 +1812,30 @@ function CategoryCompactResultCard({
         ) : null}
       </div>
       <div className="relative z-10 min-w-0">
-        {airportRideAppProviderLabel ? (
+        {ownershipBadgeLabel || airportRideAppProviderLabel ? (
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-            <span className="inline-flex min-h-6 shrink-0 items-center gap-1.5 rounded-full border border-cyan-300/36 bg-cyan-300/12 px-2.5 text-[11px] font-black text-cyan-100">
-              <Smartphone className="h-3.5 w-3.5 stroke-[2.5]" />
-              {airportRideAppProviderLabel}
-            </span>
+            {ownershipBadgeLabel ? (
+              <span
+                className={cn(
+                  "inline-flex min-h-6 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[10px] font-black uppercase tracking-[0.04em]",
+                  currentUserRelationship?.tone === "joined"
+                    ? "border-cyan-300/42 bg-cyan-300/14 text-cyan-100"
+                    : "border-[#ffd968]/45 bg-[#ffd968]/14 text-[#ffd968]",
+                )}
+              >
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                {ownershipBadgeLabel}
+              </span>
+            ) : null}
+            {airportRideAppProviderLabel ? (
+              <span className="inline-flex min-h-6 shrink-0 items-center gap-1.5 rounded-full border border-cyan-300/36 bg-cyan-300/12 px-2.5 text-[11px] font-black text-cyan-100">
+                <Smartphone className="h-3.5 w-3.5 stroke-[2.5]" />
+                {airportRideAppProviderLabel}
+              </span>
+            ) : null}
           </div>
         ) : null}
-        <h2 className={cn("min-w-0 truncate text-[15px] font-black leading-5 text-[var(--rp-text)] min-[390px]:text-base", airportRideAppProviderLabel ? "mt-1.5" : "")}>
+        <h2 className={cn("min-w-0 truncate text-[15px] font-black leading-5 text-[var(--rp-text)] min-[390px]:text-base", ownershipBadgeLabel || airportRideAppProviderLabel ? "mt-1.5" : "")}>
           {ride.fromLabel} <span className="text-[var(--rp-primary)]">{"\u2192"}</span> {ride.toLabel}
         </h2>
         <p className="mt-1 truncate text-xs font-bold leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-sm">
