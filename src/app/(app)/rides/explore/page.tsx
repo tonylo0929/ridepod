@@ -68,10 +68,10 @@ function RideExploreContent() {
     <main className="mx-auto grid w-full max-w-[680px] gap-5 px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 lg:px-8">
       <Link
         href="/home"
-        className="inline-flex min-h-10 w-fit items-center gap-2 rounded-full border border-[var(--rp-primary)]/42 bg-white/[0.055] px-3.5 text-xs font-black text-[var(--rp-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:bg-[var(--rp-primary)]/10"
+        aria-label="Back home"
+        className="ridepod-back-button"
       >
-        <ArrowLeft className="h-4 w-4" />
-        Back home
+        <ArrowLeft aria-hidden="true" />
       </Link>
 
       <section className="rounded-[28px] border border-white/10 bg-[linear-gradient(145deg,rgba(11,25,38,0.96),rgba(5,15,24,0.98))] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
