@@ -27,12 +27,14 @@ import {
   Luggage,
   Lightbulb,
   Mail,
+  MapPinned,
   MapPin,
   Minus,
   Pencil,
   Plane,
   Plus,
   RefreshCcw,
+  Route,
   Search,
   ShieldCheck,
   Smartphone,
@@ -312,14 +314,14 @@ const stopRequestPolicyOptions: Array<{
 }> = [
   {
     id: "direct_only",
-    title: "Direct route only",
-    description: "Riders cannot propose extra stops.",
+    title: "Direct route",
+    description: "Pickup to dropoff only. No extra stop requests.",
   },
   {
     id: "host_approved_before_quote",
-    title: "Host-approved stop requests",
-    description: "Joined riders can propose one extra stop before taxi quote acceptance.",
-    helper: "Approved stops may change the taxi partner quote.",
+    title: "Stops allowed",
+    description: "Riders can request one stop before the ride is confirmed.",
+    helper: "The host reviews the stop request before booking.",
   },
 ];
 const recurringWeekdayOptions: Array<{ id: Weekday; label: string }> = [
@@ -1420,32 +1422,32 @@ function RoutePointOverview({
   onDropoffOpen: () => void;
 }) {
   return (
-    <section className="grid overflow-hidden rounded-[20px] border border-white/10 bg-[linear-gradient(145deg,rgba(9,20,32,0.96),rgba(5,13,22,0.98))] shadow-[0_18px_40px_rgba(0,0,0,0.24)] sm:grid-cols-2">
+    <section className="grid grid-cols-2 overflow-hidden rounded-[20px] border border-white/10 bg-[linear-gradient(145deg,rgba(9,20,32,0.96),rgba(5,13,22,0.98))] shadow-[0_18px_40px_rgba(0,0,0,0.24)]">
       <button
         type="button"
         onClick={onPickupOpen}
-        className="group grid min-h-[78px] grid-cols-[46px_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/10 px-4 py-3 text-left transition hover:bg-white/[0.035] sm:border-b-0 sm:border-r"
+        className="group grid min-h-[78px] grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-2 border-r border-white/10 px-3 py-3 text-left transition hover:bg-white/[0.035] sm:grid-cols-[46px_minmax(0,1fr)_auto] sm:gap-3 sm:px-4"
       >
-        <span className="grid h-11 w-11 place-items-center rounded-[16px] border border-[#f6c453]/24 bg-[#1b2936] text-[#ffc94d]">
+        <span className="grid h-9 w-9 place-items-center rounded-[14px] border border-[#f6c453]/24 bg-[#1b2936] text-[#ffc94d] sm:h-11 sm:w-11 sm:rounded-[16px]">
           <MapPin className="h-5 w-5 fill-[#ffc94d]/12 stroke-[2.4]" />
         </span>
         <span className="min-w-0">
-          <span className="block text-[11px] font-black uppercase tracking-[0.14em] text-[#f6c453]">{pickupLabel}</span>
-          <span className="mt-1 block truncate text-base font-medium text-[#f8fafc]">{pickupTitle}</span>
+          <span className="block truncate text-[10px] font-black uppercase tracking-[0.12em] text-[#f6c453] sm:text-[11px]">{pickupLabel}</span>
+          <span className="mt-1 block truncate text-sm font-black text-[#f8fafc] sm:text-base sm:font-medium">{pickupTitle}</span>
         </span>
         <ChevronRight className="h-5 w-5 text-[#f6c453] transition group-hover:translate-x-0.5" />
       </button>
       <button
         type="button"
         onClick={onDropoffOpen}
-        className="group grid min-h-[78px] grid-cols-[46px_minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 text-left transition hover:bg-white/[0.035]"
+        className="group grid min-h-[78px] grid-cols-[38px_minmax(0,1fr)_auto] items-center gap-2 px-3 py-3 text-left transition hover:bg-white/[0.035] sm:grid-cols-[46px_minmax(0,1fr)_auto] sm:gap-3 sm:px-4"
       >
-        <span className="grid h-11 w-11 place-items-center rounded-[16px] border border-[#56d9ef]/24 bg-[#0b2a38] text-[#56d9ef]">
+        <span className="grid h-9 w-9 place-items-center rounded-[14px] border border-[#56d9ef]/24 bg-[#0b2a38] text-[#56d9ef] sm:h-11 sm:w-11 sm:rounded-[16px]">
           <MapPin className="h-5 w-5 fill-[#56d9ef]/12 stroke-[2.4]" />
         </span>
         <span className="min-w-0">
-          <span className="block text-[11px] font-black uppercase tracking-[0.14em] text-[#56d9ef]">{dropoffLabel}</span>
-          <span className="mt-1 block truncate text-base font-medium text-[#f8fafc]">{dropoffTitle}</span>
+          <span className="block truncate text-[10px] font-black uppercase tracking-[0.12em] text-[#56d9ef] sm:text-[11px]">{dropoffLabel}</span>
+          <span className="mt-1 block truncate text-sm font-black text-[#f8fafc] sm:text-base sm:font-medium">{dropoffTitle}</span>
         </span>
         <ChevronRight className="h-5 w-5 text-[#56d9ef] transition group-hover:translate-x-0.5" />
       </button>
@@ -1530,25 +1532,25 @@ function RouteLocationCard({
   return (
     <section
       className={cn(
-        "rounded-[20px] border bg-[rgba(15,27,39,0.88)] p-3.5 shadow-[0_14px_32px_rgba(0,0,0,0.22)]",
+        "min-w-0 rounded-[20px] border bg-[rgba(15,27,39,0.88)] p-3 shadow-[0_14px_32px_rgba(0,0,0,0.22)] sm:p-3.5",
         tone === "pickup" ? "border-[#f6c453]/16" : "border-[#56d9ef]/18",
       )}
     >
       <div className="mb-3 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           <span
             className={cn(
-              "grid h-10 w-10 shrink-0 place-items-center rounded-[15px] border",
+              "grid h-8 w-8 shrink-0 place-items-center rounded-[13px] border sm:h-10 sm:w-10 sm:rounded-[15px]",
               tone === "pickup"
                 ? "border-[#f6c453]/28 bg-[#1b2936] text-[#ffc94d]"
                 : "border-[#56d9ef]/28 bg-[#0b2a38] text-[#56d9ef]",
             )}
           >
-            <MapPin className="h-5 w-5 fill-current/10 stroke-[2.4]" />
+            <MapPin className="h-4.5 w-4.5 fill-current/10 stroke-[2.4] sm:h-5 sm:w-5" />
           </span>
           <h3
             className={cn(
-              "min-w-0 truncate text-[11px] font-black uppercase tracking-[0.14em]",
+              "min-w-0 truncate text-[9px] font-black uppercase tracking-[0.06em] sm:text-[11px] sm:tracking-[0.14em]",
               tone === "pickup" ? "text-[#f6c453]" : "text-[#56d9ef]",
             )}
           >
@@ -1560,7 +1562,7 @@ function RouteLocationCard({
           onClick={onOpen}
           aria-label={`Edit ${label.toLowerCase()}`}
           className={cn(
-            "grid h-9 w-9 shrink-0 place-items-center rounded-full transition hover:bg-white/8",
+            "grid h-8 w-8 shrink-0 place-items-center rounded-full transition hover:bg-white/8 sm:h-9 sm:w-9",
             tone === "pickup" ? "text-[#f6c453]" : "text-[#56d9ef]",
           )}
         >
@@ -1593,7 +1595,7 @@ function RouteLocationCard({
         type="button"
         onClick={onOpen}
         className={cn(
-          "mt-3 inline-flex min-h-9 w-full items-center justify-center gap-2 rounded-[14px] border px-3 text-[11px] font-black transition",
+          "mt-3 inline-flex min-h-9 w-full items-center justify-center gap-1.5 rounded-[14px] border px-2 text-[10px] font-black transition sm:gap-2 sm:px-3 sm:text-[11px]",
           tone === "pickup"
             ? "border-[#f6c453]/24 bg-[#f6c453]/8 text-[#f6c453] hover:border-[#f6c453]/44"
             : "border-[#56d9ef]/24 bg-[#56d9ef]/10 text-[#56d9ef] hover:border-[#56d9ef]/44",
@@ -2428,15 +2430,28 @@ function RouteStopsStep({
     ? isFromAirport
       ? "HKIA Arrival Hall A"
       : "Central"
-    : "None yet";
+    : "pickup";
   const dropoffPlaceholder = isAirport
     ? isFromAirport
       ? "Mong Kok"
       : "HKIA Terminal 1 Departures"
-    : "None yet";
+    : "dropoff";
   const pickupTitle = routeLocationTitle(pickupLocation, pickupAddress);
   const dropoffTitle = routeLocationTitle(dropoffLocation, dropoffAddress);
-  const showRouteMapPreview = Boolean(pickupLocation || dropoffLocation || stops.length > 0);
+  const pickupOverviewLabel = isAirport ? pickupFieldLabel : "Pickup";
+  const dropoffOverviewLabel = isAirport ? dropoffFieldLabel : "Dropoff";
+  const pickupDetailLabel = isAirport ? pickupFieldLabel : "Pickup";
+  const dropoffDetailLabel = isAirport ? dropoffFieldLabel : "Dropoff";
+  const pickupSearchPlaceholder = pickupLocation
+    ? "Change pickup"
+    : isAirport
+      ? `Search ${pickupPlaceholder.toLowerCase()}`
+      : "Search pickup";
+  const dropoffSearchPlaceholder = dropoffLocation
+    ? "Change dropoff"
+    : isAirport
+      ? `Search ${dropoffPlaceholder.toLowerCase()}`
+      : "Search dropoff";
   const meetingPointHelper = gatherPointRequired
     ? isAirport
       ? "Required. Tell riders exactly where to meet before the host books the external ride app."
@@ -2501,7 +2516,7 @@ function RouteStopsStep({
               {isRoutePanel ? `Step 1 of ${routePanelCount}` : `Step 2 of ${routePanelCount}`}
             </p>
             <p className="w-full whitespace-nowrap text-center text-[13px] font-black leading-4 text-[var(--rp-text)]">
-              {isRoutePanel ? (isAirport ? "Airport pickup & drop-off" : "Pickup & dropoff") : isRideAppSelfSettle ? "Route requests" : "Extra stop requests"}
+              {isRoutePanel ? (isAirport ? "Airport pickup & drop-off" : "Pickup & dropoff") : "Direct route or stops allowed"}
             </p>
           </div>
           <button
@@ -2524,21 +2539,31 @@ function RouteStopsStep({
         {isRoutePanel ? (
           <>
             <section className="mt-6 grid gap-4">
-              <RoutePointOverview
+              <RouteJourneyPreview
+                pickupAddress={pickupAddress}
+                dropoffAddress={dropoffAddress}
+                pickupLocation={pickupLocation}
+                dropoffLocation={dropoffLocation}
+                stops={stops}
                 pickupLabel={pickupFieldLabel}
                 dropoffLabel={dropoffFieldLabel}
+              />
+
+              <RoutePointOverview
+                pickupLabel={pickupOverviewLabel}
+                dropoffLabel={dropoffOverviewLabel}
                 pickupTitle={pickupTitle}
                 dropoffTitle={dropoffTitle}
                 onPickupOpen={() => setActiveLocationPicker("pickup")}
                 onDropoffOpen={() => setActiveLocationPicker("dropoff")}
               />
 
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <RouteLocationCard
-                  label={pickupFieldLabel}
+                  label={pickupDetailLabel}
                   value={pickupLocation}
                   fallbackAddress={pickupAddress}
-                  placeholder={pickupLocation ? "Change pickup location" : `Search ${pickupPlaceholder.toLowerCase()} location`}
+                  placeholder={pickupSearchPlaceholder}
                   districtLabel="Pickup district"
                   district={pickupDistrict}
                   editingDistrict={editingDistrict === "pickup"}
@@ -2548,10 +2573,10 @@ function RouteStopsStep({
                   tone="pickup"
                 />
                 <RouteLocationCard
-                  label={dropoffFieldLabel}
+                  label={dropoffDetailLabel}
                   value={dropoffLocation}
                   fallbackAddress={dropoffAddress}
-                  placeholder={dropoffLocation ? "Change drop-off location" : `Search ${dropoffPlaceholder.toLowerCase()} location`}
+                  placeholder={dropoffSearchPlaceholder}
                   districtLabel="Destination district"
                   district={dropoffDistrict}
                   editingDistrict={editingDistrict === "dropoff"}
@@ -2585,18 +2610,6 @@ function RouteStopsStep({
                 helper={meetingPointHelper}
                 onChange={onPickupVenueChange}
               />
-
-              {showRouteMapPreview ? (
-                <RouteJourneyPreview
-                  pickupAddress={pickupAddress}
-                  dropoffAddress={dropoffAddress}
-                  pickupLocation={pickupLocation}
-                  dropoffLocation={dropoffLocation}
-                  stops={stops}
-                  pickupLabel={pickupFieldLabel}
-                  dropoffLabel={dropoffFieldLabel}
-                />
-              ) : null}
             </section>
 
             {!isRideAppSelfSettle ? <div className="mt-4">
@@ -6233,14 +6246,14 @@ function StopRequestPolicySelector({
         option.id === "direct_only"
           ? {
               ...option,
-              title: "Direct route only",
+              title: "Direct route",
               description: "Riders join the pickup and dropoff route set by the host.",
             }
           : {
               ...option,
-              title: "Allow route requests",
-              description: "Joined riders can ask for one route change or extra stop before the host books.",
-              helper: "Host decides before booking the ride app outside RidePod.",
+              title: "Stops allowed",
+              description: "Joined riders can ask for one stop or route change before the host books.",
+              helper: "The host decides before booking the ride app outside RidePod.",
             },
       )
     : stopRequestPolicyOptions;
@@ -6249,13 +6262,15 @@ function StopRequestPolicySelector({
     <section className="rounded-[22px] border border-[color-mix(in_srgb,var(--rp-primary)_28%,var(--rp-border))] bg-[linear-gradient(180deg,rgba(17,28,40,0.92),rgba(10,19,31,0.92))] p-3 shadow-[var(--rp-shadow-soft)]">
       <div className="flex items-start justify-between gap-3 px-1">
         <div>
-          <h2 className="text-base font-black text-[var(--rp-text)]">
-            {isRideAppSelfSettle ? "Route requests from other riders" : "Stop requests from other riders"}
-          </h2>
+          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Step 2</p>
+          <h2 className="mt-1 text-base font-black text-[var(--rp-text)]">Choose route style</h2>
+          <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+            Pick a direct ride, or allow riders to request stops.
+          </p>
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2" role="radiogroup" aria-label={isRideAppSelfSettle ? "Route requests" : "Stop requests"}>
+      <div className="mt-3 grid grid-cols-2 gap-2" role="radiogroup" aria-label="Route style">
         {options.map((option) => {
           const selected = value === option.id;
           const directOnly = option.id === "direct_only";
@@ -6268,21 +6283,35 @@ function StopRequestPolicySelector({
               aria-checked={selected}
               onClick={() => onChange(option.id)}
               className={cn(
-                "grid grid-cols-[20px_1fr] gap-3 rounded-[16px] border p-3 text-left transition",
+                "grid min-h-[142px] gap-3 rounded-[16px] border p-3 text-left transition",
                 selected
                   ? "border-[var(--rp-primary)] bg-[rgba(242,193,91,0.11)] shadow-[0_10px_22px_rgba(242,193,91,0.08)]"
                   : "border-[var(--rp-border)] bg-[rgba(15,27,39,0.58)] hover:border-[var(--rp-border-strong)]",
               )}
             >
-              <span
-                className={cn(
-                  "mt-0.5 grid h-5 w-5 place-items-center rounded-full border",
-                  selected ? "border-[var(--rp-primary)]" : "border-[var(--rp-muted)]",
-                )}
-              >
-                <span className={cn("h-2.5 w-2.5 rounded-full", selected ? "bg-[var(--rp-primary)]" : "bg-transparent")} />
+              <span className="flex items-center justify-between gap-2">
+                <span
+                  className={cn(
+                    "grid h-9 w-9 place-items-center rounded-full border",
+                    selected
+                      ? "border-[var(--rp-primary)] bg-[rgba(242,193,91,0.12)] text-[var(--rp-primary)]"
+                      : directOnly
+                        ? "border-white/12 bg-white/5 text-[var(--rp-muted-strong)]"
+                        : "border-[#56d9ef]/22 bg-[#56d9ef]/10 text-[#56d9ef]",
+                  )}
+                >
+                  {directOnly ? <Route className="h-4.5 w-4.5" /> : <MapPinned className="h-4.5 w-4.5" />}
+                </span>
+                <span
+                  className={cn(
+                    "grid h-5 w-5 place-items-center rounded-full border",
+                    selected ? "border-[var(--rp-primary)]" : "border-[var(--rp-muted)]",
+                  )}
+                >
+                  <span className={cn("h-2.5 w-2.5 rounded-full", selected ? "bg-[var(--rp-primary)]" : "bg-transparent")} />
+                </span>
               </span>
-              <span>
+              <span className="min-w-0">
                 <span
                   className={cn(
                     "block text-sm font-black",
