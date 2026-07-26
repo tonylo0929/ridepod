@@ -1413,7 +1413,7 @@ function HomeBottomActionCards() {
         <Link
           href="/create"
           aria-label="Create a ride"
-          className="group relative block aspect-[711/377] min-h-[124px] overflow-hidden rounded-[14px] border border-[var(--rp-primary)]/70 bg-[#1c1406] text-left shadow-[0_16px_36px_rgba(242,193,91,0.14)] transition hover:-translate-y-0.5 hover:border-[var(--rp-primary)] hover:shadow-[0_20px_46px_rgba(242,193,91,0.2)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
+          className="group relative block aspect-[679/337] min-h-[124px] overflow-hidden rounded-[14px] border border-[var(--rp-primary)]/70 bg-[#1c1406] text-left shadow-[0_16px_36px_rgba(242,193,91,0.14)] transition hover:-translate-y-0.5 hover:border-[var(--rp-primary)] hover:shadow-[0_20px_46px_rgba(242,193,91,0.2)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-[var(--rp-primary)]"
         >
           <Image
             src="/images/home/offer-ride-card.png"
