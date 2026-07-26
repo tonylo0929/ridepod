@@ -795,7 +795,7 @@ function RideModeSwitch({
     icon: typeof CarFront;
     disabled?: boolean;
   }> = [
-    { id: "taxi", label: "Coming soon", icon: CarFront, disabled: true },
+    { id: "taxi", label: "Taxi", icon: CarFront },
     { id: "ride_app", label: "Ride app", icon: Smartphone },
   ];
 
@@ -805,7 +805,7 @@ function RideModeSwitch({
         <div className="relative grid grid-cols-2 gap-1.5 overflow-hidden rounded-[22px] bg-black/10 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
         {options.map((option) => {
           const disabled = option.disabled === true;
-          const selected = !disabled && value === option.id;
+          const selected = value === option.id;
           const Icon = option.icon;
 
           return (
@@ -2813,7 +2813,7 @@ function HomePageContent() {
       }
     />
   );
-  const optionsFrameLabel = "Choose your mode";
+  const optionsFrameLabel = selectedRideMode === "taxi" ? "Coming soon" : "Choose your mode";
   const homepageExitingForSchedule = selectedCategory !== null && categoryTransitionPhase !== "exiting";
 
   return (
