@@ -1743,7 +1743,7 @@ function RideBoardCategoryDetailView({
             quality={75}
             sizes="(max-width: 768px) calc(100vw - 32px), 720px"
             style={{ objectPosition: detail.imagePosition ?? "center center" }}
-            className={showFourThreeTodayArtwork ? "object-contain" : "object-cover"}
+            className={showFourThreeTodayArtwork ? "object-cover scale-[1.08]" : "object-cover"}
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(4,10,16,0.02),rgba(4,10,16,0.06)_62%,rgba(4,10,16,0.18))]" aria-hidden="true" />
           <span className={cn("absolute right-4 top-4 inline-flex min-h-9 items-center rounded-full border px-3 text-xs font-black shadow-[0_12px_26px_rgba(0,0,0,0.32)] backdrop-blur-md", styles.countPill)}>
