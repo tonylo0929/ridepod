@@ -1295,80 +1295,6 @@ const startingAreaIcons: Record<StartingAreaIconKey, typeof Building2> = {
   sprout: Sprout,
 };
 
-function HomeSectionHeader({
-  id,
-  title,
-  subtitle,
-  stepLabel,
-  icon: Icon,
-  tone = "mint",
-  href,
-  actionLabel = "See all",
-}: {
-  id: string;
-  title: string;
-  subtitle?: string;
-  stepLabel: string;
-  icon: typeof CarFront;
-  tone?: "sky" | "mint" | "gold";
-  href?: string;
-  actionLabel?: string;
-}) {
-  const styles = {
-    sky: {
-      shell: "border-sky-300/34 bg-[linear-gradient(145deg,rgba(11,37,61,0.94),rgba(5,15,24,0.98))] shadow-[0_16px_38px_rgba(56,189,248,0.13)]",
-      step: "border-sky-200/50 bg-[linear-gradient(180deg,#44b7ff,#1672d8)] text-white",
-      icon: "border-sky-200/36 bg-sky-400/14 text-sky-100",
-      title: "text-sky-100",
-      accent: "text-sky-300",
-      action: "border-sky-300/30 bg-sky-400/10 text-sky-200 hover:border-sky-200/55 hover:bg-sky-400/16",
-    },
-    mint: {
-      shell: "border-[#65e6d0]/28 bg-[linear-gradient(145deg,rgba(11,39,38,0.92),rgba(5,15,24,0.98))] shadow-[0_16px_38px_rgba(101,230,208,0.11)]",
-      step: "border-[#98FBCB]/46 bg-[linear-gradient(180deg,#65e6d0,#16a992)] text-[#04101a]",
-      icon: "border-[#65e6d0]/34 bg-[#65e6d0]/12 text-[#98FBCB]",
-      title: "text-[#d9fff5]",
-      accent: "text-[#65e6d0]",
-      action: "border-[#65e6d0]/30 bg-[#65e6d0]/10 text-[#98FBCB] hover:border-[#65e6d0]/58 hover:bg-[#65e6d0]/16",
-    },
-    gold: {
-      shell: "border-[var(--rp-primary)]/28 bg-[linear-gradient(145deg,rgba(48,37,14,0.74),rgba(5,15,24,0.98))] shadow-[0_16px_38px_rgba(242,193,91,0.11)]",
-      step: "border-[var(--rp-primary)]/58 bg-[linear-gradient(180deg,#ffe178,#ffc844)] text-[#07111a]",
-      icon: "border-[var(--rp-primary)]/34 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]",
-      title: "text-[#fff3cf]",
-      accent: "text-[var(--rp-primary)]",
-      action: "border-[var(--rp-primary)]/30 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)] hover:border-[var(--rp-primary)]/58 hover:bg-[var(--rp-primary)]/16",
-    },
-  }[tone];
-
-  return (
-    <div className={cn("mb-3 rounded-[22px] border p-3", styles.shell)}>
-      <div className="flex items-center gap-3">
-        <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-full border text-sm font-black shadow-[0_10px_22px_rgba(0,0,0,0.24)]", styles.step)}>
-          {stepLabel}
-        </span>
-        <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-full border", styles.icon)}>
-          <Icon className="h-5 w-5 stroke-[2.35]" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className={cn("text-[10px] font-black uppercase tracking-[0.16em]", styles.accent)}>Option</p>
-          <h2 id={id} className={cn("mt-0.5 scroll-mt-24 text-[18px] font-black leading-tight", styles.title)}>{title}</h2>
-          {subtitle ? <p className="mt-1 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">{subtitle}</p> : null}
-        </div>
-        {href ? (
-          <Link
-            href={href}
-            className={cn("inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs font-black transition", styles.action)}
-          >
-            {actionLabel}
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
 function StartingAreaSection() {
   return (
     <section aria-labelledby="browse-starting-area-title">
@@ -1412,15 +1338,17 @@ function StartingAreaSection() {
 function PopularRoutesSection() {
   return (
     <section aria-labelledby="popular-routes-title" className="mt-5">
-      <HomeSectionHeader
-        id="popular-routes-title"
-        title="Popular routes near you"
-        subtitle="Pick a busy route riders already use"
-        stepLabel="3"
-        icon={ArrowRightLeft}
-        tone="gold"
-        href={buildRideExploreHref()}
-      />
+      <div className="mb-3">
+        <h2
+          id="popular-routes-title"
+          className="scroll-mt-24 text-lg font-black text-white"
+        >
+          Popular Routes
+        </h2>
+        <p className="mt-1 text-sm font-bold leading-5 text-white">
+          Pick a busy route riders already use
+        </p>
+      </div>
       <div className="grid gap-2.5">
         {popularRouteSummaries.map((route) => (
           <Link
