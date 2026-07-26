@@ -2669,6 +2669,9 @@ function HomePageContent() {
     } else {
       const defaultFilter = categoryResultsScreenConfigs[screen].filters[0]?.id ?? categoryResultFilters[screen];
       setCategoryResultFilters((current) => ({ ...current, [screen]: defaultFilter }));
+      if (screen === "airport" && defaultFilter === "departures") {
+        setAirportDirectionFilter("to_airport");
+      }
     }
     setSelectedCategory(screen);
 
@@ -2742,8 +2745,13 @@ function HomePageContent() {
     }
 
     if (selectedCategory === "airport") {
-      if (filter === "departures") setAirportDirectionFilter("to_airport");
-      if (filter === "arrivals") setAirportDirectionFilter("from_airport");
+      if (filter === "departures") {
+        setAirportDirectionFilter("to_airport");
+      } else if (filter === "arrivals") {
+        setAirportDirectionFilter("from_airport");
+      } else {
+        setAirportDirectionFilter("all");
+      }
     }
 
     setCategoryResultFilters((current) => ({ ...current, [selectedCategory]: filter }));
