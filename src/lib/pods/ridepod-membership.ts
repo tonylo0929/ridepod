@@ -1,7 +1,6 @@
 import { getHomeRide } from "@/lib/home-ride-mock";
 import { getHostedPods, getPod, getUserPods, type RidePod } from "@/lib/mock-data";
 import { notifyPodAudience } from "@/lib/notifications/pod-notification-fanout";
-import { createUserNotificationOnce } from "@/lib/notifications/ridepod-notifications";
 import {
   publicCreatedPodToHomeRide,
   publicCreatedRideSignature,
@@ -518,34 +517,6 @@ async function publishCancelSideEffects(input: RidePodMembershipInput, context?:
         ],
       }),
     );
-
-    if (hostUserId && hostUserId !== input.userId) {
-      tasks.push(
-        createUserNotificationOnce({
-          recipientUserId: hostUserId,
-          actorUserId: input.userId,
-          type: "pod_member_left",
-          title: "Rider left your ride",
-          body: `${actorName} left ${rideTitle}.`,
-          relatedPodId: notificationPodId,
-          relatedUrl,
-        }),
-      );
-    }
-
-    for (const memberId of memberRecipientIds) {
-      tasks.push(
-        createUserNotificationOnce({
-          recipientUserId: memberId,
-          actorUserId: input.userId,
-          type: "attendance_changed",
-          title: "Ride attendance changed",
-          body: `${actorName} left the ride.`,
-          relatedPodId: notificationPodId,
-          relatedUrl: `/pods/${input.podId}/chat`,
-        }),
-      );
-    }
 
     await Promise.allSettled(tasks);
   } catch (error) {

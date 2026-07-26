@@ -56,6 +56,30 @@ async function getJoinedMemberUserIds(input: {
   );
 }
 
+async function getActorDisplayName(input: {
+  client: ReturnType<typeof getSupabaseAdminClient>;
+  actorUserId: string;
+}) {
+  const result = await input.client
+    .from("profiles")
+    .select("display_name,preferred_name,account_name,email")
+    .eq("id", input.actorUserId)
+    .maybeSingle();
+
+  if (result.error) {
+    console.warn("RidePod membership actor profile lookup failed", result.error);
+    return "A rider";
+  }
+
+  return (
+    result.data?.display_name?.trim() ||
+    result.data?.preferred_name?.trim() ||
+    result.data?.account_name?.trim() ||
+    result.data?.email?.split("@")[0]?.trim() ||
+    "A rider"
+  );
+}
+
 async function notifyMembershipAudience(input: {
   client: ReturnType<typeof getSupabaseAdminClient>;
   pod: RidePodPodRow;
@@ -67,44 +91,46 @@ async function notifyMembershipAudience(input: {
     new Set([
       input.pod.host_user_id,
       ...input.memberUserIds,
-    ].filter((userId): userId is string => Boolean(userId && userId !== input.actorUserId))),
+      input.actorUserId,
+    ].filter((userId): userId is string => Boolean(userId))),
   );
 
   if (!recipients.length) return;
 
-  const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
   const notificationType = input.action === "joined" ? "pod_joined" : "pod_member_left";
-  const existingResult = await input.client
-    .from("user_notifications")
-    .select("recipient_user_id")
-    .in("recipient_user_id", recipients)
-    .eq("actor_user_id", input.actorUserId)
-    .eq("related_pod_id", input.pod.id)
-    .eq("type", notificationType)
-    .gte("created_at", since)
-    .limit(recipients.length);
-
-  if (existingResult.error) throw existingResult.error;
-  const existingRecipients = new Set((existingResult.data ?? []).map((notification) => notification.recipient_user_id));
-  const title = input.action === "joined" ? "Rider joined this ride" : "Rider left this ride";
-  const body = input.action === "joined" ? `A rider joined ${input.pod.route_label}.` : `A rider left ${input.pod.route_label}.`;
+  const actorDisplayName = await getActorDisplayName({
+    client: input.client,
+    actorUserId: input.actorUserId,
+  });
   const metadataAction = input.action === "joined" ? "pod_joined" : "pod_member_left";
-  const rows = recipients
-    .filter((recipientUserId) => !existingRecipients.has(recipientUserId))
-    .map((recipientUserId) => ({
+  const rows = recipients.map((recipientUserId) => {
+    const isActor = recipientUserId === input.actorUserId;
+    return {
       recipient_user_id: recipientUserId,
       actor_user_id: input.actorUserId,
       type: notificationType,
-      title,
-      body,
+      title: isActor
+        ? input.action === "joined"
+          ? "You joined this ride"
+          : "You left this ride"
+        : input.action === "joined"
+          ? "Rider joined this ride"
+          : "Rider left this ride",
+      body: isActor
+        ? input.action === "joined"
+          ? `${input.pod.route_label} is now in your rides.`
+          : `${input.pod.route_label} was removed from your active rides.`
+        : `${actorDisplayName} ${input.action === "joined" ? "joined" : "left"} ${input.pod.route_label}.`,
       related_pod_id: input.pod.id,
       related_url: `/pods/${input.pod.id}`,
       metadata: {
         action: metadataAction,
         route: input.pod.route_label,
+        actorDisplayName,
         source: "pod_membership",
       },
-    }));
+    };
+  });
 
   if (!rows.length) return;
 
@@ -173,13 +199,17 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (result.error) throw result.error;
-      await notifyMembershipAudience({
-        client,
-        pod: podResult.data as RidePodPodRow,
-        actorUserId: userId,
-        memberUserIds: joinedMemberUserIdsBeforeAction,
-        action: "left",
-      });
+      try {
+        await notifyMembershipAudience({
+          client,
+          pod: podResult.data as RidePodPodRow,
+          actorUserId: userId,
+          memberUserIds: joinedMemberUserIdsBeforeAction,
+          action: "left",
+        });
+      } catch (error) {
+        console.warn("RidePod membership leave notification failed", error);
+      }
       return noStoreJson({ membership: result.data as RidePodMemberRow | null, pod: podResult.data as RidePodPodRow });
     }
 
@@ -220,13 +250,17 @@ export async function POST(request: NextRequest) {
           .maybeSingle();
 
     if (result.error) throw result.error;
-    await notifyMembershipAudience({
-      client,
-      pod: podResult.data as RidePodPodRow,
-      actorUserId: userId,
-      memberUserIds: [...joinedMemberUserIdsBeforeAction, userId],
-      action: "joined",
-    });
+    try {
+      await notifyMembershipAudience({
+        client,
+        pod: podResult.data as RidePodPodRow,
+        actorUserId: userId,
+        memberUserIds: [...joinedMemberUserIdsBeforeAction, userId],
+        action: "joined",
+      });
+    } catch (error) {
+      console.warn("RidePod membership join notification failed", error);
+    }
     return noStoreJson({ membership: result.data as RidePodMemberRow | null, pod: podResult.data as RidePodPodRow });
   } catch (error) {
     console.warn("RidePod membership join failed", error);

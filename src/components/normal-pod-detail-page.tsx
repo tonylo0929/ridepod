@@ -1067,7 +1067,13 @@ async function getHostPendingStopRequestFromNotifications(userId: string, ride: 
 }
 
 async function resolveSelfSettleMembershipTarget(ride: HomeRide, viewerUserId?: string | null) {
-  if (isUuid(ride.id)) return { podId: ride.id, hostUserId: null as string | null };
+  if (isUuid(ride.id)) {
+    return {
+      podId: ride.id,
+      hostUserId: null as string | null,
+      activeMemberUserIds: [] as string[],
+    };
+  }
 
   try {
     const response = await fetch("/api/public-created-rides", { cache: "no-store" });
@@ -1079,12 +1085,22 @@ async function resolveSelfSettleMembershipTarget(ride: HomeRide, viewerUserId?: 
       (pod) => publicCreatedRideSignature(publicCreatedPodToHomeRide(pod, viewerUserId)) === rideSignature,
     );
 
-    if (matchingPod) return { podId: matchingPod.id, hostUserId: matchingPod.host_user_id ?? null };
+    if (matchingPod) {
+      return {
+        podId: matchingPod.id,
+        hostUserId: matchingPod.host_user_id ?? null,
+        activeMemberUserIds: matchingPod.active_member_user_ids ?? [],
+      };
+    }
   } catch (error) {
     console.warn("RidePod self-settle shared ride lookup failed", error);
   }
 
-  return { podId: ride.id, hostUserId: null as string | null };
+  return {
+    podId: ride.id,
+    hostUserId: null as string | null,
+    activeMemberUserIds: [] as string[],
+  };
 }
 
 function mergeRidePatch<T extends Partial<HomeRide>>(base: T, patch?: Partial<HomeRide> | null) {
@@ -5372,25 +5388,38 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
   }) {
     if (!user || !isRideAppSelfSettlePod(ride)) return;
 
-    void notifyPodAudience({
-      podId: ride.id,
-      actorUserId: user.id,
-      actorDisplayName: detailActorName,
-      type: input.type ?? "ride_app_action_required",
-      audiences: input.audiences ?? ["actor", "others"],
-      title: input.title,
-      body: input.body ?? null,
-      selfTitle: input.selfTitle,
-      selfBody: input.selfBody,
-      relatedUrl: input.relatedUrl ?? `/pods/${ride.id}`,
-      metadata: {
-        action: input.action,
-        route: detailRouteTitle,
-        ...(input.metadata ?? {}),
-      },
-      dedupe: input.dedupe,
-      delivery: input.delivery,
-    });
+    void resolveSelfSettleMembershipTarget(ride, user.id)
+      .then((target) =>
+        notifyPodAudience({
+          podId: target.podId,
+          actorUserId: user.id,
+          actorDisplayName: detailActorName,
+          type: input.type ?? "ride_app_action_required",
+          audiences: input.audiences ?? ["actor", "others"],
+          title: input.title,
+          body: input.body ?? null,
+          selfTitle: input.selfTitle,
+          selfBody: input.selfBody,
+          relatedUrl: input.relatedUrl ?? `/pods/${ride.id}`,
+          metadata: {
+            action: input.action,
+            route: detailRouteTitle,
+            sourceRideId: ride.id,
+            ...(input.metadata ?? {}),
+          },
+          dedupe: input.dedupe,
+          delivery: input.delivery,
+          fallbackRecipientUserIds: Array.from(
+            new Set([
+              ...(target.hostUserId ? [target.hostUserId] : []),
+              ...target.activeMemberUserIds,
+            ]),
+          ),
+        }),
+      )
+      .catch((error) => {
+        console.warn("RidePod detail notification target resolution failed", error);
+      });
   }
 
   function joinPod(luggage?: LuggageContribution) {
@@ -5488,17 +5517,6 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
       }
     }
 
-    if ((leavePatch.joinLeaveCountForCurrentUser ?? 0) <= 1) {
-      notifyRideDetailAction({
-        type: "attendance_cancelled",
-        title: "Rider left this ride",
-        body: `${detailActorName} left ${detailRouteTitle}.`,
-        selfTitle: "You left this ride",
-        selfBody: `${detailRouteTitle} was removed from your active rides.`,
-        action: "attendance_cancelled",
-        delivery: "local",
-      });
-    }
   }
 
   function openRideAppEstimateModal() {
@@ -5768,6 +5786,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
       selfTitle: shouldStartReplacement ? "You stepped down as host" : "You cancelled the pod",
       selfBody: hostCancellationReason,
       action: shouldStartReplacement ? "host_replacement_needed" : "host_cancelled",
+      dedupe: false,
     });
     closeHostCancellationModal();
     setShowManagePodActionsModal(false);

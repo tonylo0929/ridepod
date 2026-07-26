@@ -118,6 +118,42 @@ function readLocalNotifications() {
   }
 }
 
+function notificationEventKey(notification: RidePodUserNotificationRow) {
+  return [
+    notification.recipient_user_id,
+    notification.actor_user_id ?? "system",
+    notification.related_pod_id ?? "no-pod",
+    notification.type,
+  ].join(":");
+}
+
+function notificationCreatedAtMs(notification: RidePodUserNotificationRow) {
+  const timestamp = new Date(notification.created_at ?? 0).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function mergeRemoteAndLocalNotifications(
+  remoteNotifications: RidePodUserNotificationRow[],
+  userId: string,
+) {
+  const localNotifications = readLocalNotifications().filter(
+    (notification) => notification.recipient_user_id === userId,
+  );
+  const localOnlyNotifications = localNotifications.filter((localNotification) => {
+    const localKey = notificationEventKey(localNotification);
+    const localCreatedAt = notificationCreatedAtMs(localNotification);
+    return !remoteNotifications.some(
+      (remoteNotification) =>
+        notificationEventKey(remoteNotification) === localKey &&
+        Math.abs(notificationCreatedAtMs(remoteNotification) - localCreatedAt) <= recentDedupeWindowMs,
+    );
+  });
+
+  return [...remoteNotifications, ...localOnlyNotifications].sort(
+    (first, second) => notificationCreatedAtMs(second) - notificationCreatedAtMs(first),
+  );
+}
+
 function writeLocalNotifications(notifications: RidePodUserNotificationRow[]) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(notificationStorageKey, JSON.stringify(notifications));
@@ -334,7 +370,11 @@ export async function listUserNotifications(userId: string) {
       .limit(100);
 
     if (result.error) throw result.error;
-    return { source: "supabase" as const, notifications: result.data ?? [], fallbackNote: null };
+    return {
+      source: "supabase" as const,
+      notifications: mergeRemoteAndLocalNotifications(result.data ?? [], userId),
+      fallbackNote: null,
+    };
   } catch (error) {
     if (!isMissingSupabaseConfig(error)) {
       console.warn("RidePod notification list failed", error);
@@ -363,14 +403,13 @@ export async function markNotificationRead(notificationId: string) {
     if (!isMissingSupabaseConfig(error)) {
       console.warn("RidePod notification read failed", error);
     }
-
-    writeLocalNotifications(
-      readLocalNotifications().map((notification) =>
-        notification.id === notificationId ? { ...notification, read_at: readAt } : notification,
-      ),
-    );
   }
 
+  writeLocalNotifications(
+    readLocalNotifications().map((notification) =>
+      notification.id === notificationId ? { ...notification, read_at: readAt } : notification,
+    ),
+  );
   emitUpdatesChanged();
 }
 
@@ -390,16 +429,15 @@ export async function markAllNotificationsRead(userId: string) {
     if (!isMissingSupabaseConfig(error)) {
       console.warn("RidePod mark all notifications read failed", error);
     }
-
-    writeLocalNotifications(
-      readLocalNotifications().map((notification) =>
-        notification.recipient_user_id === userId && !notification.read_at
-          ? { ...notification, read_at: readAt }
-          : notification,
-      ),
-    );
   }
 
+  writeLocalNotifications(
+    readLocalNotifications().map((notification) =>
+      notification.recipient_user_id === userId && !notification.read_at
+        ? { ...notification, read_at: readAt }
+        : notification,
+    ),
+  );
   emitUpdatesChanged();
 }
 
@@ -413,10 +451,9 @@ export async function clearNotification(notificationId: string) {
     if (!isMissingSupabaseConfig(error)) {
       console.warn("RidePod clear notification failed", error);
     }
-
-    writeLocalNotifications(readLocalNotifications().filter((notification) => notification.id !== notificationId));
   }
 
+  writeLocalNotifications(readLocalNotifications().filter((notification) => notification.id !== notificationId));
   emitUpdatesChanged();
 }
 
@@ -430,25 +467,15 @@ export async function clearAllNotifications(userId: string) {
     if (!isMissingSupabaseConfig(error)) {
       console.warn("RidePod clear all notifications failed", error);
     }
-
-    writeLocalNotifications(readLocalNotifications().filter((notification) => notification.recipient_user_id !== userId));
   }
 
+  writeLocalNotifications(readLocalNotifications().filter((notification) => notification.recipient_user_id !== userId));
   emitUpdatesChanged();
 }
 
 export async function getUnreadNotificationCount(userId: string) {
-  try {
-    const client = getSupabaseBrowserClient();
-    const result = await client
-      .from("user_notifications")
-      .select("id,metadata", { count: "exact" })
-      .eq("recipient_user_id", userId)
-      .is("read_at", null);
-
-    if (result.error) throw result.error;
-    return (result.data ?? []).filter((notification) => !isNotificationCleared(notification as RidePodUserNotificationRow, userId)).length;
-  } catch {
-    return readLocalNotifications().filter((notification) => notification.recipient_user_id === userId && !notification.read_at && !isNotificationCleared(notification, userId)).length;
-  }
+  const result = await listUserNotifications(userId);
+  return result.notifications.filter(
+    (notification) => !notification.read_at && !isNotificationCleared(notification, userId),
+  ).length;
 }
