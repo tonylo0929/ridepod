@@ -176,7 +176,9 @@ function RideExploreContent() {
                 <span className="block truncate text-sm font-black text-white">{district.name}</span>
                 <span className="mt-1 block text-xs font-bold text-[var(--rp-muted-strong)]">{district.rideCount} upcoming rides</span>
               </span>
-              <ChevronRight className="h-4 w-4 text-white/46 transition group-hover:translate-x-0.5 group-hover:text-[#65e6d0]" />
+              <span className="grid h-7 w-7 place-items-center rounded-full bg-[#65e6d0] text-[#07111a] shadow-[0_10px_22px_rgba(101,230,208,0.16)] transition group-hover:translate-x-0.5 group-hover:bg-[#9ffce8]">
+                <ChevronRight className="h-4 w-4 stroke-[3]" />
+              </span>
             </Link>
           ))}
         </div>

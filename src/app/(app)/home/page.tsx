@@ -1340,7 +1340,7 @@ function StartingAreaSection() {
               key={area.id}
               href={buildRideExploreHref({ from: area.queryValue })}
               aria-label={`Browse rides from ${area.name}`}
-              className="group relative flex min-h-[94px] flex-col justify-center overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(145deg,rgba(12,26,39,0.96),rgba(5,15,24,0.98))] px-3 py-3 pr-8 text-left shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:border-[#65e6d0]/34 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-3 focus-visible:outline-[#65e6d0]"
+              className="group relative flex min-h-[94px] flex-col justify-center overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(145deg,rgba(12,26,39,0.96),rgba(5,15,24,0.98))] px-3 py-3 pr-10 text-left shadow-[0_14px_34px_rgba(0,0,0,0.22)] transition hover:-translate-y-0.5 hover:border-[#65e6d0]/34 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-3 focus-visible:outline-[#65e6d0]"
             >
               <span className="flex min-w-0 items-start gap-2.5">
                 <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full bg-gradient-to-br ${area.accentClassName} shadow-[0_10px_22px_rgba(0,0,0,0.24)]`}>
@@ -1353,7 +1353,9 @@ function StartingAreaSection() {
                   </span>
                 </span>
               </span>
-              <ChevronRight className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/48 transition group-hover:translate-x-0.5 group-hover:text-[#65e6d0]" />
+              <span className="absolute right-3 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full bg-[#65e6d0] text-[#07111a] shadow-[0_10px_22px_rgba(101,230,208,0.18)] transition group-hover:translate-x-0.5 group-hover:bg-[#9ffce8]">
+                <ChevronRight className="h-4 w-4 stroke-[3]" />
+              </span>
             </Link>
           );
         })}
