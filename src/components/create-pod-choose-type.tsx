@@ -3,10 +3,15 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { KeyboardEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { useRidePodAvatarPreference, type RidePodAvatarPreference } from "@/components/animal-avatar";
-import type { GeoJSONSource, Map as MapboxMap, StyleSpecification } from "mapbox-gl";
+import {
+  DistrictDetectionStatus,
+  LocationPicker,
+  RideLocationField,
+  RoutePreviewMap,
+} from "@/components/ride-location-picker";
 import {
   ArrowLeft,
   ArrowRight,
@@ -20,7 +25,6 @@ import {
   Check,
   Clock3,
   Info,
-  Loader2,
   LocateFixed,
   Luggage,
   Lightbulb,
@@ -31,7 +35,6 @@ import {
   Plane,
   Plus,
   RefreshCcw,
-  Search,
   ShieldCheck,
   Smartphone,
   Trash2,
@@ -77,7 +80,9 @@ import {
 } from "@/lib/ridepod-pricing";
 import { saveCreatedHomeRide } from "@/lib/created-home-rides";
 import { createUserNotificationOnce } from "@/lib/notifications/ridepod-notifications";
+import { getDistrictCenter, hk18DistrictOptions } from "@/lib/hk-districts";
 import type { HomeRide } from "@/lib/home-ride-mock";
+import type { RideLocation } from "@/lib/ride-location-types";
 
 type PodType = "scheduled" | "airport" | "recurring";
 type CreateStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
@@ -112,58 +117,6 @@ type RoutePointSelection = {
   label: string;
   coordinates: RouteCoordinates;
 };
-type MapboxPlaceSuggestion = RoutePointSelection & {
-  id: string;
-  shortLabel: string;
-};
-type MapboxFeature = {
-  id?: string;
-  place_name?: string;
-  text?: string;
-  center?: [number, number];
-  geometry?: {
-    type?: string;
-    coordinates?: [number, number];
-  };
-  properties?: {
-    name?: string;
-    full_address?: string;
-    place_formatted?: string;
-    coordinates?: {
-      longitude?: number;
-      latitude?: number;
-    };
-  };
-};
-type MapboxFeatureCollection = {
-  features?: MapboxFeature[];
-};
-type NominatimPlace = {
-  place_id?: number;
-  osm_type?: string;
-  osm_id?: number;
-  display_name?: string;
-  name?: string;
-  lat?: string;
-  lon?: string;
-  address?: {
-    name?: string;
-    road?: string;
-    suburb?: string;
-    neighbourhood?: string;
-    city?: string;
-    town?: string;
-    village?: string;
-  };
-};
-type MapboxDirectionsResponse = {
-  routes?: Array<{
-    geometry?: {
-      type?: string;
-      coordinates?: [number, number][];
-    };
-  }>;
-};
 type RideOptionId =
   | "ride_app_fixed_quote"
   | "hosts_choice"
@@ -182,50 +135,6 @@ const defaultRideAppCreateFeeSentence =
   defaultRideAppHostCreateFeeCents > 0
     ? `Host create fee: ${defaultRideAppCreateFeeLabel}. No live payment is taken in this version.`
     : "Free to create.";
-
-const hk18DistrictOptions = [
-  "Central and Western",
-  "Eastern",
-  "Southern",
-  "Wan Chai",
-  "Kowloon City",
-  "Kwun Tong",
-  "Sham Shui Po",
-  "Wong Tai Sin",
-  "Yau Tsim Mong",
-  "Islands",
-  "Kwai Tsing",
-  "North",
-  "Sai Kung",
-  "Sha Tin",
-  "Tai Po",
-  "Tsuen Wan",
-  "Tuen Mun",
-  "Yuen Long",
-] as const;
-
-type Hk18District = (typeof hk18DistrictOptions)[number];
-
-const hk18DistrictCenters: Record<Hk18District, RouteCoordinates> = {
-  "Central and Western": { lat: 22.285, lng: 114.15 },
-  Eastern: { lat: 22.284, lng: 114.225 },
-  Southern: { lat: 22.248, lng: 114.158 },
-  "Wan Chai": { lat: 22.277, lng: 114.173 },
-  "Kowloon City": { lat: 22.328, lng: 114.191 },
-  "Kwun Tong": { lat: 22.313, lng: 114.225 },
-  "Sham Shui Po": { lat: 22.331, lng: 114.159 },
-  "Wong Tai Sin": { lat: 22.342, lng: 114.195 },
-  "Yau Tsim Mong": { lat: 22.304, lng: 114.17 },
-  Islands: { lat: 22.309, lng: 113.918 },
-  "Kwai Tsing": { lat: 22.354, lng: 114.103 },
-  North: { lat: 22.501, lng: 114.128 },
-  "Sai Kung": { lat: 22.382, lng: 114.271 },
-  "Sha Tin": { lat: 22.384, lng: 114.188 },
-  "Tai Po": { lat: 22.45, lng: 114.166 },
-  "Tsuen Wan": { lat: 22.371, lng: 114.114 },
-  "Tuen Mun": { lat: 22.391, lng: 113.977 },
-  "Yuen Long": { lat: 22.445, lng: 114.022 },
-};
 
 const newTerritoriesDistricts = new Set<string>([
   "Kwai Tsing",
@@ -784,14 +693,6 @@ function formatCentsFixed(value: number) {
 
 function centsToDollars(value: number) {
   return Math.round(Math.max(0, value)) / 100;
-}
-
-function isHk18District(value: string): value is Hk18District {
-  return hk18DistrictOptions.includes(value as Hk18District);
-}
-
-function getDistrictCenter(value: string) {
-  return isHk18District(value) ? hk18DistrictCenters[value] : null;
 }
 
 function estimateDistrictDistanceMeters(pickupDistrict: string, dropoffDistrict: string) {
@@ -1456,782 +1357,43 @@ function routePointSummary(value: string, fallback: string) {
   return clean.split(",")[0]?.trim() || fallback;
 }
 
-function getMapboxAccessToken() {
-  return process.env.NEXT_PUBLIC_MAPBOX_TOKEN?.trim() || process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN?.trim() || "";
-}
-
-const hongKongSearchBbox = "113.825,22.13,114.47,22.57";
-const hongKongNominatimViewbox = "113.825,22.57,114.47,22.13";
-const hongKongSearchProximity = "114.1694,22.3193";
-const cartoDarkMapStyle: StyleSpecification = {
-  version: 8,
-  sources: {
-    "carto-dark": {
-      type: "raster",
-      tiles: ["https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "© OpenStreetMap © CARTO",
-    },
-  },
-  layers: [
-    {
-      id: "carto-dark",
-      type: "raster",
-      source: "carto-dark",
-      minzoom: 0,
-      maxzoom: 19,
-    },
-  ],
-};
-
-function getMapboxFeatureCoordinates(feature: MapboxFeature): RouteCoordinates | null {
-  const longitude = feature.properties?.coordinates?.longitude;
-  const latitude = feature.properties?.coordinates?.latitude;
-
-  if (typeof longitude === "number" && typeof latitude === "number") {
-    return { lng: longitude, lat: latitude };
-  }
-
-  const [lng, lat] = feature.center ?? feature.geometry?.coordinates ?? [];
-  if (typeof lng === "number" && typeof lat === "number") return { lng, lat };
-
-  return null;
-}
-
-function getMapboxFeatureLabel(feature: MapboxFeature) {
-  const formattedPlace = [feature.properties?.name ?? feature.text, feature.properties?.place_formatted]
-    .filter(Boolean)
-    .join(", ");
-  const label =
-    feature.properties?.full_address ||
-    formattedPlace ||
-    feature.place_name ||
-    feature.properties?.name ||
-    feature.text ||
-    "Selected place";
-
-  return label.trim() || "Selected place";
-}
-
-function mapboxFeatureToSuggestion(feature: MapboxFeature, index: number): MapboxPlaceSuggestion | null {
-  const coordinates = getMapboxFeatureCoordinates(feature);
-  if (!coordinates) return null;
-
-  const label = getMapboxFeatureLabel(feature);
-  const shortLabel = feature.properties?.name ?? feature.text ?? routePointSummary(label, "Place");
-
+function routePointFromLocation(location: RideLocation): RoutePointSelection {
   return {
-    id: feature.id ?? `${label}-${coordinates.lng}-${coordinates.lat}-${index}`,
-    label,
-    shortLabel,
-    coordinates,
+    label: location.formattedAddress || location.name,
+    coordinates: {
+      lat: location.latitude,
+      lng: location.longitude,
+    },
   };
-}
-
-function getNominatimPlaceCoordinates(place: NominatimPlace): RouteCoordinates | null {
-  const lng = Number.parseFloat(place.lon ?? "");
-  const lat = Number.parseFloat(place.lat ?? "");
-
-  if (Number.isFinite(lng) && Number.isFinite(lat)) return { lng, lat };
-  return null;
-}
-
-function getNominatimPlaceLabel(place: NominatimPlace) {
-  return place.display_name?.trim() || place.name?.trim() || "Selected place";
-}
-
-function getNominatimPlaceShortLabel(place: NominatimPlace, label: string) {
-  return (
-    place.name ||
-    place.address?.name ||
-    place.address?.road ||
-    place.address?.suburb ||
-    place.address?.neighbourhood ||
-    place.address?.city ||
-    place.address?.town ||
-    place.address?.village ||
-    routePointSummary(label, "Place")
-  );
-}
-
-function nominatimPlaceToSuggestion(place: NominatimPlace, index: number): MapboxPlaceSuggestion | null {
-  const coordinates = getNominatimPlaceCoordinates(place);
-  if (!coordinates) return null;
-
-  const label = getNominatimPlaceLabel(place);
-  const shortLabel = getNominatimPlaceShortLabel(place, label);
-
-  return {
-    id: `${place.place_id ?? `${place.osm_type ?? "osm"}-${place.osm_id ?? index}`}`,
-    label,
-    shortLabel,
-    coordinates,
-  };
-}
-
-function makeForwardGeocodeUrl(query: string, token: string) {
-  const params = new URLSearchParams({
-    access_token: token,
-    autocomplete: "true",
-    bbox: hongKongSearchBbox,
-    country: "HK",
-    language: "en",
-    limit: "5",
-    proximity: hongKongSearchProximity,
-    q: query,
-    types: "address,poi,place,locality,neighborhood",
-  });
-
-  return `https://api.mapbox.com/search/geocode/v6/forward?${params.toString()}`;
-}
-
-function makeNominatimForwardGeocodeUrl(query: string) {
-  const params = new URLSearchParams({
-    addressdetails: "1",
-    bounded: "1",
-    countrycodes: "hk",
-    format: "jsonv2",
-    limit: "5",
-    q: query,
-    viewbox: hongKongNominatimViewbox,
-  });
-
-  return `https://nominatim.openstreetmap.org/search?${params.toString()}`;
-}
-
-function makeReverseGeocodeUrl(coordinates: RouteCoordinates, token: string) {
-  const params = new URLSearchParams({
-    access_token: token,
-    language: "en",
-    latitude: String(coordinates.lat),
-    limit: "1",
-    longitude: String(coordinates.lng),
-  });
-
-  return `https://api.mapbox.com/search/geocode/v6/reverse?${params.toString()}`;
-}
-
-function makeNominatimReverseGeocodeUrl(coordinates: RouteCoordinates) {
-  const params = new URLSearchParams({
-    addressdetails: "1",
-    format: "jsonv2",
-    lat: String(coordinates.lat),
-    lon: String(coordinates.lng),
-    zoom: "18",
-  });
-
-  return `https://nominatim.openstreetmap.org/reverse?${params.toString()}`;
-}
-
-function makeDirectionsUrl(pickup: RouteCoordinates, dropoff: RouteCoordinates, token: string) {
-  const coordinates = `${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}`;
-  const params = new URLSearchParams({
-    access_token: token,
-    alternatives: "false",
-    geometries: "geojson",
-    overview: "full",
-  });
-
-  return `https://api.mapbox.com/directions/v5/mapbox/driving/${coordinates}?${params.toString()}`;
-}
-
-function makeOsrmDirectionsUrl(pickup: RouteCoordinates, dropoff: RouteCoordinates) {
-  const coordinates = `${pickup.lng},${pickup.lat};${dropoff.lng},${dropoff.lat}`;
-  const params = new URLSearchParams({
-    alternatives: "false",
-    geometries: "geojson",
-    overview: "full",
-    steps: "false",
-  });
-
-  return `https://router.project-osrm.org/route/v1/driving/${coordinates}?${params.toString()}`;
-}
-
-function lngLatToTile(lng: number, lat: number, zoom: number) {
-  const scale = 2 ** zoom;
-  const x = Math.floor(((lng + 180) / 360) * scale);
-  const latRad = (lat * Math.PI) / 180;
-  const y = Math.floor(((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * scale);
-
-  return { x, y };
-}
-
-function getFallbackMapTiles() {
-  const zoom = 12;
-  const centerTile = lngLatToTile(114.1694, 22.3193, zoom);
-
-  return [-1, 0, 1].flatMap((row) =>
-    [-1, 0, 1].map((column) => ({
-      key: `${row}-${column}`,
-      url: `https://basemaps.cartocdn.com/dark_all/${zoom}/${centerTile.x + column}/${centerTile.y + row}.png`,
-    })),
-  );
-}
-
-const fallbackMapTiles = getFallbackMapTiles();
-
-function FallbackRouteMap() {
-  return (
-    <div className="absolute inset-0 overflow-hidden bg-[#07111d]">
-      <div className="absolute left-1/2 top-1/2 grid aspect-square w-[112%] min-w-[330px] -translate-x-1/2 -translate-y-1/2 grid-cols-3 grid-rows-3 opacity-85 saturate-[1.1]">
-        {fallbackMapTiles.map((tile) => (
-          <span
-            key={tile.key}
-            className="bg-cover bg-center"
-            style={{ backgroundImage: `url('${tile.url}')` }}
-          />
-        ))}
-      </div>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_48%_42%,rgba(86,217,239,0.14),transparent_34%),linear-gradient(180deg,rgba(2,9,18,0.18),rgba(2,9,18,0.54))]" />
-      <div className="absolute left-[45%] top-[42%] grid h-10 w-10 place-items-center rounded-full border border-[#f6c453]/70 bg-[#07111d]/80 text-[#f6c453] shadow-[0_0_28px_rgba(246,196,83,0.22)] backdrop-blur">
-        <MapPin className="h-5 w-5" />
-      </div>
-      <div className="absolute left-3 top-3 rounded-full border border-white/10 bg-[#06111d]/82 px-3 py-1 text-[11px] font-black text-slate-100 backdrop-blur">
-        Hong Kong map preview
-      </div>
-      <div className="absolute bottom-1.5 right-2 rounded bg-[#06111d]/72 px-1.5 py-0.5 text-[9px] font-bold text-slate-300">
-        © OpenStreetMap © CARTO
-      </div>
-    </div>
-  );
 }
 
 function RouteJourneyPreview({
   pickupAddress,
   dropoffAddress,
-  pickupPoint,
-  dropoffPoint,
+  pickupLocation,
+  dropoffLocation,
   stops,
   pickupLabel = "Pickup point",
   dropoffLabel = "Dropoff point",
 }: {
   pickupAddress: string;
   dropoffAddress: string;
-  pickupPoint: RoutePointSelection | null;
-  dropoffPoint: RoutePointSelection | null;
+  pickupLocation: RideLocation | null;
+  dropoffLocation: RideLocation | null;
   stops: RouteStop[];
   pickupLabel?: string;
   dropoffLabel?: string;
 }) {
-  const mapboxToken = getMapboxAccessToken();
-  const mapContainerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<MapboxMap | null>(null);
-  const [mapReady, setMapReady] = useState(false);
-  const [mapError, setMapError] = useState<string | null>(null);
-  const [routeCoordinates, setRouteCoordinates] = useState<[number, number][]>([]);
-  const [isRouteLoading, setIsRouteLoading] = useState(false);
-  const [routeError, setRouteError] = useState<string | null>(null);
-  const pickupLng = pickupPoint?.coordinates.lng;
-  const pickupLat = pickupPoint?.coordinates.lat;
-  const dropoffLng = dropoffPoint?.coordinates.lng;
-  const dropoffLat = dropoffPoint?.coordinates.lat;
-  const hasGeocodedRoute =
-    pickupLng != null &&
-    pickupLat != null &&
-    dropoffLng != null &&
-    dropoffLat != null;
-  const visibleRouteError = hasGeocodedRoute ? routeError : null;
-  const visibleIsRouteLoading = hasGeocodedRoute && isRouteLoading;
-  const hasRoutePoints =
-    pickupAddress.trim().length > 0 ||
-    dropoffAddress.trim().length > 0 ||
-    stops.some((stop) => stop.address.trim().length > 0);
-  const filledPointCount =
-    (pickupAddress.trim() ? 1 : 0) +
-    stops.filter((stop) => stop.address.trim()).length +
-    (dropoffAddress.trim() ? 1 : 0);
-  const points = [
-    {
-      id: "pickup",
-      label: pickupLabel,
-      value: routePointSummary(pickupAddress, "None"),
-      type: "pickup",
-    },
-    ...stops.map((stop, index) => ({
-      id: `stop-${stop.id}`,
-      label: `Stop ${index + 1}`,
-      value: routePointSummary(stop.address, "Optional stop"),
-      type: "stop" as const,
-    })),
-    {
-      id: "dropoff",
-      label: stops.length > 0 ? `Final ${dropoffLabel.toLowerCase()}` : dropoffLabel,
-      value: routePointSummary(dropoffAddress, "None"),
-      type: "dropoff",
-    },
-  ];
-
-  useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
-    let cancelled = false;
-
-    async function loadMap() {
-      try {
-        const mapboxModule = await import("mapbox-gl");
-        if (cancelled || !mapContainerRef.current) return;
-
-        const mapboxgl = mapboxModule.default;
-        mapboxgl.accessToken = mapboxToken;
-
-        const map = new mapboxgl.Map({
-          attributionControl: false,
-          center: [114.1694, 22.3193],
-          container: mapContainerRef.current,
-          interactive: true,
-          pitchWithRotate: false,
-          style: mapboxToken ? "mapbox://styles/mapbox/dark-v11" : cartoDarkMapStyle,
-          zoom: 10.5,
-        });
-
-        mapRef.current = map;
-        map.on("load", () => {
-          if (!cancelled) setMapReady(true);
-        });
-        map.on("error", () => {
-          if (!cancelled) setMapError("Map preview could not load.");
-        });
-      } catch {
-        if (!cancelled) setMapError("Map preview could not load.");
-      }
-    }
-
-    void loadMap();
-
-    return () => {
-      cancelled = true;
-      mapRef.current?.remove();
-      mapRef.current = null;
-      setMapReady(false);
-    };
-  }, [mapboxToken]);
-
-  useEffect(() => {
-    if (!hasGeocodedRoute) return;
-
-    const controller = new AbortController();
-    const pickupCoordinates = { lng: pickupLng, lat: pickupLat };
-    const dropoffCoordinates = { lng: dropoffLng, lat: dropoffLat };
-    const loadingTimeout = window.setTimeout(() => {
-      if (!controller.signal.aborted) {
-        setIsRouteLoading(true);
-        setRouteError(null);
-      }
-    }, 0);
-
-    async function loadRoute() {
-      try {
-        const response = await fetch(
-          mapboxToken
-            ? makeDirectionsUrl(pickupCoordinates, dropoffCoordinates, mapboxToken)
-            : makeOsrmDirectionsUrl(pickupCoordinates, dropoffCoordinates),
-          { signal: controller.signal },
-        );
-        if (!response.ok) throw new Error("Directions request failed");
-        const data = (await response.json()) as MapboxDirectionsResponse;
-        const coordinates = data.routes?.[0]?.geometry?.coordinates ?? [];
-        if (coordinates.length < 2) throw new Error("No route returned");
-        setRouteCoordinates(coordinates);
-      } catch {
-        if (!controller.signal.aborted) {
-          setRouteCoordinates([]);
-          setRouteError("Route line unavailable. Pins still show selected points.");
-        }
-      } finally {
-        if (!controller.signal.aborted) setIsRouteLoading(false);
-      }
-    }
-
-    void loadRoute();
-
-    return () => {
-      window.clearTimeout(loadingTimeout);
-      controller.abort();
-    };
-  }, [
-    dropoffLat,
-    dropoffLng,
-    hasGeocodedRoute,
-    mapboxToken,
-    pickupLat,
-    pickupLng,
-  ]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !mapReady) return;
-    const activeRouteCoordinates = pickupPoint && dropoffPoint ? routeCoordinates : [];
-
-    const routeData = {
-      type: "FeatureCollection",
-      features: activeRouteCoordinates.length > 1
-        ? [
-            {
-              type: "Feature",
-              properties: {},
-              geometry: {
-                type: "LineString",
-                coordinates: activeRouteCoordinates,
-              },
-            },
-          ]
-        : [],
-    };
-    const pointFeatures = [
-      pickupPoint
-        ? {
-            type: "Feature",
-            properties: { label: "Pickup", pointType: "pickup" },
-            geometry: {
-              type: "Point",
-              coordinates: [pickupPoint.coordinates.lng, pickupPoint.coordinates.lat],
-            },
-          }
-        : null,
-      dropoffPoint
-        ? {
-            type: "Feature",
-            properties: { label: "Dropoff", pointType: "dropoff" },
-            geometry: {
-              type: "Point",
-              coordinates: [dropoffPoint.coordinates.lng, dropoffPoint.coordinates.lat],
-            },
-          }
-        : null,
-    ].filter(Boolean);
-    const pointsData = {
-      type: "FeatureCollection",
-      features: pointFeatures,
-    };
-
-    if (!map.getSource("ridepod-route")) {
-      map.addSource("ridepod-route", { type: "geojson", data: routeData as Parameters<GeoJSONSource["setData"]>[0] });
-      map.addLayer({
-        id: "ridepod-route-line",
-        type: "line",
-        source: "ridepod-route",
-        layout: { "line-cap": "round", "line-join": "round" },
-        paint: {
-          "line-color": "#56d9ef",
-          "line-opacity": 0.92,
-          "line-width": 5,
-        },
-      });
-    } else {
-      (map.getSource("ridepod-route") as GeoJSONSource).setData(routeData as Parameters<GeoJSONSource["setData"]>[0]);
-    }
-
-    if (!map.getSource("ridepod-points")) {
-      map.addSource("ridepod-points", { type: "geojson", data: pointsData as Parameters<GeoJSONSource["setData"]>[0] });
-      map.addLayer({
-        id: "ridepod-points-circle",
-        type: "circle",
-        source: "ridepod-points",
-        paint: {
-          "circle-color": ["match", ["get", "pointType"], "pickup", "#f6c453", "#fb923c"],
-          "circle-radius": 8,
-          "circle-stroke-color": "#06111d",
-          "circle-stroke-width": 3,
-        },
-      });
-      map.addLayer({
-        id: "ridepod-points-label",
-        type: "symbol",
-        source: "ridepod-points",
-        layout: {
-          "text-field": ["get", "label"],
-          "text-offset": [0, 1.45],
-          "text-size": 11,
-        },
-        paint: {
-          "text-color": "#f8fafc",
-          "text-halo-color": "#06111d",
-          "text-halo-width": 1.4,
-        },
-      });
-    } else {
-      (map.getSource("ridepod-points") as GeoJSONSource).setData(pointsData as Parameters<GeoJSONSource["setData"]>[0]);
-    }
-
-    if (pickupPoint && dropoffPoint) {
-      const west = Math.min(pickupPoint.coordinates.lng, dropoffPoint.coordinates.lng);
-      const east = Math.max(pickupPoint.coordinates.lng, dropoffPoint.coordinates.lng);
-      const south = Math.min(pickupPoint.coordinates.lat, dropoffPoint.coordinates.lat);
-      const north = Math.max(pickupPoint.coordinates.lat, dropoffPoint.coordinates.lat);
-      map.fitBounds(
-        [
-          [west, south],
-          [east, north],
-        ],
-        { duration: 600, maxZoom: 14.5, padding: 44 },
-      );
-    } else if (pickupPoint || dropoffPoint) {
-      const point = pickupPoint ?? dropoffPoint;
-      if (point) map.flyTo({ center: [point.coordinates.lng, point.coordinates.lat], duration: 600, zoom: 13.5 });
-    }
-  }, [dropoffPoint, mapReady, pickupPoint, routeCoordinates]);
-
   return (
-    <div className="overflow-hidden rounded-[24px] border border-[color-mix(in_srgb,var(--rp-primary)_28%,var(--rp-border))] bg-[linear-gradient(180deg,rgba(15,27,39,0.94),rgba(8,17,29,0.94))] p-3 shadow-[0_18px_44px_rgba(0,0,0,0.28)]">
-      <div className="flex items-center justify-between gap-3 px-1 pb-3">
-        <div>
-          <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Route preview</p>
-          <p className="mt-1 text-sm font-bold text-slate-300">
-            {hasRoutePoints ? "Pickup to final dropoff" : "No route points set yet"}
-          </p>
-        </div>
-        <span className="rounded-full border border-[var(--rp-border)] bg-[#0b1724] px-3 py-1 text-xs font-black text-[var(--rp-text)]">
-          {filledPointCount} set
-        </span>
-      </div>
-
-      <div className="relative h-[150px] overflow-hidden rounded-[18px] border border-white/10 bg-[#06111d]">
-        {mapError && !mapReady ? <FallbackRouteMap /> : null}
-        <div ref={mapContainerRef} className={cn("absolute inset-0", mapError && !mapReady ? "hidden" : "")} />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,9,18,0.02),rgba(2,9,18,0.2))]" />
-        {!pickupPoint || !dropoffPoint ? (
-          <div className="absolute left-3 top-3 rounded-full border border-white/10 bg-[#06111d]/80 px-3 py-1 text-[11px] font-black text-slate-200 backdrop-blur">
-            Select pickup and dropoff
-          </div>
-        ) : null}
-        {visibleIsRouteLoading ? (
-          <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full border border-[#56d9ef]/25 bg-[#06111d]/86 px-3 py-1 text-[11px] font-black text-[#a7f3ff] backdrop-blur">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            Routing
-          </div>
-        ) : null}
-        {visibleRouteError || mapError ? (
-          <div className="absolute inset-x-3 bottom-3 rounded-[12px] border border-amber-300/20 bg-[#19170d]/88 px-3 py-2 text-[11px] font-bold leading-4 text-amber-100 backdrop-blur">
-            {visibleRouteError ?? mapError}
-          </div>
-        ) : null}
-        <div className="absolute bottom-1.5 right-2 rounded bg-[#06111d]/70 px-1.5 py-0.5 text-[9px] font-bold text-slate-300">
-          {mapboxToken ? "© Mapbox © OpenStreetMap" : "© OpenStreetMap © CARTO"}
-        </div>
-      </div>
-
-      <div className="mt-3 grid gap-1.5">
-        {points.map((point) => (
-          <div
-            key={point.id}
-            className="grid min-h-11 grid-cols-[18px_1fr_auto] items-center gap-3 rounded-[14px] px-2.5 py-2"
-          >
-            <span
-              className={cn(
-                "h-2.5 w-2.5 rounded-full",
-                point.type === "pickup"
-                  ? "bg-[var(--rp-primary)]"
-                  : point.type === "dropoff"
-                    ? "bg-orange-400"
-                    : "border border-[var(--rp-primary)] bg-transparent",
-              )}
-            />
-            <span className="min-w-0 truncate text-sm font-black text-[#f8fafc]">
-              {point.value}
-            </span>
-            <span className="text-[10px] font-black uppercase tracking-[0.12em] text-[#f6c453]">
-              {point.label}
-            </span>
-          </div>
-        ))}
-      </div>
-    </div>
+    <RoutePreviewMap
+      pickupLocation={pickupLocation}
+      dropoffLocation={dropoffLocation}
+      stops={stops}
+      pickupFallbackLabel={pickupAddress ? routePointSummary(pickupAddress, pickupLabel) : pickupLabel}
+      dropoffFallbackLabel={dropoffAddress ? routePointSummary(dropoffAddress, dropoffLabel) : dropoffLabel}
+    />
   );
 }
-
-function MapboxPlaceField({
-  label,
-  value,
-  selectedPoint,
-  placeholder,
-  allowCurrentLocation = false,
-  onChange,
-  onPlaceSelect,
-}: {
-  label: string;
-  value: string;
-  selectedPoint: RoutePointSelection | null;
-  placeholder: string;
-  allowCurrentLocation?: boolean;
-  onChange: (value: string) => void;
-  onPlaceSelect: (point: RoutePointSelection | null) => void;
-}) {
-  const fieldId = useId();
-  const mapboxToken = getMapboxAccessToken();
-  const [suggestions, setSuggestions] = useState<MapboxPlaceSuggestion[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const cleanValue = value.trim();
-  const hasSelectedPoint = Boolean(selectedPoint && selectedPoint.label.trim() === cleanValue);
-  const visibleSuggestions = cleanValue.length >= 3 && !hasSelectedPoint ? suggestions : [];
-  const showSearching = isSearching && cleanValue.length >= 3 && !hasSelectedPoint;
-  const visibleStatusMessage = cleanValue.length >= 3 && !hasSelectedPoint ? statusMessage : null;
-
-  useEffect(() => {
-    if (cleanValue.length < 3 || hasSelectedPoint) return;
-
-    const controller = new AbortController();
-    const timeoutId = window.setTimeout(() => {
-      setIsSearching(true);
-      setStatusMessage(null);
-
-      fetch(mapboxToken ? makeForwardGeocodeUrl(cleanValue, mapboxToken) : makeNominatimForwardGeocodeUrl(cleanValue), { signal: controller.signal })
-        .then((response) => {
-          if (!response.ok) throw new Error("Place search failed");
-          return response.json() as Promise<MapboxFeatureCollection | NominatimPlace[]>;
-        })
-        .then((data) => {
-          const nextSuggestions = (mapboxToken
-            ? ((data as MapboxFeatureCollection).features ?? []).map((feature, index) => mapboxFeatureToSuggestion(feature, index))
-            : (Array.isArray(data) ? data : []).map((place, index) => nominatimPlaceToSuggestion(place, index))
-          ).filter((suggestion): suggestion is MapboxPlaceSuggestion => Boolean(suggestion));
-          setSuggestions(nextSuggestions);
-          setStatusMessage(nextSuggestions.length ? null : "No matching places found.");
-        })
-        .catch(() => {
-          if (!controller.signal.aborted) {
-            setSuggestions([]);
-            setStatusMessage("Place search unavailable right now.");
-          }
-        })
-        .finally(() => {
-          if (!controller.signal.aborted) setIsSearching(false);
-        });
-    }, 260);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-      controller.abort();
-    };
-  }, [cleanValue, hasSelectedPoint, mapboxToken]);
-
-  function handleChange(nextValue: string) {
-    onChange(nextValue);
-    if (selectedPoint && nextValue.trim() !== selectedPoint.label.trim()) {
-      onPlaceSelect(null);
-    }
-  }
-
-  function handleSelect(suggestion: MapboxPlaceSuggestion) {
-    onChange(suggestion.label);
-    onPlaceSelect({ label: suggestion.label, coordinates: suggestion.coordinates });
-    setSuggestions([]);
-    setStatusMessage(null);
-  }
-
-  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key !== "Enter" || !visibleSuggestions[0]) return;
-    event.preventDefault();
-    handleSelect(visibleSuggestions[0]);
-  }
-
-  function handleUseCurrentLocation() {
-    if (!navigator.geolocation) {
-      setStatusMessage("Current location is not available in this browser.");
-      return;
-    }
-
-    setIsLocating(true);
-    setStatusMessage(null);
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const coordinates = {
-          lng: position.coords.longitude,
-          lat: position.coords.latitude,
-        };
-
-        try {
-          const response = await fetch(mapboxToken ? makeReverseGeocodeUrl(coordinates, mapboxToken) : makeNominatimReverseGeocodeUrl(coordinates));
-          if (!response.ok) throw new Error("Reverse geocode failed");
-          const data = (await response.json()) as MapboxFeatureCollection | NominatimPlace;
-          const suggestion = mapboxToken
-            ? (data as MapboxFeatureCollection).features
-                ?.map((feature, index) => mapboxFeatureToSuggestion(feature, index))
-                .find(Boolean)
-            : nominatimPlaceToSuggestion(data as NominatimPlace, 0);
-          const label = suggestion?.label ?? "Current location";
-          onChange(label);
-          onPlaceSelect({ label, coordinates });
-          setSuggestions([]);
-        } catch {
-          onChange("Current location");
-          onPlaceSelect({ label: "Current location", coordinates });
-          setStatusMessage("Current location selected without an address label.");
-        } finally {
-          setIsLocating(false);
-        }
-      },
-      () => {
-        setIsLocating(false);
-        setStatusMessage("Location permission was not allowed.");
-      },
-      { enableHighAccuracy: true, maximumAge: 60000, timeout: 10000 },
-    );
-  }
-
-  return (
-    <div className="grid gap-2 rounded-[18px] border border-white/10 bg-[rgba(15,27,39,0.9)] px-3 py-3 shadow-[0_12px_28px_rgba(0,0,0,0.2)] transition focus-within:border-[#f6c453] focus-within:shadow-[0_0_0_1px_rgba(246,196,83,0.38),0_16px_34px_rgba(0,0,0,0.24)]">
-      <div className="grid grid-cols-[42px_1fr] items-center gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-full border border-[#f6c453]/25 bg-[#1b2936] text-[#ffc94d]">
-          <MapPin className="h-5 w-5 fill-[#ffc94d]/10 stroke-[2.3]" />
-        </span>
-        <span className="min-w-0">
-          <label htmlFor={fieldId} className="block text-xs font-black uppercase tracking-[0.12em] text-[#f6c453]">
-            {label}
-          </label>
-          <span className="mt-2 flex items-center gap-2">
-            <Search className="h-4 w-4 shrink-0 text-slate-500" />
-            <input
-              id={fieldId}
-              type="text"
-              value={value}
-              onChange={(event) => handleChange(event.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              autoComplete="off"
-              className="min-h-8 min-w-0 flex-1 border-0 bg-transparent p-0 text-sm font-black leading-5 text-[#f8fafc] outline-none placeholder:text-slate-500"
-            />
-            {showSearching ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#56d9ef]" /> : null}
-          </span>
-        </span>
-      </div>
-
-      {allowCurrentLocation ? (
-        <button
-          type="button"
-          onClick={handleUseCurrentLocation}
-          disabled={isLocating}
-          className="ml-[52px] inline-flex min-h-9 items-center justify-center gap-2 rounded-full border border-[#56d9ef]/25 bg-[#0b2a38] px-3 text-xs font-black text-[#a7f3ff] transition hover:border-[#56d9ef]/50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {isLocating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LocateFixed className="h-3.5 w-3.5" />}
-          Use my current location
-        </button>
-      ) : null}
-
-      {visibleSuggestions.length > 0 ? (
-        <div className="ml-[52px] overflow-hidden rounded-[14px] border border-white/10 bg-[#07111d]">
-          {visibleSuggestions.map((suggestion) => (
-            <button
-              key={suggestion.id}
-              type="button"
-              onClick={() => handleSelect(suggestion)}
-              className="grid w-full gap-0.5 border-b border-white/8 px-3 py-2.5 text-left last:border-b-0 hover:bg-white/5"
-            >
-              <span className="truncate text-sm font-black text-[#f8fafc]">{suggestion.shortLabel}</span>
-              <span className="line-clamp-2 text-xs font-semibold leading-4 text-slate-400">{suggestion.label}</span>
-            </button>
-          ))}
-        </div>
-      ) : null}
-
-      {visibleStatusMessage ? (
-        <p className="ml-[52px] text-xs font-bold leading-5 text-slate-500">{visibleStatusMessage}</p>
-      ) : null}
-    </div>
-  );
-}
-
 function AddressField({
   label,
   type,
@@ -2946,8 +2108,8 @@ function RouteStopsStep({
   podType,
   pickupAddress,
   dropoffAddress,
-  pickupRoutePoint,
-  dropoffRoutePoint,
+  pickupLocation,
+  dropoffLocation,
   pickupVenue,
   pickupDistrict,
   dropoffDistrict,
@@ -2958,10 +2120,8 @@ function RouteStopsStep({
   currentStep = 2,
   stepLabels = baseCreateSteps,
   onBack,
-  onPickupChange,
-  onDropoffChange,
-  onPickupPlaceSelect,
-  onDropoffPlaceSelect,
+  onPickupLocationConfirm,
+  onDropoffLocationConfirm,
   onPickupVenueChange,
   onPickupDistrictChange,
   onDropoffDistrictChange,
@@ -2974,8 +2134,8 @@ function RouteStopsStep({
   podType: PodType;
   pickupAddress: string;
   dropoffAddress: string;
-  pickupRoutePoint: RoutePointSelection | null;
-  dropoffRoutePoint: RoutePointSelection | null;
+  pickupLocation: RideLocation | null;
+  dropoffLocation: RideLocation | null;
   pickupVenue: string;
   pickupDistrict: string;
   dropoffDistrict: string;
@@ -2986,10 +2146,8 @@ function RouteStopsStep({
   currentStep?: CreateStep;
   stepLabels?: string[];
   onBack: () => void;
-  onPickupChange: (value: string) => void;
-  onDropoffChange: (value: string) => void;
-  onPickupPlaceSelect: (point: RoutePointSelection | null) => void;
-  onDropoffPlaceSelect: (point: RoutePointSelection | null) => void;
+  onPickupLocationConfirm: (location: RideLocation) => void;
+  onDropoffLocationConfirm: (location: RideLocation) => void;
   onPickupVenueChange: (value: string) => void;
   onPickupDistrictChange: (value: string) => void;
   onDropoffDistrictChange: (value: string) => void;
@@ -3001,9 +2159,11 @@ function RouteStopsStep({
 }) {
   const gatherPointRequired = isRideAppSelfSettle;
   const gatherPointProvided = pickupVenue.trim().length > 0;
+  const [activeLocationPicker, setActiveLocationPicker] = useState<"pickup" | "dropoff" | null>(null);
+  const [editingDistrict, setEditingDistrict] = useState<"pickup" | "dropoff" | null>(null);
   const canContinue =
-    pickupAddress.trim().length > 0 &&
-    dropoffAddress.trim().length > 0 &&
+    Boolean(pickupLocation) &&
+    Boolean(dropoffLocation) &&
     pickupDistrict.trim().length > 0 &&
     dropoffDistrict.trim().length > 0 &&
     (!gatherPointRequired || gatherPointProvided);
@@ -3119,28 +2279,32 @@ function RouteStopsStep({
               <RouteJourneyPreview
                 pickupAddress={pickupAddress}
                 dropoffAddress={dropoffAddress}
-                pickupPoint={pickupRoutePoint}
-                dropoffPoint={dropoffRoutePoint}
+                pickupLocation={pickupLocation}
+                dropoffLocation={dropoffLocation}
                 stops={stops}
                 pickupLabel={pickupFieldLabel}
                 dropoffLabel={dropoffFieldLabel}
               />
 
               <div className="grid gap-3">
-                <MapboxPlaceField
+                <RideLocationField
                   label={pickupFieldLabel}
-                  value={pickupAddress}
-                  selectedPoint={pickupRoutePoint}
-                  placeholder={pickupPlaceholder}
+                  value={pickupLocation}
+                  placeholder={pickupLocation ? "Change pickup location" : `Search ${pickupPlaceholder.toLowerCase()}`}
                   allowCurrentLocation
-                  onChange={onPickupChange}
-                  onPlaceSelect={onPickupPlaceSelect}
+                  onOpen={() => setActiveLocationPicker("pickup")}
                 />
-                <DistrictSelectField
-                  label="Pickup district"
-                  value={pickupDistrict}
-                  onChange={onPickupDistrictChange}
-                />
+                <DistrictDetectionStatus
+                  district={(pickupLocation?.district ?? pickupDistrict) || null}
+                  editing={editingDistrict === "pickup"}
+                  onEdit={() => setEditingDistrict("pickup")}
+                >
+                  <DistrictSelectField
+                    label="Pickup district"
+                    value={pickupDistrict}
+                    onChange={onPickupDistrictChange}
+                  />
+                </DistrictDetectionStatus>
                 {!isRideAppSelfSettle ? (
                   <SelfSettleTextField
                     label="Gather point"
@@ -3161,19 +2325,23 @@ function RouteStopsStep({
                     onRemove={() => onRemoveStop(stop.id)}
                   />
                 ))}
-                <MapboxPlaceField
+                <RideLocationField
                   label={dropoffFieldLabel}
-                  value={dropoffAddress}
-                  selectedPoint={dropoffRoutePoint}
-                  placeholder={dropoffPlaceholder}
-                  onChange={onDropoffChange}
-                  onPlaceSelect={onDropoffPlaceSelect}
+                  value={dropoffLocation}
+                  placeholder={dropoffLocation ? "Change drop-off location" : `Search ${dropoffPlaceholder.toLowerCase()}`}
+                  onOpen={() => setActiveLocationPicker("dropoff")}
                 />
-                <DistrictSelectField
-                  label="Destination district"
-                  value={dropoffDistrict}
-                  onChange={onDropoffDistrictChange}
-                />
+                <DistrictDetectionStatus
+                  district={(dropoffLocation?.district ?? dropoffDistrict) || null}
+                  editing={editingDistrict === "dropoff"}
+                  onEdit={() => setEditingDistrict("dropoff")}
+                >
+                  <DistrictSelectField
+                    label="Destination district"
+                    value={dropoffDistrict}
+                    onChange={onDropoffDistrictChange}
+                  />
+                </DistrictDetectionStatus>
                 {isRideAppSelfSettle ? (
                   <SelfSettleTextField
                     label={isAirport ? "Gather point" : "Gather point"}
@@ -3231,6 +2399,26 @@ function RouteStopsStep({
           </div>
         </div>
       </main>
+      <LocationPicker
+        mode="pickup"
+        value={pickupLocation}
+        open={activeLocationPicker === "pickup"}
+        onClose={() => setActiveLocationPicker(null)}
+        onConfirm={(location) => {
+          onPickupLocationConfirm(location);
+          setEditingDistrict(null);
+        }}
+      />
+      <LocationPicker
+        mode="dropoff"
+        value={dropoffLocation}
+        open={activeLocationPicker === "dropoff"}
+        onClose={() => setActiveLocationPicker(null)}
+        onConfirm={(location) => {
+          onDropoffLocationConfirm(location);
+          setEditingDistrict(null);
+        }}
+      />
     </>
   );
 }
@@ -8436,6 +7624,8 @@ export function CreatePodChooseType() {
   const [dropoffAddress, setDropoffAddress] = useState("");
   const [pickupRoutePoint, setPickupRoutePoint] = useState<RoutePointSelection | null>(null);
   const [dropoffRoutePoint, setDropoffRoutePoint] = useState<RoutePointSelection | null>(null);
+  const [pickupLocation, setPickupLocation] = useState<RideLocation | null>(null);
+  const [dropoffLocation, setDropoffLocation] = useState<RideLocation | null>(null);
   const [stops, setStops] = useState<RouteStop[]>([]);
   const [nextStopId, setNextStopId] = useState(1);
   const [airportDetails, setAirportDetails] = useState<AirportDetailsState>(() => createDefaultAirportDetails());
@@ -8569,16 +7759,6 @@ export function CreatePodChooseType() {
     setStopRequestPolicy(policy);
   }
 
-  function handlePickupAddressChange(value: string) {
-    setPickupAddress(value);
-    setPickupRoutePoint((current) => (current && current.label.trim() !== value.trim() ? null : current));
-  }
-
-  function handleDropoffAddressChange(value: string) {
-    setDropoffAddress(value);
-    setDropoffRoutePoint((current) => (current && current.label.trim() !== value.trim() ? null : current));
-  }
-
   function handleAirportDetailsChange(details: AirportDetailsState) {
     const switchedToFromAirport = airportDetails.airportDirection !== "from_airport" && details.airportDirection === "from_airport";
     const switchedToAirportDropoff = airportDetails.airportDirection !== "to_airport" && details.airportDirection === "to_airport";
@@ -8588,6 +7768,7 @@ export function CreatePodChooseType() {
     if (switchedToFromAirport) {
       setDropoffAddress("");
       setDropoffRoutePoint(null);
+      setDropoffLocation(null);
       setPeopleVehicle((current) => ({
         ...current,
         pickupDistrict: "Islands",
@@ -8598,6 +7779,7 @@ export function CreatePodChooseType() {
     if (switchedToAirportDropoff) {
       setPickupAddress("");
       setPickupRoutePoint(null);
+      setPickupLocation(null);
       setPeopleVehicle((current) => ({
         ...current,
         pickupDistrict: "",
@@ -8606,14 +7788,25 @@ export function CreatePodChooseType() {
     }
   }
 
-  function handlePickupPlaceSelect(point: RoutePointSelection | null) {
-    setPickupRoutePoint(point);
-    if (point) setPickupAddress(point.label);
+  function handlePickupLocationConfirm(location: RideLocation) {
+    setPickupLocation(location);
+    setPickupRoutePoint(routePointFromLocation(location));
+    setPickupAddress(location.formattedAddress || location.name);
+    setPeopleVehicle((current) => ({
+      ...current,
+      pickupDistrict: location.district ?? current.pickupDistrict,
+      pickupVenue: location.meetingPointNote?.trim() || current.pickupVenue,
+    }));
   }
 
-  function handleDropoffPlaceSelect(point: RoutePointSelection | null) {
-    setDropoffRoutePoint(point);
-    if (point) setDropoffAddress(point.label);
+  function handleDropoffLocationConfirm(location: RideLocation) {
+    setDropoffLocation(location);
+    setDropoffRoutePoint(routePointFromLocation(location));
+    setDropoffAddress(location.formattedAddress || location.name);
+    setPeopleVehicle((current) => ({
+      ...current,
+      dropoffDistrict: location.district ?? current.dropoffDistrict,
+    }));
   }
 
   function ensureCreateAuth() {
@@ -8789,8 +7982,8 @@ export function CreatePodChooseType() {
           podType={podType}
           pickupAddress={pickupAddress}
           dropoffAddress={dropoffAddress}
-          pickupRoutePoint={pickupRoutePoint}
-          dropoffRoutePoint={dropoffRoutePoint}
+          pickupLocation={pickupLocation}
+          dropoffLocation={dropoffLocation}
           pickupVenue={peopleVehicle.pickupVenue}
           pickupDistrict={peopleVehicle.pickupDistrict}
           dropoffDistrict={peopleVehicle.dropoffDistrict}
@@ -8801,10 +7994,8 @@ export function CreatePodChooseType() {
           currentStep={routeStepIndex}
           stepLabels={activeStepLabels}
           onBack={() => setStep(isAirportPod ? 2 : 1)}
-          onPickupChange={handlePickupAddressChange}
-          onDropoffChange={handleDropoffAddressChange}
-          onPickupPlaceSelect={handlePickupPlaceSelect}
-          onDropoffPlaceSelect={handleDropoffPlaceSelect}
+          onPickupLocationConfirm={handlePickupLocationConfirm}
+          onDropoffLocationConfirm={handleDropoffLocationConfirm}
           onPickupVenueChange={(pickupVenue) => setPeopleVehicle((current) => ({ ...current, pickupVenue }))}
           onPickupDistrictChange={(pickupDistrict) => setPeopleVehicle((current) => ({ ...current, pickupDistrict }))}
           onDropoffDistrictChange={(dropoffDistrict) => setPeopleVehicle((current) => ({ ...current, dropoffDistrict }))}
