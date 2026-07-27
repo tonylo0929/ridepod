@@ -31,7 +31,6 @@ import {
   getRecentRideLocations,
   getSavedRideLocations,
   rememberRideLocation,
-  saveRideLocationShortcut,
 } from "@/lib/ride-location-storage";
 import type {
   RideCoordinates,
@@ -865,7 +864,6 @@ function MapLocationAdjuster({
   const [mapReady, setMapReady] = useState(false);
   const [isReverseGeocoding, setIsReverseGeocoding] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [candidate, setCandidate] = useState<RideLocation>(initialLocation);
   const [meetingPointNote, setMeetingPointNote] = useState(initialLocation.meetingPointNote ?? "");
 
@@ -956,14 +954,6 @@ function MapLocationAdjuster({
     };
   }, [candidate.name, mapReady]);
 
-  function handleSaveShortcut(kind: "home" | "work") {
-    saveRideLocationShortcut(kind, {
-      ...candidate,
-      meetingPointNote: meetingPointNote.trim() || undefined,
-    });
-    setSaveMessage(kind === "home" ? "Saved as your Home shortcut." : "Saved as your Work shortcut.");
-  }
-
   function handleConfirm() {
     onConfirm({
       ...candidate,
@@ -1052,30 +1042,6 @@ function MapLocationAdjuster({
               {statusMessage}
             </p>
           ) : null}
-          {saveMessage ? (
-            <p className="mt-3 rounded-[14px] border border-[#2dd4bf]/20 bg-[#0c2a28] px-3 py-2 text-xs font-bold leading-5 text-[#a7f3d0]">
-              {saveMessage}
-            </p>
-          ) : null}
-
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => handleSaveShortcut("home")}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-white/10 bg-white/5 px-3 text-xs font-black text-slate-200 transition hover:border-[#56d9ef]/35"
-            >
-              <Home className="h-4 w-4 text-[#56d9ef]" />
-              Remember as Home
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSaveShortcut("work")}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-white/10 bg-white/5 px-3 text-xs font-black text-slate-200 transition hover:border-[#56d9ef]/35"
-            >
-              <BriefcaseBusiness className="h-4 w-4 text-[#56d9ef]" />
-              Remember as Work
-            </button>
-          </div>
 
           <button
             type="button"
