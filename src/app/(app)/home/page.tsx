@@ -1003,7 +1003,7 @@ function matchesAirportDirectionFilter(ride: HomeRide, direction: AirportDirecti
 }
 
 function matchesOwnershipFilter(ride: HomeRide, filter: OwnershipFilter) {
-  if (filter === "mine") return ride.currentUserRole === "host";
+  if (filter === "mine") return ride.currentUserRole === "host" || ride.deletedByCurrentUser === true;
   if (filter === "joined") return ride.currentUserJoined === true || ride.currentUserRole === "joined_rider";
   return true;
 }
@@ -1014,6 +1014,13 @@ function matchesStopRequestFilter(ride: HomeRide, filter: StopRequestFilter) {
 }
 
 function getCurrentUserRideRelationship(ride: HomeRide) {
+  if (ride.deletedByCurrentUser) {
+    return {
+      tone: "deleted" as const,
+      label: "Deleted by you",
+    };
+  }
+
   if (ride.currentUserRole === "host") {
     return {
       tone: "host" as const,
@@ -1037,6 +1044,8 @@ function withoutCurrentUserRelationship(ride: HomeRide): HomeRide {
     currentUserRole: undefined,
     currentUserName: undefined,
     currentUserJoined: false,
+    deletedByCurrentUser: false,
+    deletedAt: null,
     currentUserBookingDetailsConfirmed: false,
     currentUserConfirmedBookingDetailsVersion: null,
     currentUserRideAppDetailVersionConfirmed: undefined,
@@ -1198,7 +1207,9 @@ function HomeRideCard({
           ? "4.9"
           : null;
   const compactStatusLabel = currentUserRelationship
-    ? currentUserRelationship.tone === "host"
+    ? currentUserRelationship.tone === "deleted"
+      ? "Deleted by you"
+      : currentUserRelationship.tone === "host"
       ? "Your Ride"
       : "Joined"
     : null;
@@ -1214,7 +1225,9 @@ function HomeRideCard({
       href={cardHref}
       className={cn(
         "block overflow-hidden rounded-[18px] border bg-[linear-gradient(145deg,color-mix(in_srgb,var(--rp-card)_96%,transparent),var(--rp-card-soft))] px-3 py-3 shadow-[var(--rp-shadow-soft)] transition min-[390px]:px-4 min-[560px]:rounded-[20px]",
-        currentUserRelationship?.tone === "host"
+        currentUserRelationship?.tone === "deleted"
+          ? "border-rose-400/70 bg-[linear-gradient(145deg,rgba(45,10,18,0.96),rgba(19,13,20,0.94))] shadow-[0_0_34px_rgba(251,113,133,0.18)] hover:border-rose-300"
+          : currentUserRelationship?.tone === "host"
           ? "border-[color-mix(in_srgb,var(--rp-primary)_78%,var(--rp-border))] shadow-[0_0_34px_color-mix(in_srgb,var(--rp-primary)_16%,transparent)] hover:border-[var(--rp-primary)]"
           : currentUserRelationship?.tone === "joined"
             ? "border-cyan-300/70 shadow-[0_0_34px_rgba(56,189,248,0.14)] hover:border-cyan-200"
@@ -1269,12 +1282,18 @@ function HomeRideCard({
             <span
               className={cn(
                 "inline-flex min-h-7 max-w-full items-center gap-1 rounded-full border px-2 text-[10px] font-black leading-none min-[390px]:px-2.5 min-[390px]:text-[11px]",
-                currentUserRelationship?.tone === "joined"
+                currentUserRelationship?.tone === "deleted"
+                  ? "border-rose-300/45 bg-rose-400/14 text-rose-100"
+                  : currentUserRelationship?.tone === "joined"
                   ? "border-cyan-300/40 bg-cyan-400/12 text-cyan-100"
                   : "border-[color-mix(in_srgb,var(--rp-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] text-[var(--rp-primary)]",
               )}
             >
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              {currentUserRelationship?.tone === "deleted" ? (
+                <X className="h-3.5 w-3.5 shrink-0" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              )}
               <span className="truncate">{compactStatusLabel}</span>
             </span>
           ) : null}
@@ -1731,10 +1750,13 @@ function CategoryCompactResultCard({
   const typeIconLabel = isAirportRide ? "Airport ride" : isRecurringRide ? "Recurring ride" : "Ride";
   const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
   const ownershipBadgeLabel = currentUserRelationship
-    ? currentUserRelationship.tone === "host"
+    ? currentUserRelationship.tone === "deleted"
+      ? "Deleted by you"
+      : currentUserRelationship.tone === "host"
       ? "Your Ride"
       : "Joined"
     : null;
+  const sideStatusLabel = currentUserRelationship?.tone === "deleted" ? "Deleted" : seatLabel;
 
   return (
     <Link
@@ -1744,10 +1766,20 @@ function CategoryCompactResultCard({
         isAirportRide
           ? "min-h-[108px] grid-cols-[58px_minmax(0,1fr)_auto] border-[#f6c453]/62 bg-[radial-gradient(circle_at_14%_18%,rgba(255,217,104,0.16),transparent_32%),linear-gradient(145deg,rgba(8,17,25,0.99),rgba(15,29,43,0.95))] shadow-[0_18px_42px_rgba(246,196,83,0.10)] hover:border-[#ffd968] hover:shadow-[0_20px_46px_rgba(246,196,83,0.16)] min-[390px]:grid-cols-[62px_minmax(0,1fr)_auto]"
           : "min-h-[92px] grid-cols-[40px_minmax(0,1fr)_auto] border-[color-mix(in_srgb,var(--rp-primary)_52%,var(--rp-border))] bg-[linear-gradient(145deg,rgba(7,16,24,0.98),rgba(18,31,44,0.92))] hover:border-[var(--rp-primary)] hover:shadow-[0_18px_40px_color-mix(in_srgb,var(--rp-primary)_14%,transparent)] min-[390px]:grid-cols-[46px_minmax(0,1fr)_auto]",
+        currentUserRelationship?.tone === "deleted"
+          ? "!border-rose-400/75 !bg-[linear-gradient(145deg,rgba(48,10,20,0.98),rgba(18,12,18,0.96))] shadow-[0_18px_44px_rgba(251,113,133,0.18)] hover:!border-rose-300 hover:shadow-[0_20px_48px_rgba(251,113,133,0.24)]"
+          : "",
       )}
     >
       {isAirportRide ? (
-        <span className="pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full bg-[#ffd968]/10 blur-2xl transition group-hover:bg-[#ffd968]/16" />
+        <span
+          className={cn(
+            "pointer-events-none absolute -right-10 -top-12 h-28 w-28 rounded-full blur-2xl transition",
+            currentUserRelationship?.tone === "deleted"
+              ? "bg-rose-400/10 group-hover:bg-rose-300/16"
+              : "bg-[#ffd968]/10 group-hover:bg-[#ffd968]/16",
+          )}
+        />
       ) : null}
       <div className={cn("relative z-10 grid shrink-0 justify-items-center", isAirportRide ? "gap-1.5" : "")}>
         <span
@@ -1777,12 +1809,18 @@ function CategoryCompactResultCard({
               <span
                 className={cn(
                   "inline-flex min-h-6 shrink-0 items-center gap-1 rounded-full border px-2.5 text-[10px] font-black uppercase tracking-[0.04em]",
-                  currentUserRelationship?.tone === "joined"
+                  currentUserRelationship?.tone === "deleted"
+                    ? "border-rose-300/45 bg-rose-400/14 text-rose-100"
+                    : currentUserRelationship?.tone === "joined"
                     ? "border-cyan-300/42 bg-cyan-300/14 text-cyan-100"
                     : "border-[#ffd968]/45 bg-[#ffd968]/14 text-[#ffd968]",
                 )}
               >
-                <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                {currentUserRelationship?.tone === "deleted" ? (
+                  <X className="h-3.5 w-3.5 shrink-0" />
+                ) : (
+                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                )}
                 {ownershipBadgeLabel}
               </span>
             ) : null}
@@ -1811,12 +1849,14 @@ function CategoryCompactResultCard({
         <span
           className={cn(
             "inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-black",
-            isAirportRide
+            currentUserRelationship?.tone === "deleted"
+              ? "border-rose-300/45 bg-rose-400/14 text-rose-100"
+              : isAirportRide
               ? "border-[#ffd968]/42 bg-[#ffd968]/12 text-[#ffd968]"
               : "border-[color-mix(in_srgb,var(--rp-primary)_52%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_14%,transparent)] text-[var(--rp-primary)]",
           )}
         >
-          {seatLabel}
+          {sideStatusLabel}
         </span>
         <ChevronRight className={cn("h-4 w-4 transition group-hover:translate-x-0.5", isAirportRide ? "text-[#ffd968]" : "text-[var(--rp-muted-strong)]")} />
       </div>

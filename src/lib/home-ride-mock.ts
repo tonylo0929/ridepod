@@ -255,6 +255,8 @@ export type HomeRide = {
   currentUserRole?: "host" | "rider" | "joined_rider" | "taxi_partner";
   currentUserName?: string;
   currentUserJoined?: boolean;
+  deletedByCurrentUser?: boolean;
+  deletedAt?: string | null;
   currentUserBookingDetailsConfirmed?: boolean;
   platformFeeStatus?: RideAppPlatformFeeStatus;
   selfSettleConfirmationStatus?: "pending" | "confirmed" | "needs_review" | "expired";

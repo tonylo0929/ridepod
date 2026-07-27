@@ -28,6 +28,7 @@ type DeletedCreatedHomeRideMarker = {
   id: string;
   signature: string;
   deletedAt: string;
+  ride?: HomeRide;
 };
 type PublicCreatedHomeRideBroadcast = {
   version: 1;
@@ -118,14 +119,35 @@ function readDeletedCreatedHomeRideMarkers() {
 function writeDeletedCreatedHomeRideMarkers(markers: DeletedCreatedHomeRideMarker[]) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(deletedCreatedHomeRidesStorageKey, JSON.stringify(markers.slice(0, 100)));
+  window.dispatchEvent(new Event("ridepod-created-home-rides-updated"));
+}
+
+function toDeletedCreatedHomeRideSnapshot(ride: HomeRide, deletedAt: string): HomeRide {
+  return {
+    ...ride,
+    currentUserRole: "host",
+    currentUserName: "You",
+    hostName: "You",
+    currentUserJoined: false,
+    currentUserBookingDetailsConfirmed: false,
+    currentUserConfirmedBookingDetailsVersion: null,
+    currentUserRideAppDetailVersionConfirmed: undefined,
+    currentUserQuoteAccepted: false,
+    currentUserJoinIntentStatus: "not_joined",
+    status: "cancelled",
+    deletedByCurrentUser: true,
+    deletedAt,
+  };
 }
 
 function markCreatedHomeRideDeleted(ride: HomeRide) {
   const signature = publicCreatedRideSignature(ride);
+  const deletedAt = new Date().toISOString();
   const marker = {
     id: ride.id,
     signature,
-    deletedAt: new Date().toISOString(),
+    deletedAt,
+    ride: toDeletedCreatedHomeRideSnapshot(ride, deletedAt),
   } satisfies DeletedCreatedHomeRideMarker;
   const current = readDeletedCreatedHomeRideMarkers();
   writeDeletedCreatedHomeRideMarkers([
@@ -143,6 +165,18 @@ function clearDeletedCreatedHomeRideMarker(ride: HomeRide) {
 function isDeletedCreatedHomeRide(ride: HomeRide) {
   const signature = publicCreatedRideSignature(ride);
   return readDeletedCreatedHomeRideMarkers().some((item) => item.id === ride.id || item.signature === signature);
+}
+
+function readDeletedCreatedHomeRideSnapshotsForViewer(
+  viewerUserId?: string | null,
+  viewerIdentity?: CreatedHomeRideViewerIdentity | null,
+) {
+  if (!hasViewerIdentity(viewerUserId, viewerIdentity)) return [];
+
+  return readDeletedCreatedHomeRideMarkers()
+    .map((marker) => (marker.ride ? toDeletedCreatedHomeRideSnapshot(marker.ride, marker.deletedAt) : null))
+    .filter((ride): ride is HomeRide => Boolean(ride))
+    .sort((first, second) => createdHomeRideSortKey(second).localeCompare(createdHomeRideSortKey(first)));
 }
 
 function readCachedPublicCreatedHomeRides() {
@@ -447,6 +481,21 @@ function mergeCreatedHomeRides(
   localRides.forEach(push);
   publicRides.filter((ride) => includePublicRiderCards || isViewerRide(ride)).forEach(push);
   return rides.sort((first, second) => createdHomeRideSortKey(second).localeCompare(createdHomeRideSortKey(first)));
+}
+
+function mergeDeletedCreatedHomeRideSnapshots(rides: HomeRide[], deletedRides: HomeRide[]) {
+  if (!deletedRides.length) return rides;
+
+  const activeIds = new Set(rides.map((ride) => ride.id));
+  const activeSignatures = new Set(rides.map((ride) => publicCreatedRideSignature(ride)));
+  const visibleDeletedRides = deletedRides.filter((ride) => {
+    const signature = publicCreatedRideSignature(ride);
+    return !activeIds.has(ride.id) && !activeSignatures.has(signature);
+  });
+
+  return [...visibleDeletedRides, ...rides].sort((first, second) =>
+    createdHomeRideSortKey(second).localeCompare(createdHomeRideSortKey(first)),
+  );
 }
 
 async function getSupabaseSessionContext() {
@@ -801,7 +850,10 @@ export function useCreatedHomeRides(
 ) {
   const stableViewerIdentity = viewerIdentity ?? null;
   const [rides, setRides] = useState<HomeRide[]>(() =>
-    mergeCreatedHomeRides(readCreatedHomeRidesForViewer(viewerUserId, stableViewerIdentity), [], includePublicRiderCards),
+    mergeDeletedCreatedHomeRideSnapshots(
+      mergeCreatedHomeRides(readCreatedHomeRidesForViewer(viewerUserId, stableViewerIdentity), [], includePublicRiderCards),
+      readDeletedCreatedHomeRideSnapshotsForViewer(viewerUserId, stableViewerIdentity),
+    ),
   );
 
   useEffect(() => {
@@ -830,17 +882,25 @@ export function useCreatedHomeRides(
       const cachedPublicRides = hasAuthoritativePublicCache
         ? cachedPublicRidesForViewer(viewerUserId, stableViewerIdentity)
         : [];
-      setRides(mergeCreatedHomeRides(localRides, cachedPublicRides, includePublicRiderCards));
+      setRides(
+        mergeDeletedCreatedHomeRideSnapshots(
+          mergeCreatedHomeRides(localRides, cachedPublicRides, includePublicRiderCards),
+          readDeletedCreatedHomeRideSnapshotsForViewer(viewerUserId, stableViewerIdentity),
+        ),
+      );
 
       const publicRides = await loadPublicRides(forcePublicFetch);
       if (!publicRides) return;
       if (cancelled || currentSyncId !== syncId) return;
       hasAuthoritativePublicCache = true;
       setRides(
-        mergeCreatedHomeRides(
-          readCreatedHomeRidesForViewer(viewerUserId, stableViewerIdentity),
-          publicRides,
-          includePublicRiderCards,
+        mergeDeletedCreatedHomeRideSnapshots(
+          mergeCreatedHomeRides(
+            readCreatedHomeRidesForViewer(viewerUserId, stableViewerIdentity),
+            publicRides,
+            includePublicRiderCards,
+          ),
+          readDeletedCreatedHomeRideSnapshotsForViewer(viewerUserId, stableViewerIdentity),
         ),
       );
     }
