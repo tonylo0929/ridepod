@@ -3072,7 +3072,7 @@ function HomePageContent() {
         </div>
       </section>
 
-      <section className="relative z-10 mx-auto mt-5 w-full max-w-[712px] px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] sm:px-6 lg:px-4">
+      <section className="relative z-10 mx-auto mt-5 w-full max-w-[712px] px-4 sm:px-6 lg:px-4">
         <HomeBottomActionCards />
       </section>
 
