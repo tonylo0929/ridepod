@@ -961,7 +961,7 @@ function MapLocationAdjuster({
       ...candidate,
       meetingPointNote: meetingPointNote.trim() || undefined,
     });
-    setSaveMessage(kind === "home" ? "Saved as Home." : "Saved as Work.");
+    setSaveMessage(kind === "home" ? "Saved as your Home shortcut." : "Saved as your Work shortcut.");
   }
 
   function handleConfirm() {
@@ -1065,7 +1065,7 @@ function MapLocationAdjuster({
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-white/10 bg-white/5 px-3 text-xs font-black text-slate-200 transition hover:border-[#56d9ef]/35"
             >
               <Home className="h-4 w-4 text-[#56d9ef]" />
-              Save Home
+              Remember as Home
             </button>
             <button
               type="button"
@@ -1073,7 +1073,7 @@ function MapLocationAdjuster({
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-white/10 bg-white/5 px-3 text-xs font-black text-slate-200 transition hover:border-[#56d9ef]/35"
             >
               <BriefcaseBusiness className="h-4 w-4 text-[#56d9ef]" />
-              Save Work
+              Remember as Work
             </button>
           </div>
 
