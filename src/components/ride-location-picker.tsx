@@ -219,7 +219,7 @@ function formatGeolocationError(error: GeolocationPositionError) {
 function getGoogleErrorMessage(error: unknown) {
   if (error instanceof GoogleMapsConfigurationError) return error.message;
   if (typeof navigator !== "undefined" && !navigator.onLine) return "You appear to be offline. Reconnect and try again.";
-  return "Google location services are unavailable right now. Try again or choose on map.";
+  return "Search is not available right now. Try again or choose on map.";
 }
 
 function distanceBetweenCoordinates(a: RideCoordinates, b: RideCoordinates) {
