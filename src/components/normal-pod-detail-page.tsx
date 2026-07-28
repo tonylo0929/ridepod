@@ -4317,6 +4317,12 @@ function getPreJoinDestinationIcon(ride: HomeRide) {
   return <Route className="h-7 w-7" />;
 }
 
+function getPodDistrictRouteTitle(ride: HomeRide) {
+  const from = ride.fromDistrict?.trim() || ride.fromLabel;
+  const to = ride.toDistrict?.trim() || ride.toLabel;
+  return `${from} -> ${to}`;
+}
+
 function PreJoinTripDetailRow({
   icon,
   label,
@@ -4513,6 +4519,7 @@ function SelfSettlePodSummaryHero({
   const manageActionsPendingCount = getManagePodActionsPendingCount(ride);
   const seatsLeft = Math.max(0, ride.seatsTotal - summaryEffectiveSeatsUsed);
   const seatsLeftLabel = `${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`;
+  const summaryRouteTitle = getPodDistrictRouteTitle(ride);
   const riderSummaryLabel = summaryUserHadRideAppSeat ? `Joined · ${seatsLeftLabel}` : getRideAppMinimumRidersToGoLabel(ride);
   const noticeBadgeClass =
     "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-rose-300/35 bg-rose-400/12 px-1.5 text-[11px] font-black leading-none text-rose-200";
@@ -4552,7 +4559,7 @@ function SelfSettlePodSummaryHero({
 
             <div className="min-w-0 self-center">
               <h2 className="text-[22px] font-black leading-tight text-white">
-                {ride.fromLabel} {"\u2192"} {ride.toLabel}
+                {summaryRouteTitle}
               </h2>
               <p className="mt-1 text-base font-semibold leading-5 text-[var(--rp-muted-strong)]">Hosted by {hostAvatarDisplayName}</p>
               <Link
@@ -4725,7 +4732,7 @@ function SelfSettlePodSummaryHero({
           </div>
           <div className="min-w-0 self-center">
             <h2 className="text-xl font-black leading-tight text-white">
-              {ride.fromLabel} {"→"} {ride.toLabel}
+              {summaryRouteTitle}
             </h2>
             <p className="mt-1 text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-muted-strong)]">
               Created by {hostAvatarDisplayName}
@@ -5700,7 +5707,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
         ? "plus"
         : "none";
   const lockSeatWaiverSource = launchWaiverAvailable ? "launch" : plusWaiverAvailable ? "plus" : "none";
-  const detailRouteTitle = `${ride.fromLabel} -> ${ride.toLabel}`;
+  const detailRouteTitle = getPodDistrictRouteTitle(ride);
   const detailActorName =
     profile?.display_name?.trim() ||
     profile?.preferred_name?.trim() ||
@@ -6266,7 +6273,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
 
               <div className={cn("z-10 px-5 pb-5", selfSettlePod ? "relative" : "absolute inset-x-0 bottom-0")}>
                 <h2 className="max-w-full text-[28px] font-black leading-[1.03] tracking-tight text-white min-[390px]:text-[32px]">
-                  {ride.fromLabel} {"\u2192"} {ride.toLabel}
+                  {detailRouteTitle}
                 </h2>
 
                 <p className="mt-5 text-xl font-semibold text-[var(--rp-muted-strong)]">
