@@ -73,11 +73,14 @@ const rideDateMonths: Record<string, number> = {
 function readCreatedHomeRides() {
   if (typeof window === "undefined") return [];
 
+  let localRides: HomeRide[] = [];
+  let cookieRides: HomeRide[] = [];
+
   try {
     const parsed = JSON.parse(window.localStorage.getItem(createdHomeRidesStorageKey) ?? "[]");
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed as HomeRide[];
+    if (Array.isArray(parsed)) localRides = parsed as HomeRide[];
   } catch {
-    // Fall through to the cookie fallback below.
+    localRides = [];
   }
 
   try {
@@ -85,12 +88,16 @@ function readCreatedHomeRides() {
       .split("; ")
       .find((cookie) => cookie.startsWith(`${createdHomeRidesCookieKey}=`))
       ?.split("=")[1];
-    if (!cookieValue) return [];
+    if (!cookieValue) return localRides;
     const parsed = JSON.parse(decodeURIComponent(cookieValue));
-    return Array.isArray(parsed) ? (parsed as HomeRide[]) : [];
+    cookieRides = Array.isArray(parsed) ? (parsed as HomeRide[]) : [];
   } catch {
-    return [];
+    cookieRides = [];
   }
+
+  if (!localRides.length) return cookieRides;
+  if (!cookieRides.length) return localRides;
+  return mergeCreatedHomeRides(localRides, cookieRides, true);
 }
 
 function writeCreatedHomeRides(rides: HomeRide[]) {
@@ -674,7 +681,7 @@ async function readPublicCreatedHomeRides(
     return rides.map(({ ride }) => ride);
   } catch (error) {
     console.warn("RidePod public created rides list failed", error);
-    return [];
+    return cachedPublicRidesForViewer(viewerUserId, viewerIdentity);
   }
 }
 
@@ -851,7 +858,11 @@ export function useCreatedHomeRides(
   const stableViewerIdentity = viewerIdentity ?? null;
   const [rides, setRides] = useState<HomeRide[]>(() =>
     mergeDeletedCreatedHomeRideSnapshots(
-      mergeCreatedHomeRides(readCreatedHomeRidesForViewer(viewerUserId, stableViewerIdentity), [], includePublicRiderCards),
+      mergeCreatedHomeRides(
+        readCreatedHomeRidesForViewer(viewerUserId, stableViewerIdentity),
+        cachedPublicRidesForViewer(viewerUserId, stableViewerIdentity),
+        includePublicRiderCards,
+      ),
       readDeletedCreatedHomeRideSnapshotsForViewer(viewerUserId, stableViewerIdentity),
     ),
   );
@@ -860,7 +871,6 @@ export function useCreatedHomeRides(
     let cancelled = false;
     let syncId = 0;
     let lastPublicFetchAt = 0;
-    let hasAuthoritativePublicCache = false;
     let publicFetchPromise: Promise<HomeRide[]> | null = null;
 
     async function loadPublicRides(forcePublicFetch = false) {
@@ -879,9 +889,7 @@ export function useCreatedHomeRides(
     async function sync({ forcePublicFetch = false }: { forcePublicFetch?: boolean } = {}) {
       const currentSyncId = ++syncId;
       const localRides = readCreatedHomeRidesForViewer(viewerUserId, stableViewerIdentity);
-      const cachedPublicRides = hasAuthoritativePublicCache
-        ? cachedPublicRidesForViewer(viewerUserId, stableViewerIdentity)
-        : [];
+      const cachedPublicRides = cachedPublicRidesForViewer(viewerUserId, stableViewerIdentity);
       setRides(
         mergeDeletedCreatedHomeRideSnapshots(
           mergeCreatedHomeRides(localRides, cachedPublicRides, includePublicRiderCards),
@@ -892,7 +900,6 @@ export function useCreatedHomeRides(
       const publicRides = await loadPublicRides(forcePublicFetch);
       if (!publicRides) return;
       if (cancelled || currentSyncId !== syncId) return;
-      hasAuthoritativePublicCache = true;
       setRides(
         mergeDeletedCreatedHomeRideSnapshots(
           mergeCreatedHomeRides(
