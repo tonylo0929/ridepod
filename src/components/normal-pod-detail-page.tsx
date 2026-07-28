@@ -3779,23 +3779,24 @@ function RealDrivingRouteMap({
   const fullRouteUrl = makeGoogleMapsDirectionsUrl(points);
 
   return (
-    <div className="relative min-h-[236px] overflow-hidden rounded-[18px] border border-cyan-100/14 bg-[#07111d] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+    <div className="relative min-h-[236px] overflow-hidden rounded-[18px] border border-cyan-100/14 bg-[#0b1d24] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
       <div className="absolute inset-0">
         {projection.tiles.map((tile) => (
           <span
             key={tile.key}
             aria-hidden="true"
-            className="absolute bg-cover bg-center opacity-[0.58] grayscale"
+            className="absolute bg-cover bg-center opacity-[0.9]"
             style={{
               backgroundImage: `url(${tile.url})`,
               left: `${(tile.left / routeMapWidth) * 100}%`,
               top: `${(tile.top / routeMapHeight) * 100}%`,
               width: `${(tile.width / routeMapWidth) * 100}%`,
               height: `${(tile.height / routeMapHeight) * 100}%`,
+              filter: "saturate(1.18) contrast(1.04) brightness(1.08)",
             }}
           />
         ))}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,9,17,0.16),rgba(3,9,17,0.56)),radial-gradient(circle_at_center,rgba(34,211,238,0.08),transparent_58%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,9,17,0.02),rgba(3,9,17,0.22)),radial-gradient(circle_at_center,rgba(34,211,238,0.05),transparent_62%)]" />
         <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${routeMapWidth} ${routeMapHeight}`} aria-hidden="true">
           {routePolyline ? (
             <>
