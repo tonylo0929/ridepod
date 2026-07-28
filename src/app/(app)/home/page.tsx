@@ -236,6 +236,14 @@ function getHomeTabFromSearchParam(value: string | null): HomeTab {
   return "all";
 }
 
+function getCategoryScreenFromSearchParam(value: string | null): SelectedCategory | null {
+  if (value === "schedule" || value === "recurring" || value === "airport" || value === "all") {
+    return value;
+  }
+
+  return null;
+}
+
 const podPreferenceFilters: Array<{ id: PodPreferenceFilter; label: string }> = [
   { id: "all", label: "Any pod" },
   { id: "open", label: "Open" },
@@ -2375,11 +2383,14 @@ function HomePageContent() {
   const scheduleTransitionTimerRef = useRef<number | null>(null);
   const scheduleTransitionLockedRef = useRef(false);
   const scheduleHistoryEntryActiveRef = useRef(false);
+  const categoryShouldPushHistoryRef = useRef(true);
   const categoryHistoryScreenRef = useRef<SelectedCategory | null>(null);
   const savedHomeScrollYRef = useRef(0);
   const scheduleResultsRef = useRef<HTMLDivElement | null>(null);
   const tabSearchParam = searchParams.get("tab");
+  const categorySearchParam = searchParams.get("category");
   const urlActiveTab = getHomeTabFromSearchParam(tabSearchParam);
+  const initialCategory = getCategoryScreenFromSearchParam(categorySearchParam);
   const [optimisticActiveTab, setOptimisticActiveTab] = useState<HomeTab | null>(null);
   const activeTab = optimisticActiveTab ?? urlActiveTab;
   const { user, profile } = useAuth();
@@ -2447,8 +2458,8 @@ function HomePageContent() {
   });
   const [rideTypesVisible, setRideTypesVisible] = useState(true);
   const [expandedCategoryId, setExpandedCategoryId] = useState<HomeCategoryCardId | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<SelectedCategory | null>(null);
-  const [categoryTransitionPhase, setCategoryTransitionPhase] = useState<CategoryTransitionPhase>("idle");
+  const [selectedCategory, setSelectedCategory] = useState<SelectedCategory | null>(initialCategory);
+  const [categoryTransitionPhase, setCategoryTransitionPhase] = useState<CategoryTransitionPhase>(initialCategory ? "open" : "idle");
   const [scheduleRideQuickFilter, setScheduleRideQuickFilter] = useState<ScheduleRideQuickFilter>("recommended");
   const [categoryResultFilters, setCategoryResultFilters] = useState<Record<Exclude<CategoryResultsScreenId, "schedule">, string>>({
     all: "nearby",
@@ -2781,7 +2792,11 @@ function HomePageContent() {
   function finalizeCategoryOpen() {
     clearScheduleTransitionTimer();
     scheduleTransitionLockedRef.current = false;
-    pushCategoryHistoryEntry();
+    if (categoryShouldPushHistoryRef.current) {
+      pushCategoryHistoryEntry();
+    } else {
+      categoryShouldPushHistoryRef.current = true;
+    }
   }
 
   const finishScheduleClose = useCallback(() => {
@@ -2847,10 +2862,11 @@ function HomePageContent() {
     };
   }, [beginScheduleClose, selectedCategory]);
 
-  function openCategoryResultsScreen(screen: CategoryResultsScreenId) {
+  function openCategoryResultsScreen(screen: CategoryResultsScreenId, options: { pushHistory?: boolean } = {}) {
     if (selectedCategory !== null || categoryTransitionPhase !== "idle" || scheduleTransitionLockedRef.current) return;
 
     scheduleTransitionLockedRef.current = true;
+    categoryShouldPushHistoryRef.current = options.pushHistory ?? true;
     categoryHistoryScreenRef.current = screen;
     savedHomeScrollYRef.current = window.scrollY;
     if (screen === "schedule") {
@@ -2885,6 +2901,16 @@ function HomePageContent() {
     if (scheduleHistoryEntryActiveRef.current) {
       window.history.back();
       return;
+    }
+
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("category")) {
+      url.searchParams.delete("category");
+      window.history.replaceState(
+        { ...(window.history.state ?? {}), ridepodCategoryLayer: undefined },
+        "",
+        `${url.pathname}${url.search}${url.hash}`,
+      );
     }
 
     beginScheduleClose();

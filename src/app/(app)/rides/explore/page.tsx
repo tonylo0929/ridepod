@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Building2,
@@ -180,6 +180,7 @@ function rideMatchesSelectedAreas({
 }
 
 function RideExploreContent() {
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, profile } = useAuth();
   const viewerIdentity = useMemo(() => createdHomeRideViewerIdentityFromAuth({ profile, user }), [profile, user]);
@@ -272,6 +273,7 @@ function RideExploreContent() {
       : toLabel
         ? `Rides going to ${toLabel}.`
         : "Search districts, hubs, and popular routes";
+  const currentExploreHref = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   return (
     <main className="mx-auto grid w-full max-w-[680px] gap-5 px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 lg:px-8">
@@ -327,7 +329,7 @@ function RideExploreContent() {
         {hasSelectedArea ? (
           <div className="grid gap-2.5">
             {matchingRideResults.length ? (
-              matchingRideResults.map((ride) => <ExploreRideResultCard key={ride.id} ride={ride} />)
+              matchingRideResults.map((ride) => <ExploreRideResultCard key={ride.id} ride={ride} returnHref={currentExploreHref} />)
             ) : (
               <div className="rounded-[18px] border border-dashed border-white/12 bg-[rgba(10,24,37,0.72)] p-4 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
                 No rides match this district yet. Try another starting area or destination.
@@ -456,7 +458,14 @@ function getRideTypeLabel(ride: HomeRide) {
   return "Scheduled";
 }
 
-function ExploreRideResultCard({ ride }: { ride: HomeRide }) {
+function getExplorePodDetailHref(rideId: string, returnHref: string) {
+  const params = new URLSearchParams();
+  params.set("returnTo", returnHref);
+
+  return `/pods/${rideId}?${params.toString()}`;
+}
+
+function ExploreRideResultCard({ ride, returnHref }: { ride: HomeRide; returnHref: string }) {
   const seatsLeft = Math.max(0, ride.seatsTotal - ride.seatsUsed);
   const seatLabel = `${seatsLeft} ${seatsLeft === 1 ? "seat" : "seats"} left`;
   const isAirportRide = ride.rideKind === "airport" || Boolean(ride.airportDirection);
@@ -466,7 +475,7 @@ function ExploreRideResultCard({ ride }: { ride: HomeRide }) {
 
   return (
     <Link
-      href={`/pods/${ride.id}`}
+      href={getExplorePodDetailHref(ride.id, returnHref)}
       className={cn(
         "group grid min-h-[96px] grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 rounded-[20px] border px-3 py-3 text-left shadow-[0_16px_34px_rgba(0,0,0,0.28)] transition min-[420px]:grid-cols-[54px_minmax(0,1fr)_auto] min-[420px]:px-4",
         isAirportRide
