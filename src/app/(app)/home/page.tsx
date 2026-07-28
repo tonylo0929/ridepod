@@ -1479,26 +1479,39 @@ function PopularRoutesSection({ routes }: { routes: typeof popularRouteSummaries
             key={route.id}
             href={buildRideExploreHref({ from: route.fromQuery, to: route.toQuery })}
             aria-label={`Browse ${route.from} to ${route.to} rides`}
-            className="group relative flex min-h-[96px] items-center gap-3 overflow-hidden rounded-[20px] border border-white/12 bg-[radial-gradient(circle_at_0%_50%,rgba(242,193,91,0.11),transparent_38%),linear-gradient(145deg,rgba(13,29,43,0.98),rgba(5,15,24,0.98))] px-3.5 py-3.5 shadow-[0_16px_36px_rgba(0,0,0,0.25)] transition hover:-translate-y-0.5 hover:border-[var(--rp-primary)]/52 hover:shadow-[0_18px_42px_rgba(242,193,91,0.1)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-3 focus-visible:outline-[var(--rp-primary)]"
+            className="group relative grid min-h-[82px] grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(145deg,rgba(10,24,36,0.96),rgba(5,15,24,0.98))] px-3 py-3 text-left shadow-[0_12px_28px_rgba(0,0,0,0.2)] transition hover:-translate-y-0.5 hover:border-[var(--rp-primary)]/46 hover:bg-[linear-gradient(145deg,rgba(15,33,48,0.98),rgba(6,18,28,0.98))] hover:shadow-[0_18px_42px_rgba(242,193,91,0.1)] focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-3 focus-visible:outline-[var(--rp-primary)]"
           >
-            <span className={cn("absolute inset-y-3 left-0 w-1 rounded-r-full", route.accentClassName)} />
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] border border-[var(--rp-primary)]/28 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(0,0,0,0.22)]">
-              <ArrowRightLeft className="h-5 w-5 stroke-[2.4]" />
+            <span className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/16 to-transparent" />
+            <span className={cn("absolute inset-y-2 left-0 w-1 rounded-r-full", route.accentClassName)} />
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[13px] border border-[var(--rp-primary)]/28 bg-[var(--rp-primary)]/11 text-[var(--rp-primary)] shadow-[0_10px_22px_rgba(0,0,0,0.2)]">
+              <ArrowRightLeft className="h-4.5 w-4.5 stroke-[2.5]" />
             </span>
-            <span className="min-w-0 flex-1">
-              <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[16px] font-black leading-tight text-white">
-                <span>{route.from}</span>
-                <ChevronRight className="h-4 w-4 shrink-0 stroke-[3] text-[#65e6d0]" />
-                <span>{route.to}</span>
+            <span className="min-w-0">
+              <span className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
+                <span className="min-w-0 rounded-[13px] border border-white/8 bg-white/[0.045] px-2.5 py-2">
+                  <span className="block text-[9px] font-black uppercase leading-none tracking-[0.14em] text-[var(--rp-primary)]/80">From</span>
+                  <span className="mt-1 block truncate text-[15px] font-black leading-none tracking-[-0.01em] text-white min-[390px]:text-base">
+                    {route.from}
+                  </span>
+                </span>
+                <span className="relative grid h-8 w-8 shrink-0 place-items-center rounded-full border border-[#65e6d0]/25 bg-[#65e6d0]/10 text-[#65e6d0]">
+                  <ChevronRight className="h-4.5 w-4.5 stroke-[3]" />
+                </span>
+                <span className="min-w-0 rounded-[13px] border border-white/8 bg-white/[0.045] px-2.5 py-2">
+                  <span className="block text-[9px] font-black uppercase leading-none tracking-[0.14em] text-[#65e6d0]/82">To</span>
+                  <span className="mt-1 block truncate text-[15px] font-black leading-none tracking-[-0.01em] text-white min-[390px]:text-base">
+                    {route.to}
+                  </span>
+                </span>
               </span>
-              <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.055] px-2.5 py-1 text-[12px] font-bold text-white/78">
-                <UsersRound className="h-3.5 w-3.5 text-[var(--rp-primary)]" />
+              <span className="mt-2 inline-flex min-h-7 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.055] px-2.5 text-[11px] font-bold text-white/74">
+                <UsersRound className="h-3.5 w-3.5 shrink-0 text-[var(--rp-primary)]" />
                 <span className="font-black text-[var(--rp-primary)]">{route.rideCount}</span>
-                <span>rides available</span>
+                <span className="truncate">rides on this route</span>
               </span>
             </span>
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)]/28 bg-[var(--rp-primary)]/9 text-[var(--rp-primary)] transition group-hover:translate-x-0.5 group-hover:border-[var(--rp-primary)]/55 group-hover:bg-[var(--rp-primary)]/14">
-              <ChevronRight className="h-5 w-5 stroke-[2.7]" />
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[var(--rp-primary)]/28 bg-[var(--rp-primary)]/9 text-[var(--rp-primary)] transition group-hover:translate-x-0.5 group-hover:border-[var(--rp-primary)]/58 group-hover:bg-[var(--rp-primary)]/16">
+              <ChevronRight className="h-5 w-5 stroke-[2.8]" />
             </span>
           </Link>
         ))}
