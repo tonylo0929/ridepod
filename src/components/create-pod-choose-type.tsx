@@ -2350,6 +2350,14 @@ function RouteStopsStep({
       : null;
   const pickupDropoffTooClose =
     typeof pickupDropoffDistanceMeters === "number" && pickupDropoffDistanceMeters < 80;
+  const canContinuePickup =
+    Boolean(pickupLocation) &&
+    pickupDistrict.trim().length > 0 &&
+    (!gatherPointRequired || gatherPointProvided);
+  const canContinueDropoff =
+    Boolean(dropoffLocation) &&
+    dropoffDistrict.trim().length > 0 &&
+    !pickupDropoffTooClose;
   const canContinue =
     Boolean(pickupLocation) &&
     Boolean(dropoffLocation) &&
@@ -2357,9 +2365,12 @@ function RouteStopsStep({
     dropoffDistrict.trim().length > 0 &&
     !pickupDropoffTooClose &&
     (!gatherPointRequired || gatherPointProvided);
-  const [routePanel, setRoutePanel] = useState<"route" | "requests">("route");
-  const isRoutePanel = routePanel === "route";
-  const routePanelCount = 2;
+  const [routePanel, setRoutePanel] = useState<"pickup" | "dropoff" | "requests">("pickup");
+  const isPickupPanel = routePanel === "pickup";
+  const isDropoffPanel = routePanel === "dropoff";
+  const isRequestsPanel = routePanel === "requests";
+  const routePanelCount = 3;
+  const canAdvanceRoutePanel = isPickupPanel ? canContinuePickup : isDropoffPanel ? canContinueDropoff : canContinue;
   const isAirport = Boolean(airportDetails);
   const isFromAirport = airportDetails?.airportDirection === "from_airport";
   const pickupFieldLabel = isAirport
@@ -2403,8 +2414,13 @@ function RouteStopsStep({
     : "Add details to help riders find the exact meeting spot easily.";
 
   function handleRouteBack() {
-    if (!isRoutePanel) {
-      setRoutePanel("route");
+    if (isRequestsPanel) {
+      setRoutePanel("dropoff");
+      return;
+    }
+
+    if (isDropoffPanel) {
+      setRoutePanel("pickup");
       return;
     }
 
@@ -2412,14 +2428,39 @@ function RouteStopsStep({
   }
 
   function handleRouteForward() {
-    if (isRoutePanel) {
-      if (!canContinue) return;
+    if (isPickupPanel) {
+      if (!canContinuePickup) return;
+      setRoutePanel("dropoff");
+      return;
+    }
+
+    if (isDropoffPanel) {
+      if (!canContinueDropoff) return;
       setRoutePanel("requests");
       return;
     }
 
+    if (!canContinue) return;
     onContinue();
   }
+
+  const routePanelTitle = isPickupPanel
+    ? "Pickup & meeting"
+    : isDropoffPanel
+      ? "Dropoff"
+      : "Route style";
+  const routePanelIndex = isPickupPanel ? 1 : isDropoffPanel ? 2 : 3;
+  const routeSubtitle = isPickupPanel
+    ? isRideAppSelfSettle
+      ? "Set where riders should gather before booking."
+      : "Set pickup and meeting details."
+    : isDropoffPanel
+      ? isAirport
+        ? "Choose the airport or destination dropoff."
+        : "Choose where the ride should end."
+      : isRideAppSelfSettle
+        ? "Choose whether joined riders can ask for a route change."
+        : "Choose direct route or allow stop requests.";
 
   return (
     <>
@@ -2432,17 +2473,7 @@ function RouteStopsStep({
             {isAirport ? "Airport route" : "Route & stops"}
           </h1>
           <p className="mx-auto mt-2 max-w-[320px] whitespace-nowrap text-center text-[13px] font-medium leading-5 text-[#cbd5e1]">
-            {isRoutePanel
-              ? isRideAppSelfSettle
-                ? isAirport
-                  ? "Add airport route and where riders should meet."
-                  : "Add pickup, dropoff & meeting point."
-                : isAirport
-                  ? "Add airport pickup and drop-off details."
-                  : "Add your pickup and dropoff."
-              : isRideAppSelfSettle
-                ? "Choose whether joined riders can ask for a route change."
-                : "Choose whether riders can request one extra stop."}
+            {routeSubtitle}
           </p>
         </section>
 
@@ -2457,22 +2488,18 @@ function RouteStopsStep({
           </button>
           <div className="pointer-events-none absolute left-1/2 top-1/2 w-[calc(100%-6rem)] -translate-x-1/2 -translate-y-1/2 text-center">
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
-              {isRoutePanel ? `Step 1 of ${routePanelCount}` : `Step 2 of ${routePanelCount}`}
+              Step {routePanelIndex} of {routePanelCount}
             </p>
             <p className="w-full whitespace-nowrap text-center text-[13px] font-black leading-4 text-[var(--rp-text)]">
-              {isRoutePanel ? (isAirport ? "Airport pickup & drop-off" : "Pickup & dropoff") : "Direct route or stops allowed"}
+              {routePanelTitle}
             </p>
           </div>
           <button
             type="button"
             aria-label="Next route section"
-            disabled={isRoutePanel && !canContinue}
+            disabled={!canAdvanceRoutePanel}
             onClick={() => {
-              if (isRoutePanel) {
-                if (canContinue) setRoutePanel("requests");
-                return;
-              }
-              onContinue();
+              handleRouteForward();
             }}
             className="grid h-10 w-10 place-items-center rounded-full text-[var(--rp-primary)] transition hover:bg-[#1b2936] disabled:cursor-not-allowed disabled:opacity-35"
           >
@@ -2480,20 +2507,10 @@ function RouteStopsStep({
           </button>
         </div>
 
-        {isRoutePanel ? (
+        {isPickupPanel ? (
           <>
             <section className="mt-6 grid gap-4">
-              <RouteJourneyPreview
-                pickupAddress={pickupAddress}
-                dropoffAddress={dropoffAddress}
-                pickupLocation={pickupLocation}
-                dropoffLocation={dropoffLocation}
-                stops={stops}
-                pickupLabel={pickupFieldLabel}
-                dropoffLabel={dropoffFieldLabel}
-              />
-
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid gap-3">
                 <RouteLocationCard
                   label={pickupDetailLabel}
                   value={pickupLocation}
@@ -2505,40 +2522,7 @@ function RouteStopsStep({
                   onDistrictChange={onPickupDistrictChange}
                   tone="pickup"
                 />
-                <RouteLocationCard
-                  label={dropoffDetailLabel}
-                  value={dropoffLocation}
-                  fallbackAddress={dropoffAddress}
-                  placeholder={dropoffSearchPlaceholder}
-                  districtLabel="Destination district"
-                  district={dropoffDistrict}
-                  onOpen={() => setActiveLocationPicker("dropoff")}
-                  onDistrictChange={onDropoffDistrictChange}
-                  tone="dropoff"
-                />
               </div>
-
-              {pickupDropoffTooClose ? (
-                <p className="rounded-[16px] border border-amber-300/24 bg-[#19170d] px-3 py-2 text-xs font-black leading-5 text-amber-100">
-                  Pickup and dropoff are the same place. Choose a different dropoff to create a real driving route.
-                </p>
-              ) : null}
-
-              {stops.length > 0 ? (
-                <div className="grid gap-3">
-                  {stops.map((stop, index) => (
-                    <AddressField
-                      key={stop.id}
-                      label={`Stop ${index + 1}`}
-                      type="stop"
-                      value={stop.address}
-                      placeholder="Enter stop address"
-                      onChange={(value) => onStopChange(stop.id, value)}
-                      onRemove={() => onRemoveStop(stop.id)}
-                    />
-                  ))}
-                </div>
-              ) : null}
 
               <RouteMeetingPointCard
                 value={pickupVenue}
@@ -2548,29 +2532,72 @@ function RouteStopsStep({
                 onChange={onPickupVenueChange}
               />
             </section>
+          </>
+        ) : isDropoffPanel ? (
+          <>
+            <section className="mt-6 grid gap-4">
+              <RouteJourneyPreview
+                pickupAddress={pickupAddress}
+                dropoffAddress={dropoffAddress}
+                pickupLocation={pickupLocation}
+                dropoffLocation={dropoffLocation}
+                stops={[]}
+                pickupLabel={pickupFieldLabel}
+                dropoffLabel={dropoffFieldLabel}
+              />
 
-            {!isRideAppSelfSettle ? <div className="mt-4">
-              <AddStopButton onAddStop={onAddStop} />
-            </div> : null}
+              <RouteLocationCard
+                label={dropoffDetailLabel}
+                value={dropoffLocation}
+                fallbackAddress={dropoffAddress}
+                placeholder={dropoffSearchPlaceholder}
+                districtLabel="Destination district"
+                district={dropoffDistrict}
+                onOpen={() => setActiveLocationPicker("dropoff")}
+                onDistrictChange={onDropoffDistrictChange}
+                tone="dropoff"
+              />
+
+              {pickupDropoffTooClose ? (
+                <p className="rounded-[16px] border border-amber-300/24 bg-[#19170d] px-3 py-2 text-xs font-black leading-5 text-amber-100">
+                  Pickup and dropoff are the same place. Choose a different dropoff to create a real driving route.
+                </p>
+              ) : null}
+            </section>
           </>
         ) : (
           <div className="mt-6 grid gap-4">
-            <div className="rounded-[18px] border border-white/10 bg-[rgba(15,27,39,0.72)] px-4 py-3">
-              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">
-                Route summary
-              </p>
-              <p className="mt-2 text-sm font-black leading-5 text-[var(--rp-text)]">
-                {routePointSummary(pickupAddress, "None")} {"\u2192"} {routePointSummary(dropoffAddress, "None")}
-              </p>
-              <p className="mt-2 text-xs font-black text-[var(--rp-muted-strong)]">
-                {pickupDistrict || "Pickup district"} {"\u2192"} {dropoffDistrict || "Destination district"}
-              </p>
-            </div>
+            <RouteJourneyPreview
+              pickupAddress={pickupAddress}
+              dropoffAddress={dropoffAddress}
+              pickupLocation={pickupLocation}
+              dropoffLocation={dropoffLocation}
+              stops={stops}
+              pickupLabel={pickupFieldLabel}
+              dropoffLabel={dropoffFieldLabel}
+            />
             <StopRequestPolicySelector
               value={stopRequestPolicy}
               isRideAppSelfSettle={isRideAppSelfSettle}
               onChange={onStopRequestPolicyChange}
             />
+
+            {!isRideAppSelfSettle && stopRequestPolicy !== "direct_only" ? (
+              <section className="grid gap-3">
+                {stops.map((stop, index) => (
+                  <AddressField
+                    key={stop.id}
+                    label={`Stop ${index + 1}`}
+                    type="stop"
+                    value={stop.address}
+                    placeholder="Enter stop address"
+                    onChange={(value) => onStopChange(stop.id, value)}
+                    onRemove={() => onRemoveStop(stop.id)}
+                  />
+                ))}
+                <AddStopButton onAddStop={onAddStop} />
+              </section>
+            ) : null}
           </div>
         )}
 
@@ -2582,10 +2609,10 @@ function RouteStopsStep({
             </SecondaryButton>
             <PrimaryButton
               onClick={handleRouteForward}
-              disabled={isRoutePanel && !canContinue}
+              disabled={!canAdvanceRoutePanel}
             >
               <span className="inline-flex items-center gap-2">
-                {isRoutePanel ? "Next" : "Confirm"}
+                {isRequestsPanel ? "Confirm" : "Next"}
                 <ChevronRight className="h-5 w-5" />
               </span>
             </PrimaryButton>
@@ -6197,7 +6224,7 @@ function StopRequestPolicySelector({
     <section className="rounded-[22px] border border-[color-mix(in_srgb,var(--rp-primary)_28%,var(--rp-border))] bg-[linear-gradient(180deg,rgba(17,28,40,0.92),rgba(10,19,31,0.92))] p-3 shadow-[var(--rp-shadow-soft)]">
       <div className="flex items-start justify-between gap-3 px-1">
         <div>
-          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Step 2</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Step 3</p>
           <h2 className="mt-1 text-base font-black text-[var(--rp-text)]">Choose route style</h2>
           <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
             Pick a direct ride, or allow riders to request stops.
