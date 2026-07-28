@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   BriefcaseBusiness,
   Check,
+  ChevronDown,
   ChevronRight,
   Clock3,
   Home,
@@ -20,6 +21,7 @@ import { cn } from "@/lib/cn";
 import { HomeMenuDrawer } from "@/components/home-menu-drawer";
 import { RidePodLogo } from "@/components/ridepod-logo";
 import {
+  hk18DistrictOptions,
   resolveHongKongDistrictFromAddressComponents,
   resolveHongKongDistrictFromCoordinates,
   resolveHongKongDistrictFromText,
@@ -1024,17 +1026,29 @@ function MapLocationAdjuster({
           </div>
 
           <div className="mt-4 grid gap-3 rounded-[16px] border border-white/10 bg-[#07111d] p-3">
-            <div className="flex items-center justify-between gap-3">
-              <span>
-                <span className="block text-[10px] font-black uppercase tracking-[0.16em] text-[#f6c453]">District</span>
-                <span className="mt-1 block text-sm font-black text-[#f8fafc]">{candidate.district ?? "Not detected"}</span>
+            <label className="grid gap-2">
+              <span className="text-[10px] font-black uppercase tracking-[0.16em] text-[#f6c453]">District</span>
+              <span className="relative block">
+                <select
+                  value={candidate.district ?? ""}
+                  onChange={(event) =>
+                    setCandidate((current) => ({
+                      ...current,
+                      district: (event.target.value || null) as Hk18District | null,
+                    }))
+                  }
+                  className="h-12 w-full appearance-none rounded-[14px] border border-white/10 bg-[#182331] px-3 pr-10 text-sm font-black text-[#f8fafc] outline-none transition focus:border-[#56d9ef]/60"
+                >
+                  <option value="">Choose district</option>
+                  {hk18DistrictOptions.map((district) => (
+                    <option key={district} value={district}>
+                      {district}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#f6c453]" />
               </span>
-              {candidate.district ? (
-                <span className="rounded-full border border-[#2dd4bf]/25 bg-[#0f2f2d] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-[#86efac]">
-                  Detected automatically
-                </span>
-              ) : null}
-            </div>
+            </label>
             <label className="grid gap-2">
               <span className="text-[10px] font-black uppercase tracking-[0.16em] text-[#f6c453]">Meeting-point details</span>
               <input
@@ -1561,15 +1575,10 @@ export function RideLocationField({
       {value ? (
         <div className="ml-[52px] mt-3 grid gap-2">
           {value.district ? (
-            <div className="flex flex-wrap items-center gap-2 text-xs font-bold text-slate-400">
-              <span className="rounded-full border border-[#2dd4bf]/25 bg-[#0f2f2d] px-2.5 py-1 text-[#86efac]">
-                {value.district}
-              </span>
-              <span>Detected automatically</span>
-            </div>
-          ) : (
-            <p className="text-xs font-bold text-amber-100">District not detected. Choose it manually below.</p>
-          )}
+            <span className="w-fit rounded-full border border-[#2dd4bf]/25 bg-[#0f2f2d] px-2.5 py-1 text-xs font-bold text-[#86efac]">
+              {value.district}
+            </span>
+          ) : null}
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -1622,7 +1631,6 @@ export function DistrictDetectionStatus({
         <span>
           <span className="block text-[10px] font-black uppercase tracking-[0.14em] text-[#5eead4]">District</span>
           <span className="mt-1 block text-sm font-black text-[#f8fafc]">{district}</span>
-          <span className="mt-0.5 block text-xs font-bold text-[#9be7d7]">Detected automatically</span>
         </span>
         <button
           type="button"

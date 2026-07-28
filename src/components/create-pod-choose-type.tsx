@@ -80,7 +80,7 @@ import {
 } from "@/lib/ridepod-pricing";
 import { saveCreatedHomeRide } from "@/lib/created-home-rides";
 import { createUserNotificationOnce } from "@/lib/notifications/ridepod-notifications";
-import { getDistrictCenter, hk18DistrictOptions } from "@/lib/hk-districts";
+import { getDistrictCenter, hk18DistrictOptions, type Hk18District } from "@/lib/hk-districts";
 import type { HomeRide } from "@/lib/home-ride-mock";
 import type { RideLocation } from "@/lib/ride-location-types";
 
@@ -1451,10 +1451,8 @@ function RouteLocationCard({
   placeholder,
   districtLabel,
   district,
-  editingDistrict,
   tone,
   onOpen,
-  onEditDistrict,
   onDistrictChange,
 }: {
   label: string;
@@ -1463,15 +1461,12 @@ function RouteLocationCard({
   placeholder: string;
   districtLabel: string;
   district: string;
-  editingDistrict: boolean;
   tone: "pickup" | "dropoff";
   onOpen: () => void;
-  onEditDistrict: () => void;
   onDistrictChange: (value: string) => void;
 }) {
   const accent = tone === "pickup" ? "#f6c453" : "#56d9ef";
-  const selectedDistrict = value?.district ?? district;
-  const needsDistrict = Boolean(value) && (!selectedDistrict || editingDistrict);
+  const selectedDistrict = district || value?.district || "";
   const subtitle = routeLocationSubtitle(value);
   const fallbackLabel = routePointSummary(fallbackAddress, "");
 
@@ -1551,26 +1546,10 @@ function RouteLocationCard({
         Use my current location
       </button>
 
-      {value && selectedDistrict && !editingDistrict ? (
-        <div className="mt-3 flex items-center justify-between gap-2 rounded-[13px] border border-[#2dd4bf]/18 bg-[#0d2427] px-3 py-2">
-          <span className="min-w-0">
-            <span className="block truncate text-xs font-black text-[#86efac]">{selectedDistrict}</span>
-            <span className="mt-0.5 block text-[10px] font-bold text-[#9be7d7]">District detected</span>
-          </span>
-          <button
-            type="button"
-            onClick={onEditDistrict}
-            className="shrink-0 rounded-full border border-[#5eead4]/25 px-2.5 py-1 text-[10px] font-black text-[#a7f3ff]"
-          >
-            Edit
-          </button>
-        </div>
-      ) : null}
-
-      {needsDistrict ? (
+      {value ? (
         <InlineDistrictSelect
           label={districtLabel}
-          value={district}
+          value={selectedDistrict}
           tone={tone}
           onChange={onDistrictChange}
         />
@@ -2348,7 +2327,6 @@ function RouteStopsStep({
   const gatherPointRequired = isRideAppSelfSettle;
   const gatherPointProvided = pickupVenue.trim().length > 0;
   const [activeLocationPicker, setActiveLocationPicker] = useState<"pickup" | "dropoff" | null>(null);
-  const [editingDistrict, setEditingDistrict] = useState<"pickup" | "dropoff" | null>(null);
   const canContinue =
     Boolean(pickupLocation) &&
     Boolean(dropoffLocation) &&
@@ -2499,9 +2477,7 @@ function RouteStopsStep({
                   placeholder={pickupSearchPlaceholder}
                   districtLabel="Pickup district"
                   district={pickupDistrict}
-                  editingDistrict={editingDistrict === "pickup"}
                   onOpen={() => setActiveLocationPicker("pickup")}
-                  onEditDistrict={() => setEditingDistrict("pickup")}
                   onDistrictChange={onPickupDistrictChange}
                   tone="pickup"
                 />
@@ -2512,9 +2488,7 @@ function RouteStopsStep({
                   placeholder={dropoffSearchPlaceholder}
                   districtLabel="Destination district"
                   district={dropoffDistrict}
-                  editingDistrict={editingDistrict === "dropoff"}
                   onOpen={() => setActiveLocationPicker("dropoff")}
-                  onEditDistrict={() => setEditingDistrict("dropoff")}
                   onDistrictChange={onDropoffDistrictChange}
                   tone="dropoff"
                 />
@@ -2595,7 +2569,6 @@ function RouteStopsStep({
         onClose={() => setActiveLocationPicker(null)}
         onConfirm={(location) => {
           onPickupLocationConfirm(location);
-          setEditingDistrict(null);
         }}
       />
       <LocationPicker
@@ -2605,7 +2578,6 @@ function RouteStopsStep({
         onClose={() => setActiveLocationPicker(null)}
         onConfirm={(location) => {
           onDropoffLocationConfirm(location);
-          setEditingDistrict(null);
         }}
       />
     </>
@@ -8204,8 +8176,18 @@ export function CreatePodChooseType() {
           onPickupLocationConfirm={handlePickupLocationConfirm}
           onDropoffLocationConfirm={handleDropoffLocationConfirm}
           onPickupVenueChange={(pickupVenue) => setPeopleVehicle((current) => ({ ...current, pickupVenue }))}
-          onPickupDistrictChange={(pickupDistrict) => setPeopleVehicle((current) => ({ ...current, pickupDistrict }))}
-          onDropoffDistrictChange={(dropoffDistrict) => setPeopleVehicle((current) => ({ ...current, dropoffDistrict }))}
+          onPickupDistrictChange={(pickupDistrict) => {
+            setPickupLocation((current) =>
+              current ? { ...current, district: (pickupDistrict || null) as Hk18District | null } : current,
+            );
+            setPeopleVehicle((current) => ({ ...current, pickupDistrict }));
+          }}
+          onDropoffDistrictChange={(dropoffDistrict) => {
+            setDropoffLocation((current) =>
+              current ? { ...current, district: (dropoffDistrict || null) as Hk18District | null } : current,
+            );
+            setPeopleVehicle((current) => ({ ...current, dropoffDistrict }));
+          }}
           onAddStop={() => {
             setStops((currentStops) => [...currentStops, { id: nextStopId, address: "" }]);
             setNextStopId((id) => id + 1);
