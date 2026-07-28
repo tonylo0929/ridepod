@@ -16,7 +16,8 @@ export default async function PodStatusPage({
 
   const ride = getHomeRide(id);
   const initialTab = tab === "riders" || tab === "route" ? tab : "summary";
-  const initialAction = action === "confirm-by" ? "confirm-by" : undefined;
+  const initialAction =
+    action === "confirm-by" || action === "become-host" ? action : undefined;
 
   if (!ride || ride.rideCategory !== "ride_app_self_settle") {
     return <CreatedPodStatusRouteClient id={id} />;

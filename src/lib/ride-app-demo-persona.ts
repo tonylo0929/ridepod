@@ -120,9 +120,12 @@ function demoRiderConfirmations(ride: HomeRide, currentName: string | null = nul
   const trial2 = getExistingConfirmation(ride, "trial_2");
   const trial3 = getExistingConfirmation(ride, "trial_3");
   const rider4 = getExistingConfirmation(ride, "rider 4");
+  const originalHostStatus = ride.rideAppHostCancellationStatus && ride.rideAppHostCancellationStatus !== "active"
+    ? "left"
+    : "host";
 
   return [
-    { name: "Mark", role: "host", status: "host", confirmedBookingDetailsVersion: 1 },
+    { name: "Mark", role: "host", status: originalHostStatus, confirmedBookingDetailsVersion: 1 },
     {
       ...(trial2 ?? {}),
       name: currentName === "trial_2" ? "trial_2 (you)" : "trial_2",
@@ -164,13 +167,17 @@ function withFinalizedBookingDetails(ride: HomeRide): HomeRide {
 }
 
 function withDemoSeats(ride: HomeRide): HomeRide {
+  const originalHostSeatReleased = Boolean(
+    ride.rideAppHostCancellationStatus && ride.rideAppHostCancellationStatus !== "active",
+  );
+
   return {
     ...ride,
     hostName: ride.rideAppHostCancellationStatus === "replacement_booker_selected"
       ? ride.rideAppReplacementBookerName ?? "New booker"
       : "Mark",
     seatsTotal: 4,
-    seatsUsed: 4,
+    seatsUsed: originalHostSeatReleased ? 3 : 4,
     joinedRiders: ["trial_2", "trial_3", "Rider 4"],
     joinedRiderCount: 3,
     rideAppRequiredConfirmations: 3,

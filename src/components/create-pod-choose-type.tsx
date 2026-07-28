@@ -1018,7 +1018,7 @@ function getScheduleTypeLabel(dateTime: DateTimeState) {
 function getPodTypeTitle(podType: PodType) {
   if (podType === "recurring") return "Recurring";
   if (podType === "airport") return "Airport";
-  return "Scheduled";
+  return "One-off Schedule Ride";
 }
 
 function ScheduleTypeEyebrow({ podType }: { podType: PodType }) {

@@ -1208,6 +1208,31 @@ async function resolveSelfSettleMembershipTarget(ride: HomeRide, viewerUserId?: 
   };
 }
 
+function getLocalFallbackRiderUserIds(ride: HomeRide) {
+  const riderNames = [
+    ...(ride.joinedRiders ?? []),
+    ...(ride.riderConfirmations ?? [])
+      .filter(
+        (rider) =>
+          rider.role === "rider" &&
+          rider.status !== "left" &&
+          rider.status !== "expired" &&
+          rider.status !== "seat_hold_expired",
+      )
+      .map((rider) => rider.name),
+  ];
+
+  return Array.from(
+    new Set(
+      riderNames
+        .map((name) => name.replace(/\s*\(you\)\s*$/i, "").trim().toLowerCase())
+        .filter((name) => name && name !== "you")
+        .map((name) => `mock-${name.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}`)
+        .filter((userId) => userId !== "mock-"),
+    ),
+  );
+}
+
 function mergeRidePatch<T extends Partial<HomeRide>>(base: T, patch?: Partial<HomeRide> | null) {
   if (!patch) return base;
   const merged: Partial<HomeRide> = {
@@ -1409,9 +1434,31 @@ function isRideCancelledRecord(ride: HomeRide) {
   return isRideAppPodCancelled(ride) || isRideAppPodCancelledByHost(ride);
 }
 
+function isCurrentUserFormerHost(ride: HomeRide) {
+  if (!getCurrentUserIsHost(ride)) return false;
+
+  const status = getRideAppHostCancellationStatus(ride);
+  if (status === "active") return false;
+  if (status !== "replacement_booker_selected") return true;
+
+  const currentUserName = ride.currentUserName?.trim().toLowerCase();
+  const replacementHostName = ride.rideAppReplacementBookerName?.trim().toLowerCase();
+  return !currentUserName || !replacementHostName || currentUserName !== replacementHostName;
+}
+
 function getRideAppConfirmedReplacementRiders(ride: HomeRide) {
   const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
   return buildPodStatusRiders(ride).filter((rider) => isPodStatusRiderConfirmedForCurrentDetails(rider, currentDetailVersion));
+}
+
+function getRideAppReplacementCandidates(ride: HomeRide) {
+  return buildPodStatusRiders(ride).filter(
+    (rider) =>
+      rider.role === "rider" &&
+      !isOpenRiderSlot(rider) &&
+      rider.status !== "left_pod" &&
+      rider.status !== "seat_hold_expired",
+  );
 }
 
 function getRideAppJoinedRiderCount(ride: HomeRide) {
@@ -1432,13 +1479,18 @@ function getRideAppJoinedRiderCount(ride: HomeRide) {
 
 function getCurrentUserCanBecomeReplacementBooker(ride: HomeRide) {
   if (!isRideAppHostReplacementNeeded(ride) || getCurrentUserIsHost(ride)) return false;
-  const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
+
+  const currentUserHasActiveSeat =
+    ride.currentUserJoined === true ||
+    ride.currentUserRole === "joined_rider" ||
+    ride.quoteStatus === "joined" ||
+    ride.currentUserJoinIntentStatus === "joined_interest" ||
+    ride.currentUserJoinIntentStatus === "confirmed" ||
+    ride.currentUserJoinIntentStatus === "needs_review";
+
   return (
-    ride.currentUserBookingDetailsConfirmed === true ||
-    ride.selfSettleConfirmationStatus === "confirmed" ||
-    buildPodStatusRiders(ride).some(
-      (rider) => rider.role === "rider" && isCurrentUserRiderName(rider.name) && isPodStatusRiderConfirmedForCurrentDetails(rider, currentDetailVersion),
-    )
+    currentUserHasActiveSeat ||
+    getRideAppReplacementCandidates(ride).some((rider) => isCurrentUserRiderName(rider.name))
   );
 }
 
@@ -1472,9 +1524,9 @@ function getRideAppHostCancellationActivity(ride: HomeRide) {
   if (activity.length) return activity;
   const originalHostName = getOriginalHostDisplayName(ride);
   if (status === "replacement_booker_selected") {
-    return [`${originalHostName} stepped down as host.`, "Host replacement mode started.", `${getReplacementBookerDisplayName(ride)} became the new booker.`];
+    return [`${originalHostName} cancelled hosting this ride.`, "Riders were invited to take over.", `${getReplacementBookerDisplayName(ride)} became the new host.`];
   }
-  if (status === "host_replacement_needed") return [`${originalHostName} stepped down as host.`, "Host replacement mode started."];
+  if (status === "host_replacement_needed") return [`${originalHostName} cancelled hosting this ride.`, "Riders were invited to take over."];
   if (status === "cancelled") return [`${originalHostName} cancelled the pod.`];
   if (status === "cancelled_by_host" || status === "host_cancelled") return [`${originalHostName} cancelled the ride.`];
   if (status === "cancellation_review_required") return [`${originalHostName} cancelled the ride.`, "Cancellation under review."];
@@ -1549,7 +1601,7 @@ function getPodStatusTitle(ride: HomeRide, chatAccess: ReturnType<typeof getRide
   const isHost = getCurrentUserIsHost(ride);
   const expiredSeatHoldCount = getExpiredSeatHoldCount(ride);
   if (isRideAppHostReplacementNeeded(ride)) return "Host replacement needed";
-  if (isRideAppReplacementBookerSelected(ride)) return "New booker selected";
+  if (isRideAppReplacementBookerSelected(ride)) return "New host selected";
   if (getRideAppHostCancellationStatus(ride) === "cancellation_review_required" || ride.status === "cancellation_review_required") return "Cancellation under review";
   if (isRideAppPodCancelledByHost(ride)) return "Ride cancelled";
   if (ride.rideAppPodStatus === "ride_booked") return "Ride booked";
@@ -1578,7 +1630,7 @@ function getPodStatusSubtitle(ride: HomeRide, chatAccess: ReturnType<typeof getR
   const deadlineState = getRideAppConfirmDeadlineState(ride);
   const isHost = getCurrentUserIsHost(ride);
   const expiredSeatHoldCount = getExpiredSeatHoldCount(ride);
-  if (isRideAppHostReplacementNeeded(ride)) return "Host stepped down. A confirmed rider can become the new booker.";
+  if (isRideAppHostReplacementNeeded(ride)) return "The host cancelled. An active rider can become the new host.";
   if (isRideAppReplacementBookerSelected(ride)) return `${getReplacementBookerDisplayName(ride)} is now coordinating this ride app pod.`;
   if (getRideAppHostCancellationStatus(ride) === "cancellation_review_required" || ride.status === "cancellation_review_required") return "We are reviewing costs related to this booking.";
   if (isRideAppPodCancelledByHost(ride)) return "The host cancelled this ride. You have not been charged.";
@@ -1692,7 +1744,7 @@ function getPodStatusParticipantChipLabel(rider: PodStatusRider, confirmationNot
   if (ride && rider.role === "host" && isRideAppHostReplacementNeeded(ride)) return "Stepped down";
   if (ride && rider.role === "host" && isRideAppReplacementBookerSelected(ride)) return "Original host";
   if (ride && rider.role === "rider" && isRideAppHostReplacementNeeded(ride)) {
-    return rider.status === "confirmed" ? "Eligible" : "Waiting";
+    return rider.status === "left_pod" || rider.status === "seat_hold_expired" ? "Unavailable" : "Eligible";
   }
   if (rider.role === "host") return "Host";
   if (isOpenRiderSlot(rider)) return "Waiting";
@@ -1711,7 +1763,9 @@ function getPodStatusParticipantHelper(rider: PodStatusRider, bookingDetailsVers
   if (ride && rider.role === "host" && isRideAppHostReplacementNeeded(ride)) return "Stepped down as host";
   if (ride && rider.role === "host" && isRideAppReplacementBookerSelected(ride)) return "Original host";
   if (ride && rider.role === "rider" && isRideAppHostReplacementNeeded(ride)) {
-    return rider.status === "confirmed" ? "Eligible to become booker" : "Waiting / cannot become booker unless confirmed";
+    return rider.status === "left_pod" || rider.status === "seat_hold_expired"
+      ? "Not eligible to take over"
+      : "Eligible to become host";
   }
   if (rider.role === "host") return confirmationNotStarted ? "Needs to share details" : "Host details shared";
   if (isOpenRiderSlot(rider)) return "Waiting for rider to join";
@@ -1934,7 +1988,7 @@ export function PodStatusPanel({
   backHref?: string;
   embedded?: boolean;
   initialTab?: PodStatusTab;
-  initialAction?: "confirm-by";
+  initialAction?: "confirm-by" | "become-host";
 }) {
   const { user, profile } = useAuth();
   const storedRide = applyRideAppDemoPersona(getRideWithStoredSelfSettleJoin(baseRide, user?.id ?? null), { profile, user });
@@ -1947,7 +2001,7 @@ export function PodStatusPanel({
   const [showConfirmByModal, setShowConfirmByModal] = useState(false);
   const [confirmByInitialActionDismissed, setConfirmByInitialActionDismissed] = useState(false);
   const [showGatherPointModal, setShowGatherPointModal] = useState(false);
-  const [showBecomeBookerModal, setShowBecomeBookerModal] = useState(false);
+  const [showBecomeBookerModal, setShowBecomeBookerModal] = useState(initialAction === "become-host");
   const [showRejoinModal, setShowRejoinModal] = useState(false);
   const [rejoinMessage, setRejoinMessage] = useState<string | null>(null);
   const [becomeBookerUnderstood, setBecomeBookerUnderstood] = useState(false);
@@ -1960,7 +2014,11 @@ export function PodStatusPanel({
   const riders = buildPodStatusRiders(ride);
   const expiredSeatHoldCount = riders.filter((item) => item.role === "rider" && item.status === "seat_hold_expired").length;
   // TODO: Future: persist released seat count when confirm-by deadline release runs outside mock state.
-  const effectiveSeatsUsed = Math.max(0, Math.max(seatsUsed, ride.seatsUsed) - expiredSeatHoldCount);
+  const effectiveSeatCountBeforeExpiry =
+    getRideAppHostCancellationStatus(ride) === "active"
+      ? Math.max(seatsUsed, ride.seatsUsed)
+      : ride.seatsUsed;
+  const effectiveSeatsUsed = Math.max(0, effectiveSeatCountBeforeExpiry - expiredSeatHoldCount);
   const podIsFull = effectiveSeatsUsed >= ride.seatsTotal;
   const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
   const requiredConfirmationsFromRide = getRideAppRequiredConfirmations(ride);
@@ -2018,7 +2076,7 @@ export function PodStatusPanel({
   const replacementNeeded = hostCancellationStatus === "host_replacement_needed";
   const replacementBookerSelected = hostCancellationStatus === "replacement_booker_selected";
   const hostCancelledPod = isRideCancelledRecord(ride);
-  const replacementEligibleRiders = getRideAppConfirmedReplacementRiders(ride);
+  const replacementEligibleRiders = getRideAppReplacementCandidates(ride);
   const currentUserCanBecomeBooker = getCurrentUserCanBecomeReplacementBooker(ride);
   const chatAccess = chatAccessBase;
   const requiredConfirmations = chatAccess.requiredConfirmations || requiredConfirmationsFromRide;
@@ -2119,8 +2177,8 @@ export function PodStatusPanel({
       ]
     : replacementNeeded
     ? [
-        "Host stepped down. Chat is read-only until a new booker is selected.",
-        "A confirmed rider can become the new booker.",
+        "The host cancelled. Chat is read-only until a new host is selected.",
+        "Any active rider can become the new host.",
       ]
     : missingDetailReasons.length
     ? missingDetailReasons
@@ -2273,7 +2331,7 @@ export function PodStatusPanel({
       hostName: bookerName,
       rideAppHostCancellationActivity: [
         ...getRideAppHostCancellationActivity(ride),
-        `${bookerName} became the new booker.`,
+        `${bookerName} became the new host.`,
       ],
     };
 
@@ -2282,9 +2340,9 @@ export function PodStatusPanel({
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     notifyPodStatusAction({
       type: "ride_app_details_updated",
-      title: "New booker selected",
-      body: `${bookerName} became the new booker for ${podStatusRouteTitle}.`,
-      selfTitle: "You became the new booker",
+      title: "New host selected",
+      body: `${bookerName} became the new host for ${podStatusRouteTitle}.`,
+      selfTitle: "You became the new host",
       selfBody: "You can now coordinate and book the ride app outside RidePod.",
       action: "replacement_booker_selected",
     });
@@ -2632,7 +2690,7 @@ export function PodStatusPanel({
                       <span className="text-right text-sm font-black text-white">{ride.rideAppReplacementDeadlineLabel ?? "Before confirm-by time"}</span>
                     </div>
                     <div className="grid grid-cols-[1fr_auto] gap-3 rounded-[14px] border border-white/10 bg-black/18 p-3">
-                      <span className="text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">Eligible confirmed riders</span>
+                      <span className="text-xs font-black uppercase tracking-[0.08em] text-[var(--rp-muted-strong)]">Eligible riders</span>
                       <span className="text-right text-sm font-black text-white">{replacementEligibleRiders.length}</span>
                     </div>
                   </div>
@@ -2648,6 +2706,16 @@ export function PodStatusPanel({
                         </p>
                       ))}
                     </div>
+                  ) : null}
+                  {replacementNeeded && currentUserCanBecomeBooker ? (
+                    <button
+                      type="button"
+                      onClick={() => setShowBecomeBookerModal(true)}
+                      className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-[16px] border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/14 px-4 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/20"
+                    >
+                      <Crown className="h-5 w-5" />
+                      Become the new host
+                    </button>
                   ) : null}
                 </section>
               ) : null}
@@ -2867,8 +2935,8 @@ export function PodStatusPanel({
                         ? "Your seat was released because you did not confirm before the confirm-by time."
                         : replacementNeeded
                         ? chatAccess.canAccess
-                          ? "Host replacement mode started. Confirmed riders can keep coordinating while a new booker is selected."
-                          : "Host replacement needed. A confirmed rider can become the new booker."
+                          ? "Host replacement mode started. Riders can keep coordinating while a new host is selected."
+                          : "Host replacement needed. An active rider can become the new host."
                         : chatAccess.canAccess
                         ? "Ready to gather. Chat is open for confirmed riders."
                         : currentUserWaitingForHostDetails
@@ -3087,7 +3155,7 @@ export function PodStatusPanel({
                   <Crown className="h-6 w-6" />
                 </span>
                 <div className="min-w-0">
-                  <h2 id="become-booker-title" className="text-xl font-black leading-tight text-white">Become new booker?</h2>
+                  <h2 id="become-booker-title" className="text-xl font-black leading-tight text-white">Become the new host?</h2>
                   <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
                     You will take over coordination and book the ride app outside RidePod.
                   </p>
@@ -3115,7 +3183,7 @@ export function PodStatusPanel({
                   className="mt-1 h-4 w-4 accent-[var(--rp-primary)]"
                 />
                 <span className="text-sm font-black leading-5 text-white">
-                  I understand and want to become the booker.
+                  I understand and want to become the host.
                 </span>
               </label>
 
@@ -3136,7 +3204,7 @@ export function PodStatusPanel({
                   disabled={!becomeBookerUnderstood || !currentUserCanBecomeBooker}
                   className="min-h-12 rounded-[16px] bg-[linear-gradient(180deg,#7de8ff_0%,#38bdf8_100%)] px-4 text-sm font-black text-[#061019] shadow-[0_14px_30px_rgba(56,189,248,0.22)] transition hover:brightness-105 disabled:opacity-45"
                 >
-                  Become booker
+                  Become host
                 </button>
               </div>
             </section>
@@ -4459,9 +4527,14 @@ function SelfSettlePodSummaryHero({
   const summaryRiders = buildPodStatusRiders(ride);
   const summaryCurrentDetailVersion = getRideAppCurrentDetailVersion(ride);
   const summaryExpiredSeatHoldCount = summaryRiders.filter((item) => item.role === "rider" && item.status === "seat_hold_expired").length;
-  const summaryEffectiveSeatsUsed = Math.max(0, Math.max(seatsUsed, ride.seatsUsed) - summaryExpiredSeatHoldCount);
+  const summarySeatCountBeforeExpiry =
+    getRideAppHostCancellationStatus(ride) === "active"
+      ? Math.max(seatsUsed, ride.seatsUsed)
+      : ride.seatsUsed;
+  const summaryEffectiveSeatsUsed = Math.max(0, summarySeatCountBeforeExpiry - summaryExpiredSeatHoldCount);
   const summaryProgress = Math.min((summaryEffectiveSeatsUsed / ride.seatsTotal) * 100, 100);
   const summaryUserIsHost = getCurrentUserIsHost(ride);
+  const currentUserCancelledHosting = isCurrentUserFormerHost(ride);
   const summaryUserHadRideAppSeat =
     !summaryUserIsHost &&
     (ride.currentUserJoined === true ||
@@ -4492,8 +4565,12 @@ function SelfSettlePodSummaryHero({
         chatAccess.reason === "waiting_for_gather_point" ||
         chatAccess.reason === "waiting_for_booking_details"),
   };
-  const statusTitle = getPodStatusTitle(ride, chatAccess, summaryStatusContext);
-  const statusSubtitle = getPodStatusSubtitle(ride, chatAccess, summaryStatusContext);
+  const statusTitle = currentUserCancelledHosting
+    ? "You cancelled this ride"
+    : getPodStatusTitle(ride, chatAccess, summaryStatusContext);
+  const statusSubtitle = currentUserCancelledHosting
+    ? "Your seat was released. The remaining riders were asked to take over as host. You cannot rejoin this ride."
+    : getPodStatusSubtitle(ride, chatAccess, summaryStatusContext);
   const hostProfileImageUrl = getHostProfileImageUrl(ride);
   const hostAvatarPreference = ride.hostAvatarPreference ?? null;
   const hostAvatarDisplayName = ride.hostDisplayName?.trim() || ride.hostName || "Host";
@@ -4505,11 +4582,12 @@ function SelfSettlePodSummaryHero({
   const hasStopRequestJoinStatus = stopJoinIntentStatuses.has(stopJoinIntentStatus);
   const isPreJoinLayout = showInlineJoinRide || hasStopRequestJoinStatus;
   const summaryUserCanOpenChat =
-    summaryUserIsHost ||
+    !currentUserCancelledHosting &&
+    (summaryUserIsHost ||
     (summaryUserHadRideAppSeat &&
       ride.currentUserJoinIntentStatus !== "seat_hold_expired" &&
       ride.currentUserConfirmationExpired !== true &&
-      !isRideAppSeatHoldExpired(ride));
+      !isRideAppSeatHoldExpired(ride)));
   const fareReviewState = getRideAppFareEstimateReviewState(ride);
   const displayEstimateLabel = estimateLabel;
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
@@ -4798,16 +4876,17 @@ function SelfSettlePodSummaryHero({
           </div>
         </div>
 
-        <div
-          className={cn(
-            "relative mt-4 grid gap-3",
-            canUpdateEstimate || canLeaveRideFromHero
-              ? "grid-cols-[minmax(112px,0.86fr)_minmax(0,1.14fr)] max-[360px]:grid-cols-1"
-              : showInlineJoinRide
-                ? "grid-cols-[minmax(0,1fr)_minmax(124px,0.86fr)] max-[340px]:grid-cols-1"
-                : "grid-cols-1",
-          )}
-        >
+        {currentUserCancelledHosting ? null : (
+          <div
+            className={cn(
+              "relative mt-4 grid gap-3",
+              canUpdateEstimate || canLeaveRideFromHero
+                ? "grid-cols-[minmax(112px,0.86fr)_minmax(0,1.14fr)] max-[360px]:grid-cols-1"
+                : showInlineJoinRide
+                  ? "grid-cols-[minmax(0,1fr)_minmax(124px,0.86fr)] max-[340px]:grid-cols-1"
+                  : "grid-cols-1",
+            )}
+          >
           {summaryUserIsHost ? (
             <button
               type="button"
@@ -4901,10 +4980,24 @@ function SelfSettlePodSummaryHero({
               </span>
             </button>
           ) : null}
-        </div>
+          </div>
+        )}
       </div>
 
-      {canUpdateEstimate || canLeaveRideFromHero || showInlineJoinRide ? null : canJoinRide ? (
+      {currentUserCancelledHosting ? (
+        <div
+          role="status"
+          className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-4 rounded-[22px] border border-[var(--rp-primary)]/60 bg-[linear-gradient(90deg,rgba(242,193,91,0.16),rgba(3,10,18,0.94))] p-4 shadow-[0_16px_42px_rgba(0,0,0,0.28)]"
+        >
+          <span className="grid h-14 w-14 place-items-center rounded-full border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)]">
+            <UsersRound className="h-7 w-7" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-base font-black text-white">{statusTitle}</span>
+            <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">{statusSubtitle}</span>
+          </span>
+        </div>
+      ) : canUpdateEstimate || canLeaveRideFromHero || showInlineJoinRide ? null : canJoinRide ? (
         <button
           type="button"
           onClick={onJoinRide}
@@ -5668,6 +5761,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
   const showSelfSettleHost = selfSettlePod && getCurrentUserIsHost(ride);
   const showPreJoinRideAppLayout = selfSettlePod && (showSelfSettleJoin || hasConditionalStopJoinStatus) && !showSelfSettleHost;
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
+  const currentUserCancelledHosting = selfSettlePod && isCurrentUserFormerHost(ride);
   const hostCancellationAllowsHostControls = hostCancellationStatus === "active";
   const canUpdateRideAppEstimate = selfSettlePod && showSelfSettleHost && hostCancellationAllowsHostControls;
   const rideAppConfirmedRiderCount = getRideAppConfirmedReplacementRiders(ride).length;
@@ -5694,7 +5788,9 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     (currentUserStopJoinIntentStatus === "stop_request_pending" || currentUserStopJoinIntentStatus === "stop_request_approved") &&
     seatsUsed >= ride.seatsTotal;
   const showHostCancellationModal = hostCancellationModalContext !== null;
+  const hostCancellationHasJoinedRiders = (hostCancellationModalContext?.joinedRiderCount ?? 0) > 0;
   const hostCancellationHasConfirmedRiders = (hostCancellationModalContext?.confirmedRiderCount ?? 0) > 0;
+  const hostCancellationDeletesEmptyPod = !hostCancellationHasJoinedRiders;
   const hostCancellationReasons = hostCancellationHasConfirmedRiders
     ? afterConfirmationCancellationReasons
     : beforeConfirmationCancellationReasons;
@@ -5727,6 +5823,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     dedupe?: boolean;
     delivery?: NotifyPodAudienceInput["delivery"];
     metadata?: Record<string, unknown>;
+    fallbackRecipientUserIds?: string[];
   }) {
     if (!user || !isRideAppSelfSettlePod(ride)) return;
 
@@ -5751,12 +5848,14 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
           },
           dedupe: input.dedupe,
           delivery: input.delivery,
-          fallbackRecipientUserIds: Array.from(
-            new Set([
-              ...(target.hostUserId ? [target.hostUserId] : []),
-              ...target.activeMemberUserIds,
-            ]),
-          ),
+          fallbackRecipientUserIds:
+            input.fallbackRecipientUserIds ??
+            Array.from(
+              new Set([
+                ...(target.hostUserId ? [target.hostUserId] : []),
+                ...target.activeMemberUserIds,
+              ]),
+            ),
         }),
       )
       .catch((error) => {
@@ -6092,23 +6191,58 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
   function confirmHostCancellation() {
     if (!showHostCancellationModal) return;
 
-    const patch = buildHostCancelledRidePatch(ride, detailActorName, hostCancellationReason);
+    const replacementDeadlineLabel = ride.confirmationDeadlineLabel
+      ? `Before ${ride.confirmationDeadlineLabel}`
+      : "Before confirm-by time";
+    const patch: Partial<HomeRide> = hostCancellationDeletesEmptyPod
+      ? buildHostCancelledRidePatch(ride, detailActorName, hostCancellationReason)
+      : {
+          rideAppHostCancellationStatus: "host_replacement_needed",
+          rideAppHostCancellationReason: hostCancellationReason,
+          rideAppReplacementBookerId: null,
+          rideAppReplacementBookerName: null,
+          rideAppReplacementDeadlineLabel: replacementDeadlineLabel,
+          rideAppFeeResolution: hostCancellationHasConfirmedRiders ? "review_needed" : "not_confirmed",
+          rideAppHostCancellationActivity: [
+            `${detailActorName} cancelled hosting this ride.`,
+            "Remaining riders were invited to take over as host.",
+          ],
+          seatsUsed: Math.max(0, ride.seatsUsed - 1),
+          riderConfirmations: ride.riderConfirmations?.map((rider) =>
+            rider.role === "host" ? { ...rider, status: "left" } : rider,
+          ),
+        };
 
     applyRideActionPatch(patch);
-    notifyRideDetailAction({
-      type: "ride_app_host_cancelled",
-      audiences: ["actor", "riders"],
-      title: "Ride cancelled by host",
-      body: `Your ride from ${ride.fromLabel} to ${ride.toLabel} on ${ride.dateLabel} was cancelled.`,
-      selfTitle: "Ride cancelled",
-      selfBody: "All riders have been notified.",
-      action: "host_cancelled",
-      dedupe: false,
-      metadata: {
-        cancellationReason: hostCancellationReason,
-        cancelledAt: patch.cancelledAt ?? null,
-      },
-    });
+    if (hostCancellationDeletesEmptyPod) {
+      notifyRideDetailAction({
+        type: "ride_app_host_cancelled",
+        audiences: ["actor"],
+        title: "Ride cancelled",
+        selfTitle: "You cancelled this ride",
+        selfBody: "This ride is closed and no longer accepts riders.",
+        action: "host_cancelled",
+        dedupe: false,
+        metadata: {
+          cancellationReason: hostCancellationReason,
+          cancelledAt: patch.cancelledAt ?? null,
+        },
+      });
+    } else {
+      notifyRideDetailAction({
+        type: "ride_app_host_cancelled",
+        audiences: ["riders"],
+        title: "Become the new host?",
+        body: `${detailActorName} cancelled hosting ${detailRouteTitle}. Take over as host to keep the ride going.`,
+        action: "host_replacement_needed",
+        relatedUrl: `/pods/${ride.id}/status?action=become-host`,
+        dedupe: false,
+        fallbackRecipientUserIds: getLocalFallbackRiderUserIds(ride),
+        metadata: {
+          cancellationReason: hostCancellationReason,
+        },
+      });
+    }
     closeHostCancellationModal();
     setShowManagePodActionsModal(false);
   }
@@ -6480,15 +6614,16 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
             />
           ) : null}
 
-          <DetailShell
-            className={cn(
-              showPreJoinRideAppLayout
-                ? "overflow-hidden border-cyan-100/18 bg-[linear-gradient(180deg,rgba(8,17,29,0.96),rgba(5,13,23,0.98))] p-0 shadow-[0_18px_48px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.05)]"
-                : activeDetailTab === "trip"
-                  ? "border-0 bg-transparent p-0 shadow-none"
-                  : undefined,
-            )}
-          >
+          {currentUserCancelledHosting ? null : (
+            <DetailShell
+              className={cn(
+                showPreJoinRideAppLayout
+                  ? "overflow-hidden border-cyan-100/18 bg-[linear-gradient(180deg,rgba(8,17,29,0.96),rgba(5,13,23,0.98))] p-0 shadow-[0_18px_48px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.05)]"
+                  : activeDetailTab === "trip"
+                    ? "border-0 bg-transparent p-0 shadow-none"
+                    : undefined,
+              )}
+            >
             <div>
                 <DetailSwitch
                   value={activeDetailTab}
@@ -6589,7 +6724,8 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                 </div>
               </div>
             )}
-          </DetailShell>
+            </DetailShell>
+          )}
 
           {!selfSettlePod ? (
             <PickupReadyCards
@@ -6698,10 +6834,21 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                   Cancel this ride?
                 </h2>
                 <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                  Everyone will be notified and this ride will no longer accept riders.
+                  {hostCancellationDeletesEmptyPod
+                    ? "This ride will close and no longer accept riders."
+                    : "Your seat will be released. Riders will be notified and invited to take over as host."}
                 </p>
               </div>
             </div>
+
+            {hostCancellationHasJoinedRiders ? (
+              <div className="mt-4 rounded-[16px] border border-cyan-300/30 bg-cyan-300/8 p-3">
+                <p className="text-sm font-black text-white">Cancel hosting</p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+                  The ride stays active while another rider decides whether to host. You cannot rejoin after cancelling.
+                </p>
+              </div>
+            ) : null}
 
             <fieldset className="mt-4 grid gap-2">
               <legend className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Reason</legend>
@@ -6729,7 +6876,9 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
             </fieldset>
 
             <p className="mt-4 rounded-[16px] border border-cyan-300/25 bg-cyan-300/8 px-3 py-3 text-xs font-semibold leading-5 text-cyan-100">
-              This keeps the ride in My Rides for history, closes pending requests, releases seats, and blocks new joins.
+              {hostCancellationDeletesEmptyPod
+                ? "This keeps the ride in My Rides for history, closes pending requests, releases seats, and blocks new joins."
+                : "Your seat will be released. The ride remains available while another rider decides whether to host."}
             </p>
 
             <div className="mt-5 grid grid-cols-2 gap-3">
@@ -6745,7 +6894,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                 onClick={confirmHostCancellation}
                 className="min-h-12 rounded-[16px] border border-rose-300/45 bg-rose-500/16 px-4 text-sm font-black text-rose-100 transition hover:bg-rose-500/24"
               >
-                Cancel Ride
+                {hostCancellationDeletesEmptyPod ? "Cancel Ride" : "Cancel hosting"}
               </button>
             </div>
           </section>
