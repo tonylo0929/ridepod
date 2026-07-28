@@ -991,7 +991,7 @@ function MapLocationAdjuster({
         <span />
       </div>
 
-      <div className="relative h-[46vh] min-h-[280px] border-b border-white/10 bg-[#06111d]">
+      <div className="relative h-[30dvh] min-h-[190px] max-h-[250px] border-b border-white/10 bg-[#06111d] sm:h-[40vh] sm:min-h-[260px] sm:max-h-none">
         <div ref={mapContainerRef} className="absolute inset-0" />
         <div className="pointer-events-none absolute left-1/2 top-1/2 grid h-14 w-14 -translate-x-1/2 -translate-y-full place-items-center rounded-full border border-[#56d9ef]/35 bg-[#092435]/85 text-[#56d9ef] shadow-[0_0_34px_rgba(86,217,239,0.38)] backdrop-blur">
           <MapPin className="h-8 w-8 fill-[#56d9ef]/20 stroke-[2.4]" />
@@ -1013,7 +1013,7 @@ function MapLocationAdjuster({
         ) : null}
       </div>
 
-      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-5 py-5">
+      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-5 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-5">
         <div className="rounded-[22px] border border-white/10 bg-[#101c29] p-4 shadow-[0_20px_44px_rgba(0,0,0,0.28)]">
           <div className="flex items-start gap-3">
             <span className="mt-1 grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[#56d9ef]/25 bg-[#0b2a38] text-[#56d9ef]">
@@ -1380,8 +1380,8 @@ export function LocationPicker({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex justify-center bg-[#020912] text-[#f8fafc]">
-      <div className="flex h-full w-full max-w-[520px] flex-col bg-[#06111d] shadow-[0_0_70px_rgba(0,0,0,0.5)]">
+    <div className="fixed inset-0 z-[180] flex h-[100dvh] justify-center bg-[#020912] text-[#f8fafc]">
+      <div className="flex h-[100dvh] w-full max-w-[520px] flex-col bg-[#06111d] shadow-[0_0_70px_rgba(0,0,0,0.5)]">
         <LocationPickerTopBar onClose={onClose} />
         {phase === "map" && candidateLocation ? (
           <MapLocationAdjuster
