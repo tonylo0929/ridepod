@@ -3,7 +3,20 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Bell, CheckCheck, CircleAlert, Clock3, MessageCircle, Trash2 } from "lucide-react";
+import {
+  Bell,
+  CalendarDays,
+  CheckCheck,
+  CheckCircle2,
+  CircleAlert,
+  Clock3,
+  Info,
+  MapPin,
+  MessageCircle,
+  Trash2,
+  XCircle,
+  type LucideIcon,
+} from "lucide-react";
 import { cn } from "@/components/ui";
 import {
   clearNotification,
@@ -372,6 +385,142 @@ function formatRideTime(ride: HomeRide) {
   return `${ride.dateLabel} - ${ride.timeLabel}`;
 }
 
+type NotificationVisualTone = "success" | "danger" | "warning" | "info";
+
+type NotificationPresentation = {
+  actionLabel: string;
+  stateLabel: string;
+  summary: string;
+  tone: NotificationVisualTone;
+  Icon: LucideIcon;
+};
+
+function getNotificationPresentation(notification: RidePodUserNotificationRow): NotificationPresentation {
+  const title = notification.title.toLowerCase();
+
+  if (notification.type === "attendance_cancelled" || title.includes("cancelled") || title.includes("canceled")) {
+    return {
+      actionLabel: "Ride cancelled",
+      stateLabel: "Not going",
+      summary: "This ride is no longer active for you.",
+      tone: "danger",
+      Icon: XCircle,
+    };
+  }
+
+  if (notification.type === "pod_joined" || title.includes("joined")) {
+    return {
+      actionLabel: "Joined",
+      stateLabel: "In your rides",
+      summary: "You are now part of this ride.",
+      tone: "success",
+      Icon: CheckCircle2,
+    };
+  }
+
+  if (notification.type === "pod_join_approved") {
+    return {
+      actionLabel: "Approved",
+      stateLabel: "Ready to ride",
+      summary: "Your request was approved.",
+      tone: "success",
+      Icon: CheckCircle2,
+    };
+  }
+
+  if (notification.type === "pod_join_declined") {
+    return {
+      actionLabel: "Request declined",
+      stateLabel: "Not joined",
+      summary: "This ride did not accept your request.",
+      tone: "danger",
+      Icon: XCircle,
+    };
+  }
+
+  if (notification.type === "attendance_changed" || title.includes("changed") || title.includes("updated")) {
+    return {
+      actionLabel: "Ride changed",
+      stateLabel: "Review details",
+      summary: "Something important changed for this ride.",
+      tone: "warning",
+      Icon: CircleAlert,
+    };
+  }
+
+  return {
+    actionLabel: "Ride update",
+    stateLabel: "New info",
+    summary: "Open this update to review the ride details.",
+    tone: "info",
+    Icon: Info,
+  };
+}
+
+function getToneClasses(tone: NotificationVisualTone) {
+  switch (tone) {
+    case "success":
+      return {
+        card: "border-emerald-300/38 bg-[linear-gradient(145deg,rgba(8,24,22,0.98),rgba(5,15,24,0.98))]",
+        icon: "border-emerald-300/24 bg-emerald-300/12 text-emerald-200",
+        badge: "border-emerald-300/34 bg-emerald-300/14 text-emerald-100",
+        rail: "bg-emerald-300",
+      };
+    case "danger":
+      return {
+        card: "border-rose-300/34 bg-[linear-gradient(145deg,rgba(29,12,17,0.96),rgba(5,15,24,0.98))]",
+        icon: "border-rose-300/24 bg-rose-300/12 text-rose-100",
+        badge: "border-rose-300/34 bg-rose-300/14 text-rose-100",
+        rail: "bg-rose-300",
+      };
+    case "warning":
+      return {
+        card: "border-[var(--rp-primary)]/38 bg-[linear-gradient(145deg,rgba(35,25,7,0.88),rgba(5,15,24,0.98))]",
+        icon: "border-[var(--rp-primary)]/30 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]",
+        badge: "border-[var(--rp-primary)]/42 bg-[var(--rp-primary)]/16 text-[var(--rp-primary)]",
+        rail: "bg-[var(--rp-primary)]",
+      };
+    default:
+      return {
+        card: "border-sky-300/30 bg-[linear-gradient(145deg,rgba(7,22,32,0.96),rgba(5,15,24,0.98))]",
+        icon: "border-sky-300/22 bg-sky-300/12 text-sky-100",
+        badge: "border-sky-300/30 bg-sky-300/14 text-sky-100",
+        rail: "bg-sky-300",
+      };
+  }
+}
+
+function notificationMetadataRecord(notification: RidePodUserNotificationRow) {
+  const metadata = notification.metadata;
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return {};
+  return metadata as Record<string, unknown>;
+}
+
+function metadataString(metadata: Record<string, unknown>, key: string) {
+  const value = metadata[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function getNotificationRideSummary(notification: RidePodUserNotificationRow, relatedRide?: HomeRide | null) {
+  if (relatedRide) {
+    return {
+      route: formatRideRoute(relatedRide),
+      time: formatRideTime(relatedRide),
+    };
+  }
+
+  const metadata = notificationMetadataRecord(notification);
+  const route = metadataString(metadata, "route");
+  const time = metadataString(metadata, "rideTime") ?? metadataString(metadata, "time");
+
+  if (!route && !time) return null;
+
+  return {
+    route: route ?? "Ride route",
+    time: time ?? "Time not set",
+  };
+}
+
 function NotificationCard({
   notification,
   relatedRide,
@@ -386,27 +535,41 @@ function NotificationCard({
   const unread = !notification.read_at;
   const displayBody = notification.type === "demo_ride_app_estimate_needed" ? null : notification.body;
   const viewStatusLabel = unread ? "Not viewed" : "Viewed";
+  const presentation = getNotificationPresentation(notification);
+  const toneClasses = getToneClasses(presentation.tone);
+  const rideSummary = getNotificationRideSummary(notification, relatedRide);
+  const Icon = presentation.Icon;
 
   return (
     <article
       className={cn(
-        "grid w-full grid-cols-[auto_1fr_auto] items-start gap-3 rounded-[20px] border bg-[var(--rp-card)] p-4 text-left shadow-[var(--rp-shadow-soft)]",
-        unread ? "border-[var(--rp-border-strong)]" : "border-[var(--rp-border)] opacity-80",
+        "relative grid w-full grid-cols-[auto_1fr] gap-3 overflow-hidden rounded-[22px] border p-4 text-left shadow-[var(--rp-shadow-soft)] min-[560px]:grid-cols-[auto_1fr_auto]",
+        toneClasses.card,
+        !unread && "opacity-80",
       )}
     >
-      <span className="mt-1 grid h-11 w-11 place-items-center rounded-2xl bg-[var(--rp-card-soft)] text-[var(--rp-primary)]">
-        <Bell className="h-5 w-5" />
+      <span aria-hidden="true" className={cn("absolute inset-y-4 left-0 w-1 rounded-r-full", toneClasses.rail)} />
+      <span className={cn("mt-1 grid h-12 w-12 place-items-center rounded-[18px] border", toneClasses.icon)}>
+        <Icon className="h-5 w-5" />
       </span>
       <span className="min-w-0">
         <button type="button" onClick={onOpen} className="block w-full text-left">
-          <span className="block text-base font-black text-[var(--rp-text)]">{notification.title}</span>
+          <span className="flex flex-wrap items-center gap-2">
+            <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em]", toneClasses.badge)}>
+              {presentation.actionLabel}
+            </span>
+            <span className="text-xs font-black text-[var(--rp-muted)]">{timeAgo(notification.created_at)}</span>
+          </span>
+          <span className="mt-2 block text-lg font-black leading-tight text-[var(--rp-text)]">{notification.title}</span>
         </button>
         {displayBody ? (
-          <span className="mt-1 block text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">{displayBody}</span>
+          <span className="mt-1 block text-sm font-black leading-5 text-[var(--rp-text)]">{displayBody}</span>
         ) : null}
+        <span className="mt-2 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">
+          {presentation.summary}
+        </span>
       </span>
-      <span className="flex shrink-0 flex-col items-end gap-2">
-        <span className="whitespace-nowrap text-xs font-bold text-[var(--rp-muted)]">{timeAgo(notification.created_at)}</span>
+      <span className="col-span-2 flex flex-wrap items-center gap-2 min-[560px]:col-span-1 min-[560px]:flex-col min-[560px]:items-end">
         <span
           className={cn(
             "rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em]",
@@ -417,6 +580,9 @@ function NotificationCard({
         >
           {viewStatusLabel}
         </span>
+        <span className={cn("rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em]", toneClasses.badge)}>
+          {presentation.stateLabel}
+        </span>
         <button
           type="button"
           onClick={onClear}
@@ -426,12 +592,12 @@ function NotificationCard({
           Clear
         </button>
       </span>
-      {relatedRide ? (
-        <button type="button" onClick={onOpen} className="col-span-3 text-left">
-          <NotificationRouteGraphic ride={relatedRide} />
+      {rideSummary ? (
+        <button type="button" onClick={onOpen} className="col-span-2 text-left min-[560px]:col-span-3">
+          <NotificationRouteGraphic route={rideSummary.route} time={rideSummary.time} />
         </button>
       ) : notification.related_pod_id ? (
-        <button type="button" onClick={onOpen} className="col-span-3 text-left text-xs font-black text-[var(--rp-primary)]">
+        <button type="button" onClick={onOpen} className="col-span-2 text-left text-xs font-black text-[var(--rp-primary)] min-[560px]:col-span-3">
           Pod {notification.related_pod_id}
         </button>
       ) : null}
@@ -454,6 +620,7 @@ function PodActionCard({
   const displayBody = notification.type === "demo_ride_app_estimate_needed" ? null : notification.body;
   const titleClassName =
     notification.type === "demo_ride_app_estimate_needed" ? "text-[var(--rp-primary)]" : "text-[var(--rp-text)]";
+  const rideSummary = getNotificationRideSummary(notification, relatedRide);
 
   return (
     <article
@@ -484,9 +651,9 @@ function PodActionCard({
           Clear
         </button>
       </span>
-      {relatedRide ? (
+      {rideSummary ? (
         <button type="button" onClick={onOpen} className="col-span-3 text-left">
-          <NotificationRouteGraphic ride={relatedRide} />
+          <NotificationRouteGraphic route={rideSummary.route} time={rideSummary.time} />
         </button>
       ) : notification.related_pod_id ? (
         <button type="button" onClick={onOpen} className="col-span-3 text-left text-xs font-black text-[var(--rp-primary)]">
@@ -497,14 +664,26 @@ function PodActionCard({
   );
 }
 
-function NotificationRouteGraphic({ ride }: { ride: HomeRide }) {
+function NotificationRouteGraphic({ route, time }: { route: string; time: string }) {
   return (
-    <span className="block rounded-[18px] border border-[var(--rp-primary)]/25 bg-[var(--rp-card-soft)] px-4 py-3">
-      <span className="block truncate text-base font-black leading-5 text-[var(--rp-text)]">
-        {ride.fromLabel} {"->"} {ride.toLabel}
+    <span className="grid gap-2 rounded-[18px] border border-white/12 bg-[#13202a]/88 px-4 py-3 min-[520px]:grid-cols-[minmax(0,1.35fr)_minmax(150px,0.65fr)]">
+      <span className="min-w-0">
+        <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-muted)]">
+          <MapPin className="h-3.5 w-3.5" />
+          Route
+        </span>
+        <span className="mt-1 block truncate text-base font-black leading-5 text-[var(--rp-text)]">
+          {route}
+        </span>
       </span>
-      <span className="mt-2 block border-t border-white/10 pt-2 text-xs font-bold text-[var(--rp-muted-strong)]">
-        {formatRideTime(ride)}
+      <span className="min-w-0 border-t border-white/10 pt-2 min-[520px]:border-l min-[520px]:border-t-0 min-[520px]:pl-3 min-[520px]:pt-0">
+        <span className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--rp-muted)]">
+          <CalendarDays className="h-3.5 w-3.5" />
+          When
+        </span>
+        <span className="mt-1 block truncate text-sm font-black leading-5 text-[var(--rp-text)]">
+          {time}
+        </span>
       </span>
     </span>
   );
