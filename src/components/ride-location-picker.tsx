@@ -17,6 +17,8 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { HomeMenuDrawer } from "@/components/home-menu-drawer";
+import { RidePodLogo } from "@/components/ridepod-logo";
 import {
   resolveHongKongDistrictFromAddressComponents,
   resolveHongKongDistrictFromText,
@@ -1057,6 +1059,30 @@ function MapLocationAdjuster({
   );
 }
 
+function LocationPickerTopBar({ onClose }: { onClose: () => void }) {
+  return (
+    <header className="border-b border-white/10 bg-[#06111d]/95 px-4 py-3 shadow-[0_12px_28px_rgba(0,0,0,0.18)] backdrop-blur-xl">
+      <div className="grid grid-cols-[56px_1fr_56px] items-center gap-3">
+        <HomeMenuDrawer />
+        <div className="inline-flex items-center justify-center gap-1.5 justify-self-center">
+          <RidePodLogo className="h-8 w-[136px] justify-center min-[390px]:w-[158px]" imageClassName="h-full w-full" priority />
+          <span className="rounded-full border border-white/15 bg-[#101c29] px-2 py-0.5 text-[10px] font-black tracking-[0.08em] text-[#f6c453]">
+            v1.0
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close location picker"
+          className="grid h-12 w-12 justify-self-end place-items-center rounded-[20px] border border-white/10 bg-[#101c29] text-slate-200 shadow-[0_12px_28px_rgba(0,0,0,0.2)] transition hover:bg-[#172536]"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+    </header>
+  );
+}
+
 export function LocationPicker({
   mode,
   value,
@@ -1329,8 +1355,9 @@ export function LocationPicker({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[80] flex justify-center bg-[#020912] text-[#f8fafc]">
+    <div className="fixed inset-0 z-[70] flex justify-center bg-[#020912] text-[#f8fafc]">
       <div className="flex h-full w-full max-w-[520px] flex-col bg-[#06111d] shadow-[0_0_70px_rgba(0,0,0,0.5)]">
+        <LocationPickerTopBar onClose={onClose} />
         {phase === "map" && candidateLocation ? (
           <MapLocationAdjuster
             key={`${candidateLocation.placeId ?? "pin"}-${candidateLocation.latitude}-${candidateLocation.longitude}`}
@@ -1344,20 +1371,9 @@ export function LocationPicker({
           />
         ) : (
           <>
-            <div className="grid grid-cols-[44px_1fr_44px] items-center gap-2 border-b border-white/10 px-4 py-3">
-              <button
-                type="button"
-                onClick={onClose}
-                aria-label="Close location picker"
-                className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-[#101c29] text-slate-200 transition hover:bg-[#172536]"
-              >
-                <X className="h-5 w-5" />
-              </button>
-              <div className="min-w-0 text-center">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#56d9ef]">Ride location</p>
-                <h2 className="truncate text-lg font-black text-[#f8fafc]">{getLocationTitle(mode)}</h2>
-              </div>
-              <span />
+            <div className="border-b border-white/10 px-4 py-3 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-[#56d9ef]">Ride location</p>
+              <h2 className="truncate text-lg font-black text-[#f8fafc]">{getLocationTitle(mode)}</h2>
             </div>
 
             <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-5 py-5">
