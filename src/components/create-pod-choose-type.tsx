@@ -85,7 +85,7 @@ import type { HomeRide } from "@/lib/home-ride-mock";
 import type { RideLocation } from "@/lib/ride-location-types";
 
 type PodType = "scheduled" | "airport" | "recurring";
-type CreateStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+type CreateStep = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 type AirportDirection = "to_airport" | "from_airport";
 type AirportDetailsSlice = "direction" | "flight" | "luggage";
 type AirportLuggageState = {
@@ -217,10 +217,11 @@ type TaxiTypeId =
   | "comfort"
   | "accessible";
 
-const baseCreateSteps = ["People & Vehicle", "Choose Type", "Route & Stops", "Estimated Cost", "Date & Time", "Review", "Success"];
+const baseCreateSteps = ["Total Rider", "Ride Mode", "Trip Type", "Route & Stops", "Estimated Cost", "Date & Time", "Review", "Success"];
 const rideAppCreateSteps = [
-  "People & Vehicle",
-  "Choose Type",
+  "Total Rider",
+  "Ride Mode",
+  "Trip Type",
   "Route & Stops",
   "Estimated Cost",
   "Date & Time",
@@ -230,8 +231,9 @@ const rideAppCreateSteps = [
   "Success",
 ];
 const airportCreateSteps = [
-  "People & Vehicle",
-  "Choose Type",
+  "Total Rider",
+  "Ride Mode",
+  "Trip Type",
   "Airport Details",
   "Route & Stops",
   "Estimated Cost",
@@ -240,8 +242,9 @@ const airportCreateSteps = [
   "Success",
 ];
 const airportRideAppCreateSteps = [
-  "People & Vehicle",
-  "Choose Type",
+  "Total Rider",
+  "Ride Mode",
+  "Trip Type",
   "Airport Details",
   "Route & Stops",
   "Estimated Cost",
@@ -2510,6 +2513,16 @@ function RouteStopsStep({
         {isPickupPanel ? (
           <>
             <section className="mt-6 grid gap-4">
+              <RouteJourneyPreview
+                pickupAddress={pickupAddress}
+                dropoffAddress={dropoffAddress}
+                pickupLocation={pickupLocation}
+                dropoffLocation={dropoffLocation}
+                stops={[]}
+                pickupLabel={pickupFieldLabel}
+                dropoffLabel={dropoffFieldLabel}
+              />
+
               <div className="grid gap-3">
                 <RouteLocationCard
                   label={pickupDetailLabel}
@@ -3691,17 +3704,24 @@ function EstimatedCostStep({
 function SeatCounter({
   value,
   onChange,
+  showHeading = true,
 }: {
   value: number;
   onChange: (value: number) => void;
+  showHeading?: boolean;
 }) {
   const minSeats = 2;
   const maxSeats = 6;
 
   return (
     <section>
-      <h2 className="text-[17px] font-black leading-6 text-[var(--rp-text)]">Total rider</h2>
-      <div className="mt-4 rounded-[22px] border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_40px_rgba(0,0,0,0.22)]">
+      {showHeading ? (
+        <h2 className="text-[17px] font-black leading-6 text-[var(--rp-text)]">Total rider</h2>
+      ) : null}
+      <div className={cn(
+        "rounded-[22px] border border-white/18 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_18px_40px_rgba(0,0,0,0.22)]",
+        showHeading && "mt-4",
+      )}>
         <div className="grid grid-cols-[52px_1fr_52px] items-center gap-3">
           <button
             type="button"
@@ -4078,7 +4098,7 @@ function RideOptionSelector({
   }, [onChange, selectedRideOption]);
 
   return (
-    <section className="mt-9">
+    <section>
       <h2 className="text-[19px] font-black leading-6 text-[var(--rp-text)]">Ride Mode</h2>
       <div className="mt-5 grid gap-4" role="radiogroup" aria-label="Ride Mode">
         {rideCategories.map((category) => (
@@ -5211,6 +5231,61 @@ function VehicleDarkPanel({ variant = "default" }: { variant?: "default" | "taxi
         </>
       )}
     </aside>
+  );
+}
+
+function TotalRiderStep({
+  podType,
+  peopleVehicle,
+  onPeopleVehicleChange,
+  onContinue,
+  currentStep = 0,
+  stepLabels = baseCreateSteps,
+}: {
+  podType: PodType;
+  peopleVehicle: PeopleVehicleState;
+  onPeopleVehicleChange: (peopleVehicle: PeopleVehicleState) => void;
+  onContinue: () => void;
+  currentStep?: CreateStep;
+  stepLabels?: string[];
+}) {
+  return (
+    <>
+      <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
+
+      <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-10 pt-8">
+        <section className="flex min-h-0 flex-1 flex-col">
+          <div className="text-center">
+            <ScheduleTypeEyebrow podType={podType} />
+            <h1 className="mx-auto mt-5 max-w-[300px] text-[31px] font-black leading-[1.08] text-[var(--rp-text)]">
+              Total rider
+            </h1>
+            <p className="mx-auto mt-3 max-w-[270px] text-base font-medium leading-6 text-[var(--rp-muted)]">
+              Count everyone in the car, including the host.
+            </p>
+          </div>
+
+          <div className="mt-9">
+            <SeatCounter
+              value={peopleVehicle.seatsAvailable}
+              showHeading={false}
+              onChange={(seatsAvailable) =>
+                onPeopleVehicleChange({ ...peopleVehicle, seatsAvailable })
+              }
+            />
+          </div>
+
+          <div className="mt-auto pt-8">
+            <CreatePodStepActions
+              onBack={() => undefined}
+              onContinue={onContinue}
+              showBack={false}
+              continueIcon={<ArrowRight className="h-6 w-6" />}
+            />
+          </div>
+        </section>
+      </main>
+    </>
   );
 }
 
