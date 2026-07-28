@@ -1472,7 +1472,7 @@ function StartingAreaSection({ areas }: { areas: typeof startingAreaSummaries })
                 <span className="min-w-0">
                   <span className="block text-[clamp(15px,3.8vw,16px)] font-extrabold leading-[1.15] tracking-[-0.015em] text-[var(--rp-text)]">{area.name}</span>
                   <span className="mt-1 block text-[clamp(11px,3vw,12px)] font-bold leading-[1.2] text-[#65e6d0]">
-                    {area.rideCount} upcoming rides
+                    {area.rideCount} upcoming {area.rideCount === 1 ? "ride" : "rides"}
                   </span>
                 </span>
               </span>

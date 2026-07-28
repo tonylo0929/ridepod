@@ -70,12 +70,12 @@ export const startingAreaSummaries: StartingAreaSummary[] = [
     queryValue: "tai-po",
   },
   {
-    id: "airport",
-    name: "Airport",
-    rideCount: 6,
-    icon: "airport",
+    id: "mong-kok",
+    name: "Mong Kok",
+    rideCount: 9,
+    icon: "building",
     accentClassName: "from-[#ffe8c6] to-[#f6d7ad] text-[#14100b]",
-    queryValue: "airport",
+    queryValue: "mong-kok",
   },
 ];
 
