@@ -5,10 +5,14 @@ import { useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
   Building2,
+  CalendarDays,
+  CarFront,
   ChevronRight,
+  Clock3,
   Landmark,
   MapPin,
   Plane,
+  RefreshCcw,
   Search,
   UsersRound,
 } from "lucide-react";
@@ -88,6 +92,93 @@ function countRidesForArea(rides: HomeRide[], areaName: string, side: "from" | "
   return rides.filter((ride) => rideAreaMatches(ride, areaName, side)).length;
 }
 
+function selectedAreaMatchesText(selectedLabel: string, value: string) {
+  const selected = normalizeSearchText(selectedLabel);
+  const target = normalizeSearchText(value);
+  if (!selected || !target) return false;
+  if (target.includes(selected)) return true;
+
+  const meaningfulTokens = selected
+    .split(" ")
+    .filter((token) => token.length >= 4 && !["hong", "kong"].includes(token));
+
+  return meaningfulTokens.some((token) => target.includes(token));
+}
+
+function isAirportLabel(selectedLabel: string) {
+  const selected = normalizeSearchText(selectedLabel);
+  return selected.includes("airport") || selected.includes("hkia") || selected.includes("chek lap kok");
+}
+
+function sideMatchesSelectedArea({
+  ride,
+  selectedLabel,
+  selectedQuery,
+  side,
+  broadenToRegion = false,
+}: {
+  ride: HomeRide;
+  selectedLabel: string;
+  selectedQuery: string | null;
+  side: "from" | "to";
+  broadenToRegion?: boolean;
+}) {
+  if (!selectedLabel) return true;
+
+  const labels =
+    side === "from"
+      ? [ride.fromLabel, ride.fromDistrict, ride.pickupLabel]
+      : [ride.toLabel, ride.toDistrict, ride.dropoffLabel];
+
+  if (isAirportLabel(selectedLabel)) {
+    const haystack = normalizeSearchText(labels.filter(Boolean).join(" "));
+    return (
+      haystack.includes("airport") ||
+      haystack.includes("hkia") ||
+      (side === "from" && ride.airportDirection === "from_airport") ||
+      (side === "to" && ride.airportDirection === "to_airport")
+    );
+  }
+
+  if (labels.some((label) => selectedAreaMatchesText(selectedLabel, label ?? ""))) return true;
+
+  if (!broadenToRegion || !selectedQuery) return false;
+
+  const district = officialDistricts.find((area) => area.queryValue === selectedQuery || area.id === selectedQuery);
+  const regionDistrict =
+    district?.region === "hong-kong-island"
+      ? "Hong Kong Island"
+      : district?.region === "kowloon"
+        ? "Kowloon"
+        : district?.region === "new-territories"
+          ? "New Territories"
+          : null;
+
+  const rideDistrict = side === "from" ? ride.fromDistrict : ride.toDistrict;
+  return Boolean(regionDistrict && rideDistrict === regionDistrict);
+}
+
+function rideMatchesSelectedAreas({
+  ride,
+  fromLabel,
+  toLabel,
+  fromQuery,
+  toQuery,
+  broadenToRegion = false,
+}: {
+  ride: HomeRide;
+  fromLabel: string;
+  toLabel: string;
+  fromQuery: string | null;
+  toQuery: string | null;
+  broadenToRegion?: boolean;
+}) {
+  return (
+    sideMatchesSelectedArea({ ride, selectedLabel: fromLabel, selectedQuery: fromQuery, side: "from", broadenToRegion }) &&
+    sideMatchesSelectedArea({ ride, selectedLabel: toLabel, selectedQuery: toQuery, side: "to", broadenToRegion })
+  );
+}
+
 function RideExploreContent() {
   const searchParams = useSearchParams();
   const { user, profile } = useAuth();
@@ -100,6 +191,7 @@ function RideExploreContent() {
   const [activeRegion, setActiveRegion] = useState<DistrictRegionId>("all");
   const [searchValue, setSearchValue] = useState("");
   const normalizedSearch = normalizeSearchText(searchValue);
+  const hasSelectedArea = Boolean(fromQuery || toQuery);
   const referenceDate = useMemo(() => new Date(), []);
   const visibleRides = useMemo(() => {
     const demoRides = homeRides.map((ride) => applyRideAppDemoPersona(ride, { profile, user }));
@@ -159,8 +251,20 @@ function RideExploreContent() {
     [fromQuery, routeCards, toQuery],
   );
 
+  const matchingRideResults = useMemo(() => {
+    const directMatches = visibleRides.filter((ride) =>
+      rideMatchesSelectedAreas({ ride, fromLabel, toLabel, fromQuery, toQuery }),
+    );
+
+    if (directMatches.length) return directMatches;
+
+    return visibleRides.filter((ride) =>
+      rideMatchesSelectedAreas({ ride, fromLabel, toLabel, fromQuery, toQuery, broadenToRegion: true }),
+    );
+  }, [fromLabel, fromQuery, toLabel, toQuery, visibleRides]);
+
   const title = fromLabel && toLabel ? `${fromLabel} to ${toLabel}` : fromLabel ? `Rides from ${fromLabel}` : "Explore rides";
-  const subtitle = fromLabel ? "Choose where you're going" : "Search districts, hubs, and popular routes";
+  const subtitle = hasSelectedArea ? "Available scheduled, recurring, and airport rides" : "Search districts, hubs, and popular routes";
 
   return (
     <main className="mx-auto grid w-full max-w-[680px] gap-5 px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 lg:px-8">
@@ -195,32 +299,48 @@ function RideExploreContent() {
 
       <section aria-labelledby="matching-routes-title" className="grid gap-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 id="matching-routes-title" className="scroll-mt-24 text-lg font-black text-[var(--rp-text)]">Popular routes near you</h2>
+          <h2 id="matching-routes-title" className="scroll-mt-24 text-lg font-black text-[var(--rp-text)]">
+            {hasSelectedArea ? "Popular routes" : "Popular routes near you"}
+          </h2>
           <UsersRound className="h-5 w-5 text-[var(--rp-primary)]" />
         </div>
 
-        <div className="grid gap-2.5">
-          {(matchingRoutes.length ? matchingRoutes : routeCards).map((route) => (
-            <Link
-              key={route.id}
-              href={buildRideExploreHref({ from: route.fromQuery, to: route.toQuery })}
-              className="group grid min-h-[76px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-white/10 bg-[rgba(10,24,37,0.9)] px-3 py-3 transition hover:border-[var(--rp-primary)]/46 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-3 focus-visible:outline-[var(--rp-primary)]"
-            >
-              <span className="min-w-0">
-                <span className="flex min-w-0 items-center gap-2">
-                  <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", route.accentClassName)} />
-                  <span className="truncate text-sm font-black text-white">
-                    {route.from} <span className="text-[#65e6d0]">-&gt;</span> {route.to}
+        {hasSelectedArea ? (
+          <div className="grid gap-2.5">
+            {matchingRideResults.length ? (
+              matchingRideResults.map((ride) => <ExploreRideResultCard key={ride.id} ride={ride} />)
+            ) : (
+              <div className="rounded-[18px] border border-dashed border-white/12 bg-[rgba(10,24,37,0.72)] p-4 text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+                No rides match this district yet. Try another starting area or destination.
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="grid gap-2.5">
+            {(matchingRoutes.length ? matchingRoutes : routeCards).map((route) => (
+              <Link
+                key={route.id}
+                href={buildRideExploreHref({ from: route.fromQuery, to: route.toQuery })}
+                className="group grid min-h-[76px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-white/10 bg-[rgba(10,24,37,0.9)] px-3 py-3 transition hover:border-[var(--rp-primary)]/46 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-3 focus-visible:outline-[var(--rp-primary)]"
+              >
+                <span className="min-w-0">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", route.accentClassName)} />
+                    <span className="truncate text-sm font-black text-white">
+                      {route.from} <span className="text-[#65e6d0]">-&gt;</span> {route.to}
+                    </span>
                   </span>
+                  <span className="mt-1.5 block text-xs font-bold text-[var(--rp-muted-strong)]">{route.rideCount} rides</span>
                 </span>
-                <span className="mt-1.5 block text-xs font-bold text-[var(--rp-muted-strong)]">{route.rideCount} rides</span>
-              </span>
-              <ChevronRight className="h-4 w-4 text-white/46 transition group-hover:translate-x-0.5 group-hover:text-[var(--rp-primary)]" />
-            </Link>
-          ))}
-        </div>
+                <ChevronRight className="h-4 w-4 text-white/46 transition group-hover:translate-x-0.5 group-hover:text-[var(--rp-primary)]" />
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
+      {!hasSelectedArea ? (
+      <>
       <section aria-labelledby="districts-title" className="grid gap-3">
         <div>
           <h2 id="districts-title" className="scroll-mt-24 text-lg font-black text-[var(--rp-text)]">Browse all districts</h2>
@@ -304,7 +424,94 @@ function RideExploreContent() {
           </Link>
         ))}
       </section>
+      </>
+      ) : null}
     </main>
+  );
+}
+
+function getRideTypeLabel(ride: HomeRide) {
+  if (ride.airportDirection === "to_airport") return "To airport";
+  if (ride.airportDirection === "from_airport") return "From airport";
+  if (ride.rideKind === "recurring" || ride.is_recurring) return "Recurring";
+  return "Scheduled";
+}
+
+function ExploreRideResultCard({ ride }: { ride: HomeRide }) {
+  const seatsLeft = Math.max(0, ride.seatsTotal - ride.seatsUsed);
+  const seatLabel = `${seatsLeft} ${seatsLeft === 1 ? "seat" : "seats"} left`;
+  const isAirportRide = ride.rideKind === "airport" || Boolean(ride.airportDirection);
+  const isRecurringRide = ride.rideKind === "recurring" || ride.is_recurring;
+  const TypeIcon = isAirportRide ? Plane : isRecurringRide ? RefreshCcw : CarFront;
+  const typeLabel = getRideTypeLabel(ride);
+
+  return (
+    <Link
+      href={`/pods/${ride.id}`}
+      className={cn(
+        "group grid min-h-[96px] grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 rounded-[20px] border px-3 py-3 text-left shadow-[0_16px_34px_rgba(0,0,0,0.28)] transition min-[420px]:grid-cols-[54px_minmax(0,1fr)_auto] min-[420px]:px-4",
+        isAirportRide
+          ? "border-[#f6c453]/62 bg-[radial-gradient(circle_at_14%_18%,rgba(255,217,104,0.16),transparent_32%),linear-gradient(145deg,rgba(8,17,25,0.99),rgba(15,29,43,0.95))] hover:border-[#ffd968]"
+          : "border-[color-mix(in_srgb,var(--rp-primary)_52%,var(--rp-border))] bg-[linear-gradient(145deg,rgba(7,16,24,0.98),rgba(18,31,44,0.92))] hover:border-[var(--rp-primary)]",
+      )}
+    >
+      <span
+        className={cn(
+          "grid h-11 w-11 place-items-center rounded-full border shadow-[0_10px_22px_rgba(0,0,0,0.24)] min-[420px]:h-12 min-[420px]:w-12",
+          isAirportRide
+            ? "border-[#ffd968]/60 bg-[linear-gradient(180deg,rgba(255,217,104,0.24),rgba(246,196,83,0.10))] text-[#ffd968]"
+            : isRecurringRide
+              ? "border-emerald-200/55 bg-emerald-400/16 text-emerald-200"
+              : "border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)]",
+        )}
+        aria-label={typeLabel}
+      >
+        <TypeIcon className="h-5 w-5 stroke-[2.3]" />
+      </span>
+
+      <span className="min-w-0">
+        <span className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="truncate text-base font-black leading-5 text-white">
+            {ride.fromLabel} <span className="text-[var(--rp-primary)]">-&gt;</span> {ride.toLabel}
+          </span>
+          <span
+            className={cn(
+              "inline-flex min-h-6 shrink-0 items-center rounded-full border px-2 text-[10px] font-black uppercase tracking-[0.06em]",
+              isAirportRide
+                ? "border-[#ffd968]/42 bg-[#ffd968]/14 text-[#ffe7a3]"
+                : isRecurringRide
+                  ? "border-emerald-200/42 bg-emerald-400/14 text-emerald-100"
+                  : "border-[#65e6d0]/36 bg-[#65e6d0]/12 text-[#9ffce8]",
+            )}
+          >
+            {typeLabel}
+          </span>
+        </span>
+        <span className="mt-1.5 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-xs font-black text-[var(--rp-muted-strong)]">
+          <span className="inline-flex items-center gap-1">
+            <CalendarDays className="h-3.5 w-3.5" />
+            {ride.dateLabel}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <Clock3 className="h-3.5 w-3.5" />
+            {ride.timeLabel}
+          </span>
+        </span>
+        <span className="mt-2 flex items-center gap-2 text-sm font-black text-[#7dd3fc]">
+          <span className="grid h-6 min-w-6 place-items-center rounded-full bg-[#ffd968] px-1 text-[10px] text-[#07131c]">
+            {(ride.hostName ?? ride.currentUserName ?? "R").trim().charAt(0).toUpperCase()}
+          </span>
+          HK${ride.pricePerPerson} / seat
+        </span>
+      </span>
+
+      <span className="grid min-w-[92px] justify-items-end gap-2 border-l border-white/10 pl-3">
+        <span className="rounded-full border border-[#ffd968]/42 bg-[#ffd968]/12 px-3 py-2 text-xs font-black text-[#ffd968]">
+          {seatLabel}
+        </span>
+        <ChevronRight className="h-4 w-4 text-white/54 transition group-hover:translate-x-0.5 group-hover:text-[var(--rp-primary)]" />
+      </span>
+    </Link>
   );
 }
 
