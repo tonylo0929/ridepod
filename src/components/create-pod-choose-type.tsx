@@ -5289,19 +5289,16 @@ function TotalRiderStep({
   );
 }
 
-function PeopleVehicleStep({
+function RideModeStep({
   podType,
   peopleVehicle,
   genderMode,
   accessMode,
   taxiPartnerPreference,
-  stopRequestPolicy,
-  isAirportTrip,
   onPeopleVehicleChange,
   onGenderModeChange,
   onAccessModeChange,
   onTaxiPartnerPreferenceChange,
-  onStopRequestPolicyChange,
   onBack,
   onContinue,
   currentStep = 0,
@@ -5315,13 +5312,10 @@ function PeopleVehicleStep({
   genderMode: GenderMode;
   accessMode: AccessMode;
   taxiPartnerPreference: TaxiPartnerPreference;
-  stopRequestPolicy: StopRequestPolicy;
-  isAirportTrip: boolean;
   onPeopleVehicleChange: (peopleVehicle: PeopleVehicleState) => void;
   onGenderModeChange: (genderMode: GenderMode) => void;
   onAccessModeChange: (accessMode: AccessMode) => void;
   onTaxiPartnerPreferenceChange: (preference: TaxiPartnerPreference) => void;
-  onStopRequestPolicyChange: (value: StopRequestPolicy) => void;
   onBack: () => void;
   onContinue: () => void;
   currentStep?: CreateStep;
@@ -5569,32 +5563,24 @@ function PeopleVehicleStep({
                 onPeopleVehicleChange={onPeopleVehicleChange}
               />
             ) : (
-              <>
-                <SeatCounter
-                  value={peopleVehicle.seatsAvailable}
-                  onChange={(seatsAvailable) =>
-                    onPeopleVehicleChange({ ...peopleVehicle, seatsAvailable })
+              <RideOptionSelector
+                value={peopleVehicle.rideOption}
+                onChange={(rideOption) =>
+                  {
+                    setTaxiDetailsPage("category");
+                    setRideConfirmChecked(false);
+                    setConfirmedRideOption(null);
+                    onPeopleVehicleChange({
+                      ...peopleVehicle,
+                      rideOption,
+                      vehicleType:
+                        normalizeRideOptionId(rideOption) === "taxi_partner_quote"
+                          ? getTaxiTypeLabel(peopleVehicle.taxiType)
+                          : getRideOption(rideOption).title,
+                    });
                   }
-                />
-                <RideOptionSelector
-                  value={peopleVehicle.rideOption}
-                  onChange={(rideOption) =>
-                    {
-                      setTaxiDetailsPage("category");
-                      setRideConfirmChecked(false);
-                      setConfirmedRideOption(null);
-                      onPeopleVehicleChange({
-                        ...peopleVehicle,
-                        rideOption,
-                        vehicleType:
-                          normalizeRideOptionId(rideOption) === "taxi_partner_quote"
-                            ? getTaxiTypeLabel(peopleVehicle.taxiType)
-                            : getRideOption(rideOption).title,
-                      });
-                    }
-                  }
-                />
-              </>
+                }
+              />
             )}
           </div>
 
@@ -8025,13 +8011,15 @@ export function CreatePodChooseType() {
     : isRideAppSelfSettle
       ? rideAppCreateSteps
       : baseCreateSteps;
-  const routeStepIndex: CreateStep = isAirportPod ? 3 : 2;
-  const estimateCostStepIndex: CreateStep = isAirportPod ? 4 : 3;
-  const dateTimeStepIndex: CreateStep = isAirportPod ? 5 : 4;
-  const bookingRulesStepIndex: CreateStep = isAirportPod ? 6 : 5;
-  const confirmationDeadlineStepIndex: CreateStep = isAirportPod ? 7 : 6;
-  const reviewStepIndex: CreateStep = isRideAppSelfSettle ? (isAirportPod ? 8 : 7) : isAirportPod ? 6 : 5;
-  const successStepIndex: CreateStep = isRideAppSelfSettle ? (isAirportPod ? 9 : 8) : isAirportPod ? 7 : 6;
+  const tripTypeStepIndex: CreateStep = 2;
+  const airportDetailsStepIndex: CreateStep = 3;
+  const routeStepIndex: CreateStep = isAirportPod ? 4 : 3;
+  const estimateCostStepIndex: CreateStep = isAirportPod ? 5 : 4;
+  const dateTimeStepIndex: CreateStep = isAirportPod ? 6 : 5;
+  const bookingRulesStepIndex: CreateStep = isAirportPod ? 7 : 6;
+  const confirmationDeadlineStepIndex: CreateStep = isAirportPod ? 8 : 7;
+  const reviewStepIndex: CreateStep = isRideAppSelfSettle ? (isAirportPod ? 9 : 8) : isAirportPod ? 7 : 6;
+  const successStepIndex: CreateStep = isRideAppSelfSettle ? (isAirportPod ? 10 : 9) : isAirportPod ? 8 : 7;
 
   function continueFromAirportDetails() {
     const terminalOrHall = getAirportTerminalHallValue(airportDetails);
@@ -8304,7 +8292,7 @@ export function CreatePodChooseType() {
           airportDetails={isAirportPod ? airportDetails : null}
           currentStep={routeStepIndex}
           stepLabels={activeStepLabels}
-          onBack={() => setStep(isAirportPod ? 2 : 1)}
+          onBack={() => setStep(isAirportPod ? airportDetailsStepIndex : tripTypeStepIndex)}
           onPickupLocationConfirm={handlePickupLocationConfirm}
           onDropoffLocationConfirm={handleDropoffLocationConfirm}
           onPickupVenueChange={(pickupVenue) => setPeopleVehicle((current) => ({ ...current, pickupVenue }))}
@@ -8335,18 +8323,18 @@ export function CreatePodChooseType() {
           onStopRequestPolicyChange={handleStopRequestPolicyChange}
           onContinue={() => continueToStep(estimateCostStepIndex)}
         />
-      ) : step === 2 && isAirportPod ? (
+      ) : step === airportDetailsStepIndex && isAirportPod ? (
         <AirportDetailsStep
           airportDetails={airportDetails}
-          currentStep={2}
+          currentStep={airportDetailsStepIndex}
           stepLabels={activeStepLabels}
           onAirportDetailsChange={handleAirportDetailsChange}
-          onBack={() => setStep(1)}
+          onBack={() => setStep(tripTypeStepIndex)}
           onContinue={continueFromAirportDetails}
         />
-      ) : step === 1 ? (
+      ) : step === tripTypeStepIndex ? (
         <>
-          <CreatePodTopBar currentStep={1} stepLabels={activeStepLabels} />
+          <CreatePodTopBar currentStep={tripTypeStepIndex} stepLabels={activeStepLabels} />
 
           <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
             <section className="flex min-w-0 flex-col">
@@ -8380,32 +8368,40 @@ export function CreatePodChooseType() {
               </div>
 
               <div className="mt-6">
-                <CreatePodStepActions onBack={() => setStep(0)} onContinue={() => continueToStep(2)} />
+                <CreatePodStepActions
+                  onBack={() => setStep(1)}
+                  onContinue={() => continueToStep(isAirportPod ? airportDetailsStepIndex : routeStepIndex)}
+                />
               </div>
             </section>
           </main>
         </>
-      ) : (
-        <PeopleVehicleStep
+      ) : step === 1 ? (
+        <RideModeStep
           podType={podType}
           peopleVehicle={peopleVehicle}
           genderMode={genderMode}
           accessMode={accessMode}
           taxiPartnerPreference={displayedTaxiPartnerPreference}
-          stopRequestPolicy={displayedStopRequestPolicy}
-          isAirportTrip={isAirportTrip}
           onPeopleVehicleChange={setPeopleVehicle}
           onGenderModeChange={setGenderMode}
           onAccessModeChange={setAccessMode}
           onTaxiPartnerPreferenceChange={handleTaxiPartnerPreferenceChange}
-          onStopRequestPolicyChange={handleStopRequestPolicyChange}
-          onBack={() => undefined}
-          onContinue={() => continueToStep(1)}
-          currentStep={0}
+          onBack={() => setStep(0)}
+          onContinue={() => continueToStep(tripTypeStepIndex)}
+          currentStep={1}
           stepLabels={activeStepLabels}
           onRequireAuth={ensureCreateAuth}
           rideAppAccessNotice={rideAppAccessNotice}
-          showBackAction={false}
+        />
+      ) : (
+        <TotalRiderStep
+          podType={podType}
+          peopleVehicle={peopleVehicle}
+          onPeopleVehicleChange={setPeopleVehicle}
+          onContinue={() => continueToStep(1)}
+          currentStep={0}
+          stepLabels={activeStepLabels}
         />
       )}
     </div>
