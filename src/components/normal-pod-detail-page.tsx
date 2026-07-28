@@ -3404,7 +3404,7 @@ type OsrmRouteResponse = {
 
 type DrivingRouteState = {
   routeKey: string;
-  status: "idle" | "loading" | "ready" | "error";
+  status: "idle" | "loading" | "ready" | "same-point" | "error";
   coordinates: RouteCoordinates[];
   durationMinutes: number | null;
   distanceMeters: number | null;
@@ -3522,6 +3522,28 @@ function decodeRouteKey(routeKey: string): RouteCoordinates[] {
       return Number.isFinite(lng) && Number.isFinite(lat) ? { lng, lat } : null;
     })
     .filter(Boolean) as RouteCoordinates[];
+}
+
+function getRouteDistanceMeters(a: RouteCoordinates, b: RouteCoordinates) {
+  const earthRadiusMeters = 6_371_000;
+  const degreesToRadians = Math.PI / 180;
+  const latDelta = (b.lat - a.lat) * degreesToRadians;
+  const lngDelta = (b.lng - a.lng) * degreesToRadians;
+  const aLat = a.lat * degreesToRadians;
+  const bLat = b.lat * degreesToRadians;
+  const haversine =
+    Math.sin(latDelta / 2) ** 2 +
+    Math.cos(aLat) * Math.cos(bLat) * Math.sin(lngDelta / 2) ** 2;
+
+  return 2 * earthRadiusMeters * Math.asin(Math.sqrt(haversine));
+}
+
+function hasUsableRouteDistance(points: RouteCoordinates[]) {
+  if (points.length < 2) return false;
+  return points.some((point, index) => {
+    const nextPoint = points[index + 1];
+    return nextPoint ? getRouteDistanceMeters(point, nextPoint) >= 80 : false;
+  });
 }
 
 function makeOsrmDrivingRouteUrl(points: RouteCoordinates[]) {
@@ -3718,6 +3740,8 @@ function RealDrivingRouteMap({
     const coordinates = decodeRouteKey(routeKey);
     if (coordinates.length < 2) return;
 
+    if (!hasUsableRouteDistance(coordinates)) return;
+
     const controller = new AbortController();
 
     fetch(makeDrivingRouteUrl(coordinates), { signal: controller.signal })
@@ -3748,7 +3772,15 @@ function RealDrivingRouteMap({
   }, [routeKey]);
 
   const routeStateMatchesPoints = routeState.routeKey === routeKey;
-  const activeRouteStatus = routePointCoordinates.length < 2 ? "error" : routeStateMatchesPoints ? routeState.status : "loading";
+  const routeHasUsableDistance = hasUsableRouteDistance(routePointCoordinates);
+  const activeRouteStatus =
+    routePointCoordinates.length < 2
+      ? "error"
+      : !routeHasUsableDistance
+        ? "same-point"
+        : routeStateMatchesPoints
+          ? routeState.status
+          : "loading";
   const activeRouteCoordinates = routeStateMatchesPoints ? routeState.coordinates : [];
   const mapCoordinates = activeRouteCoordinates.length ? activeRouteCoordinates : routePointCoordinates;
   const projection = buildRouteMapProjection(mapCoordinates);
@@ -3758,8 +3790,18 @@ function RealDrivingRouteMap({
       return `${projected.x.toFixed(1)},${projected.y.toFixed(1)}`;
     })
     .join(" ");
-  const durationLabel = activeRouteStatus === "error" ? "Route unavailable" : formatRouteDuration(routeStateMatchesPoints ? routeState.durationMinutes : null);
-  const distanceLabel = routeStateMatchesPoints ? formatRouteDistance(routeState.distanceMeters) : null;
+  const durationLabel =
+    activeRouteStatus === "same-point"
+      ? "Same pickup/dropoff"
+      : activeRouteStatus === "error"
+        ? "Route unavailable"
+        : formatRouteDuration(routeStateMatchesPoints ? routeState.durationMinutes : null);
+  const distanceLabel =
+    activeRouteStatus === "same-point"
+      ? "0.0 km"
+      : routeStateMatchesPoints
+        ? formatRouteDistance(routeState.distanceMeters)
+        : null;
   const fullRouteUrl = makeGoogleMapsDirectionsUrl(points);
 
   return (
@@ -3839,6 +3881,12 @@ function RealDrivingRouteMap({
       <span className="absolute bottom-2 left-3 rounded-full bg-[#07111d]/70 px-2 py-1 text-[9px] font-bold text-[var(--rp-muted-strong)] backdrop-blur-md">
         {getRouteMapAttributionLabel()}
       </span>
+
+      {activeRouteStatus === "same-point" ? (
+        <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-[14px] border border-amber-300/24 bg-[#07111d]/90 px-3 py-2 text-center text-xs font-black leading-5 text-amber-100 shadow-[0_10px_28px_rgba(0,0,0,0.3)]">
+          Pickup and destination are the same place, so there is no driving route to draw.
+        </div>
+      ) : null}
 
       {activeRouteStatus === "error" ? (
         <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-[14px] border border-rose-300/20 bg-[#07111d]/86 px-3 py-2 text-center text-xs font-black text-rose-100 shadow-[0_10px_28px_rgba(0,0,0,0.3)]">

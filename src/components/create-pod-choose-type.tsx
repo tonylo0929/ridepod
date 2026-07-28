@@ -717,6 +717,20 @@ function estimateDistrictDistanceMeters(pickupDistrict: string, dropoffDistrict:
   return Math.round(roadDistanceKm * 1000);
 }
 
+function getRouteCoordinateDistanceMeters(a: RouteCoordinates, b: RouteCoordinates) {
+  const earthRadiusMeters = 6_371_000;
+  const degreesToRadians = Math.PI / 180;
+  const latDelta = (b.lat - a.lat) * degreesToRadians;
+  const lngDelta = (b.lng - a.lng) * degreesToRadians;
+  const aLat = a.lat * degreesToRadians;
+  const bLat = b.lat * degreesToRadians;
+  const haversine =
+    Math.sin(latDelta / 2) ** 2 +
+    Math.cos(aLat) * Math.cos(bLat) * Math.sin(lngDelta / 2) ** 2;
+
+  return 2 * earthRadiusMeters * Math.asin(Math.sqrt(haversine));
+}
+
 function inferTaxiZoneFromDistricts(pickupDistrict: string, dropoffDistrict: string): HkTaxiZone {
   if (pickupDistrict === "Islands" || dropoffDistrict === "Islands") return "LANTAU";
   if (newTerritoriesDistricts.has(pickupDistrict) && newTerritoriesDistricts.has(dropoffDistrict)) {
@@ -2327,11 +2341,21 @@ function RouteStopsStep({
   const gatherPointRequired = isRideAppSelfSettle;
   const gatherPointProvided = pickupVenue.trim().length > 0;
   const [activeLocationPicker, setActiveLocationPicker] = useState<"pickup" | "dropoff" | null>(null);
+  const pickupDropoffDistanceMeters =
+    pickupLocation && dropoffLocation
+      ? getRouteCoordinateDistanceMeters(
+          { lat: pickupLocation.latitude, lng: pickupLocation.longitude },
+          { lat: dropoffLocation.latitude, lng: dropoffLocation.longitude },
+        )
+      : null;
+  const pickupDropoffTooClose =
+    typeof pickupDropoffDistanceMeters === "number" && pickupDropoffDistanceMeters < 80;
   const canContinue =
     Boolean(pickupLocation) &&
     Boolean(dropoffLocation) &&
     pickupDistrict.trim().length > 0 &&
     dropoffDistrict.trim().length > 0 &&
+    !pickupDropoffTooClose &&
     (!gatherPointRequired || gatherPointProvided);
   const [routePanel, setRoutePanel] = useState<"route" | "requests">("route");
   const isRoutePanel = routePanel === "route";
@@ -2493,6 +2517,12 @@ function RouteStopsStep({
                   tone="dropoff"
                 />
               </div>
+
+              {pickupDropoffTooClose ? (
+                <p className="rounded-[16px] border border-amber-300/24 bg-[#19170d] px-3 py-2 text-xs font-black leading-5 text-amber-100">
+                  Pickup and dropoff are the same place. Choose a different dropoff to create a real driving route.
+                </p>
+              ) : null}
 
               {stops.length > 0 ? (
                 <div className="grid gap-3">
