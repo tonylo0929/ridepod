@@ -6956,12 +6956,12 @@ function CreatePodConfirmationDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[90] grid place-items-center bg-[rgba(3,7,18,0.68)] px-4 py-6 backdrop-blur-sm md:absolute"
+      className="fixed inset-0 z-[180] grid place-items-center bg-[rgba(3,7,18,0.68)] px-4 py-[max(1rem,env(safe-area-inset-top))] backdrop-blur-sm md:absolute"
       role="dialog"
       aria-modal="true"
       aria-labelledby="create-pod-confirm-title"
     >
-      <section className="flex max-h-[86dvh] w-full max-w-[390px] flex-col overflow-hidden rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
+      <section className="flex max-h-[calc(100dvh-env(safe-area-inset-top)-1.5rem)] w-full max-w-[390px] flex-col overflow-hidden rounded-[28px] border border-[var(--rp-border-strong)] bg-[var(--rp-shell)] text-[var(--rp-text)] shadow-[0_28px_80px_rgba(0,0,0,0.42)]">
         <header className="flex shrink-0 items-start gap-3 p-5 pb-3">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--rp-card-muted)] text-[var(--rp-primary)]">
             <Info className="h-5 w-5" />
@@ -6981,7 +6981,7 @@ function CreatePodConfirmationDialog({
           </div>
         </div>
 
-        <footer className="shrink-0 border-t border-[var(--rp-border)] bg-[var(--rp-shell)] p-5 shadow-[0_-14px_30px_rgba(0,0,0,0.22)]">
+        <footer className="shrink-0 border-t border-[var(--rp-border)] bg-[var(--rp-shell)] px-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] pt-5 shadow-[0_-14px_30px_rgba(0,0,0,0.22)]">
           <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-4 text-sm font-black leading-6 text-[var(--rp-muted-strong)]">
             <input
               type="checkbox"
