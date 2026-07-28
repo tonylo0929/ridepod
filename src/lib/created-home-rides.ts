@@ -818,13 +818,19 @@ function toTimeKey(timeLabel: string) {
 function createdHomeRideToCalendarRide(ride: HomeRide): CalendarRide {
   const hostCancellationStatus = ride.rideAppHostCancellationStatus;
   const status =
-    hostCancellationStatus === "host_replacement_needed"
-      ? "host_replacement_needed"
-      : hostCancellationStatus === "replacement_booker_selected"
-        ? "replacement_booker_selected"
-        : hostCancellationStatus === "host_cancelled" || hostCancellationStatus === "cancelled" || ride.status === "cancelled"
-          ? "cancelled"
-          : "confirm_details";
+    hostCancellationStatus === "cancelled_by_host" ||
+    hostCancellationStatus === "host_cancelled" ||
+    hostCancellationStatus === "cancelled" ||
+    ride.status === "cancelled_by_host" ||
+    ride.status === "cancelled"
+      ? "cancelled_by_host"
+      : hostCancellationStatus === "cancellation_review_required" || ride.status === "cancellation_review_required"
+        ? "cancellation_review_required"
+        : hostCancellationStatus === "host_replacement_needed"
+          ? "host_replacement_needed"
+          : hostCancellationStatus === "replacement_booker_selected"
+            ? "replacement_booker_selected"
+            : "confirm_details";
 
   return {
     id: ride.id,

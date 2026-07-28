@@ -35,6 +35,7 @@ import {
   getRideAppConfirmByDate,
   getRideAppConfirmDeadlineState,
   getRideAppCurrentDetailVersion,
+  isRideAppPodCancelled,
   isMeaningfulRideAppDetailUpdate,
   isRideAppSeatHoldExpired,
 } from "@/lib/ride-app-chat-unlock";
@@ -892,6 +893,7 @@ export function getRideAppRejoinRestrictionCopy(ride: HomeRide, seatsAvailable =
 export function getCurrentUserCanJoinSelfSettlePod(ride: HomeRide, joinView: PodDetailJoinView) {
   if (!isRideAppSelfSettlePod(ride)) return false;
   if (joinView !== "quote_pending") return false;
+  if (isRideAppPodCancelled(ride)) return false;
   if (getCurrentUserIsHost(ride)) return false;
   if (ride.currentUserJoined === true || ride.quoteStatus === "joined") return false;
   if (
@@ -3751,9 +3753,8 @@ export function SelfSettleBookingDetailsCard({
       )
     : riderConfirmations;
   const podStillAcceptsRejoin =
-    ride.status !== "cancelled" &&
+    !isRideAppPodCancelled(ride) &&
     ride.status !== "expired" &&
-    ride.rideAppPodStatus !== "cancelled" &&
     ride.rideAppPodStatus !== "expired" &&
     ride.rideAppPodStatus !== "ride_booked" &&
     ride.rideAppPodStatus !== "completed";

@@ -11,7 +11,15 @@ export type AirportLuggage = {
   note?: string;
 };
 export type QuoteStatus = "quote_pending" | "quote_ready" | "ready_for_pickup" | "full" | "joined";
-export type RideStatus = "forming" | "locked" | "available" | "cancelled" | "expired";
+export type RideStatus =
+  | "forming"
+  | "locked"
+  | "available"
+  | "cancelled"
+  | "cancelled_by_host"
+  | "cancelled_by_system"
+  | "cancellation_review_required"
+  | "expired";
 export type QuoteAcceptanceStatus = "PENDING" | "ACCEPTED" | "DECLINED";
 export type DriverAssignmentStatus = "PENDING" | "PARTNER_ACCEPTED";
 export type PickupStatus = "WAITING_FOR_PARTNER" | "READY_FOR_PICKUP" | "PARTNER_ARRIVED" | "RIDE_STARTED";
@@ -19,7 +27,7 @@ export type RiderPickupStatus = "NOT_ARRIVED" | "ARRIVED_AT_PICKUP";
 export type RecurringTripPattern = "one_way" | "back_and_forth";
 export type StopRequestPolicy = "direct_only" | "host_approved_before_quote" | "host_approved_stops";
 export type RoutePlanStopStatus = "pending_host_approval" | "approved" | "declined";
-export type RouteRequestStatus = "pending" | "approved" | "declined" | "withdrawn" | "expired";
+export type RouteRequestStatus = "pending" | "approved" | "declined" | "joined" | "closed_pod_cancelled" | "withdrawn" | "expired";
 
 export type GeoCoordinates = {
   lat: number;
@@ -130,6 +138,9 @@ export type RideAppSelfSettleReport = {
 
 export type RideAppHostCancellationStatus =
   | "active"
+  | "cancelled_by_host"
+  | "cancelled_by_system"
+  | "cancellation_review_required"
   | "host_cancelled"
   | "host_replacement_needed"
   | "replacement_booker_selected"
@@ -230,6 +241,12 @@ export type HomeRide = {
   rideAppConfirmedRiderIds?: string[];
   rideAppHostCancellationStatus?: RideAppHostCancellationStatus;
   rideAppHostCancellationReason?: string | null;
+  cancelledAt?: string | null;
+  cancelledBy?: string | null;
+  cancellationReason?: string | null;
+  previousPodStatus?: string | null;
+  cancellationStatus?: "cancelled_by_host" | "cancelled_by_system" | "cancellation_review_required" | null;
+  paymentReleaseStatus?: "not_charged" | "hold_release_pending" | "hold_released" | "refund_pending" | "refunded" | "cancellation_review_required" | null;
   rideAppReplacementBookerId?: string | null;
   rideAppReplacementBookerName?: string | null;
   rideAppReplacementDeadlineLabel?: string | null;

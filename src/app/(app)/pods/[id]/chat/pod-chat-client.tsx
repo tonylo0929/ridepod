@@ -7,7 +7,7 @@ import { SelfSettleCompletionCard } from "@/components/self-settle-completion-ca
 import { SelfSettleReportIssue } from "@/components/self-settle-report-issue";
 import { getNormalizedRouteRequests, type HomeRide, type RideAppChecklist } from "@/lib/home-ride-mock";
 import { notifyPodAudience } from "@/lib/notifications/pod-notification-fanout";
-import { getRideAppChatAccessState, type RideAppChatAccessState } from "@/lib/ride-app-chat-unlock";
+import { getRideAppChatAccessState, isRideAppPodCancelled, type RideAppChatAccessState } from "@/lib/ride-app-chat-unlock";
 import { getRideWithStoredSelfSettleJoin } from "@/lib/ride-app-local-join";
 import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
 import type { TaxiPartnerChatAccessState } from "@/lib/taxi-partner-chat-unlock";
@@ -406,6 +406,18 @@ function buildRideAppTimelineEvents({
           text: `Stop request expired because the route is locked.`,
           sortTime: baseTime + (33 + index) * 60 * 1000,
         });
+        return;
+      }
+
+      if (request.status === "closed_pod_cancelled") {
+        addTimelineEvent(events, {
+          ...baseRouteRequestEvent,
+          id: `stop-closed-${request.id}`,
+          type: "stop_expired",
+          actorName: hostName,
+          text: `${requestedBy}'s stop request was closed because the ride was cancelled.`,
+          sortTime: baseTime + (33 + index) * 60 * 1000,
+        });
       }
     });
 
@@ -417,8 +429,12 @@ function buildRideAppTimelineEvents({
           ? [`${hostName} stepped down as host.`, "Host replacement mode started."]
           : ride.rideAppHostCancellationStatus === "replacement_booker_selected"
             ? [`${hostName} stepped down as host.`, "Host replacement mode started.", `${ride.rideAppReplacementBookerName ?? "Yuna"} became the new booker.`]
-            : ride.rideAppHostCancellationStatus === "host_cancelled"
-              ? [`${hostName} cancelled the pod.`]
+            : ride.rideAppHostCancellationStatus === "host_cancelled" ||
+                ride.rideAppHostCancellationStatus === "cancelled_by_host" ||
+                ride.status === "cancelled_by_host"
+              ? [`${hostName} cancelled the ride.`]
+              : ride.rideAppHostCancellationStatus === "cancellation_review_required" || ride.status === "cancellation_review_required"
+                ? [`${hostName} cancelled the ride.`, "Cancellation under review."]
               : [];
 
     hostCancellationActivity.forEach((item, index) => {
@@ -529,6 +545,7 @@ function buildRideAppTimelineEvents({
 
 function rideAppChatDividerLabel(access: RideAppChatAccessState | null, canUseChat: boolean) {
   if (canUseChat) return "Chat is Open";
+  if (access?.reason === "cancelled") return "Ride cancelled";
   if (!access) return "Chat opens after riders confirm";
   const remaining = Math.max(0, access.requiredConfirmations - access.confirmedRiders);
   if (remaining > 0) return `Chat opens after ${remaining} ${remaining === 1 ? "rider confirms" : "riders confirm"}`;
@@ -604,9 +621,11 @@ export function PodChatClient({
   const rideAppChecklistComplete = rideAppChecklistItems.every((item) => rideAppChecklist[item.key] === true);
   const strictRideAppChatUnlocked = !isRideAppSelfSettle || effectiveRideAppChatAccess?.canAccess === true;
   const strictTaxiPartnerChatUnlocked = !isTaxiPartnerChat || taxiPartnerChatAccess?.canAccess === true;
+  const rideAppChatCancelled =
+    isRideAppSelfSettle && (effectiveRide ? isRideAppPodCancelled(effectiveRide) : effectiveRideAppChatAccess?.reason === "cancelled");
   const rideAppChatMembership = isRideAppSelfSettle && hasRideAppChatMembership(effectiveRide, effectiveCurrentUserRole);
   const effectiveAccessAllowed = accessAllowed || rideAppChatMembership;
-  const canUseChat = effectiveAccessAllowed && strictRideAppChatUnlocked && strictTaxiPartnerChatUnlocked;
+  const canUseChat = effectiveAccessAllowed && strictRideAppChatUnlocked && strictTaxiPartnerChatUnlocked && !rideAppChatCancelled;
   const chatHeaderStatusLabel = isRideAppSelfSettle
     ? canUseChat
       ? "Chat open"
@@ -625,7 +644,9 @@ export function PodChatClient({
         currentUserId: user?.id,
       })
     : [];
-  const composerPlaceholder = readOnly
+  const composerPlaceholder = rideAppChatCancelled
+    ? "This ride was cancelled."
+    : readOnly
     ? "Chat is unavailable."
     : isRideAppSelfSettle && !canUseChat
       ? effectiveRideAppChatAccess?.helper ?? "Chat opens after required riders confirm."
@@ -952,6 +973,16 @@ export function PodChatClient({
         </section>
       ) : null}
 
+      {isRideAppSelfSettle && effectiveAccessAllowed && rideAppChatCancelled ? (
+        <section className="rounded-[22px] border border-rose-300/35 bg-rose-500/10 p-4 text-center shadow-[var(--rp-shadow-soft)]">
+          <LockKeyhole className="mx-auto h-7 w-7 text-rose-100" />
+          <h2 className="mt-2 text-xl font-black text-white">Ride cancelled</h2>
+          <p className="mt-2 text-sm font-semibold leading-6 text-rose-100/88">
+            This ride was cancelled. New messages cannot be sent.
+          </p>
+        </section>
+      ) : null}
+
       {isRideAppSelfSettle && canUseChat ? (
         <section className="overflow-hidden rounded-[24px] border border-blue-300/25 bg-[linear-gradient(145deg,rgba(76,29,149,0.20),rgba(14,23,42,0.78)_45%,rgba(37,99,235,0.14))] shadow-[var(--rp-shadow-soft)]">
           <div className="p-4">
@@ -1134,7 +1165,7 @@ export function PodChatClient({
             className="mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[var(--rp-primary)]/28 bg-[var(--rp-primary)]/10 px-4 text-sm font-black text-[var(--rp-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
           >
             <LockKeyhole className="h-4 w-4" />
-            Chat opens after required riders confirm.
+            {rideAppChatCancelled ? "This ride was cancelled. New messages cannot be sent." : "Chat opens after required riders confirm."}
           </button>
         ) : (
           <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">

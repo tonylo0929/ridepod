@@ -227,13 +227,13 @@ function GuestMyRideIntro() {
 }
 
 function isHistoryRide(ride: CalendarRide, todayKey: string) {
-  return ride.date < todayKey;
+  return ride.date < todayKey || ride.status === "cancelled" || ride.status === "cancelled_by_host" || ride.status === "cancelled_by_system";
 }
 
 function statusTone(status: MyRideCalendarStatus): StatusTone {
   if (status.isActionNeeded || status.colorKey === "gold") return "action";
   if (status.statusKey === "completed") return "completed";
-  if (status.statusKey === "cancelled" || status.statusKey === "expired") return "cancelled";
+  if (status.statusKey === "cancelled" || status.statusKey === "cancelled_by_host" || status.statusKey === "expired") return "cancelled";
   return "upcoming";
 }
 
@@ -677,9 +677,16 @@ function MyRideDayPodCard({
   const routeStops = getRouteStops(ride.route);
   const rideTypeTone = getRideTypeTone(ride);
   const Icon = rideTypeTone === "ride_app" ? Smartphone : CarFront;
+  const cancelledByHost = status.statusKey === "cancelled_by_host";
+  const createSimilarHref = `/create?similarRideId=${encodeURIComponent(ride.id)}&pickup=${encodeURIComponent(routeStops.pickup)}&destination=${encodeURIComponent(routeStops.dropoff)}&rideType=${encodeURIComponent(ride.rideKind)}&seats=${encodeURIComponent(String(ride.seatsTotal))}`;
 
   return (
-    <article className="relative min-w-0 overflow-hidden rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.035))] p-3 shadow-[var(--rp-shadow-soft)] min-[390px]:p-4">
+    <article
+      className={cn(
+        "relative min-w-0 overflow-hidden rounded-[22px] border bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.035))] p-3 shadow-[var(--rp-shadow-soft)] min-[390px]:p-4",
+        cancelledByHost ? "border-rose-300/45 shadow-[0_18px_42px_rgba(244,63,94,0.12)]" : "border-[var(--rp-border)]",
+      )}
+    >
       <div className="absolute right-3 top-3 z-10">
         <ActivityBookmarkButton bookmarked={bookmarked} label="ride" onClick={onToggleBookmark} />
       </div>
@@ -715,18 +722,35 @@ function MyRideDayPodCard({
             </div>
           </div>
 
-          <Link
-            href={`/pods/${ride.id}`}
-            className={cn(
-              "mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] border px-4 text-sm font-black transition",
-              statusTone(status) === "action"
-                ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_10%,transparent)] text-[var(--rp-primary)] hover:bg-[color-mix(in_srgb,var(--rp-primary)_16%,transparent)]"
-                : "border-cyan-300/45 bg-cyan-300/10 text-cyan-100 hover:bg-cyan-300/15",
-            )}
-          >
-            View details
-            <ChevronRight className="h-4 w-4" />
-          </Link>
+          {cancelledByHost ? (
+            <div className="mt-4 grid grid-cols-[minmax(0,1fr)_112px] gap-2">
+              <Link
+                href={createSimilarHref}
+                className="inline-flex min-h-11 items-center justify-center rounded-[14px] bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] px-3 text-sm font-black text-[#07131C] shadow-[0_8px_20px_rgba(255,193,55,0.2)] transition hover:brightness-105"
+              >
+                Create Similar Ride
+              </Link>
+              <Link
+                href={`/pods/${ride.id}`}
+                className="inline-flex min-h-11 items-center justify-center rounded-[14px] border border-white/12 bg-white/8 px-3 text-xs font-black text-white transition hover:bg-white/12"
+              >
+                View Details
+              </Link>
+            </div>
+          ) : (
+            <Link
+              href={`/pods/${ride.id}`}
+              className={cn(
+                "mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[14px] border px-4 text-sm font-black transition",
+                statusTone(status) === "action"
+                  ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_10%,transparent)] text-[var(--rp-primary)] hover:bg-[color-mix(in_srgb,var(--rp-primary)_16%,transparent)]"
+                  : "border-cyan-300/45 bg-cyan-300/10 text-cyan-100 hover:bg-cyan-300/15",
+              )}
+            >
+              View details
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          )}
         </div>
       </div>
     </article>

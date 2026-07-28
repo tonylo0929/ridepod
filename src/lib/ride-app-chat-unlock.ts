@@ -88,6 +88,21 @@ export type RideAppMeaningfulDetailUpdateResult = {
   updateType: RideAppMeaningfulDetailUpdateType | null;
 };
 
+export function isRideAppPodCancelled(ride: HomeRide) {
+  return (
+    ride.status === "cancelled" ||
+    ride.status === "cancelled_by_host" ||
+    ride.status === "cancelled_by_system" ||
+    ride.status === "cancellation_review_required" ||
+    ride.rideAppPodStatus === "cancelled" ||
+    ride.rideAppHostCancellationStatus === "cancelled" ||
+    ride.rideAppHostCancellationStatus === "host_cancelled" ||
+    ride.rideAppHostCancellationStatus === "cancelled_by_host" ||
+    ride.rideAppHostCancellationStatus === "cancelled_by_system" ||
+    ride.rideAppHostCancellationStatus === "cancellation_review_required"
+  );
+}
+
 function normalizeDetailText(value?: string | null) {
   return (value ?? "").trim().replace(/\s+/g, " ").toLowerCase();
 }
@@ -493,9 +508,8 @@ export function getRideAppConfirmationState(ride: HomeRide, currentUser?: unknow
   const confirmedRiders = getRideAppConfirmedRiderCount(ride);
   const hostBooked = ride.rideAppPodStatus === "ride_booked";
   const podAcceptsRejoin =
-    ride.status !== "cancelled" &&
+    !isRideAppPodCancelled(ride) &&
     ride.status !== "expired" &&
-    ride.rideAppPodStatus !== "cancelled" &&
     ride.rideAppPodStatus !== "expired" &&
     ride.rideAppPodStatus !== "ride_booked" &&
     ride.rideAppPodStatus !== "completed";
@@ -503,8 +517,8 @@ export function getRideAppConfirmationState(ride: HomeRide, currentUser?: unknow
     ride.riderConfirmations?.filter((rider) => rider.role === "rider" && (rider.status === "seat_hold_expired" || rider.status === "expired")).length ?? 1;
   const seatsAvailableAfterRelease = Math.max(0, ride.seatsTotal - Math.max(0, ride.seatsUsed - releasedSeatCount)) > 0;
 
-  if (ride.status === "cancelled" || ride.rideAppPodStatus === "cancelled") {
-    return confirmationState("cancelled", "Cancelled", "This self-settle pod was cancelled.", null, null);
+  if (isRideAppPodCancelled(ride)) {
+    return confirmationState("cancelled", "Ride cancelled", "This ride is no longer available.", null, null);
   }
 
   if (ride.status === "expired" || ride.rideAppPodStatus === "expired") {
@@ -605,11 +619,11 @@ export function canHostMarkRideAppBooked(ride: HomeRide): RideAppHostMarkBookedG
     };
   }
 
-  if (ride.status === "cancelled" || ride.rideAppPodStatus === "cancelled") {
+  if (isRideAppPodCancelled(ride)) {
     return {
       canMarkBooked: false,
       reason: "cancelled",
-      helper: "Cancelled pods cannot be marked booked.",
+      helper: "Cancelled rides cannot be marked booked.",
     };
   }
 
@@ -734,8 +748,8 @@ export function getRideAppChatAccessState(ride: HomeRide, currentUser?: unknown)
       typeof currentUserConfirmedVersion === "number" &&
       currentUserConfirmedVersion < currentDetailVersion);
 
-  if (ride.status === "cancelled" || ride.rideAppPodStatus === "cancelled" || ride.rideAppHostCancellationStatus === "cancelled" || ride.rideAppHostCancellationStatus === "host_cancelled") {
-    return locked("cancelled", "Cancelled", "Pod cancelled", "Chat locked", "This self-settle pod was cancelled.", requiredConfirmations, confirmedRiders);
+  if (isRideAppPodCancelled(ride)) {
+    return locked("cancelled", "Ride cancelled", "View details", "Chat locked", "This ride was cancelled. New messages cannot be sent.", requiredConfirmations, confirmedRiders);
   }
 
   if (ride.status === "expired" || ride.rideAppPodStatus === "expired") {

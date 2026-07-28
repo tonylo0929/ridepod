@@ -6,6 +6,9 @@ export type RideStatus =
   | "upcoming"
   | "settlement_pending"
   | "cancelled"
+  | "cancelled_by_host"
+  | "cancelled_by_system"
+  | "cancellation_review_required"
   | "expired"
   | "issue_reported"
   | "seat_locked"
@@ -167,8 +170,12 @@ export function getMyRideCalendarStatus({
       };
     }
 
-    if (pod.status === "cancelled") {
-      return { statusKey: "cancelled", label: "Cancelled", colorKey: "red", helperText: "This pod was cancelled", ctaLabel: "View details", isActionNeeded: false };
+    if (pod.status === "cancelled" || pod.status === "cancelled_by_host") {
+      return { statusKey: "cancelled_by_host", label: "Cancelled by host", colorKey: "red", helperText: "This ride is no longer available.", ctaLabel: "Create Similar Ride", isActionNeeded: false };
+    }
+
+    if (pod.status === "cancellation_review_required") {
+      return { statusKey: "cancellation_review_required", label: "Cancellation under review", colorKey: "gold", helperText: "We are reviewing costs related to this booking.", ctaLabel: "View details", isActionNeeded: false };
     }
 
     if (pod.status === "host_replacement_needed") {
@@ -271,6 +278,9 @@ export function getMyRideCalendarStatus({
     ride_started: { statusKey: "ready_for_pickup", label: "Ready for pickup", colorKey: "green", helperText: "Ride started", ctaLabel: "View details", isActionNeeded: false },
     completed: { statusKey: "completed", label: "Completed", colorKey: "green", helperText: "Ride completed", ctaLabel: "View details", isActionNeeded: false },
     cancelled: { statusKey: "cancelled", label: "Cancelled", colorKey: "red", helperText: "This pod was cancelled", ctaLabel: "View details", isActionNeeded: false },
+    cancelled_by_host: { statusKey: "cancelled_by_host", label: "Cancelled by host", colorKey: "red", helperText: "This ride is no longer available.", ctaLabel: "Create Similar Ride", isActionNeeded: false },
+    cancelled_by_system: { statusKey: "cancelled", label: "Cancelled", colorKey: "red", helperText: "This ride is no longer available.", ctaLabel: "View details", isActionNeeded: false },
+    cancellation_review_required: { statusKey: "cancellation_review_required", label: "Cancellation under review", colorKey: "gold", helperText: "We are reviewing costs related to this booking.", ctaLabel: "View details", isActionNeeded: false },
     quote_expired: { statusKey: "expired", label: "Expired", colorKey: "gray", helperText: "Taxi partner quote expired", ctaLabel: "View details", isActionNeeded: false },
     expired: { statusKey: "expired", label: "Expired", colorKey: "gray", helperText: "This pod expired", ctaLabel: "View details", isActionNeeded: false },
     dispute_review: { statusKey: "needs_review", label: "Action needed", colorKey: "gold", helperText: "Review updated details", ctaLabel: "View details", isActionNeeded: true },
@@ -317,6 +327,9 @@ export function rideStatusLabel(status: RideStatus) {
     upcoming: "Upcoming",
     settlement_pending: "Action needed",
     cancelled: "Cancelled",
+    cancelled_by_host: "Cancelled by host",
+    cancelled_by_system: "Cancelled",
+    cancellation_review_required: "Cancellation under review",
     expired: "Expired",
     issue_reported: "Action needed",
     seat_locked: "Upcoming",

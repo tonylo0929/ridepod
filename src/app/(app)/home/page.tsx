@@ -395,6 +395,20 @@ function parseRideDateLabel(dateLabel: string, referenceDate: Date) {
 }
 
 function isRideStillVisible(ride: HomeRide, referenceDate: Date) {
+  if (
+    ride.status === "cancelled" ||
+    ride.status === "cancelled_by_host" ||
+    ride.status === "cancelled_by_system" ||
+    ride.status === "cancellation_review_required" ||
+    ride.rideAppPodStatus === "cancelled" ||
+    ride.rideAppHostCancellationStatus === "cancelled" ||
+    ride.rideAppHostCancellationStatus === "host_cancelled" ||
+    ride.rideAppHostCancellationStatus === "cancelled_by_host" ||
+    ride.rideAppHostCancellationStatus === "cancellation_review_required"
+  ) {
+    return false;
+  }
+
   const rideDate = parseRideDateLabel(ride.dateLabel, referenceDate);
   if (!rideDate) return true;
 
