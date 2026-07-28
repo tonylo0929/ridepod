@@ -3498,16 +3498,6 @@ function buildRouteMapPoints(ride: HomeRide, displayedStops: RoutePlanStop[]) {
   return [pickupPoint, ...stopPoints, destinationPoint].filter(Boolean) as RouteMapPoint[];
 }
 
-function formatRouteDuration(minutes: number | null) {
-  return typeof minutes === "number" ? `Approx. ${minutes} min` : "Calculating route";
-}
-
-function formatRouteDistance(distanceMeters: number | null) {
-  if (typeof distanceMeters !== "number") return null;
-  const kilometers = distanceMeters / 1000;
-  return `${kilometers >= 10 ? Math.round(kilometers) : kilometers.toFixed(1)} km`;
-}
-
 function encodeRouteKey(points: RouteMapPoint[]) {
   return points.map((point) => `${point.coordinates.lng.toFixed(5)},${point.coordinates.lat.toFixed(5)}`).join(";");
 }
@@ -3584,10 +3574,6 @@ function makeRouteMapTileUrl(zoom: number, x: number, y: number) {
   }
 
   return `https://tile.openstreetmap.org/${zoom}/${x}/${y}.png`;
-}
-
-function getRouteMapAttributionLabel() {
-  return getRouteMapboxAccessToken() ? "Mapbox Directions + OpenStreetMap" : "OpenStreetMap + OSRM";
 }
 
 function makeGoogleMapsDirectionsUrl(points: RouteMapPoint[]) {
@@ -3790,18 +3776,6 @@ function RealDrivingRouteMap({
       return `${projected.x.toFixed(1)},${projected.y.toFixed(1)}`;
     })
     .join(" ");
-  const durationLabel =
-    activeRouteStatus === "same-point"
-      ? "Same pickup/dropoff"
-      : activeRouteStatus === "error"
-        ? "Route unavailable"
-        : formatRouteDuration(routeStateMatchesPoints ? routeState.durationMinutes : null);
-  const distanceLabel =
-    activeRouteStatus === "same-point"
-      ? "0.0 km"
-      : routeStateMatchesPoints
-        ? formatRouteDistance(routeState.distanceMeters)
-        : null;
   const fullRouteUrl = makeGoogleMapsDirectionsUrl(points);
 
   return (
@@ -3855,16 +3829,7 @@ function RealDrivingRouteMap({
       <div className="absolute left-3 top-3 grid gap-2">
         <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/12 bg-[#07111d]/82 px-3 text-[11px] font-black text-cyan-100 shadow-[0_8px_18px_rgba(0,0,0,0.24)] backdrop-blur-md">
           <Route className="h-4 w-4 text-cyan-200" />
-          Suggested route
-        </span>
-        <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/12 bg-[#07111d]/82 px-3 text-[11px] font-black text-[var(--rp-muted-strong)] shadow-[0_8px_18px_rgba(0,0,0,0.24)] backdrop-blur-md">
-          <Clock3 className="h-4 w-4" />
-          {durationLabel}
-          {distanceLabel ? <span className="text-cyan-200">{distanceLabel}</span> : null}
-        </span>
-        <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/12 bg-[#07111d]/82 px-3 text-[11px] font-black text-white shadow-[0_8px_18px_rgba(0,0,0,0.24)] backdrop-blur-md">
-          <ShieldCheck className="h-4 w-4 text-cyan-200" />
-          {policyLabel}
+          Suggested route ({policyLabel.toLowerCase()})
         </span>
       </div>
 
@@ -3872,15 +3837,11 @@ function RealDrivingRouteMap({
         href={fullRouteUrl}
         target="_blank"
         rel="noreferrer"
-        className="absolute bottom-3 right-3 inline-flex min-h-10 items-center gap-2 rounded-[14px] border border-cyan-200/24 bg-[#07111d]/82 px-3 text-xs font-black text-cyan-100 shadow-[0_8px_20px_rgba(0,0,0,0.25)] backdrop-blur-md transition hover:border-cyan-200/45 hover:bg-cyan-300/10"
+        className="absolute bottom-3 right-3 inline-flex min-h-8 items-center gap-1.5 rounded-[12px] border border-cyan-200/24 bg-[#07111d]/82 px-2.5 text-[10px] font-black text-cyan-100 shadow-[0_8px_20px_rgba(0,0,0,0.25)] backdrop-blur-md transition hover:border-cyan-200/45 hover:bg-cyan-300/10"
       >
         View full route
-        <ExternalLink className="h-4 w-4" />
+        <ExternalLink className="h-3.5 w-3.5" />
       </a>
-
-      <span className="absolute bottom-2 left-3 rounded-full bg-[#07111d]/70 px-2 py-1 text-[9px] font-bold text-[var(--rp-muted-strong)] backdrop-blur-md">
-        {getRouteMapAttributionLabel()}
-      </span>
 
       {activeRouteStatus === "same-point" ? (
         <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 rounded-[14px] border border-amber-300/24 bg-[#07111d]/90 px-3 py-2 text-center text-xs font-black leading-5 text-amber-100 shadow-[0_10px_28px_rgba(0,0,0,0.3)]">
