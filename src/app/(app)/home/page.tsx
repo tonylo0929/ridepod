@@ -49,6 +49,7 @@ import {
   useCreatedHomeRides,
 } from "@/lib/created-home-rides";
 import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
+import { getRideWithStoredSelfSettleJoin } from "@/lib/ride-app-local-join";
 import {
   buildRideExploreHref,
   popularRouteSummaries,
@@ -1237,21 +1238,39 @@ function getRideDetailSourceTab(ride: HomeRide, sourceTab: HomeTab): HomeTab {
   return sourceTab;
 }
 
+function getHomeReturnHref(sourceTab: HomeTab, categoryScreen?: CategoryResultsScreenId) {
+  const params = new URLSearchParams();
+  params.set("tab", sourceTab);
+  if (categoryScreen) params.set("category", categoryScreen);
+
+  return `/home?${params.toString()}`;
+}
+
+function getPodDetailHref(ride: HomeRide, sourceTab: HomeTab, returnHref?: string) {
+  const params = new URLSearchParams();
+  params.set("fromTab", getRideDetailSourceTab(ride, sourceTab));
+  if (returnHref) params.set("returnTo", returnHref);
+
+  return `/pods/${ride.id}?${params.toString()}`;
+}
+
 function HomeRideCard({
   ride,
   currentUserAvatar,
   isAuthenticated,
   sourceTab,
+  returnHref,
 }: {
   ride: HomeRide;
   currentUserAvatar: CurrentUserAvatar;
   isAuthenticated: boolean;
   sourceTab: HomeTab;
+  returnHref?: string;
 }) {
   const isRideApp = isRideAppSelfSettle(ride);
   const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
   const rideAppEstimateDisplay = getRideAppTotalEstimateDisplay(ride);
-  const podHref = `/pods/${ride.id}?fromTab=${encodeURIComponent(getRideDetailSourceTab(ride, sourceTab))}`;
+  const podHref = getPodDetailHref(ride, sourceTab, returnHref ?? getHomeReturnHref(sourceTab));
   const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
   const displayHostName = getKnownRideHostDisplayName(ride);
   const previewRoute = getRidePreviewRouteLabel(ride);
@@ -1369,6 +1388,7 @@ function RideSearchResultCard(props: {
   currentUserAvatar: CurrentUserAvatar;
   isAuthenticated: boolean;
   sourceTab: HomeTab;
+  returnHref?: string;
 }) {
   if (props.ride.rideKind === "airport" || Boolean(props.ride.airportDirection) || props.ride.rideKind === "recurring" || props.ride.is_recurring) {
     return <CategoryCompactResultCard {...props} />;
@@ -1782,6 +1802,7 @@ function CategoryResultsScreen({
                 key={ride.id}
                 ride={ride}
                 sourceTab={config.tab}
+                returnHref={getHomeReturnHref(config.tab, screen)}
                 currentUserAvatar={currentUserAvatar}
                 isAuthenticated={isAuthenticated}
               />
@@ -1813,15 +1834,17 @@ function CategoryResultsScreen({
 function CategoryCompactResultCard({
   ride,
   sourceTab,
+  returnHref,
   currentUserAvatar,
   isAuthenticated,
 }: {
   ride: HomeRide;
   sourceTab: HomeTab;
+  returnHref?: string;
   currentUserAvatar: CurrentUserAvatar;
   isAuthenticated: boolean;
 }) {
-  const podHref = `/pods/${ride.id}?fromTab=${encodeURIComponent(getRideDetailSourceTab(ride, sourceTab))}`;
+  const podHref = getPodDetailHref(ride, sourceTab, returnHref ?? getHomeReturnHref(sourceTab));
   const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
   const openSeats = getOpenSeatCount(ride);
   const seatLabel = `${openSeats} ${openSeats === 1 ? "seat" : "seats"} left`;
@@ -2461,10 +2484,14 @@ function HomePageContent() {
   }, []);
 
   const allHomeRides = useMemo(() => {
-    const demoHomeRides = homeRides.map((ride) => applyRideAppDemoPersona(ride, { profile, user }));
+    const viewerUserId = user?.id ?? null;
+    const syncedCreatedHomeRides = createdHomeRides.map((ride) => getRideWithStoredSelfSettleJoin(ride, viewerUserId));
+    const demoHomeRides = homeRides.map((ride) =>
+      applyRideAppDemoPersona(getRideWithStoredSelfSettleJoin(ride, viewerUserId), { profile, user }),
+    );
     const rides = [
-      ...createdHomeRides,
-      ...demoHomeRides.filter((ride) => !createdHomeRides.some((createdRide) => createdRide.id === ride.id)),
+      ...syncedCreatedHomeRides,
+      ...demoHomeRides.filter((ride) => !syncedCreatedHomeRides.some((createdRide) => createdRide.id === ride.id)),
     ];
 
     return isAuthenticated ? rides : rides.map(withoutCurrentUserRelationship);

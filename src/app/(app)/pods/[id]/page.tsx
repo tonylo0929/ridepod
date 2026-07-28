@@ -30,7 +30,24 @@ import { getHomeRide } from "@/lib/home-ride-mock";
 
 const homeReturnTabs = new Set(["all", "one_off", "recurring", "airport", "quote_ready"]);
 
-function getHomeBackHref(fromTab?: string | string[]) {
+function getSafeReturnHref(returnTo?: string | string[]) {
+  const target = Array.isArray(returnTo) ? returnTo[0] : returnTo;
+  if (!target) return null;
+
+  try {
+    const decodedTarget = decodeURIComponent(target);
+    if (!decodedTarget.startsWith("/") || decodedTarget.startsWith("//")) return null;
+
+    return decodedTarget;
+  } catch {
+    return null;
+  }
+}
+
+function getHomeBackHref(fromTab?: string | string[], returnTo?: string | string[]) {
+  const safeReturnHref = getSafeReturnHref(returnTo);
+  if (safeReturnHref) return safeReturnHref;
+
   const tab = Array.isArray(fromTab) ? fromTab[0] : fromTab;
 
   return tab && homeReturnTabs.has(tab) ? `/home?tab=${encodeURIComponent(tab)}` : "/home";
@@ -41,11 +58,11 @@ export default async function PodDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ fromTab?: string | string[] }>;
+  searchParams?: Promise<{ fromTab?: string | string[]; returnTo?: string | string[] }>;
 }) {
   const { id } = await params;
-  const { fromTab } = (await searchParams) ?? {};
-  const homeBackHref = getHomeBackHref(fromTab);
+  const { fromTab, returnTo } = (await searchParams) ?? {};
+  const homeBackHref = getHomeBackHref(fromTab, returnTo);
 
   if (id === "usc-lax-001" || id === "usc-lax-commute") {
     return <PremiumPodDetailPage />;

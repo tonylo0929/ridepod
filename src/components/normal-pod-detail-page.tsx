@@ -1937,7 +1937,7 @@ export function PodStatusPanel({
   initialAction?: "confirm-by";
 }) {
   const { user, profile } = useAuth();
-  const storedRide = applyRideAppDemoPersona(getRideWithStoredSelfSettleJoin(baseRide), { profile, user });
+  const storedRide = applyRideAppDemoPersona(getRideWithStoredSelfSettleJoin(baseRide, user?.id ?? null), { profile, user });
   const [ridePatchOverride, setRidePatchOverride] = useState<Partial<HomeRide> | null>(null);
   const ride = mergeRidePatch(storedRide, ridePatchOverride) as HomeRide;
   const isHost = getCurrentUserIsHost(ride);
@@ -2200,7 +2200,7 @@ export function PodStatusPanel({
     };
 
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
-    saveStoredSelfSettleRidePatch(ride.id, patch);
+    saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     notifyPodStatusAction({
       type: "ride_app_action_required",
@@ -2247,7 +2247,7 @@ export function PodStatusPanel({
     };
 
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
-    saveStoredSelfSettleRidePatch(ride.id, patch);
+    saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     notifyPodStatusAction({
       type: gatherPointChanged ? "ride_app_action_required" : "ride_app_details_updated",
@@ -2278,7 +2278,7 @@ export function PodStatusPanel({
     };
 
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
-    saveStoredSelfSettleRidePatch(ride.id, patch);
+    saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     notifyPodStatusAction({
       type: "ride_app_details_updated",
@@ -2302,7 +2302,7 @@ export function PodStatusPanel({
 
     const patch = buildRequestToRejoinPatch(ride, currentDetailVersion);
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
-    saveStoredSelfSettleRidePatch(ride.id, patch);
+    saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     notifyPodStatusAction({
       type: "ride_app_rejoin_requested",
@@ -2331,7 +2331,7 @@ export function PodStatusPanel({
 
     const patch = buildRideAppStopRequestPatch(ride, trimmedStopLabel, podStatusActorName);
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
-    saveStoredSelfSettleRidePatch(ride.id, patch);
+    saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     notifyPodStatusAction({
       type: "ride_app_action_required",
@@ -2353,7 +2353,7 @@ export function PodStatusPanel({
   function approveRouteStopFromStatus(stop: RoutePlanStop) {
     const patch = buildApproveRideAppStopPatch(ride, stop);
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
-    saveStoredSelfSettleRidePatch(ride.id, patch);
+    saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     notifyPodStatusAction({
       type: "ride_app_action_required",
@@ -2390,7 +2390,7 @@ export function PodStatusPanel({
   function declineRouteStopFromStatus(stop: RoutePlanStop) {
     const patch = buildDeclineRideAppStopPatch(ride, stop);
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
-    saveStoredSelfSettleRidePatch(ride.id, patch);
+    saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     notifyPodStatusAction({
       type: "ride_app_details_updated",
@@ -2433,7 +2433,7 @@ export function PodStatusPanel({
           proposedStops: [pendingStop],
         };
         setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
-        saveStoredSelfSettleRidePatch(ride.id, patch);
+        saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
         updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
       })
       .catch((error) => {
@@ -5528,6 +5528,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
   const [selfSettleLeft, setSelfSettleLeft] = useState(false);
   const storedRide = getRideWithStoredSelfSettleJoin(
     selfSettleLeft && isRideAppSelfSettlePod(baseRide) ? getSelfSettleRideAfterLeave(baseRide) : baseRide,
+    user?.id ?? null,
   );
   const personaRide = selfSettleLeft ? storedRide : applyRideAppDemoPersona(storedRide, { profile, user });
   const storedRideAppFareProof = getRideAppFareEstimateProof(storedRide);
@@ -5768,7 +5769,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     joinSelfSettlePod();
     const patch = buildInitialSelfSettleJoinPatch(ride, getRideAppCurrentDetailVersion(ride));
     setRideActionPatch((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
-    saveStoredSelfSettleRidePatch(ride.id, patch);
+    saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
     const joinedViewerRide = mergeRidePatch(ride, patch) as HomeRide;
     const updatedExistingRide = updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
     if (!updatedExistingRide) saveViewerHomeRide(joinedViewerRide);
@@ -5828,7 +5829,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     const leavePatch = getSelfSettleRideAfterLeave(ride);
     leaveSelfSettlePod();
     setRideActionPatch((current) => mergeRidePatch(current ?? {}, leavePatch) as Partial<HomeRide>);
-    saveStoredSelfSettleRidePatch(ride.id, leavePatch);
+    saveStoredSelfSettleRidePatch(ride.id, leavePatch, user?.id ?? null);
     const leftViewerRide = mergeRidePatch(ride, leavePatch) as HomeRide;
     const updatedExistingRide = updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, leavePatch) as HomeRide);
     if (!updatedExistingRide) saveViewerHomeRide(leftViewerRide);
@@ -5962,7 +5963,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
       rideAppChecklist: updatedChecklist,
     };
     setRideActionPatch((current) => mergeRidePatch(current ?? {}, updatedRidePatch) as Partial<HomeRide>);
-    saveStoredSelfSettleRidePatch(ride.id, updatedRidePatch);
+    saveStoredSelfSettleRidePatch(ride.id, updatedRidePatch, user?.id ?? null);
     updateCreatedHomeRide(ride.id, (storedRide) => ({
       ...storedRide,
       ...updatedRidePatch,
@@ -5994,7 +5995,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
 
   function applyRideActionPatch(patch: Partial<HomeRide>) {
     setRideActionPatch((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
-    saveStoredSelfSettleRidePatch(ride.id, patch);
+    saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
   }
 
@@ -6050,7 +6051,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
           proposedStops: [pendingStop],
         };
         setRideActionPatch((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
-        saveStoredSelfSettleRidePatch(ride.id, patch);
+        saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
         updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
       })
       .catch((error) => {

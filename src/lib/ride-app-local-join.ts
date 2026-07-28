@@ -2,6 +2,7 @@ import type { HomeRide } from "@/lib/home-ride-mock";
 
 const storageKey = "ridepod:ride-app-self-settle-joins:v1";
 const ridePatchStorageKey = "ridepod:ride-app-self-settle-ride-patches:v1";
+const viewerStorageDelimiter = "::viewer::";
 
 type StoredSelfSettleJoin = {
   currentUserJoined: true;
@@ -9,6 +10,7 @@ type StoredSelfSettleJoin = {
   selfSettleRiskAccepted: true;
   seatsUsed: number;
   joinedAt: string;
+  viewerUserId?: string | null;
 };
 
 type StoredSelfSettleJoins = Record<string, StoredSelfSettleJoin>;
@@ -110,6 +112,27 @@ function hasViewerRelationshipPatch(patch: Partial<HomeRide> | null) {
   );
 }
 
+function makeViewerStorageKey(rideId: string, viewerUserId?: string | null) {
+  const normalizedViewerId = viewerUserId?.trim();
+  return normalizedViewerId ? `${rideId}${viewerStorageDelimiter}${normalizedViewerId}` : rideId;
+}
+
+function mergeStoredRidePatches(
+  basePatch: Partial<HomeRide> | null,
+  viewerPatch: Partial<HomeRide> | null,
+): Partial<HomeRide> | null {
+  if (!basePatch && !viewerPatch) return null;
+  const base = basePatch ?? {};
+  const viewer = viewerPatch ?? {};
+
+  return {
+    ...base,
+    ...viewer,
+    rideAppBookingDetails: mergeRideAppBookingDetails(base.rideAppBookingDetails, viewer.rideAppBookingDetails),
+    rideAppChecklist: mergeRideAppChecklist(base.rideAppChecklist, viewer.rideAppChecklist),
+  };
+}
+
 function stripViewerRelationshipPatchForHost(patch: Partial<HomeRide> | null) {
   if (!patch || !hasViewerRelationshipPatch(patch)) return patch;
 
@@ -121,22 +144,31 @@ function stripViewerRelationshipPatchForHost(patch: Partial<HomeRide> | null) {
   return nextPatch;
 }
 
-export function getStoredSelfSettleJoin(rideId: string) {
-  return readStoredJoins()[rideId] ?? null;
+export function getStoredSelfSettleJoin(rideId: string, viewerUserId?: string | null) {
+  const joins = readStoredJoins();
+  if (viewerUserId?.trim()) return joins[makeViewerStorageKey(rideId, viewerUserId)] ?? null;
+  return joins[rideId] ?? null;
 }
 
-export function getStoredSelfSettleRidePatch(rideId: string) {
-  return readStoredRidePatches()[rideId] ?? null;
+export function getStoredSelfSettleRidePatch(rideId: string, viewerUserId?: string | null) {
+  const patches = readStoredRidePatches();
+  const legacyGlobalPatch = patches[rideId] ?? null;
+  const globalPatch = viewerUserId?.trim()
+    ? stripViewerRelationshipPatchForHost(legacyGlobalPatch)
+    : legacyGlobalPatch;
+  if (!viewerUserId?.trim()) return globalPatch;
+  const viewerPatch = patches[makeViewerStorageKey(rideId, viewerUserId)] ?? null;
+  return mergeStoredRidePatches(globalPatch, viewerPatch);
 }
 
-export function getRideWithStoredSelfSettleJoin(ride: HomeRide): HomeRide {
+export function getRideWithStoredSelfSettleJoin(ride: HomeRide, viewerUserId?: string | null): HomeRide {
   if (ride.rideCategory !== "ride_app_self_settle") return ride;
 
-  const stored = getStoredSelfSettleJoin(ride.id);
+  const stored = getStoredSelfSettleJoin(ride.id, viewerUserId);
   const patch =
     ride.currentUserRole === "host"
-      ? stripViewerRelationshipPatchForHost(getStoredSelfSettleRidePatch(ride.id))
-      : getStoredSelfSettleRidePatch(ride.id);
+      ? stripViewerRelationshipPatchForHost(getStoredSelfSettleRidePatch(ride.id, viewerUserId))
+      : getStoredSelfSettleRidePatch(ride.id, viewerUserId);
   const joinedRide = stored && ride.currentUserRole !== "host"
     ? {
         ...ride,
@@ -161,11 +193,14 @@ export function getRideWithStoredSelfSettleJoin(ride: HomeRide): HomeRide {
   };
 }
 
-export function saveStoredSelfSettleRidePatch(rideId: string, patch: Partial<HomeRide>) {
+export function saveStoredSelfSettleRidePatch(rideId: string, patch: Partial<HomeRide>, viewerUserId?: string | null) {
   const patches = readStoredRidePatches();
-  const existing = patches[rideId] ?? {};
+  const storageKey = viewerUserId?.trim() && hasViewerRelationshipPatch(patch)
+    ? makeViewerStorageKey(rideId, viewerUserId)
+    : rideId;
+  const existing = patches[storageKey] ?? {};
 
-  patches[rideId] = {
+  patches[storageKey] = {
     ...existing,
     ...patch,
     rideAppBookingDetails: mergeRideAppBookingDetails(existing.rideAppBookingDetails, patch.rideAppBookingDetails),
@@ -175,23 +210,25 @@ export function saveStoredSelfSettleRidePatch(rideId: string, patch: Partial<Hom
   writeStoredRidePatches(patches);
 }
 
-export function saveStoredSelfSettleJoin(ride: HomeRide) {
+export function saveStoredSelfSettleJoin(ride: HomeRide, viewerUserId?: string | null) {
   const joins = readStoredJoins();
   const alreadyJoined = ride.currentUserJoined === true || ride.quoteStatus === "joined";
+  const storageKey = makeViewerStorageKey(ride.id, viewerUserId);
 
-  joins[ride.id] = {
+  joins[storageKey] = {
     currentUserJoined: true,
     currentUserRole: "joined_rider",
     selfSettleRiskAccepted: true,
     seatsUsed: Math.min(ride.seatsUsed + (alreadyJoined ? 0 : 1), ride.seatsTotal),
     joinedAt: new Date().toISOString(),
+    viewerUserId: viewerUserId ?? null,
   };
 
   writeStoredJoins(joins);
 }
 
-export function clearStoredSelfSettleJoin(rideId: string) {
+export function clearStoredSelfSettleJoin(rideId: string, viewerUserId?: string | null) {
   const joins = readStoredJoins();
-  delete joins[rideId];
+  delete joins[makeViewerStorageKey(rideId, viewerUserId)];
   writeStoredJoins(joins);
 }

@@ -471,10 +471,10 @@ function getDeadlineJoinView(deadlineInfo: QuoteDeadlineInfo): PodDetailJoinView
 }
 
 export function usePodDetailJoinState(ride: HomeRide) {
-  const initialRide = getRideWithStoredSelfSettleJoin(ride);
   const router = useRouter();
   const pathname = usePathname();
   const { user, profile } = useAuth();
+  const initialRide = getRideWithStoredSelfSettleJoin(ride, user?.id ?? null);
   const currentUserDisplayName = profile?.display_name?.trim() || profile?.preferred_name?.trim() || "RidePod rider";
   const [joined, setJoined] = useState(initialRide.currentUserJoined === true || initialRide.quoteStatus === "joined");
   const [attendanceCancelled, setAttendanceCancelled] = useState(false);
@@ -609,7 +609,7 @@ export function usePodDetailJoinState(ride: HomeRide) {
       }).catch((error) => console.warn("RidePod join pod persistence failed", error));
     },
     joinSelfSettlePod: () => {
-      saveStoredSelfSettleJoin(ride);
+      saveStoredSelfSettleJoin(ride, user?.id ?? null);
       setJoined(true);
       setSelfSettleRiskAccepted(true);
       setCurrentUserRole("joined_rider");
@@ -620,7 +620,7 @@ export function usePodDetailJoinState(ride: HomeRide) {
       setSeatsUsed((currentSeats) => Math.min(currentSeats + 1, ride.seatsTotal));
     },
     leaveSelfSettlePod: () => {
-      clearStoredSelfSettleJoin(ride.id);
+      clearStoredSelfSettleJoin(ride.id, user?.id ?? null);
       if (user) {
         clearPodLuggageContribution(ride.id, user.id);
         setStoredLuggageContributions(readPodLuggageContributions(ride.id));
@@ -1113,6 +1113,7 @@ function getStopRequestCopy({
 }
 
 export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: PodDetailJoinView }) {
+  const { user } = useAuth();
   const [proposedStops, setProposedStops] = useState<RoutePlanStop[]>(ride.proposedStops ?? []);
   const [approvedStops, setApprovedStops] = useState<RoutePlanStop[]>(ride.approvedStops ?? []);
   const [declinedStops, setDeclinedStops] = useState<RoutePlanStop[]>(ride.declinedStops ?? []);
@@ -1233,7 +1234,7 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
       },
     ];
     setProposedStops(nextStops);
-    saveStoredSelfSettleRidePatch(ride.id, { routeRequests: nextRouteRequests, proposedStops: nextStops });
+    saveStoredSelfSettleRidePatch(ride.id, { routeRequests: nextRouteRequests, proposedStops: nextStops }, user?.id ?? null);
     setProposalOpen(false);
     showRouteNotice("Stop request sent", "Host has been notified and must approve before the route changes.");
   }
@@ -1253,11 +1254,15 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
     );
     setProposedStops(nextProposedStops);
     setApprovedStops(nextApprovedStops);
-    saveStoredSelfSettleRidePatch(ride.id, {
-      routeRequests: nextRouteRequests,
-      proposedStops: nextProposedStops,
-      approvedStops: nextApprovedStops,
-    });
+    saveStoredSelfSettleRidePatch(
+      ride.id,
+      {
+        routeRequests: nextRouteRequests,
+        proposedStops: nextProposedStops,
+        approvedStops: nextApprovedStops,
+      },
+      user?.id ?? null,
+    );
     setApproveStop(null);
     showRouteNotice("Stop approved", `${stop.requestedBy ?? "The rider"} will see the approved route update.`);
   }
@@ -1277,11 +1282,15 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
     );
     setProposedStops(nextProposedStops);
     setDeclinedStops(nextDeclinedStops);
-    saveStoredSelfSettleRidePatch(ride.id, {
-      routeRequests: nextRouteRequests,
-      proposedStops: nextProposedStops,
-      declinedStops: nextDeclinedStops,
-    });
+    saveStoredSelfSettleRidePatch(
+      ride.id,
+      {
+        routeRequests: nextRouteRequests,
+        proposedStops: nextProposedStops,
+        declinedStops: nextDeclinedStops,
+      },
+      user?.id ?? null,
+    );
     setDeclineStop(null);
     showRouteNotice("Stop request declined", `${stop.requestedBy ?? "The rider"} will see that the route stays unchanged.`);
   }
@@ -1298,7 +1307,11 @@ export function RoutePlanCard({ ride, joinView }: { ride: HomeRide; joinView: Po
         : request,
     );
     setProposedStops(nextProposedStops);
-    saveStoredSelfSettleRidePatch(ride.id, { routeRequests: nextRouteRequests, proposedStops: nextProposedStops });
+    saveStoredSelfSettleRidePatch(
+      ride.id,
+      { routeRequests: nextRouteRequests, proposedStops: nextProposedStops },
+      user?.id ?? null,
+    );
     setWithdrawnStop(stop);
     setWithdrawStop(null);
     showRouteNotice("Stop request withdrawn", "Route stays unchanged.");
@@ -4037,23 +4050,27 @@ export function SelfSettleBookingDetailsCard({
     }
     setRiderConfirmations(nextRiderConfirmations);
     setRideAppConfirmedRiderCount(nextConfirmedRiderCount);
-    saveStoredSelfSettleRidePatch(ride.id, {
-      currentUserBookingDetailsConfirmed: true,
-      currentUserJoinIntentStatus: "confirmed",
-      currentUserConfirmedBookingDetailsVersion: detailVersion,
-      currentUserRideAppDetailVersionConfirmed: detailVersion,
-      selfSettleConfirmationStatus: "confirmed",
-      platformFeeStatus: nextPlatformFeeStatus,
-      riderConfirmations: nextRiderConfirmations,
-      confirmedRiderCount: nextConfirmedRiderCount,
-      rideAppConfirmedRiderCount: nextConfirmedRiderCount,
-      ...(currentDetailsReviewCleared
-        ? {
-            bookingDetailsUpdated: false,
-            bookingDetailsLastMeaningfulUpdate: null,
-          }
-        : {}),
-    });
+    saveStoredSelfSettleRidePatch(
+      ride.id,
+      {
+        currentUserBookingDetailsConfirmed: true,
+        currentUserJoinIntentStatus: "confirmed",
+        currentUserConfirmedBookingDetailsVersion: detailVersion,
+        currentUserRideAppDetailVersionConfirmed: detailVersion,
+        selfSettleConfirmationStatus: "confirmed",
+        platformFeeStatus: nextPlatformFeeStatus,
+        riderConfirmations: nextRiderConfirmations,
+        confirmedRiderCount: nextConfirmedRiderCount,
+        rideAppConfirmedRiderCount: nextConfirmedRiderCount,
+        ...(currentDetailsReviewCleared
+          ? {
+              bookingDetailsUpdated: false,
+              bookingDetailsLastMeaningfulUpdate: null,
+            }
+          : {}),
+      },
+      user?.id ?? null,
+    );
     closeRiderConfirmRidingModal();
     setRiderConfirmRidingMessage(currentUserNeedsReview ? "Updated ride details confirmed." : "Ride details confirmed.");
     setFeeConfirmationMessage(
@@ -4156,7 +4173,7 @@ export function SelfSettleBookingDetailsCard({
     setPlatformFeeStatus("pending");
     setRiderConfirmations(nextRiderConfirmations);
     setRideAppConfirmedRiderCount(nextConfirmedCount);
-    saveStoredSelfSettleRidePatch(ride.id, patch);
+    saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
     setRejoinMessage(rideAppBookingDetailsFinalized ? "Confirm ride details" : "Waiting for host details");
     setShowRejoinModal(false);
   }
@@ -4246,7 +4263,7 @@ export function SelfSettleBookingDetailsCard({
         setRideAppConfirmedRiderCount(nextConfirmedRiderCount);
       }
 
-      saveStoredSelfSettleRidePatch(ride.id, farePatch);
+      saveStoredSelfSettleRidePatch(ride.id, farePatch, user?.id ?? null);
       setShowFareEstimateModal(false);
       setFareEstimateMessage(
         meaningfulFareUpdate && ridersAlreadyConfirmed
@@ -5148,6 +5165,7 @@ function buildSelfSettleBookingChatHref(rideId: string, details: SelfSettleRideA
 }
 
 export function SelfSettleHostBookingStatusCard({ ride }: { ride: HomeRide }) {
+  const { user } = useAuth();
   const [showBookingDetailsModal, setShowBookingDetailsModal] = useState(false);
   const [rideAppBookingShared, setRideAppBookingShared] = useState(ride.bookingDetailsShared === true);
   const [podStatus, setPodStatus] = useState<"booking_details_needed" | "booking_details_shared">(
@@ -5277,7 +5295,7 @@ export function SelfSettleHostBookingStatusCard({ ride }: { ride: HomeRide }) {
     setDetailVersion(nextDetailVersion);
     setRideAppBookingShared(true);
     setPodStatus(rideAppBookingShared ? "booking_details_shared" : "booking_details_shared");
-    saveStoredSelfSettleRidePatch(ride.id, nextPatch);
+    saveStoredSelfSettleRidePatch(ride.id, nextPatch, user?.id ?? null);
     window.dispatchEvent(
       new CustomEvent("ridepod:self-settle-booking-shared", {
         detail: {

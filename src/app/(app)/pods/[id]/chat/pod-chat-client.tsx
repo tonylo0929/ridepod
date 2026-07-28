@@ -603,7 +603,9 @@ export function PodChatClient({
   ride?: HomeRide | null;
 }) {
   const { user, profile, isLoading } = useAuth();
-  const effectiveRide = ride ? applyRideAppDemoPersona(getRideWithStoredSelfSettleJoin(ride), { profile, user }) : null;
+  const effectiveRide = ride
+    ? applyRideAppDemoPersona(getRideWithStoredSelfSettleJoin(ride, user?.id ?? null), { profile, user })
+    : null;
   const effectiveCurrentUserRole = effectiveRide?.currentUserRole ?? currentUserRole;
   const effectiveRideAppChatAccess =
     effectiveRide && isRideAppSelfSettle ? getRideAppChatAccessState(effectiveRide) : rideAppChatAccess;
