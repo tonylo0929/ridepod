@@ -1669,7 +1669,13 @@ function CategoryResultsScreen({
         >
           <ChevronLeft className="h-5 w-5 stroke-[2.6]" />
         </button>
-        <div className={cn("relative overflow-hidden rounded-[28px]", config.shadowClassName)}>
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-[28px] border-2 bg-[rgba(9,20,31,0.92)]",
+            config.borderClassName,
+            config.shadowClassName,
+          )}
+        >
           <Image
             src={config.imageSrc}
             alt={config.imageAlt}
@@ -1679,6 +1685,7 @@ function CategoryResultsScreen({
             className="block h-auto w-full"
             priority={false}
           />
+          <div className="pointer-events-none absolute inset-0 rounded-[26px] ring-1 ring-inset ring-white/12" />
           <div className="sr-only">
             <h1>{categoryRecommendationLabels[config.tab]}</h1>
             {config.bullets ? (
@@ -1855,7 +1862,7 @@ function CategoryCompactResultCard({
   const podHref = getPodDetailHref(ride, sourceTab, returnHref ?? getHomeReturnHref(sourceTab));
   const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
   const openSeats = getOpenSeatCount(ride);
-  const seatLabel = `${openSeats} ${openSeats === 1 ? "seat" : "seats"} left`;
+  const seatLabel = openSeats <= 0 ? "FULL" : `${openSeats} ${openSeats === 1 ? "seat" : "seats"} left`;
   const airportDirectionLines =
     ride.airportDirection === "to_airport"
       ? ["To", "airport"]

@@ -4518,7 +4518,7 @@ function SelfSettlePodSummaryHero({
   const compactSummaryDateLabel = getCompactPodSummaryDateLabel(ride.dateLabel);
   const manageActionsPendingCount = getManagePodActionsPendingCount(ride);
   const seatsLeft = Math.max(0, ride.seatsTotal - summaryEffectiveSeatsUsed);
-  const seatsLeftLabel = `${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`;
+  const seatsLeftLabel = seatsLeft <= 0 ? "FULL" : `${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`;
   const summaryRouteTitle = getPodDistrictRouteTitle(ride);
   const riderSummaryLabel = summaryUserHadRideAppSeat ? `Joined · ${seatsLeftLabel}` : getRideAppMinimumRidersToGoLabel(ride);
   const noticeBadgeClass =

@@ -467,7 +467,7 @@ function getExplorePodDetailHref(rideId: string, returnHref: string) {
 
 function ExploreRideResultCard({ ride, returnHref }: { ride: HomeRide; returnHref: string }) {
   const seatsLeft = Math.max(0, ride.seatsTotal - ride.seatsUsed);
-  const seatLabel = `${seatsLeft} ${seatsLeft === 1 ? "seat" : "seats"} left`;
+  const seatLabel = seatsLeft <= 0 ? "FULL" : `${seatsLeft} ${seatsLeft === 1 ? "seat" : "seats"} left`;
   const isAirportRide = ride.rideKind === "airport" || Boolean(ride.airportDirection);
   const isRecurringRide = ride.rideKind === "recurring" || ride.is_recurring;
   const TypeIcon = isAirportRide ? Plane : isRecurringRide ? RefreshCcw : CarFront;
