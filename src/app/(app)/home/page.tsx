@@ -31,6 +31,7 @@ import { RidePodAvatar, useRidePodAvatarPreference, type RidePodAvatarPreference
 import { cn } from "@/components/ui";
 import {
   districtOptions,
+  districtGroups,
   homeRides,
   isHostApprovedStopPolicy,
   matchesDistrict,
@@ -945,6 +946,48 @@ function getRideAppProviderLabel(ride: HomeRide) {
   return null;
 }
 
+const broadPreviewDistricts = new Set(["All districts", "Hong Kong Island", "Kowloon", "New Territories"]);
+
+function normalizeDistrictPreviewValue(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+}
+
+function inferSpecificDistrictFromLabel(label: string, fallbackDistrict: string) {
+  const normalizedLabel = normalizeDistrictPreviewValue(label);
+  const candidateDistricts = [
+    ...(districtGroups[fallbackDistrict] ?? []),
+    ...districtOptions.filter((district) => !broadPreviewDistricts.has(district)),
+  ];
+
+  return candidateDistricts.find((district) => {
+    const normalizedDistrict = normalizeDistrictPreviewValue(district);
+    return normalizedDistrict && normalizedLabel.includes(normalizedDistrict);
+  });
+}
+
+function getRidePreviewDistrictLabel(ride: HomeRide, side: "from" | "to") {
+  if (ride.airportDirection === "to_airport" && side === "to") return "Airport";
+  if (ride.airportDirection === "from_airport" && side === "from") return "Airport";
+
+  const district = (side === "from" ? ride.fromDistrict : ride.toDistrict).trim();
+  const fullLabel = side === "from" ? ride.fromLabel : ride.toLabel;
+  const inferredDistrict = inferSpecificDistrictFromLabel(fullLabel, district);
+  if (inferredDistrict) return inferredDistrict;
+  if (district && !broadPreviewDistricts.has(district)) return district;
+  return district || fullLabel;
+}
+
+function getRidePreviewRouteLabel(ride: HomeRide) {
+  return {
+    from: getRidePreviewDistrictLabel(ride, "from"),
+    to: getRidePreviewDistrictLabel(ride, "to"),
+    full: `${ride.fromLabel} \u2192 ${ride.toLabel}`,
+  };
+}
+
 function matchesRideModeFilter(ride: HomeRide, filter: RideModeFilter) {
   if (filter === "taxi") return false;
   if (filter === "ride_app") return isRideAppSelfSettle(ride);
@@ -1197,6 +1240,7 @@ function HomeRideCard({
   const podHref = `/pods/${ride.id}?fromTab=${encodeURIComponent(getRideDetailSourceTab(ride, sourceTab))}`;
   const cardHref = isAuthenticated ? podHref : `/login?next=${encodeURIComponent(podHref)}`;
   const displayHostName = getKnownRideHostDisplayName(ride);
+  const previewRoute = getRidePreviewRouteLabel(ride);
   const rideAppTrustBadge = isRideApp ? getHomeRideTrustBadge(getRideAppTrustSummary(getHomeRideHostTrustUserId(ride))) : null;
   const ratingLabel =
     rideAppTrustBadge?.tone === "rating"
@@ -1250,8 +1294,11 @@ function HomeRideCard({
         </div>
 
         <div className="min-w-0 border-l border-white/10 pl-3 min-[390px]:pl-4 min-[560px]:pl-5">
-          <h2 className="line-clamp-2 text-sm font-black leading-[1.15] text-[var(--rp-text)] min-[390px]:text-base min-[560px]:text-lg">
-            {ride.fromLabel} {"\u2192"} {ride.toLabel}
+          <h2
+            className="line-clamp-2 text-sm font-black leading-[1.15] text-[var(--rp-text)] min-[390px]:text-base min-[560px]:text-lg"
+            title={previewRoute.full}
+          >
+            {previewRoute.from} {"\u2192"} {previewRoute.to}
           </h2>
           <p className="mt-1 truncate text-[11px] font-black leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-xs min-[560px]:text-sm">
             {secondaryRouteLabel}
@@ -1749,6 +1796,7 @@ function CategoryCompactResultCard({
   const TypeIcon = isAirportRide ? Plane : isRecurringRide ? RefreshCcw : CarFront;
   const typeIconLabel = isAirportRide ? "Airport ride" : isRecurringRide ? "Recurring ride" : "Ride";
   const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
+  const previewRoute = getRidePreviewRouteLabel(ride);
   const ownershipBadgeLabel = currentUserRelationship
     ? currentUserRelationship.tone === "deleted"
       ? "Deleted by you"
@@ -1832,8 +1880,11 @@ function CategoryCompactResultCard({
             ) : null}
           </div>
         ) : null}
-        <h2 className={cn("min-w-0 truncate text-[15px] font-black leading-5 text-[var(--rp-text)] min-[390px]:text-base", ownershipBadgeLabel || airportRideAppProviderLabel ? "mt-1.5" : "")}>
-          {ride.fromLabel} <span className="text-[var(--rp-primary)]">{"\u2192"}</span> {ride.toLabel}
+        <h2
+          className={cn("min-w-0 truncate text-[15px] font-black leading-5 text-[var(--rp-text)] min-[390px]:text-base", ownershipBadgeLabel || airportRideAppProviderLabel ? "mt-1.5" : "")}
+          title={previewRoute.full}
+        >
+          {previewRoute.from} <span className="text-[var(--rp-primary)]">{"\u2192"}</span> {previewRoute.to}
         </h2>
         <p className="mt-1 truncate text-xs font-bold leading-4 text-[var(--rp-muted-strong)] min-[390px]:text-sm">
           {ride.dateLabel} - {ride.timeLabel}
