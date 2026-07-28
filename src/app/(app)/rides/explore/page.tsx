@@ -263,8 +263,15 @@ function RideExploreContent() {
     );
   }, [fromLabel, fromQuery, toLabel, toQuery, visibleRides]);
 
-  const title = fromLabel && toLabel ? `${fromLabel} to ${toLabel}` : fromLabel ? `Rides from ${fromLabel}` : "Explore rides";
-  const subtitle = hasSelectedArea ? "Available scheduled, recurring, and airport rides" : "Search districts, hubs, and popular routes";
+  const heroType = fromLabel && toLabel ? "Route" : fromLabel || toLabel ? "District" : "Ride explorer";
+  const title = fromLabel && toLabel ? `${fromLabel} -> ${toLabel}` : fromLabel || toLabel || "Explore rides";
+  const subtitle = fromLabel && toLabel
+    ? "Rides matching this route, including scheduled, recurring, and airport options."
+    : fromLabel
+      ? `Rides starting from ${fromLabel}.`
+      : toLabel
+        ? `Rides going to ${toLabel}.`
+        : "Search districts, hubs, and popular routes";
 
   return (
     <main className="mx-auto grid w-full max-w-[680px] gap-5 px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-5 sm:px-6 lg:px-8">
@@ -276,10 +283,22 @@ function RideExploreContent() {
         <ArrowLeft aria-hidden="true" />
       </Link>
 
-      <section className="rounded-[28px] border border-white/10 bg-[linear-gradient(145deg,rgba(11,25,38,0.96),rgba(5,15,24,0.98))] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
-        <p className="text-xs font-black uppercase tracking-[0.16em] text-[#65e6d0]">Ride explorer</p>
-        <h1 className="mt-2 text-[28px] font-black leading-tight text-[var(--rp-text)]">{title}</h1>
-        <p className="mt-2 text-sm font-bold leading-5 text-[var(--rp-muted-strong)]">{subtitle}</p>
+      <section className="overflow-hidden rounded-[28px] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(101,230,208,0.14),transparent_38%),linear-gradient(145deg,rgba(11,25,38,0.96),rgba(5,15,24,0.98))] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.3)]">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-[#65e6d0]">Ride explorer</p>
+            <span className="mt-3 inline-flex min-h-8 items-center rounded-full border border-[var(--rp-primary)]/30 bg-[var(--rp-primary)]/12 px-3 text-[11px] font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
+              {heroType}
+            </span>
+            <h1 className="mt-3 text-[42px] font-black leading-none text-[var(--rp-text)] sm:text-[52px]">{title}</h1>
+            <p className="mt-3 max-w-[28rem] text-[15px] font-bold leading-6 text-[var(--rp-muted-strong)]">{subtitle}</p>
+          </div>
+          {hasSelectedArea ? (
+            <span className="hidden h-14 w-14 shrink-0 place-items-center rounded-[18px] border border-[#65e6d0]/24 bg-[#65e6d0]/12 text-[#65e6d0] sm:grid">
+              <MapPin className="h-6 w-6" />
+            </span>
+          ) : null}
+        </div>
 
         {(fromLabel || toLabel) ? (
           <div className="mt-4 flex flex-wrap gap-2">
