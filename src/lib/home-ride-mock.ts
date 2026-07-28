@@ -85,6 +85,10 @@ export type RideAppRiderConfirmationStatus =
 
 export type RideAppJoinIntentStatus =
   | "not_joined"
+  | "stop_request_pending"
+  | "stop_request_approved"
+  | "stop_request_declined"
+  | "joined"
   | "joined_interest"
   | "confirmed"
   | "needs_review"

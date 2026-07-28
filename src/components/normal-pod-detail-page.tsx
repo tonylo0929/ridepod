@@ -229,6 +229,13 @@ function DetailItem({
 }
 
 type DetailTab = "trip" | "pod";
+type StopJoinIntentStatus = "not_joined" | "stop_request_pending" | "stop_request_approved" | "stop_request_declined" | "joined";
+
+const stopJoinIntentStatuses = new Set([
+  "stop_request_pending",
+  "stop_request_approved",
+  "stop_request_declined",
+]);
 
 const detailTabs: Array<{ id: DetailTab; label: string }> = [
   { id: "trip", label: "Trip" },
@@ -849,7 +856,7 @@ function buildInitialSelfSettleJoinPatch(ride: HomeRide, detailVersion: number, 
   return {
     currentUserJoined: true,
     currentUserRole: "joined_rider",
-    currentUserJoinIntentStatus: "joined_interest",
+    currentUserJoinIntentStatus: "joined",
     currentUserConfirmationExpired: false,
     currentUserBookingDetailsConfirmed: false,
     currentUserConfirmedBookingDetailsVersion: null,
@@ -874,8 +881,33 @@ function buildInitialSelfSettleJoinPatch(ride: HomeRide, detailVersion: number, 
   };
 }
 
+function isJoinedRideAppIntentStatus(status?: HomeRide["currentUserJoinIntentStatus"]) {
+  return status === "joined" || status === "joined_interest" || status === "confirmed" || status === "needs_review";
+}
+
+function getCurrentUserStopJoinIntentStatus(ride: HomeRide): StopJoinIntentStatus {
+  if (ride.currentUserJoined === true || ride.currentUserRole === "joined_rider" || ride.quoteStatus === "joined" || isJoinedRideAppIntentStatus(ride.currentUserJoinIntentStatus)) {
+    return "joined";
+  }
+
+  const routeRequest = getNormalizedRouteRequests(ride).currentUserRequest;
+  if (routeRequest?.status === "pending") return "stop_request_pending";
+  if (routeRequest?.status === "approved") return "stop_request_approved";
+  if (routeRequest?.status === "declined") return "stop_request_declined";
+  if (ride.currentUserJoinIntentStatus === "stop_request_pending") return "stop_request_pending";
+  if (ride.currentUserJoinIntentStatus === "stop_request_approved") return "stop_request_approved";
+  if (ride.currentUserJoinIntentStatus === "stop_request_declined") return "stop_request_declined";
+  return "not_joined";
+}
+
+function getCurrentUserHasActiveStopRequest(ride: HomeRide) {
+  const status = getCurrentUserStopJoinIntentStatus(ride);
+  return status === "stop_request_pending" || status === "stop_request_approved";
+}
+
 function buildRideAppStopRequestPatch(ride: HomeRide, stopLabel: string, requestedBy: string, now = new Date()): Partial<HomeRide> {
   const requestId = `stop-${now.getTime()}`;
+  const requestedByKey = requestedBy.trim().toLowerCase();
   const requestedStop: RoutePlanStop = {
     id: requestId,
     label: stopLabel,
@@ -884,10 +916,22 @@ function buildRideAppStopRequestPatch(ride: HomeRide, stopLabel: string, request
     reason: "Rider requested an extra stop.",
     status: "pending_host_approval",
   };
-  const routeRequests = getNormalizedRouteRequests(ride).all.filter((request) => request.status !== "pending");
+  const routeRequests = getNormalizedRouteRequests(ride).all.filter((request) => {
+    if (request.status !== "pending") return true;
+    return request.requestedByName.trim().toLowerCase() !== requestedByKey;
+  });
 
   return {
-    // Future: persist route requests and deliver to host across clients.
+    currentUserName: requestedBy,
+    currentUserJoined: false,
+    currentUserRole: "rider",
+    currentUserJoinIntentStatus: "stop_request_pending",
+    currentUserBookingDetailsConfirmed: false,
+    currentUserConfirmedBookingDetailsVersion: null,
+    currentUserRideAppDetailVersionConfirmed: undefined,
+    selfSettleConfirmationStatus: "pending",
+    platformFeeStatus: "pending",
+    quoteStatus: ride.quoteStatus === "joined" ? "quote_pending" : ride.quoteStatus,
     routeRequests: [
       ...routeRequests,
       {
@@ -1884,6 +1928,7 @@ export function PodStatusPanel({
     (ride.currentUserJoined === true ||
       ride.currentUserRole === "joined_rider" ||
       ride.quoteStatus === "joined" ||
+      ride.currentUserJoinIntentStatus === "joined" ||
       ride.currentUserJoinIntentStatus === "joined_interest" ||
       ride.currentUserJoinIntentStatus === "confirmed" ||
       ride.currentUserJoinIntentStatus === "needs_review" ||
@@ -3902,6 +3947,7 @@ function CompactRideAppRoutePanel({
   ride,
   canRequestStop = false,
   canReviewStop = false,
+  requestStopOpenSignal = 0,
   onRequestStop,
   onApproveStop,
   onDeclineStop,
@@ -3909,12 +3955,14 @@ function CompactRideAppRoutePanel({
   ride: HomeRide;
   canRequestStop?: boolean;
   canReviewStop?: boolean;
+  requestStopOpenSignal?: number;
   onRequestStop?: (stopLabel: string) => void;
   onApproveStop?: (stop: RoutePlanStop) => void;
   onDeclineStop?: (stop: RoutePlanStop) => void;
 }) {
   const [stopRequestDraft, setStopRequestDraft] = useState("");
   const [requestScreenOpen, setRequestScreenOpen] = useState(false);
+  const [dismissedRequestStopOpenSignal, setDismissedRequestStopOpenSignal] = useState(0);
   const [approvalStop, setApprovalStop] = useState<RoutePlanStop | null>(null);
   const routeRequests = getNormalizedRouteRequests(ride);
   const pendingRequest = routeRequests.pending[0] ?? null;
@@ -3922,6 +3970,8 @@ function CompactRideAppRoutePanel({
   const approvedStops = routeRequests.approved.map(routeRequestToRoutePlanStop);
   const declinedRequest = routeRequests.declined[0] ?? null;
   const declinedStop = declinedRequest ? routeRequestToRoutePlanStop(declinedRequest) : null;
+  const currentUserRequest = routeRequests.currentUserRequest ?? null;
+  const currentUserHasActiveStopRequest = currentUserRequest?.status === "pending" || currentUserRequest?.status === "approved";
   const directRouteOnly = isDirectRoutePolicy(ride.stopRequestPolicy);
   const allowStopRequests = isHostApprovedStopPolicy(ride.stopRequestPolicy) && ride.rideKind !== "recurring";
   const routeLocked =
@@ -3934,8 +3984,7 @@ function CompactRideAppRoutePanel({
     canRequestStop &&
     Boolean(onRequestStop) &&
     !routeLocked &&
-    !pendingStop &&
-    approvedStops.length === 0;
+    !currentUserHasActiveStopRequest;
   const canShowHostReviewActions = Boolean(canReviewStop && pendingStop && !routeDecisionLocked && onApproveStop && onDeclineStop);
   const stopRequestTitle = pendingStop
     ? "Stop request pending"
@@ -3977,21 +4026,27 @@ function CompactRideAppRoutePanel({
   const stopRequestMapHref = trimmedStopRequest
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmedStopRequest)}`
     : null;
+  const requestScreenExternallyOpened = requestStopOpenSignal > dismissedRequestStopOpenSignal && canShowStopRequestForm;
+  const showRequestScreen = requestScreenOpen || requestScreenExternallyOpened;
 
   function submitStopRequest() {
     if (!canShowStopRequestForm || !trimmedStopRequest) return;
     onRequestStop?.(trimmedStopRequest);
     setStopRequestDraft("");
     setRequestScreenOpen(false);
+    setDismissedRequestStopOpenSignal(requestStopOpenSignal);
   }
 
-  if (requestScreenOpen && canShowStopRequestForm) {
+  if (showRequestScreen && canShowStopRequestForm) {
     return (
       <div id="route-requests" className="scroll-mt-24 grid gap-3">
         <section className="overflow-hidden rounded-[22px] border border-cyan-100/16 bg-[radial-gradient(circle_at_20%_0%,rgba(34,211,238,0.14),transparent_34%),linear-gradient(180deg,rgba(12,26,39,0.98),rgba(6,14,24,0.98))] p-4 shadow-[0_18px_44px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.06)]">
           <button
             type="button"
-            onClick={() => setRequestScreenOpen(false)}
+            onClick={() => {
+              setRequestScreenOpen(false);
+              setDismissedRequestStopOpenSignal(requestStopOpenSignal);
+            }}
             aria-label="Back to stop request details"
             className="ridepod-back-button"
           >
@@ -4007,7 +4062,7 @@ function CompactRideAppRoutePanel({
                 <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Stop requests</p>
                 <h3 className="mt-1 text-2xl font-black leading-tight text-white">Request a stop</h3>
                 <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                  Add one extra stop. Check it in Google Maps, then send it to the host for approval.
+                  Add your requested pickup or drop-off point. Check it in Google Maps, then send it to the host for approval.
                 </p>
               </div>
             </div>
@@ -4025,7 +4080,7 @@ function CompactRideAppRoutePanel({
                 <span className="truncate text-right">{ride.toDistrict || ride.toLabel}</span>
               </div>
               <label className="grid gap-2" htmlFor={`stop-request-${ride.id}`}>
-                <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Stop location</span>
+                <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Pickup / drop-off point</span>
                 <span className="flex min-h-[52px] items-center gap-2 rounded-[16px] border border-cyan-300/24 bg-[#07111d]/82 px-3 shadow-[0_0_0_3px_rgba(246,196,83,0.08),inset_0_1px_0_rgba(255,255,255,0.05)] transition focus-within:border-cyan-200/60 focus-within:bg-cyan-300/8">
                   <MapPin className="h-4 w-4 shrink-0 text-cyan-200" />
                   <input
@@ -4300,8 +4355,11 @@ function SelfSettlePodSummaryHero({
   onViewFareProof,
   onSharePod,
   onJoinRide,
+  onRequestStopRide,
   onLeaveRide,
   onCancelPodClick,
+  stopJoinIntentStatus = "not_joined",
+  stopRequestSeatUnavailable = false,
 }: {
   ride: HomeRide;
   seatsUsed: number;
@@ -4314,8 +4372,11 @@ function SelfSettlePodSummaryHero({
   onViewFareProof: () => void;
   onSharePod: () => void;
   onJoinRide: () => void;
+  onRequestStopRide: () => void;
   onLeaveRide: () => void;
   onCancelPodClick: () => void;
+  stopJoinIntentStatus?: StopJoinIntentStatus;
+  stopRequestSeatUnavailable?: boolean;
 }) {
   const chatAccess = getRideAppChatAccessState(ride);
   const summaryRiders = buildPodStatusRiders(ride);
@@ -4329,6 +4390,7 @@ function SelfSettlePodSummaryHero({
     (ride.currentUserJoined === true ||
       ride.currentUserRole === "joined_rider" ||
       ride.quoteStatus === "joined" ||
+      ride.currentUserJoinIntentStatus === "joined" ||
       ride.currentUserJoinIntentStatus === "joined_interest" ||
       ride.currentUserJoinIntentStatus === "confirmed" ||
       ride.currentUserJoinIntentStatus === "needs_review" ||
@@ -4363,7 +4425,8 @@ function SelfSettlePodSummaryHero({
   const rejoinRestriction = getRideAppRejoinRestrictionCopy(ride, ride.seatsUsed < ride.seatsTotal);
   const canLeaveRideFromHero = summaryUserHadRideAppSeat && !summaryUserIsHost;
   const showInlineJoinRide = !summaryUserIsHost && !canLeaveRideFromHero && canJoinRide;
-  const isPreJoinLayout = showInlineJoinRide;
+  const hasStopRequestJoinStatus = stopJoinIntentStatuses.has(stopJoinIntentStatus);
+  const isPreJoinLayout = showInlineJoinRide || hasStopRequestJoinStatus;
   const summaryUserCanOpenChat =
     summaryUserIsHost ||
     (summaryUserHadRideAppSeat &&
@@ -4380,7 +4443,6 @@ function SelfSettlePodSummaryHero({
   const seatsLeft = Math.max(0, ride.seatsTotal - summaryEffectiveSeatsUsed);
   const seatsLeftLabel = `${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`;
   const riderSummaryLabel = summaryUserHadRideAppSeat ? `Joined · ${seatsLeftLabel}` : getRideAppMinimumRidersToGoLabel(ride);
-  const preJoinEstimateValue = estimateUpdated ? estimateValue : "Awaiting host estimate";
   const noticeBadgeClass =
     "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-rose-300/35 bg-rose-400/12 px-1.5 text-[11px] font-black leading-none text-rose-200";
   const estimateContent = (
@@ -4469,31 +4531,99 @@ function SelfSettlePodSummaryHero({
           </div>
         </div>
 
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.06fr)] gap-3">
-          <button
-            type="button"
-            onClick={onViewFareProof}
-            className="grid min-h-[136px] content-center rounded-[18px] border border-cyan-300/18 bg-[rgba(7,17,29,0.72)] p-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] transition hover:border-cyan-300/32 hover:bg-cyan-300/8"
-          >
-            <Clock3 className="h-8 w-8 text-cyan-200" />
-            <span className="mt-4 block text-base font-semibold leading-5 text-[var(--rp-muted-strong)]">Ride app estimate</span>
-            <span className="mt-1 block text-lg font-black leading-6 text-cyan-200">{preJoinEstimateValue}</span>
-          </button>
+        {stopJoinIntentStatus === "stop_request_pending" ? (
+          <div className="rounded-[20px] border border-cyan-300/32 bg-[linear-gradient(145deg,rgba(8,47,73,0.34),rgba(7,17,29,0.9))] p-4 shadow-[0_16px_36px_rgba(34,211,238,0.1),inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-cyan-200">Stop Request Pending</p>
+            <h3 className="mt-2 text-2xl font-black leading-tight text-white">Waiting for host approval</h3>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              You are not in this pod yet. No seat is reserved until the host approves and you confirm joining.
+            </p>
+            {stopRequestSeatUnavailable ? (
+              <p className="mt-3 rounded-[14px] border border-amber-300/34 bg-amber-300/12 px-3 py-2 text-xs font-black leading-5 text-amber-100">
+                The pod is full right now. Your stop may still be approved, but you can only join if a seat opens.
+              </p>
+            ) : null}
+          </div>
+        ) : stopJoinIntentStatus === "stop_request_approved" ? (
+          <div className="rounded-[20px] border border-emerald-300/34 bg-[linear-gradient(145deg,rgba(16,185,129,0.15),rgba(7,17,29,0.92))] p-4 shadow-[0_16px_36px_rgba(16,185,129,0.1),inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-200">Approved</p>
+            <h3 className="mt-2 text-2xl font-black leading-tight text-white">Your stop was approved</h3>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              Review the updated route and fare before joining.
+            </p>
+            {stopRequestSeatUnavailable ? (
+              <p className="mt-3 rounded-[14px] border border-amber-300/34 bg-amber-300/12 px-3 py-2 text-xs font-black leading-5 text-amber-100">
+                The pod is full right now. You can join once a seat opens.
+              </p>
+            ) : null}
+            <div className="mt-4 grid grid-cols-[minmax(0,1fr)_112px] gap-2">
+              <button
+                type="button"
+                onClick={onJoinRide}
+                disabled={stopRequestSeatUnavailable}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[15px] bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] px-4 text-sm font-black text-[#07131C] shadow-[0_10px_24px_rgba(255,193,55,0.24)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Confirm & Join
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <Link
+                href="/home"
+                className="inline-flex min-h-12 items-center justify-center rounded-[15px] border border-white/14 bg-white/8 px-3 text-sm font-black text-white transition hover:bg-white/12"
+              >
+                Not Now
+              </Link>
+            </div>
+          </div>
+        ) : stopJoinIntentStatus === "stop_request_declined" ? (
+          <div className="rounded-[20px] border border-rose-300/34 bg-[linear-gradient(145deg,rgba(244,63,94,0.13),rgba(7,17,29,0.92))] p-4 shadow-[0_16px_36px_rgba(244,63,94,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-rose-200">Declined</p>
+            <h3 className="mt-2 text-2xl font-black leading-tight text-white">Your stop request was declined</h3>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+              You have not joined this pod.
+            </p>
+            <div className="mt-4 grid grid-cols-[minmax(0,1fr)_128px] gap-2">
+              <button
+                type="button"
+                onClick={onJoinRide}
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[15px] bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] px-4 text-sm font-black text-[#07131C] shadow-[0_10px_24px_rgba(255,193,55,0.24)] transition hover:brightness-105"
+              >
+                Join Original Route
+              </button>
+              <Link
+                href="/home"
+                className="inline-flex min-h-12 items-center justify-center rounded-[15px] border border-white/14 bg-white/8 px-3 text-sm font-black text-white transition hover:bg-white/12"
+              >
+                Find Another Ride
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={onJoinRide}
+              className="grid min-h-[136px] content-center rounded-[18px] border border-[var(--rp-primary)]/70 bg-[linear-gradient(135deg,rgba(242,193,91,0.2),rgba(51,37,12,0.76))] p-4 text-left shadow-[0_14px_34px_rgba(242,193,91,0.12),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-[var(--rp-primary)] hover:brightness-105"
+            >
+              <span className="grid h-12 w-12 place-items-center rounded-full border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]">
+                <ArrowRight className="h-6 w-6 stroke-[3]" />
+              </span>
+              <span className="mt-4 block text-xl font-black leading-tight text-white">Join Ride</span>
+              <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">Use the current route.</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={onJoinRide}
-            className="grid min-h-[136px] grid-cols-[56px_minmax(0,1fr)] items-center gap-3 rounded-[18px] border border-[var(--rp-primary)]/70 bg-[linear-gradient(135deg,rgba(242,193,91,0.2),rgba(51,37,12,0.76))] p-4 text-left shadow-[0_14px_34px_rgba(242,193,91,0.12),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-[var(--rp-primary)] hover:brightness-105"
-          >
-            <span className="grid h-14 w-14 place-items-center rounded-full border border-[var(--rp-primary)]/55 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]">
-              <ArrowRight className="h-7 w-7 stroke-[3]" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-2xl font-black leading-tight text-white">Join Ride</span>
-              <span className="mt-1 block text-base font-semibold leading-5 text-[var(--rp-muted-strong)]">Reserve your seat</span>
-            </span>
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={onRequestStopRide}
+              className="grid min-h-[136px] content-center rounded-[18px] border border-cyan-300/40 bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(7,17,29,0.78))] p-4 text-left shadow-[0_14px_34px_rgba(34,211,238,0.1),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-200/70 hover:bg-cyan-300/14"
+            >
+              <span className="grid h-12 w-12 place-items-center rounded-full border border-cyan-200/45 bg-cyan-300/10 text-cyan-100">
+                <MapPin className="h-6 w-6" />
+              </span>
+              <span className="mt-4 block text-xl font-black leading-tight text-white">Request a Stop</span>
+              <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">Ask to add your stop.</span>
+            </button>
+          </div>
+        )}
       </section>
     );
   }
@@ -5305,6 +5435,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
   const [showRideAppEstimateModal, setShowRideAppEstimateModal] = useState(false);
   const [showRideAppFareProofModal, setShowRideAppFareProofModal] = useState(false);
   const [showManagePodActionsModal, setShowManagePodActionsModal] = useState(false);
+  const [requestStopOpenSignal, setRequestStopOpenSignal] = useState(0);
   const [hostCancellationModalContext, setHostCancellationModalContext] = useState<{
     confirmedRiderCount: number;
     joinedRiderCount: number;
@@ -5417,9 +5548,11 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
   const quoteStatus = getHeroQuoteStatus(ride, joinView);
   const selfSettlePod = isRideAppSelfSettlePod(ride);
   const howItWorksRideMode: HowItWorksRideMode = selfSettlePod ? "ride_app" : "taxi";
+  const currentUserStopJoinIntentStatus = getCurrentUserStopJoinIntentStatus(ride);
+  const hasConditionalStopJoinStatus = currentUserStopJoinIntentStatus !== "not_joined" && currentUserStopJoinIntentStatus !== "joined";
   const showSelfSettleJoin = getCurrentUserCanJoinSelfSettlePod(ride, joinView);
   const showSelfSettleHost = selfSettlePod && getCurrentUserIsHost(ride);
-  const showPreJoinRideAppLayout = selfSettlePod && showSelfSettleJoin && !showSelfSettleHost;
+  const showPreJoinRideAppLayout = selfSettlePod && (showSelfSettleJoin || hasConditionalStopJoinStatus) && !showSelfSettleHost;
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
   const hostCancellationAllowsHostControls = hostCancellationStatus === "active";
   const canUpdateRideAppEstimate = selfSettlePod && showSelfSettleHost && hostCancellationAllowsHostControls;
@@ -5431,10 +5564,20 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     (ride.currentUserJoined === true ||
       ride.currentUserRole === "joined_rider" ||
       ride.quoteStatus === "joined" ||
+      ride.currentUserJoinIntentStatus === "joined" ||
       ride.currentUserJoinIntentStatus === "joined_interest" ||
       ride.currentUserJoinIntentStatus === "confirmed" ||
       ride.currentUserJoinIntentStatus === "needs_review");
-  const canRequestRideAppStop = currentUserIsSelfSettleRider && hostCancellationAllowsHostControls;
+  const currentUserCanStartStopJoinRequest =
+    selfSettlePod &&
+    !showSelfSettleHost &&
+    hostCancellationAllowsHostControls &&
+    currentUserStopJoinIntentStatus === "not_joined" &&
+    showSelfSettleJoin;
+  const canRequestRideAppStop = (currentUserIsSelfSettleRider || currentUserCanStartStopJoinRequest) && hostCancellationAllowsHostControls;
+  const stopRequestSeatUnavailable =
+    (currentUserStopJoinIntentStatus === "stop_request_pending" || currentUserStopJoinIntentStatus === "stop_request_approved") &&
+    seatsUsed >= ride.seatsTotal;
   const showHostCancellationModal = hostCancellationModalContext !== null;
   const hostCancellationHasJoinedRiders = (hostCancellationModalContext?.joinedRiderCount ?? 0) > 0;
   const hostCancellationHasConfirmedRiders = (hostCancellationModalContext?.confirmedRiderCount ?? 0) > 0;
@@ -5562,8 +5705,17 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
   }
 
   function joinSelfSettleFromSummary() {
-    if (!showSelfSettleJoin) return;
+    const canJoinFromStopDecision =
+      currentUserStopJoinIntentStatus === "stop_request_approved" ||
+      currentUserStopJoinIntentStatus === "stop_request_declined";
+    if (!showSelfSettleJoin && !canJoinFromStopDecision) return;
     completeSelfSettleJoin(true);
+  }
+
+  function openPreJoinStopRequest() {
+    if (!currentUserCanStartStopJoinRequest) return;
+    setActiveDetailTab("trip");
+    setRequestStopOpenSignal((value) => value + 1);
   }
 
   function confirmLeaveSelfSettle() {
@@ -5746,8 +5898,8 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
       ride.bookingDetailsShared === true ||
       ride.rideAppBookingDetailsConfirmed === true ||
       ride.rideAppBookingDetailsFinalized === true;
-    const hasPendingStop = getNormalizedRouteRequests(ride).pendingCount > 0;
-    if (!trimmedStopLabel || !canRequestRideAppStop || routeLocked || hasPendingStop) return;
+    const hasActiveCurrentUserStopRequest = getCurrentUserHasActiveStopRequest(ride);
+    if (!trimmedStopLabel || !canRequestRideAppStop || routeLocked || hasActiveCurrentUserStopRequest) return;
 
     const patch = buildRideAppStopRequestPatch(ride, trimmedStopLabel, detailActorName);
     applyRideActionPatch(patch);
@@ -6003,6 +6155,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
               onViewFareProof={() => setShowRideAppFareProofModal(true)}
               onSharePod={sharePod}
               onJoinRide={joinSelfSettleFromSummary}
+              onRequestStopRide={openPreJoinStopRequest}
               onLeaveRide={() => setShowLeaveSelfSettleModal(true)}
               onCancelPodClick={() =>
                 openHostCancellationModal({
@@ -6010,6 +6163,8 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                   joinedRiderCount: rideAppJoinedRiderCount,
                 })
               }
+              stopJoinIntentStatus={currentUserStopJoinIntentStatus}
+              stopRequestSeatUnavailable={stopRequestSeatUnavailable}
             />
           ) : (
           <section className="relative -mx-4 -mt-2 overflow-hidden rounded-b-[28px] border-b border-[var(--rp-border)] bg-[var(--rp-shell)] shadow-[var(--rp-shadow-soft)]">
@@ -6263,13 +6418,24 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                   <DetailItem icon={<CalendarDays className="h-5 w-5" />} label="Date & time" value={`${ride.dateLabel} · ${ride.timeLabel}`} />
                 </div>
                 {selfSettlePod ? showPreJoinRideAppLayout ? (
-                  <PreJoinRideAppTripDetails ride={ride} />
+                  <div className="grid gap-4">
+                    <PreJoinRideAppTripDetails ride={ride} />
+                    <div className="px-4 pb-4">
+                      <CompactRideAppRoutePanel
+                        ride={ride}
+                        canRequestStop={canRequestRideAppStop}
+                        requestStopOpenSignal={requestStopOpenSignal}
+                        onRequestStop={requestRideAppStopFromDetail}
+                      />
+                    </div>
+                  </div>
                 ) : (
                   <div className="grid gap-3">
                     <CompactRideAppRoutePanel
                       ride={ride}
                       canRequestStop={canRequestRideAppStop}
                       canReviewStop={showSelfSettleHost}
+                      requestStopOpenSignal={requestStopOpenSignal}
                       onRequestStop={requestRideAppStopFromDetail}
                       onApproveStop={approveRouteStop}
                       onDeclineStop={declineRouteStop}

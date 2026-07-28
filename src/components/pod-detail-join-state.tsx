@@ -894,6 +894,14 @@ export function getCurrentUserCanJoinSelfSettlePod(ride: HomeRide, joinView: Pod
   if (joinView !== "quote_pending") return false;
   if (getCurrentUserIsHost(ride)) return false;
   if (ride.currentUserJoined === true || ride.quoteStatus === "joined") return false;
+  if (
+    ride.currentUserJoinIntentStatus === "joined" ||
+    ride.currentUserJoinIntentStatus === "stop_request_pending" ||
+    ride.currentUserJoinIntentStatus === "stop_request_approved" ||
+    ride.currentUserJoinIntentStatus === "stop_request_declined"
+  ) {
+    return false;
+  }
   if (ride.requiresHostApprovalToRejoin) return false;
   if (getRideAppRejoinCooldownInfo(ride).active) return false;
 
