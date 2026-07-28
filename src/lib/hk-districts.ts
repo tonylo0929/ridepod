@@ -94,6 +94,38 @@ export function getDistrictCenter(value: string) {
   return isHk18District(value) ? hk18DistrictCenters[value] : null;
 }
 
+export function resolveHongKongDistrictFromCoordinates(
+  coordinates: { lat: number; lng: number } | null | undefined,
+): Hk18District | null {
+  if (
+    !coordinates ||
+    !Number.isFinite(coordinates.lat) ||
+    !Number.isFinite(coordinates.lng)
+  ) {
+    return null;
+  }
+
+  let closestDistrict: Hk18District | null = null;
+  let closestDistance = Number.POSITIVE_INFINITY;
+
+  for (const district of hk18DistrictOptions) {
+    const center = hk18DistrictCenters[district];
+    const latDistance = (coordinates.lat - center.lat) * 111_320;
+    const lngDistance =
+      (coordinates.lng - center.lng) *
+      111_320 *
+      Math.cos((coordinates.lat * Math.PI) / 180);
+    const distance = Math.hypot(latDistance, lngDistance);
+
+    if (distance < closestDistance) {
+      closestDistance = distance;
+      closestDistrict = district;
+    }
+  }
+
+  return closestDistance <= 35_000 ? closestDistrict : null;
+}
+
 export function normalizeHongKongDistrict(value: string | null | undefined): Hk18District | null {
   const clean = normalizeComparableText(value ?? "");
   if (!clean) return null;

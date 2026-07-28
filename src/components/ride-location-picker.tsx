@@ -21,6 +21,7 @@ import { HomeMenuDrawer } from "@/components/home-menu-drawer";
 import { RidePodLogo } from "@/components/ridepod-logo";
 import {
   resolveHongKongDistrictFromAddressComponents,
+  resolveHongKongDistrictFromCoordinates,
   resolveHongKongDistrictFromText,
   type Hk18District,
 } from "@/lib/hk-districts";
@@ -268,7 +269,7 @@ function makeRideLocation({
     formattedAddress: formattedAddress.trim() || name.trim() || "Selected location",
     latitude,
     longitude,
-    district,
+    district: district ?? resolveHongKongDistrictFromCoordinates({ lat: latitude, lng: longitude }),
     source,
     meetingPointNote,
   };
@@ -353,7 +354,13 @@ async function createRideLocationFromPlace(
   const addressComponents = getAddressComponentValues(fetchedPlace.addressComponents);
   const district = resolveHongKongDistrictFromAddressComponents(
     addressComponents,
-    `${name} ${formattedAddress}`,
+    [
+      name,
+      formattedAddress,
+      prediction.mainText?.text,
+      prediction.secondaryText?.text,
+      prediction.text.text,
+    ].filter(Boolean).join(" "),
   );
 
   return makeRideLocation({
@@ -942,6 +949,7 @@ function MapLocationAdjuster({
             ...current,
             latitude: coordinates.lat,
             longitude: coordinates.lng,
+            district: resolveHongKongDistrictFromCoordinates(coordinates) ?? current.district,
             source: "map-pin",
           }));
           setStatusMessage("Address could not be refreshed for this pin. You can still confirm or move the map.");
@@ -1320,7 +1328,10 @@ export function LocationPicker({
     const initialCoordinates = value
       ? { lat: value.latitude, lng: value.longitude }
       : userCoordinates ?? hongKongDefaultCenter;
-    const district = resolveHongKongDistrictFromText(value?.formattedAddress ?? null);
+    const district =
+      value?.district ??
+      resolveHongKongDistrictFromText(value?.formattedAddress ?? null) ??
+      resolveHongKongDistrictFromCoordinates(initialCoordinates);
     await openMapWithLocation(
       value ??
         makeRideLocation({
