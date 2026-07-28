@@ -3481,6 +3481,7 @@ type RouteMapPointKind = "pickup" | "stop" | "destination";
 type RouteMapPoint = {
   id: string;
   label: string;
+  mapLabel: string;
   helper?: string | null;
   coordinates: RouteCoordinates;
   kind: RouteMapPointKind;
@@ -3540,6 +3541,7 @@ function getAirportRouteDisplayLabel(value: string) {
 function routeMapPoint({
   id,
   label,
+  mapLabel,
   helper,
   coordinates,
   kind,
@@ -3547,13 +3549,14 @@ function routeMapPoint({
 }: {
   id: string;
   label: string;
+  mapLabel: string;
   helper?: string | null;
   coordinates: RouteCoordinates | null;
   kind: RouteMapPointKind;
   markerLabel: string;
 }): RouteMapPoint | null {
   if (!coordinates) return null;
-  return { id, label, helper, coordinates, kind, markerLabel };
+  return { id, label, mapLabel, helper, coordinates, kind, markerLabel };
 }
 
 function uniqueRouteStops(stops: RoutePlanStop[]) {
@@ -3579,6 +3582,7 @@ function buildRouteMapPoints(ride: HomeRide, displayedStops: RoutePlanStop[]) {
   const pickupPoint = routeMapPoint({
     id: "pickup",
     label: ride.fromLabel,
+    mapLabel: "Pickup",
     helper: ride.pickupLabel && ride.pickupLabel !== ride.fromLabel ? ride.pickupLabel : null,
     coordinates: ride.pickupCoordinates ?? null,
     kind: "pickup",
@@ -3589,6 +3593,7 @@ function buildRouteMapPoints(ride: HomeRide, displayedStops: RoutePlanStop[]) {
       routeMapPoint({
         id: `stop-${stop.id || index}`,
         label: stop.label,
+        mapLabel: `Stop ${index + 1}`,
         helper: stop.status === "pending_host_approval" ? "Waiting for host approval" : "Planned stop",
         coordinates: stop.coordinates ?? null,
         kind: "stop",
@@ -3599,6 +3604,7 @@ function buildRouteMapPoints(ride: HomeRide, displayedStops: RoutePlanStop[]) {
   const destinationPoint = routeMapPoint({
     id: "destination",
     label: destinationLabel,
+    mapLabel: "Destination",
     helper: ride.dropoffLabel && ride.dropoffLabel !== ride.toLabel ? ride.toLabel : null,
     coordinates: ride.dropoffCoordinates ?? null,
     kind: "destination",
@@ -3929,8 +3935,8 @@ function RealDrivingRouteMap({
               <span className={cn("grid h-8 w-8 place-items-center rounded-full border-2 text-sm font-black", getMapMarkerClass(point.kind))}>
                 {point.markerLabel}
               </span>
-              <span className="mt-1 hidden max-w-[116px] rounded-full bg-[#06111c]/78 px-2 py-1 text-[10px] font-black leading-3 text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] min-[390px]:block">
-                {point.label}
+              <span className="mt-1 hidden rounded-full border border-white/14 bg-[#06111c]/82 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-white shadow-[0_6px_16px_rgba(0,0,0,0.28)] backdrop-blur-md min-[390px]:block">
+                {point.mapLabel}
               </span>
             </span>
           );
