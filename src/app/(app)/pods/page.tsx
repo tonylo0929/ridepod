@@ -10,14 +10,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
-  Grid2X2,
   LogIn,
-  MessageCircle,
   Plane,
   RefreshCcw,
+  Send,
   SlidersHorizontal,
   Smartphone,
   Star,
+  Bookmark,
   UserPlus,
   XCircle,
   type LucideIcon,
@@ -50,7 +50,6 @@ import {
 
 type StatusTone = "action" | "upcoming" | "completed" | "cancelled";
 type RideTypeTone = "taxi" | "ride_app" | "airport" | "recurring";
-type MyRideFilter = "all" | RideTypeTone;
 type ActivityItemKind = "request" | "ride";
 type MyActivityView = "all" | "requests" | "rides" | "bookmarked" | "joined" | "interested" | "tracked";
 type MyActivityTone = RideTypeTone | "request";
@@ -73,31 +72,6 @@ type MyActivityItem = {
 
 const myActivityBookmarkStorageKey = "ridepod-my-activity-bookmarks-v1";
 const myActivityBookmarkUpdateEventName = "ridepod-my-activity-bookmarks-updated";
-
-const primaryFilters: Array<{ id: MyRideFilter; label: string; icon: LucideIcon; tone: RideTypeTone | "all" }> = [
-  { id: "all", label: "All", icon: Grid2X2, tone: "all" },
-  { id: "taxi", label: "Taxi", icon: CarFront, tone: "taxi" },
-  { id: "ride_app", label: "Ride app", icon: Smartphone, tone: "ride_app" },
-  { id: "airport", label: "Airport", icon: Plane, tone: "airport" },
-  { id: "recurring", label: "Recurring", icon: RefreshCcw, tone: "recurring" },
-];
-
-const statusLegendItems: Array<{ id: StatusTone; label: string; tone: StatusTone }> = [
-  { id: "action", label: "Action", tone: "action" },
-  { id: "upcoming", label: "Upcoming", tone: "upcoming" },
-  { id: "completed", label: "Completed", tone: "completed" },
-  { id: "cancelled", label: "Cancelled", tone: "cancelled" },
-];
-
-const activityViews: Array<{ id: MyActivityView; label: string; icon: LucideIcon }> = [
-  { id: "all", label: "All", icon: Grid2X2 },
-  { id: "requests", label: "Requests", icon: MessageCircle },
-  { id: "rides", label: "Rides", icon: CarFront },
-  { id: "bookmarked", label: "Bookmarked", icon: Star },
-  { id: "joined", label: "Joined", icon: UserPlus },
-  { id: "interested", label: "Interested", icon: CheckCircle2 },
-  { id: "tracked", label: "Following", icon: SlidersHorizontal },
-];
 
 function ridesByDateMap(rides: CalendarRide[]) {
   return rides.reduce<Record<string, CalendarRide[]>>((groups, ride) => {
@@ -283,26 +257,6 @@ function statusChipClass(tone: StatusTone) {
   return classes[tone];
 }
 
-function filterChipClass(active: boolean, tone: RideTypeTone | StatusTone | "all") {
-  if (!active) {
-    return "border-[var(--rp-border)] bg-[rgba(255,255,255,0.045)] text-[var(--rp-muted-strong)] hover:border-[var(--rp-border-strong)] hover:bg-[var(--rp-card-muted)]";
-  }
-
-  if (tone === "action" || tone === "taxi") {
-    return "border-[color-mix(in_srgb,var(--rp-primary)_70%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)] shadow-[0_0_22px_rgba(242,193,91,0.18)]";
-  }
-
-  if (tone === "completed" || tone === "recurring") {
-    return "border-emerald-300/55 bg-emerald-300/12 text-emerald-100 shadow-[0_0_20px_rgba(52,211,153,0.12)]";
-  }
-
-  if (tone === "cancelled") {
-    return "border-rose-300/45 bg-rose-400/10 text-rose-100";
-  }
-
-  return "border-cyan-300/70 bg-cyan-300/16 text-cyan-50 shadow-[0_0_26px_rgba(34,211,238,0.22)]";
-}
-
 function rideTypeClass(tone: RideTypeTone) {
   const classes: Record<RideTypeTone, string> = {
     taxi: "border-[color-mix(in_srgb,var(--rp-primary)_55%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_13%,transparent)] text-[var(--rp-primary)]",
@@ -334,90 +288,12 @@ function getRouteStops(route: string) {
   };
 }
 
-function matchesFilter(ride: CalendarRide, filter: MyRideFilter) {
-  if (filter === "all") return true;
-  if (filter === "taxi") return ride.rideMode !== "ride_app";
-  if (filter === "ride_app") return ride.rideMode === "ride_app";
-  if (filter === "airport") return ride.rideKind === "airport";
-  if (filter === "recurring") return ride.rideKind === "recurring";
-  return true;
-}
-
-function activityToneClass(tone: MyActivityTone) {
-  const classes: Record<MyActivityTone, string> = {
-    request: "border-emerald-300/42 bg-emerald-300/10 text-emerald-100",
-    taxi: "border-[color-mix(in_srgb,var(--rp-primary)_55%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] text-[var(--rp-primary)]",
-    ride_app: "border-cyan-300/45 bg-cyan-300/10 text-cyan-100",
-    airport: "border-blue-300/45 bg-blue-400/10 text-blue-100",
-    recurring: "border-emerald-300/45 bg-emerald-300/10 text-emerald-100",
-  };
-
-  return classes[tone];
-}
-
-function activityViewChipClass(active: boolean) {
-  return active
-    ? "border-[color-mix(in_srgb,var(--rp-primary)_66%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)] shadow-[0_0_22px_rgba(242,193,91,0.14)]"
-    : "border-[var(--rp-border)] bg-[rgba(255,255,255,0.045)] text-[var(--rp-muted-strong)] hover:border-[var(--rp-border-strong)] hover:bg-[var(--rp-card-muted)]";
-}
-
-function getActivityViewItems(items: MyActivityItem[], view: MyActivityView) {
-  if (view === "requests") return items.filter((item) => item.kind === "request");
-  if (view === "rides") return items.filter((item) => item.kind === "ride");
-  if (view === "bookmarked") return items.filter((item) => item.bookmarked);
-  if (view === "joined") return items.filter((item) => item.isJoined);
-  if (view === "interested") return items.filter((item) => item.isInterested);
-  if (view === "tracked") return items.filter((item) => item.bookmarked || item.isJoined || item.isInterested);
-  return items;
-}
-
-function getActivityViewEmptyCopy(view: MyActivityView) {
-  if (view === "requests") return "No requests from you yet.";
-  if (view === "rides") return "No active rides yet.";
-  if (view === "bookmarked") return "Tap the star on any request or ride to save it here.";
-  if (view === "joined") return "Joined rides will show here after you take a seat.";
-  if (view === "interested") return "Requests you mark interested will show here.";
-  if (view === "tracked") return "Bookmarked, joined, and interested items will show here together.";
-  return "Your requests, rides, bookmarks, joined rides, and interested requests will show here.";
-}
-
 function getRequestStatusLabel(rideCall: RideCall, interestCount: number) {
   if (rideCall.status === "ready_to_convert" || interestCount >= rideCall.targetPeopleCount) return "Ready";
   if (rideCall.status === "converted") return "Converted";
   if (rideCall.status === "cancelled") return "Cancelled";
   if (rideCall.status === "expired") return "Expired";
   return "Open";
-}
-
-function FilterChip({
-  id,
-  label,
-  icon: Icon,
-  tone,
-  active,
-  onClick,
-}: {
-  id: MyRideFilter;
-  label: string;
-  icon: LucideIcon;
-  tone: RideTypeTone | StatusTone | "all";
-  active: boolean;
-  onClick: (filter: MyRideFilter) => void;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={() => onClick(id)}
-      className={cn(
-        "inline-flex min-h-[54px] min-w-0 overflow-hidden flex-col items-center justify-center gap-1 rounded-[15px] border px-1 text-center text-[10px] font-black leading-none transition min-[390px]:text-[11px]",
-        filterChipClass(active, tone),
-      )}
-    >
-      <Icon className="h-4 w-4 shrink-0" />
-      <span className="min-w-0 max-w-full whitespace-nowrap leading-[1.05]">{label}</span>
-    </button>
-  );
 }
 
 function ActivityBookmarkButton({
@@ -446,131 +322,84 @@ function ActivityBookmarkButton({
   );
 }
 
-function MyActivityCard({
-  item,
-  onToggleBookmark,
-}: {
-  item: MyActivityItem;
-  onToggleBookmark: (key: string) => void;
-}) {
-  const Icon =
-    item.kind === "request"
-      ? MessageCircle
-      : item.tone === "ride_app"
-        ? Smartphone
-        : item.tone === "airport"
-          ? Plane
-          : item.tone === "recurring"
-            ? RefreshCcw
-            : CarFront;
-
-  return (
-    <article className="relative min-w-0 overflow-hidden rounded-[20px] border border-[var(--rp-border)] bg-[linear-gradient(135deg,rgba(255,255,255,0.065),rgba(255,255,255,0.026))] shadow-[var(--rp-shadow-soft)] transition hover:border-[var(--rp-border-strong)]">
-      <div className="absolute right-3 top-3 z-10">
-        <ActivityBookmarkButton bookmarked={item.bookmarked} label={item.kind} onClick={() => onToggleBookmark(item.key)} />
-      </div>
-      <Link href={item.href} className="grid min-w-0 gap-3 p-4 pr-14">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className={cn("grid h-12 w-12 shrink-0 place-items-center rounded-[16px] border", activityToneClass(item.tone))}>
-            <Icon className="h-5 w-5" />
-          </span>
-          <div className="min-w-0">
-            <span className={cn("inline-flex min-h-6 max-w-full items-center rounded-full border px-2 text-[10px] font-black uppercase tracking-[0.08em]", activityToneClass(item.tone))}>
-              <span className="min-w-0 truncate">{item.relationship}</span>
-            </span>
-            <h3 className="mt-2 line-clamp-2 text-left text-base font-black leading-5 text-[var(--rp-text)]">
-              {item.title}
-            </h3>
-            <p className="mt-1 line-clamp-2 text-left text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
-              {item.subtitle}
-            </p>
-          </div>
-        </div>
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t border-white/[0.07] pt-3">
-          <p className="min-w-0 truncate text-left text-xs font-black text-[var(--rp-muted-strong)]">{item.meta}</p>
-          <span className="rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-muted)] px-2.5 py-1 text-[11px] font-black text-[var(--rp-text)]">
-            {item.badge}
-          </span>
-        </div>
-      </Link>
-    </article>
-  );
-}
-
-function MyActivityHub({
+function MyRideQuickAccess({
   items,
-  activeView,
   counts,
-  onViewChange,
-  onToggleBookmark,
 }: {
   items: MyActivityItem[];
-  activeView: MyActivityView;
   counts: Record<MyActivityView, number>;
-  onViewChange: (view: MyActivityView) => void;
-  onToggleBookmark: (key: string) => void;
 }) {
-  const visibleItems = getActivityViewItems(items, activeView);
-  const featuredItems = visibleItems.slice(0, 4);
+  const createdRide = items.find((item) => item.kind === "ride" && item.isMine);
+  const myRequest = items.find((item) => item.kind === "request" && item.isMine);
+  const bookmarked = items.find((item) => item.bookmarked);
+  const entries: Array<{
+    label: string;
+    href: string;
+    icon: LucideIcon;
+    count: number;
+    tone: "purple" | "orange" | "rose";
+  }> = [
+    {
+      label: "My Created Ride",
+      href: createdRide?.href ?? "/create",
+      icon: CarFront,
+      count: items.filter((item) => item.kind === "ride" && item.isMine).length,
+      tone: "purple",
+    },
+    {
+      label: "My Request",
+      href: myRequest?.href ?? "/ride-groups",
+      icon: Send,
+      count: items.filter((item) => item.kind === "request" && item.isMine).length,
+      tone: "orange",
+    },
+    {
+      label: "Bookmark",
+      href: bookmarked?.href ?? "/home",
+      icon: Bookmark,
+      count: counts.bookmarked,
+      tone: "rose",
+    },
+  ];
 
   return (
-    <section className="min-w-0 overflow-hidden rounded-[26px] border border-[var(--rp-border)] bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.12),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.062),rgba(255,255,255,0.024))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),var(--rp-shadow-soft)]">
-      <div className="grid min-w-0 gap-3 min-[520px]:grid-cols-[minmax(0,1fr)_auto] min-[520px]:items-start">
-        <div className="min-w-0">
-          <p className="text-left text-[11px] font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">View my</p>
-          <h2 className="mt-1 text-left text-2xl font-black leading-7 text-[var(--rp-text)]">Requests, rides, and saved items</h2>
-          <p className="mt-2 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            Bookmark with the star, then use the chips to see joined, interested, or saved rides fast.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => onViewChange("tracked")}
-          className={cn(
-            "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-4 text-sm font-black transition",
-            activeView === "tracked"
-              ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,transparent)] text-[var(--rp-primary)]"
-              : "border-cyan-300/45 bg-cyan-300/10 text-cyan-100 hover:bg-cyan-300/15",
-          )}
-        >
-          <Star className={cn("h-4 w-4", activeView === "tracked" && "fill-current")} />
-          Saved / joined / interested
-        </button>
+    <section className="rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.025))] p-4 shadow-[var(--rp-shadow-soft)]">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-sm font-black text-[var(--rp-text)]">Quick Access</h2>
+        <span className="rounded-full border border-white/10 bg-white/7 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-muted-strong)]">
+          Calendar first
+        </span>
       </div>
+      <div className="mt-3 grid grid-cols-3 gap-2">
+        {entries.map((entry) => {
+          const Icon = entry.icon;
+          const toneClass =
+            entry.tone === "purple"
+              ? "text-violet-200 bg-violet-400/12 border-violet-300/20"
+              : entry.tone === "orange"
+                ? "text-orange-200 bg-orange-400/12 border-orange-300/20"
+                : "text-rose-200 bg-rose-400/12 border-rose-300/20";
 
-      <div className="scrollbar-hide mt-4 flex min-w-0 snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain pb-1">
-        {activityViews.map((view) => {
-          const Icon = view.icon;
-          const active = activeView === view.id;
           return (
-            <button
-              key={view.id}
-              type="button"
-              aria-pressed={active}
-              onClick={() => onViewChange(view.id)}
-              className={cn(
-                "grid min-h-[64px] w-[128px] shrink-0 snap-start content-center gap-1 rounded-[16px] border px-3 text-left transition",
-                activityViewChipClass(active),
-              )}
+            <Link
+              key={entry.label}
+              href={entry.href}
+              className="group grid min-h-[86px] justify-items-center rounded-[18px] border border-white/10 bg-[#101a25]/78 px-2.5 py-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition hover:border-cyan-300/30 hover:bg-[#132333]"
             >
-              <span className="flex min-w-0 items-center justify-between gap-2">
-                <Icon className="h-4 w-4 shrink-0" />
-                <span className="rounded-full bg-black/20 px-2 py-0.5 text-[10px] font-black">{counts[view.id]}</span>
+              <span className={cn("relative grid h-10 w-10 place-items-center rounded-full border", toneClass)}>
+                <Icon className="h-5 w-5" />
+                {entry.count ? (
+                  <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--rp-primary)] px-1 text-[10px] font-black text-[#07111a]">
+                    {entry.count}
+                  </span>
+                ) : null}
               </span>
-              <span className="min-w-0 truncate text-xs font-black">{view.label}</span>
-            </button>
+              <span className="mt-2 line-clamp-2 text-[11px] font-black leading-4 text-[var(--rp-text)] group-hover:text-cyan-100">
+                {entry.label}
+              </span>
+            </Link>
           );
         })}
-      </div>
-
-      <div className="mt-4 grid gap-3">
-        {featuredItems.length ? (
-          featuredItems.map((item) => <MyActivityCard key={item.key} item={item} onToggleBookmark={onToggleBookmark} />)
-        ) : (
-          <div className="rounded-[20px] border border-[var(--rp-border)] bg-[var(--rp-card-soft)] p-5 text-left text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-            {getActivityViewEmptyCopy(activeView)}
-          </div>
-        )}
       </div>
     </section>
   );
@@ -809,8 +638,6 @@ export default function MyRidePage() {
   );
   const bookmarkedActivityKeys = useMemo(() => parseMyActivityBookmarkSnapshot(bookmarkSnapshot), [bookmarkSnapshot]);
   const bookmarkedActivityKeySet = useMemo(() => new Set(bookmarkedActivityKeys), [bookmarkedActivityKeys]);
-  const [activeActivityView, setActiveActivityView] = useState<MyActivityView>("all");
-  const [activeFilter, setActiveFilter] = useState<MyRideFilter>("all");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [sortAscending, setSortAscending] = useState(true);
@@ -828,10 +655,7 @@ export default function MyRidePage() {
     () => myRideItems.filter((ride) => !isHistoryRide(ride, todayKey)),
     [myRideItems, todayKey],
   );
-  const filteredItems = useMemo(
-    () => activeRideItems.filter((ride) => matchesFilter(ride, activeFilter)),
-    [activeFilter, activeRideItems],
-  );
+  const filteredItems = activeRideItems;
   const monthDays = useMemo(() => buildMonthDays(currentMonth), [currentMonth]);
   const ridesByDate = useMemo(() => ridesByDateMap(filteredItems), [filteredItems]);
   const defaultSelectedDate = useMemo(() => {
@@ -928,11 +752,6 @@ export default function MyRidePage() {
     setCurrentMonth((month) => new Date(month.getFullYear(), month.getMonth() + delta, 1));
   }
 
-  function handleFilterChange(filter: MyRideFilter) {
-    setActiveFilter(filter);
-    setSelectedDate(null);
-  }
-
   function toggleActivityBookmark(key: string) {
     const next = bookmarkedActivityKeys.includes(key)
       ? bookmarkedActivityKeys.filter((item) => item !== key)
@@ -975,40 +794,10 @@ export default function MyRidePage() {
             </section>
           ) : null}
 
-          <MyActivityHub
+          <MyRideQuickAccess
             items={activityItems}
-            activeView={activeActivityView}
             counts={activityCounts}
-            onViewChange={setActiveActivityView}
-            onToggleBookmark={toggleActivityBookmark}
           />
-
-          <section className="min-w-0 overflow-hidden rounded-[24px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.065),rgba(255,255,255,0.025))] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),var(--rp-shadow-soft)] min-[390px]:p-3">
-            <div className="grid min-w-0 grid-cols-5 gap-1.5 min-[390px]:gap-2">
-              {primaryFilters.map((filter) => (
-                <FilterChip
-                  key={filter.id}
-                  id={filter.id}
-                  label={filter.label}
-                  icon={filter.icon}
-                  tone={filter.tone}
-                  active={activeFilter === filter.id}
-                  onClick={handleFilterChange}
-                />
-              ))}
-            </div>
-            <div className="mt-3 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 px-1 min-[390px]:gap-x-4">
-              {statusLegendItems.map((item) => (
-                <span
-                  key={item.id}
-                  className="inline-flex min-w-0 items-center gap-1.5 text-[10px] font-black uppercase leading-none tracking-[0.06em] text-[var(--rp-muted-strong)]"
-                >
-                  <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", markerDotClass(item.tone))} />
-                  <span className="whitespace-nowrap">{item.label}</span>
-                </span>
-              ))}
-            </div>
-          </section>
 
           <section className="min-w-0 overflow-hidden rounded-[26px] border border-[var(--rp-border)] bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_34%),linear-gradient(180deg,var(--rp-card),rgba(11,22,32,0.72))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),var(--rp-shadow-soft)] min-[390px]:p-4">
             <div className="grid min-w-0 grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2 min-[390px]:grid-cols-[52px_minmax(0,1fr)_52px] min-[390px]:gap-3">
