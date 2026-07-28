@@ -26,7 +26,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { Suspense, type CSSProperties, type MouseEvent, type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, type CSSProperties, type MouseEvent, type ReactNode, type RefObject, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { RidePodAvatar, useRidePodAvatarPreference, type RidePodAvatarPreference } from "@/components/animal-avatar";
 import { cn } from "@/components/ui";
 import {
@@ -1405,6 +1405,40 @@ function RideSearchResultCard(props: {
   return <HomeRideCard {...props} />;
 }
 
+function RideBookmarkButton({
+  bookmarked,
+  onToggle,
+  label,
+  className,
+}: {
+  bookmarked: boolean;
+  onToggle: () => void;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={bookmarked ? `Remove ${label} bookmark` : `Bookmark ${label}`}
+      aria-pressed={bookmarked}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onToggle();
+      }}
+      className={cn(
+        "grid h-9 w-9 place-items-center rounded-full border bg-[#07131c]/92 text-slate-100 shadow-[0_12px_28px_rgba(0,0,0,0.28)] backdrop-blur transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2",
+        bookmarked
+          ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_18%,#07131c)] text-[var(--rp-primary)] shadow-[0_0_26px_color-mix(in_srgb,var(--rp-primary)_20%,transparent)] focus-visible:outline-[var(--rp-primary)]"
+          : "border-slate-200/76 hover:border-white hover:bg-white/10 focus-visible:outline-slate-100",
+        className,
+      )}
+    >
+      <Star className={cn("h-5 w-5 stroke-[2.4]", bookmarked && "fill-current")} />
+    </button>
+  );
+}
+
 const startingAreaIcons: Record<StartingAreaIconKey, typeof Building2> = {
   airport: Plane,
   building: Building2,
@@ -1877,6 +1911,7 @@ function CategoryCompactResultCard({
   const typeIconLabel = isAirportRide ? "Airport ride" : isRecurringRide ? "Recurring ride" : "Ride";
   const currentUserRelationship = isAuthenticated ? getCurrentUserRideRelationship(ride) : null;
   const previewRoute = getRidePreviewRouteLabel(ride);
+  const { bookmarked, toggleBookmark } = useRideBookmark(ride.id);
   const ownershipBadgeLabel = currentUserRelationship
     ? currentUserRelationship.tone === "deleted"
       ? "Deleted by you"
@@ -1909,6 +1944,12 @@ function CategoryCompactResultCard({
           )}
         />
       ) : null}
+      <RideBookmarkButton
+        bookmarked={bookmarked}
+        onToggle={toggleBookmark}
+        label={previewRoute.full}
+        className="absolute right-2.5 top-2.5 z-20"
+      />
       <div className={cn("relative z-10 grid shrink-0 justify-items-center", isAirportRide ? "gap-1.5" : "")}>
         <span
           aria-label={typeIconLabel}
@@ -1976,7 +2017,7 @@ function CategoryCompactResultCard({
           </span>
         </div>
       </div>
-      <div className={cn("relative z-10 grid shrink-0 justify-items-end gap-2 border-l pl-3", isAirportRide ? "border-[#f6c453]/18" : "border-white/10")}>
+      <div className={cn("relative z-10 grid shrink-0 justify-items-end gap-2 border-l pl-3 pt-8", isAirportRide ? "border-[#f6c453]/18" : "border-white/10")}>
         <span
           className={cn(
             "inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-black",
@@ -2328,6 +2369,66 @@ const initialFromDistrict = "All districts";
 const initialToDistrict = "All districts";
 const fareEnoughHomeNavigateEvent = "fare-enough:navigate-home";
 const rideAppLaunchOfferSessionKey = "ridepod:ride-app-launch-offer:auto-opened";
+const rideBookmarkStorageKey = "ridepod-my-activity-bookmarks-v1";
+const rideBookmarkUpdateEventName = "ridepod-my-activity-bookmarks-updated";
+
+function readRideBookmarkKeys() {
+  if (typeof window === "undefined") return [];
+
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(rideBookmarkStorageKey) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeRideBookmarkKeys(keys: string[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(rideBookmarkStorageKey, JSON.stringify(keys));
+  window.dispatchEvent(new Event(rideBookmarkUpdateEventName));
+}
+
+function readRideBookmarkSnapshot() {
+  return readRideBookmarkKeys().join("\n");
+}
+
+function emptyRideBookmarkSnapshot() {
+  return "";
+}
+
+function subscribeToRideBookmarks(onStoreChange: () => void) {
+  if (typeof window === "undefined") return () => {};
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === rideBookmarkStorageKey) onStoreChange();
+  };
+
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener(rideBookmarkUpdateEventName, onStoreChange);
+
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(rideBookmarkUpdateEventName, onStoreChange);
+  };
+}
+
+function useRideBookmark(rideId: string) {
+  const snapshot = useSyncExternalStore(subscribeToRideBookmarks, readRideBookmarkSnapshot, emptyRideBookmarkSnapshot);
+  const keys = useMemo(() => (snapshot ? snapshot.split("\n").filter(Boolean) : []), [snapshot]);
+  const bookmarkKey = `ride:${rideId}`;
+  const bookmarked = keys.includes(bookmarkKey);
+
+  const toggleBookmark = useCallback(() => {
+    const current = readRideBookmarkKeys();
+    const next = current.includes(bookmarkKey)
+      ? current.filter((key) => key !== bookmarkKey)
+      : [...current, bookmarkKey];
+    writeRideBookmarkKeys(next);
+  }, [bookmarkKey]);
+
+  return { bookmarked, toggleBookmark };
+}
 
 function getTimeOfDayGreeting() {
   const hour = new Date().getHours();
