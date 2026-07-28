@@ -4075,12 +4075,17 @@ function CompactRideAppRoutePanel({
         <RealDrivingRouteMap points={routeMapPoints} policyLabel={policyLabel} />
 
         {!directRouteOnly ? (
-          <section className="mt-3 rounded-[16px] border border-emerald-300/18 bg-emerald-300/8 p-3">
+          <section className="mt-3 rounded-[18px] border border-[var(--rp-primary)]/42 bg-[radial-gradient(circle_at_12%_20%,rgba(255,217,104,0.18),transparent_34%),linear-gradient(145deg,rgba(33,31,18,0.88),rgba(8,28,30,0.9))] p-3 shadow-[0_14px_34px_rgba(255,193,55,0.12),inset_0_1px_0_rgba(255,255,255,0.06)]">
             <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[13px] border border-emerald-300/30 bg-emerald-300/10 text-emerald-200">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[14px] border border-[var(--rp-primary)]/42 bg-[var(--rp-primary)]/14 text-[var(--rp-primary)] shadow-[0_10px_22px_rgba(0,0,0,0.22)]">
                 <UserPlus className="h-5 w-5" />
               </span>
               <div className="min-w-0 flex-1">
+                {canShowStopRequestForm ? (
+                  <span className="mb-1 inline-flex rounded-full border border-[var(--rp-primary)]/36 bg-[var(--rp-primary)]/12 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">
+                    Optional stop
+                  </span>
+                ) : null}
                 <h3 className="text-sm font-black text-white">
                   {plannedStopsLabel ? "Stop requests allowed" : stopRequestTitle}
                 </h3>
@@ -4092,8 +4097,9 @@ function CompactRideAppRoutePanel({
                 <button
                   type="button"
                   onClick={() => setRequestScreenOpen(true)}
-                  className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-[13px] border border-cyan-300/38 bg-cyan-300/10 px-3 text-xs font-black text-cyan-100 transition hover:bg-cyan-300/16"
+                  className="inline-flex min-h-12 shrink-0 items-center justify-center gap-1.5 rounded-[15px] bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] px-4 text-xs font-black text-[#07131C] shadow-[0_10px_24px_rgba(255,193,55,0.28)] transition hover:brightness-105"
                 >
+                  <MapPin className="h-3.5 w-3.5" />
                   Request a stop
                 </button>
               ) : null}
