@@ -4201,12 +4201,32 @@ function PreJoinTripDetailRow({
   label,
   value,
   helper,
+  addressAction,
 }: {
   icon: ReactNode;
   label: string;
   value: string;
   helper?: string | null;
+  addressAction?: {
+    address: string;
+  };
 }) {
+  const [copiedAddress, setCopiedAddress] = useState(false);
+  const address = addressAction?.address.trim() ?? "";
+  const mapHref = address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}` : null;
+
+  async function copyAddress() {
+    if (!address) return;
+
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopiedAddress(true);
+      window.setTimeout(() => setCopiedAddress(false), 1600);
+    } catch {
+      setCopiedAddress(false);
+    }
+  }
+
   return (
     <div className="grid grid-cols-[56px_minmax(0,1fr)_24px] items-center gap-3 border-b border-cyan-100/10 px-4 py-4 last:border-b-0">
       <span className="grid h-14 w-14 place-items-center rounded-[16px] border border-cyan-200/14 bg-white/[0.045] text-cyan-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
@@ -4216,6 +4236,27 @@ function PreJoinTripDetailRow({
         <span className="block text-[11px] font-black uppercase tracking-[0.16em] text-[var(--rp-muted-strong)]">{label}</span>
         <span className="mt-1 block break-words text-lg font-black leading-tight text-white">{value}</span>
         {helper ? <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">{helper}</span> : null}
+        {address && mapHref ? (
+          <span className="mt-3 flex flex-wrap gap-2">
+            <a
+              href={mapHref}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-cyan-300/34 bg-cyan-300/12 px-3 text-xs font-black text-cyan-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition hover:border-cyan-200/65 hover:bg-cyan-300/18"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              View in map
+            </a>
+            <button
+              type="button"
+              onClick={copyAddress}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-[var(--rp-primary)]/34 bg-[var(--rp-primary)]/12 px-3 text-xs font-black text-[var(--rp-primary)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition hover:border-[var(--rp-primary)]/65 hover:bg-[var(--rp-primary)]/18"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              {copiedAddress ? "Copied" : "Copy address"}
+            </button>
+          </span>
+        ) : null}
       </span>
       <ChevronRight className="h-6 w-6 text-[var(--rp-muted-strong)]" />
     </div>
@@ -4234,11 +4275,13 @@ function PreJoinRideAppTripDetails({ ride }: { ride: HomeRide }) {
         icon={<MapPin className="h-7 w-7" />}
         label="Pickup"
         value={ride.fromLabel}
+        addressAction={{ address: ride.fromLabel }}
       />
       <PreJoinTripDetailRow
         icon={getPreJoinDestinationIcon(ride)}
         label="Destination"
         value={ride.toLabel}
+        addressAction={{ address: ride.toLabel }}
       />
       <PreJoinTripDetailRow
         icon={<ShieldCheck className="h-7 w-7" />}
