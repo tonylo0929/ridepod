@@ -329,6 +329,7 @@ export type HomeRide = {
   accessibility: string;
   podType: "Open pod" | "Women-only" | "Verified-only" | "Invite-only";
   hostName: string;
+  createdByUserId?: string | null;
   hostAvatarPreference?: RidePodAvatarPreference;
   hostAvatarUrl?: string | null;
   hostDisplayName?: string | null;

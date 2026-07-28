@@ -183,6 +183,7 @@ function readDeletedCreatedHomeRideSnapshotsForViewer(
   return readDeletedCreatedHomeRideMarkers()
     .map((marker) => (marker.ride ? toDeletedCreatedHomeRideSnapshot(marker.ride, marker.deletedAt) : null))
     .filter((ride): ride is HomeRide => Boolean(ride))
+    .filter((ride) => isRideOwnedByViewer(ride, viewerUserId, viewerIdentity))
     .sort((first, second) => createdHomeRideSortKey(second).localeCompare(createdHomeRideSortKey(first)));
 }
 
@@ -204,11 +205,6 @@ function writeCachedPublicCreatedHomeRides(rides: CachedPublicCreatedHomeRide[])
 
 function replaceCachedPublicCreatedHomeRides(rides: CachedPublicCreatedHomeRide[]) {
   writeCachedPublicCreatedHomeRides(rides);
-}
-
-function clearCachedPublicCreatedHomeRides() {
-  if (typeof window === "undefined") return;
-  window.localStorage.removeItem(publicCreatedHomeRidesStorageKey);
 }
 
 export function createdHomeRideViewerIdentityFromAuth({
@@ -251,6 +247,15 @@ function getRideHostNameForViewerMatch(ride: HomeRide) {
   return ride.hostDisplayName ?? (ride.hostName !== "You" ? ride.hostName : null);
 }
 
+function isRideOwnedByViewer(
+  ride: HomeRide,
+  viewerUserId?: string | null,
+  viewerIdentity?: CreatedHomeRideViewerIdentity | null,
+) {
+  if (viewerUserId?.trim() && ride.createdByUserId?.trim() && ride.createdByUserId === viewerUserId) return true;
+  return viewerIdentityMatchesHostName(getRideHostNameForViewerMatch(ride), viewerIdentity);
+}
+
 function applyViewerRelationship(
   ride: HomeRide,
   hostUserId: string | null,
@@ -258,6 +263,7 @@ function applyViewerRelationship(
   viewerIdentity?: CreatedHomeRideViewerIdentity | null,
 ): HomeRide {
   const isHost =
+    Boolean(viewerUserId && ride.createdByUserId && viewerUserId === ride.createdByUserId) ||
     Boolean(viewerUserId && hostUserId && viewerUserId === hostUserId) ||
     viewerIdentityMatchesHostName(getRideHostNameForViewerMatch(ride), viewerIdentity);
   if (isHost) {
@@ -337,7 +343,7 @@ function readCreatedHomeRidesForViewer(
   return readCreatedHomeRides()
     .filter((ride) => !isDeletedCreatedHomeRide(ride))
     .filter((ride) => {
-      return ride.currentUserRole === "host" && viewerIdentityMatchesHostName(getRideHostNameForViewerMatch(ride), viewerIdentity);
+      return ride.currentUserRole === "host" && isRideOwnedByViewer(ride, viewerUserId, viewerIdentity);
     });
 }
 
@@ -627,7 +633,7 @@ async function broadcastKnownCreatedHomeRides(
   const sentRideIds = new Set<string>();
 
   if (hostUserId) {
-    for (const ride of readCreatedHomeRides()) {
+    for (const ride of readCreatedHomeRides().filter((item) => item.createdByUserId === hostUserId)) {
       sentRideIds.add(ride.id);
       await sendCreatedHomeRideBroadcast(channel, ride, hostUserId);
     }
@@ -646,7 +652,7 @@ async function announceLocalCreatedHomeRides(
 ) {
   if (!hostUserId) return;
 
-  for (const ride of readCreatedHomeRides()) {
+  for (const ride of readCreatedHomeRides().filter((item) => item.createdByUserId === hostUserId)) {
     await sendCreatedHomeRideBroadcast(channel, ride, hostUserId);
   }
 }
@@ -659,10 +665,7 @@ async function readPublicCreatedHomeRides(
     const response = await fetch("/api/public-created-rides", { cache: "no-store" });
     if (!response.ok) throw new Error(`List failed with ${response.status}`);
     const payload = (await response.json()) as { pods?: PublicCreatedRidePod[]; fallbackNote?: string };
-    if (payload.fallbackNote) {
-      clearCachedPublicCreatedHomeRides();
-      return [];
-    }
+    if (payload.fallbackNote) return cachedPublicRidesForViewer(viewerUserId, viewerIdentity);
 
     const rides = (payload.pods ?? [])
       .map((pod) => ({
@@ -685,12 +688,13 @@ async function readPublicCreatedHomeRides(
   }
 }
 
-export function saveCreatedHomeRide(ride: HomeRide) {
-  clearDeletedCreatedHomeRideMarker(ride);
+export function saveCreatedHomeRide(ride: HomeRide, creatorUserId?: string | null) {
+  const rideWithOwner = creatorUserId?.trim() ? { ...ride, createdByUserId: creatorUserId } : ride;
+  clearDeletedCreatedHomeRideMarker(rideWithOwner);
   const current = readCreatedHomeRides();
-  writeCreatedHomeRides([ride, ...current.filter((item) => item.id !== ride.id)]);
-  void publishCreatedHomeRide(ride);
-  void broadcastCreatedHomeRide(ride);
+  writeCreatedHomeRides([rideWithOwner, ...current.filter((item) => item.id !== rideWithOwner.id)]);
+  void publishCreatedHomeRide(rideWithOwner);
+  void broadcastCreatedHomeRide(rideWithOwner);
 }
 
 export function saveViewerHomeRide(ride: HomeRide) {
@@ -698,11 +702,15 @@ export function saveViewerHomeRide(ride: HomeRide) {
   writeCreatedHomeRides([ride, ...current.filter((item) => item.id !== ride.id)]);
 }
 
-export function updateCreatedHomeRideHostAvatar(hostAvatar: CreatedHomeRideHostAvatar) {
+export function updateCreatedHomeRideHostAvatar(
+  hostAvatar: CreatedHomeRideHostAvatar,
+  viewerUserId?: string | null,
+  viewerIdentity?: CreatedHomeRideViewerIdentity | null,
+) {
   const current = readCreatedHomeRides();
   let changed = false;
   const next = current.map((ride) => {
-    if (ride.currentUserRole !== "host") return ride;
+    if (ride.currentUserRole !== "host" || !isRideOwnedByViewer(ride, viewerUserId, viewerIdentity)) return ride;
     const updated = {
       ...ride,
       hostAvatarPreference: hostAvatar.hostAvatarPreference,
@@ -842,6 +850,7 @@ function createdHomeRideToCalendarRide(ride: HomeRide): CalendarRide {
     seatsFilled: ride.seatsUsed,
     seatsTotal: ride.seatsTotal,
     rideMode: ride.rideService === "ride_app" ? "ride_app" : "taxi",
+    hostUserId: ride.createdByUserId ?? undefined,
     luggage: ride.luggage,
     currentUserRole: ride.currentUserRole,
     joinedRiderIds: [],

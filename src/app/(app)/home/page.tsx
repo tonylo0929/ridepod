@@ -2367,8 +2367,8 @@ function HomePageContent() {
       hostAvatarPreference: avatarPreference,
       hostAvatarUrl: profile?.avatar_url ?? null,
       hostDisplayName: displayName,
-    });
-  }, [avatarPreference, avatarProfileId, displayName, profile?.avatar_url, user]);
+    }, user.id, createdHomeRideViewerIdentity);
+  }, [avatarPreference, avatarProfileId, createdHomeRideViewerIdentity, displayName, profile?.avatar_url, user]);
   const [fromDistrict, setFromDistrict] = useState(initialFromDistrict);
   const [toDistrict, setToDistrict] = useState(initialToDistrict);
   const [podPreferenceFilter, setPodPreferenceFilter] = useState<PodPreferenceFilter>("all");

@@ -8051,7 +8051,7 @@ export function CreatePodChooseType() {
         hostAvatarUrl: profile?.avatar_url ?? null,
         hostDisplayName,
       });
-      saveCreatedHomeRide(createdRide);
+      saveCreatedHomeRide(createdRide, user?.id ?? null);
       setCreatedPodDetailHref(`/pods/${createdRide.id}`);
       if (user && !createdRide.estimatedRideAppFare?.trim()) {
         const rideRouteLabel = `${createdRide.fromLabel} -> ${createdRide.toLabel}`;
@@ -8087,7 +8087,7 @@ export function CreatePodChooseType() {
         hostAvatarUrl: profile?.avatar_url ?? null,
         hostDisplayName,
       });
-      saveCreatedHomeRide(createdRide);
+      saveCreatedHomeRide(createdRide, user?.id ?? null);
       setCreatedPodDetailHref(`/pods/${createdRide.id}`);
     } else {
       const createdRide = buildCreatedTaxiHomeRide({
@@ -8103,7 +8103,7 @@ export function CreatePodChooseType() {
         hostAvatarUrl: profile?.avatar_url ?? null,
         hostDisplayName,
       });
-      saveCreatedHomeRide(createdRide);
+      saveCreatedHomeRide(createdRide, user?.id ?? null);
       setCreatedPodDetailHref(`/pods/${createdRide.id}`);
     }
 
