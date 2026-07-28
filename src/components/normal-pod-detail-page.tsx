@@ -3974,6 +3974,9 @@ function CompactRideAppRoutePanel({
   const stopPolicyHelper = directRouteOnly
     ? "This pod does not allow extra stop requests."
     : "Extra stop requests are reviewed by the host.";
+  const stopRequestMapHref = trimmedStopRequest
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmedStopRequest)}`
+    : null;
 
   function submitStopRequest() {
     if (!canShowStopRequestForm || !trimmedStopRequest) return;
@@ -3985,7 +3988,7 @@ function CompactRideAppRoutePanel({
   if (requestScreenOpen && canShowStopRequestForm) {
     return (
       <div id="route-requests" className="scroll-mt-24 grid gap-3">
-        <section className="rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
+        <section className="overflow-hidden rounded-[22px] border border-cyan-100/16 bg-[radial-gradient(circle_at_20%_0%,rgba(34,211,238,0.14),transparent_34%),linear-gradient(180deg,rgba(12,26,39,0.98),rgba(6,14,24,0.98))] p-4 shadow-[0_18px_44px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.06)]">
           <button
             type="button"
             onClick={() => setRequestScreenOpen(false)}
@@ -3996,40 +3999,64 @@ function CompactRideAppRoutePanel({
           </button>
 
           <div className="mt-5 grid gap-4">
-            <span className="grid h-12 w-12 place-items-center rounded-[16px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 text-[var(--rp-primary)]">
-              <MapPin className="h-6 w-6" />
-            </span>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Stop requests</p>
-              <h3 className="mt-1 text-2xl font-black leading-tight text-white">Request a stop</h3>
-              <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                Type one extra stop location. The host needs to approve it before booking details are shared.
-              </p>
+            <div className="flex items-start gap-3">
+              <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[17px] border border-[var(--rp-primary)]/38 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(0,0,0,0.24)]">
+                <MapPin className="h-6 w-6" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Stop requests</p>
+                <h3 className="mt-1 text-2xl font-black leading-tight text-white">Request a stop</h3>
+                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                  Add one extra stop. Check it in Google Maps, then send it to the host for approval.
+                </p>
+              </div>
             </div>
 
             <form
-              className="grid gap-3"
+              className="grid gap-3 rounded-[18px] border border-cyan-100/12 bg-black/18 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
               onSubmit={(event) => {
                 event.preventDefault();
                 submitStopRequest();
               }}
             >
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[14px] border border-white/10 bg-white/[0.035] px-3 py-2 text-[11px] font-black text-[var(--rp-muted-strong)]">
+                <span className="truncate">{ride.fromDistrict || ride.fromLabel}</span>
+                <Route className="h-4 w-4 text-cyan-200" />
+                <span className="truncate text-right">{ride.toDistrict || ride.toLabel}</span>
+              </div>
               <label className="grid gap-2" htmlFor={`stop-request-${ride.id}`}>
                 <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Stop location</span>
-                <input
-                  id={`stop-request-${ride.id}`}
-                  value={stopRequestDraft}
-                  onChange={(event) => setStopRequestDraft(event.target.value)}
-                  placeholder="e.g. Admiralty Station Exit A"
-                  autoFocus
-                  className="min-h-12 rounded-[14px] border border-cyan-300/22 bg-black/24 px-3 text-sm font-semibold text-white outline-none transition placeholder:text-[var(--rp-muted-strong)] focus:border-cyan-300/55 focus:bg-cyan-300/8"
-                />
+                <span className="flex min-h-[52px] items-center gap-2 rounded-[16px] border border-cyan-300/24 bg-[#07111d]/82 px-3 shadow-[0_0_0_3px_rgba(246,196,83,0.08),inset_0_1px_0_rgba(255,255,255,0.05)] transition focus-within:border-cyan-200/60 focus-within:bg-cyan-300/8">
+                  <MapPin className="h-4 w-4 shrink-0 text-cyan-200" />
+                  <input
+                    id={`stop-request-${ride.id}`}
+                    value={stopRequestDraft}
+                    onChange={(event) => setStopRequestDraft(event.target.value)}
+                    placeholder="e.g. Admiralty Station Exit A"
+                    autoFocus
+                    className="min-h-12 w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-[var(--rp-muted-strong)]"
+                  />
+                </span>
               </label>
+
+              <a
+                href={stopRequestMapHref ?? "#"}
+                target={stopRequestMapHref ? "_blank" : undefined}
+                rel={stopRequestMapHref ? "noreferrer" : undefined}
+                aria-disabled={!stopRequestMapHref}
+                className={cn(
+                  "inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-cyan-300/28 bg-cyan-300/10 px-4 text-xs font-black text-cyan-100 transition hover:border-cyan-200/55 hover:bg-cyan-300/16",
+                  !stopRequestMapHref ? "pointer-events-none opacity-45" : "",
+                )}
+              >
+                <ExternalLink className="h-4 w-4" />
+                Check in Google Maps
+              </a>
 
               <button
                 type="submit"
                 disabled={!trimmedStopRequest}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] bg-[var(--rp-primary)] px-4 text-sm font-black text-[var(--rp-primary-text)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] px-4 text-sm font-black text-[#07131C] shadow-[0_10px_24px_rgba(255,193,55,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
               >
                 <MapPin className="h-4 w-4" />
                 Confirm request
