@@ -14,6 +14,9 @@ import {
 } from "lucide-react";
 import { Suspense, useMemo, useState } from "react";
 import { cn } from "@/components/ui";
+import { useAuth } from "@/providers/AuthProvider";
+import { createdHomeRideViewerIdentityFromAuth, useCreatedHomeRides } from "@/lib/created-home-rides";
+import { homeRides, type HomeRide } from "@/lib/home-ride-mock";
 import {
   buildRideExploreHref,
   districtRegionTabs,
@@ -23,13 +26,73 @@ import {
   slugToTitle,
   type DistrictRegionId,
 } from "@/lib/ride-explorer";
+import { applyRideAppDemoPersona } from "@/lib/ride-app-demo-persona";
 
 function normalizeSearchText(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ");
 }
 
+function parseRideExploreDate(ride: HomeRide, referenceDate: Date) {
+  if (ride.selectedRideDate) {
+    const parsed = new Date(`${ride.selectedRideDate}T00:00:00`);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+
+  const label = ride.dateLabel.trim().toLowerCase();
+  if (label.includes("today")) return new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  if (label.includes("tomorrow")) return new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate() + 1);
+
+  const match = ride.dateLabel.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*,?\s+(\d{1,2})\b/i);
+  if (!match) return null;
+  const month = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"].findIndex((item) =>
+    match[1].toLowerCase().startsWith(item),
+  );
+  if (month < 0) return null;
+  return new Date(referenceDate.getFullYear(), month, Number(match[2]));
+}
+
+function isRideExploreUpcoming(ride: HomeRide, referenceDate: Date) {
+  if (
+    ride.status === "cancelled" ||
+    ride.status === "cancelled_by_host" ||
+    ride.status === "cancelled_by_system" ||
+    ride.status === "cancellation_review_required" ||
+    ride.status === "expired" ||
+    ride.rideAppPodStatus === "cancelled" ||
+    ride.rideAppHostCancellationStatus === "cancelled" ||
+    ride.rideAppHostCancellationStatus === "host_cancelled" ||
+    ride.rideAppHostCancellationStatus === "cancelled_by_host" ||
+    ride.rideAppHostCancellationStatus === "cancellation_review_required"
+  ) {
+    return false;
+  }
+
+  const rideDate = parseRideExploreDate(ride, referenceDate);
+  if (!rideDate) return true;
+  const today = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+  return rideDate.getTime() >= today.getTime();
+}
+
+function rideAreaMatches(ride: HomeRide, areaName: string, side: "from" | "to" | "either") {
+  const area = normalizeSearchText(areaName);
+  const values = side === "from"
+    ? [ride.fromDistrict, ride.fromLabel, ride.pickupLabel]
+    : side === "to"
+      ? [ride.toDistrict, ride.toLabel, ride.dropoffLabel]
+      : [ride.fromDistrict, ride.fromLabel, ride.pickupLabel, ride.toDistrict, ride.toLabel, ride.dropoffLabel];
+
+  return values.some((value) => value && normalizeSearchText(value).includes(area));
+}
+
+function countRidesForArea(rides: HomeRide[], areaName: string, side: "from" | "to" | "either" = "from") {
+  return rides.filter((ride) => rideAreaMatches(ride, areaName, side)).length;
+}
+
 function RideExploreContent() {
   const searchParams = useSearchParams();
+  const { user, profile } = useAuth();
+  const viewerIdentity = useMemo(() => createdHomeRideViewerIdentityFromAuth({ profile, user }), [profile, user]);
+  const createdHomeRides = useCreatedHomeRides(user?.id ?? null, true, viewerIdentity);
   const fromQuery = searchParams.get("from");
   const toQuery = searchParams.get("to");
   const fromLabel = slugToTitle(fromQuery);
@@ -37,10 +100,45 @@ function RideExploreContent() {
   const [activeRegion, setActiveRegion] = useState<DistrictRegionId>("all");
   const [searchValue, setSearchValue] = useState("");
   const normalizedSearch = normalizeSearchText(searchValue);
+  const referenceDate = useMemo(() => new Date(), []);
+  const visibleRides = useMemo(() => {
+    const demoRides = homeRides.map((ride) => applyRideAppDemoPersona(ride, { profile, user }));
+    return [
+      ...createdHomeRides,
+      ...demoRides.filter((ride) => !createdHomeRides.some((createdRide) => createdRide.id === ride.id)),
+    ].filter((ride) => isRideExploreUpcoming(ride, referenceDate));
+  }, [createdHomeRides, profile, referenceDate, user]);
+
+  const districtCards = useMemo(
+    () =>
+      officialDistricts.map((district) => ({
+        ...district,
+        rideCount: countRidesForArea(visibleRides, district.name, "from"),
+      })),
+    [visibleRides],
+  );
+
+  const routeCards = useMemo(
+    () =>
+      popularRouteSummaries.map((route) => ({
+        ...route,
+        rideCount: visibleRides.filter((ride) => rideAreaMatches(ride, route.from, "from") && rideAreaMatches(ride, route.to, "to")).length,
+      })),
+    [visibleRides],
+  );
+
+  const hubCards = useMemo(
+    () =>
+      popularHubSummaries.map((hub) => ({
+        ...hub,
+        rideCount: countRidesForArea(visibleRides, hub.name, "either"),
+      })),
+    [visibleRides],
+  );
 
   const filteredDistricts = useMemo(
     () =>
-      officialDistricts.filter((district) => {
+      districtCards.filter((district) => {
         const matchesRegion = activeRegion === "all" || district.region === activeRegion;
         const matchesSearch =
           !normalizedSearch ||
@@ -48,17 +146,17 @@ function RideExploreContent() {
 
         return matchesRegion && matchesSearch;
       }),
-    [activeRegion, normalizedSearch],
+    [activeRegion, districtCards, normalizedSearch],
   );
 
   const matchingRoutes = useMemo(
     () =>
-      popularRouteSummaries.filter((route) => {
+      routeCards.filter((route) => {
         const matchesFrom = !fromQuery || route.fromQuery === fromQuery;
         const matchesTo = !toQuery || route.toQuery === toQuery;
         return matchesFrom && matchesTo;
       }),
-    [fromQuery, toQuery],
+    [fromQuery, routeCards, toQuery],
   );
 
   const title = fromLabel && toLabel ? `${fromLabel} to ${toLabel}` : fromLabel ? `Rides from ${fromLabel}` : "Explore rides";
@@ -102,7 +200,7 @@ function RideExploreContent() {
         </div>
 
         <div className="grid gap-2.5">
-          {(matchingRoutes.length ? matchingRoutes : popularRouteSummaries).map((route) => (
+          {(matchingRoutes.length ? matchingRoutes : routeCards).map((route) => (
             <Link
               key={route.id}
               href={buildRideExploreHref({ from: route.fromQuery, to: route.toQuery })}
@@ -189,7 +287,7 @@ function RideExploreContent() {
           <h2 id="popular-hubs-title" className="text-lg font-black text-[var(--rp-text)]">Popular hubs</h2>
           <p className="mt-1 text-sm font-bold text-[var(--rp-muted-strong)]">Airport is a travel hub, not an official district.</p>
         </div>
-        {popularHubSummaries.map((hub) => (
+        {hubCards.map((hub) => (
           <Link
             key={hub.id}
             href={buildRideExploreHref({ from: hub.queryValue })}

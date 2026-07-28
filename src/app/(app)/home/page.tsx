@@ -1385,6 +1385,21 @@ const startingAreaIcons: Record<StartingAreaIconKey, typeof Building2> = {
   sprout: Sprout,
 };
 
+function normalizeRideExplorerArea(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ");
+}
+
+function rideMatchesExplorerArea(ride: HomeRide, areaName: string, side: "from" | "to" | "either") {
+  const area = normalizeRideExplorerArea(areaName);
+  const values = side === "from"
+    ? [ride.fromDistrict, ride.fromLabel, ride.pickupLabel]
+    : side === "to"
+      ? [ride.toDistrict, ride.toLabel, ride.dropoffLabel]
+      : [ride.fromDistrict, ride.fromLabel, ride.pickupLabel, ride.toDistrict, ride.toLabel, ride.dropoffLabel];
+
+  return values.some((value) => value && normalizeRideExplorerArea(value).includes(area));
+}
+
 function HomeSectionTitle({
   id,
   children,
@@ -1402,7 +1417,7 @@ function HomeSectionTitle({
   );
 }
 
-function StartingAreaSection() {
+function StartingAreaSection({ areas }: { areas: typeof startingAreaSummaries }) {
   return (
     <section aria-labelledby="browse-starting-area-title">
       <HomeSectionTitle id="browse-starting-area-title">
@@ -1412,7 +1427,7 @@ function StartingAreaSection() {
         </span>
       </HomeSectionTitle>
       <div className="mt-4 grid grid-cols-2 gap-2.5">
-        {startingAreaSummaries.map((area) => {
+        {areas.map((area) => {
           const Icon = startingAreaIcons[area.icon];
 
           return (
@@ -1444,7 +1459,7 @@ function StartingAreaSection() {
   );
 }
 
-function PopularRoutesSection() {
+function PopularRoutesSection({ routes }: { routes: typeof popularRouteSummaries }) {
   return (
     <section aria-labelledby="popular-routes-title" className="mt-6">
       <div className="mb-3.5">
@@ -1459,7 +1474,7 @@ function PopularRoutesSection() {
         </p>
       </div>
       <div className="grid gap-2.5">
-        {popularRouteSummaries.map((route) => (
+        {routes.map((route) => (
           <Link
             key={route.id}
             href={buildRideExploreHref({ from: route.fromQuery, to: route.toQuery })}
@@ -2441,6 +2456,30 @@ function HomePageContent() {
 
     return isAuthenticated ? rides : rides.map(withoutCurrentUserRelationship);
   }, [createdHomeRides, isAuthenticated, profile, user]);
+  const visibleUpcomingHomeRides = useMemo(
+    () => allHomeRides.filter((ride) => isRideStillVisible(ride, today)),
+    [allHomeRides, today],
+  );
+  const startingAreaCards = useMemo(
+    () =>
+      startingAreaSummaries.map((area) => ({
+        ...area,
+        rideCount: visibleUpcomingHomeRides.filter((ride) =>
+          rideMatchesExplorerArea(ride, area.name, area.id === "airport" ? "either" : "from"),
+        ).length,
+      })),
+    [visibleUpcomingHomeRides],
+  );
+  const popularRouteCards = useMemo(
+    () =>
+      popularRouteSummaries.map((route) => ({
+        ...route,
+        rideCount: visibleUpcomingHomeRides.filter((ride) =>
+          rideMatchesExplorerArea(ride, route.from, "from") && rideMatchesExplorerArea(ride, route.to, "to"),
+        ).length,
+      })),
+    [visibleUpcomingHomeRides],
+  );
 
   useEffect(() => {
     const element = rideTypesRef.current;
@@ -3172,8 +3211,8 @@ function HomePageContent() {
         ) : null}
 
         <div className="relative z-10 mx-auto mt-4 w-full max-w-[704px] px-4 sm:px-6 lg:px-0">
-          <StartingAreaSection />
-          <PopularRoutesSection />
+          <StartingAreaSection areas={startingAreaCards} />
+          <PopularRoutesSection routes={popularRouteCards} />
         </div>
       </section>
 
