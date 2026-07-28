@@ -1336,6 +1336,7 @@ function RideBoardCategoryCard({
 }) {
   const isGold = category.tone === "gold";
   const showWholeArtwork = category.id === "today-requests" || category.id === "schedule-later";
+  const isBareArtwork = category.id === "schedule-later";
   const cardAspectClass = showWholeArtwork
     ? category.id === "schedule-later"
       ? "aspect-[4/3]"
@@ -1353,7 +1354,8 @@ function RideBoardCategoryCard({
       aria-pressed={active}
       aria-label={`Show ${category.label} ride requests preview`}
       className={cn(
-        "group relative block w-full overflow-hidden bg-[#030b12] text-left outline-none transition-[transform,box-shadow,filter] duration-300 ease-out after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-[inherit] after:border after:transition-colors focus-visible:ring-2 active:translate-y-0",
+        "group relative block w-full overflow-hidden text-left outline-none transition-[transform,box-shadow,filter] duration-300 ease-out after:pointer-events-none after:absolute after:inset-0 after:z-20 after:rounded-[inherit] after:border after:transition-colors focus-visible:ring-2 active:translate-y-0",
+        isBareArtwork ? "bg-transparent" : "bg-[#030b12]",
         category.id === "today-requests" ? "focus-visible:ring-[var(--rp-primary)]" : "focus-visible:ring-[#60A5FA]",
         showWholeArtwork ? "" : "hover:-translate-y-0.5 hover:scale-[1.01]",
         cardAspectClass,
@@ -1362,13 +1364,16 @@ function RideBoardCategoryCard({
           ? cn(
               "z-10 brightness-[1.06]",
               showWholeArtwork
-                ? activeArtworkFrameClass
+                ? isBareArtwork
+                  ? "shadow-none after:border-transparent"
+                  : activeArtworkFrameClass
                 : "shadow-[0_18px_42px_rgba(0,0,0,0.28)] after:border-transparent",
               showWholeArtwork ? "scale-100" : "-translate-y-0.5 scale-[1.015]",
             )
           : cn(
-              "scale-100 shadow-[0_18px_42px_rgba(0,0,0,0.28)]",
-              showWholeArtwork ? "after:border-transparent" : "after:border-[rgba(101,230,208,0.22)]",
+              "scale-100",
+              isBareArtwork ? "shadow-none" : "shadow-[0_18px_42px_rgba(0,0,0,0.28)]",
+              showWholeArtwork || isBareArtwork ? "after:border-transparent" : "after:border-[rgba(101,230,208,0.22)]",
             ),
       )}
     >
