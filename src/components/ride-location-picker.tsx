@@ -8,12 +8,14 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
+  ExternalLink,
   Home,
   Loader2,
   LocateFixed,
   MapPin,
   Navigation,
   Pencil,
+  Route,
   Search,
   X,
 } from "lucide-react";
@@ -42,7 +44,6 @@ import type {
   RideLocation,
   RideLocationMode,
   RideLocationSource,
-  RideRouteSummary,
 } from "@/lib/ride-location-types";
 
 type PlaceSuggestion = {
@@ -201,15 +202,6 @@ function formatDistance(meters: number | null) {
   if (meters == null || !Number.isFinite(meters)) return null;
   if (meters < 1000) return `${Math.round(meters)} m`;
   return `${(meters / 1000).toFixed(meters < 10000 ? 1 : 0)} km`;
-}
-
-function formatDuration(millis: number | null) {
-  if (millis == null || !Number.isFinite(millis)) return null;
-  const minutes = Math.max(1, Math.round(millis / 60000));
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const remainingMinutes = minutes % 60;
-  return remainingMinutes ? `${hours} hr ${remainingMinutes} min` : `${hours} hr`;
 }
 
 function formatGeolocationError(error: GeolocationPositionError) {
@@ -424,15 +416,17 @@ function RoutePointCircle({
     }
 
     const center = { lat: location.latitude, lng: location.longitude };
+    const strokeColor = type === "pickup" ? "#22d3ee" : "#38f3e0";
+    const fillColor = type === "pickup" ? "#22d3ee" : "#38f3e0";
     if (!circleRef.current) {
       circleRef.current = new google.maps.Circle({
         map,
         center,
         radius: 62,
-        strokeColor: type === "pickup" ? "#f6c453" : "#fb923c",
+        strokeColor,
         strokeOpacity: 0.95,
         strokeWeight: 2,
-        fillColor: type === "pickup" ? "#f6c453" : "#fb923c",
+        fillColor,
         fillOpacity: 0.88,
         clickable: false,
       });
@@ -441,8 +435,8 @@ function RoutePointCircle({
 
     circleRef.current.setOptions({
       center,
-      strokeColor: type === "pickup" ? "#f6c453" : "#fb923c",
-      fillColor: type === "pickup" ? "#f6c453" : "#fb923c",
+      strokeColor,
+      fillColor,
       map,
     });
   }, [location, map, type]);
@@ -454,6 +448,19 @@ function RoutePointCircle({
   }, []);
 
   return null;
+}
+
+function makePreviewGoogleDirectionsUrl(pickupLocation: RideLocation | null, dropoffLocation: RideLocation | null) {
+  if (!pickupLocation || !dropoffLocation) return "https://www.google.com/maps";
+
+  const params = new URLSearchParams({
+    api: "1",
+    origin: `${pickupLocation.latitude},${pickupLocation.longitude}`,
+    destination: `${dropoffLocation.latitude},${dropoffLocation.longitude}`,
+    travelmode: "driving",
+  });
+
+  return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
 
 export function RoutePreviewMap({
@@ -477,16 +484,11 @@ export function RoutePreviewMap({
   );
   const [routeError, setRouteError] = useState<string | null>(null);
   const [routeLoading, setRouteLoading] = useState(false);
-  const [routeSummary, setRouteSummary] = useState<RideRouteSummary>({
-    distanceMeters: null,
-    durationMillis: null,
-    distanceLabel: null,
-    durationLabel: null,
-  });
   const polylinesRef = useRef<google.maps.Polyline[]>([]);
   const routeKey = pickupLocation && dropoffLocation
     ? `${pickupLocation.latitude},${pickupLocation.longitude}-${dropoffLocation.latitude},${dropoffLocation.longitude}`
     : "";
+  const fullRouteUrl = makePreviewGoogleDirectionsUrl(pickupLocation, dropoffLocation);
   const hasRoutePoints = Boolean(pickupLocation || dropoffLocation || stops.some((stop) => stop.address.trim()));
   const filledPointCount =
     (pickupLocation ? 1 : 0) +
@@ -529,7 +531,8 @@ export function RoutePreviewMap({
           gestureHandling: "greedy",
           keyboardShortcuts: false,
           restriction: { latLngBounds: hongKongBounds, strictBounds: false },
-          styles: googleDarkMapStyle,
+          backgroundColor: "#dbeafe",
+          styles: [],
           zoom: 11,
         });
         mapRef.current = nextMap;
@@ -565,12 +568,6 @@ export function RoutePreviewMap({
     polylinesRef.current = [];
     const resetRouteTimer = window.setTimeout(() => {
       setRouteError(null);
-      setRouteSummary({
-        distanceMeters: null,
-        durationMillis: null,
-        distanceLabel: null,
-        durationLabel: null,
-      });
     }, 0);
 
     if (!pickupLocation && !dropoffLocation) {
@@ -617,16 +614,37 @@ export function RoutePreviewMap({
         const route = routes?.[0];
         if (!route) throw new Error("No route available.");
 
-        const polylines = route.createPolylines({
-          polylineOptions: {
-            map: routeMap,
-            strokeColor: "#56d9ef",
-            strokeOpacity: 0.95,
-            strokeWeight: 5,
-            zIndex: 4,
-          },
-        });
-        polylinesRef.current = polylines;
+        const path = route.path ?? [];
+        if (path.length) {
+          polylinesRef.current = [
+            new google.maps.Polyline({
+              map: routeMap,
+              path,
+              strokeColor: "#07131c",
+              strokeOpacity: 0.82,
+              strokeWeight: 10,
+              zIndex: 3,
+            }),
+            new google.maps.Polyline({
+              map: routeMap,
+              path,
+              strokeColor: "#56d9ef",
+              strokeOpacity: 0.98,
+              strokeWeight: 5,
+              zIndex: 4,
+            }),
+          ];
+        } else {
+          polylinesRef.current = route.createPolylines({
+            polylineOptions: {
+              map: routeMap,
+              strokeColor: "#56d9ef",
+              strokeOpacity: 0.95,
+              strokeWeight: 5,
+              zIndex: 4,
+            },
+          });
+        }
 
         if (route.viewport) {
           routeMap.fitBounds(route.viewport, 36);
@@ -635,15 +653,6 @@ export function RoutePreviewMap({
           route.path.forEach((point) => bounds.extend(point));
           routeMap.fitBounds(bounds, 36);
         }
-
-        const distanceMeters = route.distanceMeters ?? null;
-        const durationMillis = route.durationMillis ?? null;
-        setRouteSummary({
-          distanceMeters,
-          durationMillis,
-          distanceLabel: formatDistance(distanceMeters),
-          durationLabel: formatDuration(durationMillis),
-        });
       } catch {
         if (!cancelled) {
           setRouteError("Route could not be calculated. Selected points stay saved, so you can retry or adjust them.");
@@ -676,26 +685,21 @@ export function RoutePreviewMap({
         </span>
       </div>
 
-      <div className="relative h-[150px] overflow-hidden rounded-[18px] border border-white/10 bg-[#06111d]">
+      <div className="relative h-[220px] overflow-hidden rounded-[18px] border border-cyan-100/16 bg-[#dbeafe] shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]">
         <div ref={mapContainerRef} className="absolute inset-0" />
         <RoutePointCircle map={map} location={pickupLocation} type="pickup" />
         <RoutePointCircle map={map} location={dropoffLocation} type="dropoff" />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,9,18,0.02),rgba(2,9,18,0.22))]" />
-        {!pickupLocation || !dropoffLocation ? (
-          <div className="absolute left-3 top-3 rounded-full border border-white/10 bg-[#06111d]/80 px-3 py-1 text-[11px] font-black text-slate-200 backdrop-blur">
-            Select pickup and dropoff
-          </div>
-        ) : null}
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(7,19,28,0.08)),radial-gradient(circle_at_center,rgba(34,211,238,0.06),transparent_62%)]" />
+        <div className="absolute left-3 top-3 grid gap-2">
+          <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-white/20 bg-[#26313a]/88 px-3 text-[11px] font-black text-cyan-50 shadow-[0_8px_18px_rgba(0,0,0,0.22)] backdrop-blur-md">
+            <Route className="h-4 w-4 text-cyan-200" />
+            {pickupLocation && dropoffLocation ? "Suggested route (stops allowed)" : "Select pickup and dropoff"}
+          </span>
+        </div>
         {routeLoading ? (
-          <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full border border-[#56d9ef]/25 bg-[#06111d]/86 px-3 py-1 text-[11px] font-black text-[#a7f3ff] backdrop-blur">
+          <div className="absolute left-3 top-14 flex items-center gap-2 rounded-full border border-[#56d9ef]/25 bg-[#06111d]/86 px-3 py-1 text-[11px] font-black text-[#a7f3ff] backdrop-blur">
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             Routing
-          </div>
-        ) : null}
-        {routeSummary.distanceLabel || routeSummary.durationLabel ? (
-          <div className="absolute bottom-3 left-3 flex gap-2 rounded-full border border-[#56d9ef]/20 bg-[#06111d]/84 px-3 py-1 text-[11px] font-black text-[#a7f3ff] backdrop-blur">
-            {routeSummary.distanceLabel ? <span>{routeSummary.distanceLabel}</span> : null}
-            {routeSummary.durationLabel ? <span>{routeSummary.durationLabel}</span> : null}
           </div>
         ) : null}
         {mapError || routeError ? (
@@ -703,9 +707,17 @@ export function RoutePreviewMap({
             {mapError ?? routeError}
           </div>
         ) : null}
-        <div className="absolute bottom-1.5 right-2 rounded bg-[#06111d]/70 px-1.5 py-0.5 text-[9px] font-bold text-slate-300">
-          Google Maps
-        </div>
+        {pickupLocation && dropoffLocation ? (
+          <a
+            href={fullRouteUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="absolute bottom-3 right-3 inline-flex min-h-8 items-center gap-1.5 rounded-[12px] border border-cyan-200/24 bg-[#07111d]/82 px-2.5 text-[10px] font-black text-cyan-100 shadow-[0_8px_20px_rgba(0,0,0,0.25)] backdrop-blur-md transition hover:border-cyan-200/45 hover:bg-cyan-300/10"
+          >
+            View full route
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        ) : null}
       </div>
 
       <div className="mt-3 grid gap-1.5">
