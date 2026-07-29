@@ -2788,22 +2788,35 @@ export function PodStatusPanel({
               ) : null}
 
               <section id="fare-split" className="scroll-mt-24 rounded-[20px] border border-[var(--rp-primary)]/30 bg-white/[0.04] p-4 shadow-[0_0_0_1px_rgba(251,199,82,0.08),0_18px_42px_rgba(251,199,82,0.06)]">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Key details</p>
+                <div className="grid gap-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">Key details</p>
+                    {!isHost ? (
+                      <span className="rounded-full border border-white/10 bg-white/8 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-muted-strong)]">
+                        {detailsReady ? "Set details" : "Not set yet"}
+                      </span>
+                    ) : null}
+                  </div>
                   {isHost ? (
-                    <button
-                      type="button"
-                      onClick={openConfirmByModal}
-                      className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 text-[10px] font-black uppercase text-cyan-100"
-                    >
-                      <Clock3 className="h-3.5 w-3.5" />
-                      Set confirm-by
-                    </button>
-                  ) : (
-                    <span className="rounded-full border border-white/10 bg-white/8 px-2.5 py-1 text-[10px] font-black uppercase text-[var(--rp-muted-strong)]">
-                      {detailsReady ? "Set details" : "Not set yet"}
-                    </span>
-                  )}
+                    <div className="grid grid-cols-2 gap-2 max-[360px]:grid-cols-1">
+                      <button
+                        type="button"
+                        onClick={openConfirmByModal}
+                        className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-cyan-300/35 bg-cyan-300/10 px-3 text-[10px] font-black uppercase text-cyan-100 transition hover:bg-cyan-300/16"
+                      >
+                        <Clock3 className="h-3.5 w-3.5" />
+                        {confirmBySet ? "Edit deadline" : "Set deadline"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={openGatherPointModal}
+                        className="inline-flex min-h-9 items-center justify-center gap-1.5 rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-3 text-[10px] font-black uppercase text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
+                      >
+                        <MapPin className="h-3.5 w-3.5" />
+                        {pickupVenueSet ? "Edit gather point" : "Set gather point"}
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
                 <div className="mt-3 rounded-[16px] border border-white/10 bg-black/20 p-3">
                   {detailChecklistRows.map((row) => (
