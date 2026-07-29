@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { AnimalAvatar, RidePodAvatar, getDemoAnimalAvatarId } from "@/components/animal-avatar";
@@ -516,9 +517,17 @@ function getInitials(name: string) {
     .toUpperCase();
 }
 
-function getViewProfileHref(name: string, role: "host" | "rider" = "host") {
+function getViewProfileHref(name: string, role: "host" | "rider" = "host", returnTo?: string) {
   const params = new URLSearchParams({ name, role });
+  if (returnTo) params.set("returnTo", returnTo);
   return `/profile/view?${params.toString()}`;
+}
+
+function useCurrentReturnTo(fallback = "/home?tab=one_off") {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchText = searchParams.toString();
+  return pathname ? `${pathname}${searchText ? `?${searchText}` : ""}` : fallback;
 }
 
 function getHostProfileImageUrl(ride: HomeRide) {
@@ -2022,6 +2031,7 @@ export function PodStatusPanel({
   const [ridePatchOverride, setRidePatchOverride] = useState<Partial<HomeRide> | null>(null);
   const ride = mergeRidePatch(storedRide, ridePatchOverride) as HomeRide;
   const isHost = getCurrentUserCanUseHostControls(ride, user?.id ?? null);
+  const profileReturnTo = useCurrentReturnTo(pageMode ? `/pods/${ride.id}/status` : `/pods/${ride.id}`);
   const autoOpenConfirmByModal = initialAction === "confirm-by" && isHost;
   const [activeTab, setActiveTab] = useState<PodStatusTab>(normalizePodStatusTab(initialTab));
   const [selectedRiderProfile, setSelectedRiderProfile] = useState<PodStatusRider | null>(null);
@@ -2916,7 +2926,7 @@ export function PodStatusPanel({
                           {chipLabel}
                         </span>
                         <Link
-                          href={getViewProfileHref(profileName, profileRole)}
+                          href={getViewProfileHref(profileName, profileRole, profileReturnTo)}
                           onClick={(event) => event.stopPropagation()}
                           className="shrink-0 rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
                         >
@@ -4565,6 +4575,7 @@ function SelfSettlePodSummaryHero({
   stopJoinIntentStatus?: StopJoinIntentStatus;
   stopRequestSeatUnavailable?: boolean;
 }) {
+  const profileReturnTo = useCurrentReturnTo(`/pods/${ride.id}`);
   const chatAccess = getRideAppChatAccessState(ride);
   const summaryRiders = buildPodStatusRiders(ride, isHost);
   const summaryCurrentDetailVersion = getRideAppCurrentDetailVersion(ride);
@@ -4683,7 +4694,7 @@ function SelfSettlePodSummaryHero({
               </h2>
               <p className="mt-1 text-base font-semibold leading-5 text-[var(--rp-muted-strong)]">Hosted by {hostAvatarDisplayName}</p>
               <Link
-                href={getViewProfileHref(hostAvatarDisplayName, "host")}
+                href={getViewProfileHref(hostAvatarDisplayName, "host", profileReturnTo)}
                 className="mt-2 inline-flex min-h-8 items-center justify-center rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-3 text-[11px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
               >
                 View profile
@@ -4858,7 +4869,7 @@ function SelfSettlePodSummaryHero({
               Created by {hostAvatarDisplayName}
             </p>
             <Link
-              href={getViewProfileHref(hostAvatarDisplayName, "host")}
+              href={getViewProfileHref(hostAvatarDisplayName, "host", profileReturnTo)}
               className="mt-2 inline-flex min-h-8 items-center justify-center rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-3 text-[11px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
             >
               View Profile
@@ -5446,6 +5457,8 @@ function ManagePodRiderGroup({
   riders: PodStatusRider[];
   getHelper: (rider: PodStatusRider) => string;
 }) {
+  const profileReturnTo = useCurrentReturnTo();
+
   return (
     <section className="grid gap-2 rounded-[18px] border border-white/10 bg-white/[0.04] p-4">
       <h3 className="text-base font-black text-white">{title}</h3>
@@ -5468,7 +5481,7 @@ function ManagePodRiderGroup({
                 <ManagePodActionStatusChip rider={rider} />
                 {openSlot ? null : (
                   <Link
-                    href={getViewProfileHref(getPodStatusPersonDisplayName(rider.name), rider.role === "host" ? "host" : "rider")}
+                    href={getViewProfileHref(getPodStatusPersonDisplayName(rider.name), rider.role === "host" ? "host" : "rider", profileReturnTo)}
                     className="rounded-full border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-2.5 py-1 text-[10px] font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/16"
                   >
                     View Profile
@@ -5766,6 +5779,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
         fareEstimateScreenshot: currentRideAppFareProof,
       }
     : actionPatchedRide;
+  const profileReturnTo = useCurrentReturnTo(`/pods/${ride.id}`);
   const {
     seatsUsed,
     joinView,
@@ -6485,7 +6499,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                     <span className="truncate text-[var(--rp-text)]">{ride.hostName || "RidePod host"}</span>
                   </div>
                   <Link
-                    href={getViewProfileHref(ride.hostName || "RidePod host", "host")}
+                    href={getViewProfileHref(ride.hostName || "RidePod host", "host", profileReturnTo)}
                     className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-full border border-[var(--rp-primary)]/35 bg-black/26 px-3 text-[11px] font-black text-[var(--rp-primary)] shadow-[0_8px_18px_rgba(0,0,0,0.18)] backdrop-blur-md transition hover:bg-white/10"
                   >
                     View Profile

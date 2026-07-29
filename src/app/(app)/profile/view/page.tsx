@@ -65,10 +65,16 @@ function getIssueCount(summary: RideAppTrustSummary) {
   );
 }
 
+function getSafeReturnTo(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return "/home?tab=one_off";
+  return value;
+}
+
 function ProfileViewPageContent() {
   const searchParams = useSearchParams();
   const name = searchParams.get("name")?.trim() || "RidePod member";
   const role = searchParams.get("role") === "rider" ? "rider" : "host";
+  const returnTo = getSafeReturnTo(searchParams.get("returnTo"));
   const roleLabel = role === "host" ? "Host" : "Rider";
   const stats = getProfileStats(name, role);
   const trustSummary = getRideAppTrustSummary(getTrustUserId(name));
@@ -79,9 +85,9 @@ function ProfileViewPageContent() {
     <main className="min-h-screen bg-[var(--rp-bg)] px-4 pb-24 pt-4 text-[var(--rp-text)]">
       <div className="mx-auto grid max-w-md gap-4">
         <Link
-          href="/home?tab=one_off"
+          href={returnTo}
           className="grid h-11 w-11 place-items-center rounded-full border border-[var(--rp-border)] bg-[var(--rp-card-soft)] text-[var(--rp-muted-strong)] transition hover:border-[var(--rp-border-strong)] hover:text-[var(--rp-text)]"
-          aria-label="Back to home"
+          aria-label="Back to previous page"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>
