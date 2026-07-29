@@ -375,12 +375,16 @@ function MyRideQuickAccess({
       <div className="mt-3 grid grid-cols-3 gap-2">
         {entries.map((entry) => {
           const Icon = entry.icon;
-          const toneClass =
+          const buttonToneClass =
             entry.tone === "purple"
-              ? "text-violet-200 bg-violet-400/12 border-violet-300/20"
+              ? "border-violet-300 bg-violet-500 text-white hover:bg-violet-400"
               : entry.tone === "orange"
-                ? "text-orange-200 bg-orange-400/12 border-orange-300/20"
-                : "text-rose-200 bg-rose-400/12 border-rose-300/20";
+                ? "border-[var(--rp-primary)] bg-[var(--rp-primary)] text-[#07111a] hover:bg-[#ffd86b]"
+                : "border-rose-300 bg-rose-500 text-white hover:bg-rose-400";
+          const iconToneClass =
+            entry.tone === "orange"
+              ? "border-[#07111a]/18 bg-[#07111a]/12 text-[#07111a]"
+              : "border-white/28 bg-white/18 text-white";
 
           return (
             <button
@@ -389,21 +393,22 @@ function MyRideQuickAccess({
               aria-pressed={activeView === entry.view}
               onClick={() => onSelect(entry.view)}
               className={cn(
-                "group grid min-h-[86px] justify-items-center rounded-[18px] border px-2.5 py-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition hover:border-cyan-300/30 hover:bg-[#132333]",
+                "group grid min-h-[86px] justify-items-center rounded-[18px] border px-2.5 py-3 text-center shadow-[0_14px_30px_rgba(0,0,0,0.22),inset_0_1px_0_rgba(255,255,255,0.22)] transition",
+                buttonToneClass,
                 activeView === entry.view
-                  ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,#101a25)]"
-                  : "border-white/10 bg-[#101a25]/78",
+                  ? "ring-2 ring-white/80 ring-offset-2 ring-offset-[#07111a]"
+                  : "ring-0",
               )}
             >
-              <span className={cn("relative grid h-10 w-10 place-items-center rounded-full border", toneClass)}>
+              <span className={cn("relative grid h-10 w-10 place-items-center rounded-full border", iconToneClass)}>
                 <Icon className="h-5 w-5" />
                 {entry.count ? (
-                  <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--rp-primary)] px-1 text-[10px] font-black text-[#07111a]">
+                  <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#07111a] px-1 text-[10px] font-black text-[var(--rp-primary)]">
                     {entry.count}
                   </span>
                 ) : null}
               </span>
-              <span className="mt-2 line-clamp-2 text-[11px] font-black leading-4 text-[var(--rp-text)] group-hover:text-cyan-100">
+              <span className="mt-2 line-clamp-2 text-[11px] font-black leading-4">
                 {entry.label}
               </span>
             </button>
