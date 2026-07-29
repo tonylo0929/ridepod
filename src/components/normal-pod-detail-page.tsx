@@ -620,6 +620,7 @@ type PodStatusRider = {
   status: PodStatusRiderState;
   confirmedBookingDetailsVersion?: number;
   confirmedDetailVersion?: number;
+  confirmBy?: string | null;
   seatHoldExpiredAt?: string | null;
 };
 type RideAppHostCancellationStatus = NonNullable<HomeRide["rideAppHostCancellationStatus"]>;
@@ -662,6 +663,32 @@ function formatConfirmByLabel(date: Date) {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
+}
+
+function formatConfirmByValue(value?: string | null) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? value : formatConfirmByLabel(parsed);
+}
+
+function getCurrentUserCanUseHostControls(ride: HomeRide, viewerUserId?: string | null) {
+  const ownerUserId = ride.createdByUserId?.trim();
+
+  if (ownerUserId) return Boolean(viewerUserId?.trim() && viewerUserId === ownerUserId);
+  if (!getCurrentUserIsHost(ride)) return false;
+
+  const currentUserName = ride.currentUserName?.trim().toLowerCase();
+  if (!currentUserName || currentUserName === "you") return true;
+
+  const hostNames = [
+    ride.hostName,
+    ride.hostDisplayName,
+    ride.rideAppReplacementBookerName,
+  ]
+    .map((name) => name?.trim().toLowerCase())
+    .filter(Boolean);
+
+  return !hostNames.length || hostNames.includes(currentUserName);
 }
 
 function formatRidePickupLabel(date: Date) {
@@ -1257,9 +1284,9 @@ function mergeRidePatch<T extends Partial<HomeRide>>(base: T, patch?: Partial<Ho
   return merged as T & Partial<HomeRide>;
 }
 
-function buildPodStatusRiders(ride: HomeRide): PodStatusRider[] {
+function buildPodStatusRiders(ride: HomeRide, viewerIsHostOverride?: boolean): PodStatusRider[] {
   const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
-  const viewerIsHost = getCurrentUserIsHost(ride);
+  const viewerIsHost = viewerIsHostOverride ?? getCurrentUserIsHost(ride);
 
   if (ride.riderConfirmations?.length) {
     let riderSlotNumber = 0;
@@ -1280,6 +1307,7 @@ function buildPodStatusRiders(ride: HomeRide): PodStatusRider[] {
         role: item.role,
         confirmedBookingDetailsVersion: item.confirmedBookingDetailsVersion,
         confirmedDetailVersion: item.confirmedDetailVersion,
+        confirmBy: item.confirmBy,
         seatHoldExpiredAt: item.seatHoldExpiredAt,
         status:
           item.role === "rider" && isCurrentUser && ride.requiresHostApprovalToRejoin
@@ -1335,11 +1363,10 @@ function buildPodStatusRiders(ride: HomeRide): PodStatusRider[] {
   return rows.slice(0, Math.max(1, ride.seatsTotal));
 }
 
-function buildManagePodActionRiders(ride: HomeRide) {
-  const viewerIsHost = getCurrentUserIsHost(ride);
+function buildManagePodActionRiders(ride: HomeRide, viewerIsHost = getCurrentUserIsHost(ride)) {
   const placeholderPattern = /^Rider\s+\d+$/i;
 
-  return buildPodStatusRiders(ride).filter((rider) => {
+  return buildPodStatusRiders(ride, viewerIsHost).filter((rider) => {
     if (rider.role === "host") return true;
     if (viewerIsHost && isCurrentUserRiderName(rider.name)) return false;
     if (rider.status === "pending" && placeholderPattern.test(rider.name.trim())) return false;
@@ -1994,7 +2021,7 @@ export function PodStatusPanel({
   const storedRide = applyRideAppDemoPersona(getRideWithStoredSelfSettleJoin(baseRide, user?.id ?? null), { profile, user });
   const [ridePatchOverride, setRidePatchOverride] = useState<Partial<HomeRide> | null>(null);
   const ride = mergeRidePatch(storedRide, ridePatchOverride) as HomeRide;
-  const isHost = getCurrentUserIsHost(ride);
+  const isHost = getCurrentUserCanUseHostControls(ride, user?.id ?? null);
   const autoOpenConfirmByModal = initialAction === "confirm-by" && isHost;
   const [activeTab, setActiveTab] = useState<PodStatusTab>(normalizePodStatusTab(initialTab));
   const [selectedRiderProfile, setSelectedRiderProfile] = useState<PodStatusRider | null>(null);
@@ -2011,7 +2038,7 @@ export function PodStatusPanel({
   const [nowMs, setNowMs] = useState(() => Date.now());
   const confirmByModalOpen = showConfirmByModal || (autoOpenConfirmByModal && !confirmByInitialActionDismissed);
   const confirmationDeadlineMs = getRideAppConfirmByDate(ride).getTime();
-  const riders = buildPodStatusRiders(ride);
+  const riders = buildPodStatusRiders(ride, isHost);
   const expiredSeatHoldCount = riders.filter((item) => item.role === "rider" && item.status === "seat_hold_expired").length;
   // TODO: Future: persist released seat count when confirm-by deadline release runs outside mock state.
   const effectiveSeatCountBeforeExpiry =
@@ -4491,6 +4518,7 @@ function PreJoinRideAppTripDetails({ ride }: { ride: HomeRide }) {
 function SelfSettlePodSummaryHero({
   ride,
   seatsUsed,
+  isHost,
   estimateLabel,
   estimateValue,
   estimateUpdated,
@@ -4508,6 +4536,7 @@ function SelfSettlePodSummaryHero({
 }: {
   ride: HomeRide;
   seatsUsed: number;
+  isHost: boolean;
   estimateLabel: string;
   estimateValue: string;
   estimateUpdated: boolean;
@@ -4524,7 +4553,7 @@ function SelfSettlePodSummaryHero({
   stopRequestSeatUnavailable?: boolean;
 }) {
   const chatAccess = getRideAppChatAccessState(ride);
-  const summaryRiders = buildPodStatusRiders(ride);
+  const summaryRiders = buildPodStatusRiders(ride, isHost);
   const summaryCurrentDetailVersion = getRideAppCurrentDetailVersion(ride);
   const summaryExpiredSeatHoldCount = summaryRiders.filter((item) => item.role === "rider" && item.status === "seat_hold_expired").length;
   const summarySeatCountBeforeExpiry =
@@ -4533,7 +4562,7 @@ function SelfSettlePodSummaryHero({
       : ride.seatsUsed;
   const summaryEffectiveSeatsUsed = Math.max(0, summarySeatCountBeforeExpiry - summaryExpiredSeatHoldCount);
   const summaryProgress = Math.min((summaryEffectiveSeatsUsed / ride.seatsTotal) * 100, 100);
-  const summaryUserIsHost = getCurrentUserIsHost(ride);
+  const summaryUserIsHost = isHost;
   const currentUserCancelledHosting = isCurrentUserFormerHost(ride);
   const summaryUserHadRideAppSeat =
     !summaryUserIsHost &&
@@ -5095,25 +5124,27 @@ function buildManageRouteRequestCards(ride: HomeRide, pendingRequests: RoutePlan
 
 function ManagePodActionsModal({
   ride,
+  isHost,
   initialTab = "route_requests",
   onClose,
   onApproveStop,
   onDeclineStop,
 }: {
   ride: HomeRide;
+  isHost: boolean;
   initialTab?: ManagePodActionsTab;
   onClose: () => void;
   onApproveStop: (stop: RoutePlanStop) => void;
   onDeclineStop: (stop: RoutePlanStop) => void;
 }) {
-  const allowStopRequests = isHostApprovedStopPolicy(ride.stopRequestPolicy) && ride.rideKind !== "recurring";
+  const allowStopRequests = isHost && isHostApprovedStopPolicy(ride.stopRequestPolicy) && ride.rideKind !== "recurring";
   const [activeTab, setActiveTab] = useState<ManagePodActionsTab>(
     !allowStopRequests && initialTab === "route_requests" ? "confirmations" : initialTab,
   );
   const [actionNote, setActionNote] = useState<string | null>(null);
   const [handledRouteRequestIds, setHandledRouteRequestIds] = useState<string[]>([]);
   const [approvalRequest, setApprovalRequest] = useState<ManageRouteRequestCardModel | null>(null);
-  const riders = buildManagePodActionRiders(ride);
+  const riders = buildManagePodActionRiders(ride, isHost);
   const riderRows = riders.filter((item) => item.role === "rider");
   const currentDetailVersion = getRideAppCurrentDetailVersion(ride);
   const riderTotal = Math.max(0, ride.seatsTotal - 1);
@@ -5121,6 +5152,7 @@ function ManagePodActionsModal({
     riderTotal,
     riderRows.filter((item) => isPodStatusRiderConfirmedForCurrentDetails(item, currentDetailVersion)).length,
   );
+  const confirmedRiders = riderRows.filter((item) => isPodStatusRiderConfirmedForCurrentDetails(item, currentDetailVersion));
   const pendingConfirmationRiders = riderRows.filter((item) => item.status === "pending" || item.status === "joined_interest");
   const needsReviewRiders = riderRows.filter((item) => item.status === "needs_review" || item.status === "review_needed");
   const ridersNeedingReviewCount = needsReviewRiders.length;
@@ -5174,10 +5206,12 @@ function ManagePodActionsModal({
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h2 id="manage-pod-actions-title" className="text-2xl font-black leading-tight text-[var(--rp-primary)]">
-                Manage pod actions
+                {isHost ? "Manage pod actions" : "Rider confirmations"}
               </h2>
               <p className="mt-1 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                {allowStopRequests
+                {!isHost
+                  ? "See who has confirmed and each rider confirm-by time."
+                  : allowStopRequests
                   ? "Review rider confirmations and route requests."
                   : "Review rider confirmations."}
               </p>
@@ -5273,7 +5307,15 @@ function ManagePodActionsModal({
                 <ManagePodRiderGroup
                   title="Pending confirmation"
                   riders={pendingConfirmationRiders}
-                  getHelper={() => `Confirm by ${confirmByLabel}`}
+                  getHelper={(rider) => `Confirm by ${formatConfirmByValue(rider.confirmBy) ?? confirmByLabel}`}
+                />
+              ) : null}
+
+              {confirmedRiders.length ? (
+                <ManagePodRiderGroup
+                  title="Confirmed riders"
+                  riders={confirmedRiders}
+                  getHelper={(rider) => `Confirmed before ${formatConfirmByValue(rider.confirmBy) ?? confirmByLabel}`}
                 />
               ) : null}
 
@@ -5281,7 +5323,7 @@ function ManagePodActionsModal({
                 <ManagePodRiderGroup
                   title="Needs review"
                   riders={needsReviewRiders}
-                  getHelper={() => "Review updated details"}
+                  getHelper={(rider) => isHost ? "Review updated details" : `Needs review by ${formatConfirmByValue(rider.confirmBy) ?? confirmByLabel}`}
                 />
               ) : null}
 
@@ -5289,12 +5331,15 @@ function ManagePodActionsModal({
                 <section className="rounded-[18px] border border-emerald-300/24 bg-emerald-400/10 p-4">
                   <h3 className="text-base font-black text-emerald-100">All required riders have confirmed.</h3>
                   <p className="mt-1 text-sm font-semibold leading-6 text-emerald-100/85">
-                    Confirm-by deadline is active for any future detail changes.
+                    {isHost
+                      ? "Confirm-by deadline is active for any future detail changes."
+                      : `Confirm-by time was ${confirmByLabel}.`}
                   </p>
                 </section>
               ) : null}
 
-              <section className="grid gap-2">
+              {isHost ? (
+                <section className="grid gap-2">
                 <Link
                   href={`/pods/${ride.id}/status?action=confirm-by`}
                   className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[16px] border border-[var(--rp-primary)]/35 bg-[var(--rp-primary)]/10 px-4 text-sm font-black text-[var(--rp-primary)] transition hover:bg-[var(--rp-primary)]/15"
@@ -5302,7 +5347,8 @@ function ManagePodActionsModal({
                   <Clock3 className="h-4 w-4" />
                   Edit confirm-by time
                 </Link>
-              </section>
+                </section>
+              ) : null}
             </div>
           ) : activeTab === "route_requests" ? (
             <div className="grid gap-4">
@@ -5758,7 +5804,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
   const currentUserStopJoinIntentStatus = getCurrentUserStopJoinIntentStatus(ride);
   const hasConditionalStopJoinStatus = currentUserStopJoinIntentStatus !== "not_joined" && currentUserStopJoinIntentStatus !== "joined";
   const showSelfSettleJoin = getCurrentUserCanJoinSelfSettlePod(ride, joinView);
-  const showSelfSettleHost = selfSettlePod && getCurrentUserIsHost(ride);
+  const showSelfSettleHost = selfSettlePod && getCurrentUserCanUseHostControls(ride, user?.id ?? null);
   const showPreJoinRideAppLayout = selfSettlePod && (showSelfSettleJoin || hasConditionalStopJoinStatus) && !showSelfSettleHost;
   const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
   const currentUserCancelledHosting = selfSettlePod && isCurrentUserFormerHost(ride);
@@ -6365,6 +6411,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
             <SelfSettlePodSummaryHero
               ride={ride}
               seatsUsed={seatsUsed}
+              isHost={showSelfSettleHost}
               estimateLabel={rideAppHeroEstimateLabel}
               estimateValue={rideAppHeroEstimateValue}
               estimateUpdated={rideAppHeroEstimateUpdated}
@@ -6806,9 +6853,10 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
           onConfirm={confirmLeaveSelfSettle}
         />
       ) : null}
-      {showManagePodActionsModal && showSelfSettleHost ? (
+      {showManagePodActionsModal && selfSettlePod ? (
         <ManagePodActionsModal
           ride={ride}
+          isHost={showSelfSettleHost}
           onClose={() => setShowManagePodActionsModal(false)}
           onApproveStop={approveRouteStop}
           onDeclineStop={declineRouteStop}
