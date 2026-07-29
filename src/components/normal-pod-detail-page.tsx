@@ -687,17 +687,10 @@ function getCurrentUserCanUseHostControls(ride: HomeRide, viewerUserId?: string 
   if (!getCurrentUserIsHost(ride)) return false;
 
   const currentUserName = ride.currentUserName?.trim().toLowerCase();
-  if (!currentUserName || currentUserName === "you") return true;
+  const hostName = ride.hostName?.trim().toLowerCase();
+  const replacementBookerName = ride.rideAppReplacementBookerName?.trim().toLowerCase();
 
-  const hostNames = [
-    ride.hostName,
-    ride.hostDisplayName,
-    ride.rideAppReplacementBookerName,
-  ]
-    .map((name) => name?.trim().toLowerCase())
-    .filter(Boolean);
-
-  return !hostNames.length || hostNames.includes(currentUserName);
+  return currentUserName === "you" || hostName === "you" || replacementBookerName === "you";
 }
 
 function formatRidePickupLabel(date: Date) {
@@ -4651,7 +4644,12 @@ function SelfSettlePodSummaryHero({
   const seatsLeft = Math.max(0, ride.seatsTotal - summaryEffectiveSeatsUsed);
   const seatsLeftLabel = seatsLeft <= 0 ? "FULL" : `${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`;
   const summaryRouteTitle = getPodDistrictRouteTitle(ride);
-  const riderSummaryLabel = summaryUserHadRideAppSeat ? `Joined · ${seatsLeftLabel}` : getRideAppMinimumRidersToGoLabel(ride);
+  const riderSummaryLabel =
+    seatsLeft <= 0
+      ? "FULL"
+      : summaryUserHadRideAppSeat
+        ? `Joined · ${seatsLeftLabel}`
+        : getRideAppMinimumRidersToGoLabel(ride);
   const noticeBadgeClass =
     "inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full border border-rose-300/35 bg-rose-400/12 px-1.5 text-[11px] font-black leading-none text-rose-200";
   const estimateContent = (
