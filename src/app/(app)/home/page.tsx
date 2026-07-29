@@ -1944,12 +1944,6 @@ function CategoryCompactResultCard({
           )}
         />
       ) : null}
-      <RideBookmarkButton
-        bookmarked={bookmarked}
-        onToggle={toggleBookmark}
-        label={previewRoute.full}
-        className="absolute right-2.5 top-2.5 z-20"
-      />
       <div className={cn("relative z-10 grid shrink-0 justify-items-center", isAirportRide ? "gap-1.5" : "")}>
         <span
           aria-label={typeIconLabel}
@@ -2017,7 +2011,13 @@ function CategoryCompactResultCard({
           </span>
         </div>
       </div>
-      <div className={cn("relative z-10 grid shrink-0 justify-items-end gap-2 border-l pl-3 pt-8", isAirportRide ? "border-[#f6c453]/18" : "border-white/10")}>
+      <div className={cn("relative z-10 grid min-h-[92px] shrink-0 content-between justify-items-end gap-3 border-l py-0 pl-3", isAirportRide ? "border-[#f6c453]/18" : "border-white/10")}>
+        <RideBookmarkButton
+          bookmarked={bookmarked}
+          onToggle={toggleBookmark}
+          label={previewRoute.full}
+          className="h-8 w-8 min-[390px]:h-9 min-[390px]:w-9"
+        />
         <span
           className={cn(
             "inline-flex min-h-8 items-center rounded-full border px-3 text-xs font-black",
