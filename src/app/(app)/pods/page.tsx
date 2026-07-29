@@ -53,6 +53,7 @@ type RideTypeTone = "taxi" | "ride_app" | "airport" | "recurring";
 type ActivityItemKind = "request" | "ride";
 type MyActivityView = "all" | "requests" | "rides" | "bookmarked" | "joined" | "interested" | "tracked";
 type MyActivityTone = RideTypeTone | "request";
+type MyQuickAccessView = "created" | "requests" | "bookmarked";
 type MyActivityItem = {
   key: string;
   id: string;
@@ -325,37 +326,38 @@ function ActivityBookmarkButton({
 function MyRideQuickAccess({
   items,
   counts,
+  activeView,
+  onSelect,
 }: {
   items: MyActivityItem[];
   counts: Record<MyActivityView, number>;
+  activeView: MyQuickAccessView | null;
+  onSelect: (view: MyQuickAccessView) => void;
 }) {
-  const createdRide = items.find((item) => item.kind === "ride" && item.isMine);
-  const myRequest = items.find((item) => item.kind === "request" && item.isMine);
-  const bookmarked = items.find((item) => item.bookmarked);
   const entries: Array<{
     label: string;
-    href: string;
+    view: MyQuickAccessView;
     icon: LucideIcon;
     count: number;
     tone: "purple" | "orange" | "rose";
   }> = [
     {
       label: "My Created Ride",
-      href: createdRide?.href ?? "/create",
+      view: "created",
       icon: CarFront,
       count: items.filter((item) => item.kind === "ride" && item.isMine).length,
       tone: "purple",
     },
     {
       label: "My Request",
-      href: myRequest?.href ?? "/ride-groups",
+      view: "requests",
       icon: Send,
       count: items.filter((item) => item.kind === "request" && item.isMine).length,
       tone: "orange",
     },
     {
       label: "Bookmark",
-      href: bookmarked?.href ?? "/home",
+      view: "bookmarked",
       icon: Bookmark,
       count: counts.bookmarked,
       tone: "rose",
@@ -381,10 +383,17 @@ function MyRideQuickAccess({
                 : "text-rose-200 bg-rose-400/12 border-rose-300/20";
 
           return (
-            <Link
+            <button
               key={entry.label}
-              href={entry.href}
-              className="group grid min-h-[86px] justify-items-center rounded-[18px] border border-white/10 bg-[#101a25]/78 px-2.5 py-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition hover:border-cyan-300/30 hover:bg-[#132333]"
+              type="button"
+              aria-pressed={activeView === entry.view}
+              onClick={() => onSelect(entry.view)}
+              className={cn(
+                "group grid min-h-[86px] justify-items-center rounded-[18px] border px-2.5 py-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition hover:border-cyan-300/30 hover:bg-[#132333]",
+                activeView === entry.view
+                  ? "border-[var(--rp-primary)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,#101a25)]"
+                  : "border-white/10 bg-[#101a25]/78",
+              )}
             >
               <span className={cn("relative grid h-10 w-10 place-items-center rounded-full border", toneClass)}>
                 <Icon className="h-5 w-5" />
@@ -397,9 +406,89 @@ function MyRideQuickAccess({
               <span className="mt-2 line-clamp-2 text-[11px] font-black leading-4 text-[var(--rp-text)] group-hover:text-cyan-100">
                 {entry.label}
               </span>
-            </Link>
+            </button>
           );
         })}
+      </div>
+    </section>
+  );
+}
+
+function QuickAccessActivityCard({ item }: { item: MyActivityItem }) {
+  const Icon = item.kind === "request" ? Send : item.tone === "ride_app" ? Smartphone : CarFront;
+  const toneClass =
+    item.kind === "request"
+      ? "border-orange-300/30 bg-orange-300/10 text-orange-200"
+      : item.tone === "ride_app"
+        ? "border-cyan-300/30 bg-cyan-300/10 text-cyan-200"
+        : "border-[color-mix(in_srgb,var(--rp-primary)_34%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_12%,transparent)] text-[var(--rp-primary)]";
+
+  return (
+    <Link
+      href={item.href}
+      className="grid min-w-0 grid-cols-[44px_minmax(0,1fr)_auto] items-center gap-3 rounded-[18px] border border-[var(--rp-border)] bg-[#101a25]/78 p-3 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.045)] transition hover:border-cyan-300/28 hover:bg-[#142231]"
+    >
+      <span className={cn("grid h-11 w-11 place-items-center rounded-[15px] border", toneClass)}>
+        <Icon className="h-5 w-5" />
+      </span>
+      <span className="min-w-0">
+        <span className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <span className="min-w-0 truncate text-sm font-black text-[var(--rp-text)]">{item.title}</span>
+          {item.bookmarked ? <Star className="h-3.5 w-3.5 shrink-0 fill-[var(--rp-primary)] text-[var(--rp-primary)]" /> : null}
+        </span>
+        <span className="mt-1 block truncate text-xs font-bold text-[var(--rp-muted-strong)]">{item.subtitle}</span>
+        <span className="mt-2 flex min-w-0 flex-wrap gap-1.5">
+          <span className="rounded-full border border-white/10 bg-white/7 px-2 py-1 text-[10px] font-black uppercase text-[var(--rp-muted-strong)]">
+            {item.relationship}
+          </span>
+          <span className="rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_30%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_10%,transparent)] px-2 py-1 text-[10px] font-black text-[var(--rp-primary)]">
+            {item.badge}
+          </span>
+        </span>
+      </span>
+      <ChevronRight className="h-5 w-5 text-[var(--rp-muted)]" />
+    </Link>
+  );
+}
+
+function MyRideQuickAccessItems({
+  view,
+  items,
+}: {
+  view: MyQuickAccessView;
+  items: MyActivityItem[];
+}) {
+  const labels: Record<MyQuickAccessView, { title: string; empty: string }> = {
+    created: {
+      title: "My Created Ride",
+      empty: "No created rides yet.",
+    },
+    requests: {
+      title: "My Request",
+      empty: "No active requests yet.",
+    },
+    bookmarked: {
+      title: "Bookmark",
+      empty: "No bookmarked items yet.",
+    },
+  };
+
+  return (
+    <section className="rounded-[22px] border border-[var(--rp-border)] bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.025))] p-4 shadow-[var(--rp-shadow-soft)]">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-black text-[var(--rp-text)]">{labels[view].title}</h2>
+        <span className="rounded-full border border-[color-mix(in_srgb,var(--rp-primary)_30%,transparent)] bg-[color-mix(in_srgb,var(--rp-primary)_10%,transparent)] px-2.5 py-1 text-[11px] font-black text-[var(--rp-primary)]">
+          {items.length} item{items.length === 1 ? "" : "s"}
+        </span>
+      </div>
+      <div className="mt-3 grid gap-2.5">
+        {items.length ? (
+          items.map((item) => <QuickAccessActivityCard key={item.key} item={item} />)
+        ) : (
+          <div className="rounded-[18px] border border-white/10 bg-[#101a25]/78 p-4 text-sm font-bold text-[var(--rp-muted-strong)]">
+            {labels[view].empty}
+          </div>
+        )}
       </div>
     </section>
   );
@@ -641,6 +730,7 @@ export default function MyRidePage() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [currentMonth, setCurrentMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const [sortAscending, setSortAscending] = useState(true);
+  const [quickAccessView, setQuickAccessView] = useState<MyQuickAccessView | null>(null);
 
   const myRideItems = useMemo(
     () => [
@@ -747,6 +837,21 @@ export default function MyRidePage() {
     }),
     [activityItems],
   );
+  const quickAccessItems = useMemo(() => {
+    if (quickAccessView === "created") {
+      return activityItems.filter((item) => item.kind === "ride" && item.isMine);
+    }
+
+    if (quickAccessView === "requests") {
+      return activityItems.filter((item) => item.kind === "request" && item.isMine);
+    }
+
+    if (quickAccessView === "bookmarked") {
+      return activityItems.filter((item) => item.bookmarked);
+    }
+
+    return [];
+  }, [activityItems, quickAccessView]);
 
   function changeMonth(delta: number) {
     setCurrentMonth((month) => new Date(month.getFullYear(), month.getMonth() + delta, 1));
@@ -797,7 +902,13 @@ export default function MyRidePage() {
           <MyRideQuickAccess
             items={activityItems}
             counts={activityCounts}
+            activeView={quickAccessView}
+            onSelect={setQuickAccessView}
           />
+
+          {quickAccessView ? (
+            <MyRideQuickAccessItems view={quickAccessView} items={quickAccessItems} />
+          ) : null}
 
           <section className="min-w-0 overflow-hidden rounded-[26px] border border-[var(--rp-border)] bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.08),transparent_34%),linear-gradient(180deg,var(--rp-card),rgba(11,22,32,0.72))] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),var(--rp-shadow-soft)] min-[390px]:p-4">
             <div className="grid min-w-0 grid-cols-[44px_minmax(0,1fr)_44px] items-center gap-2 min-[390px]:grid-cols-[52px_minmax(0,1fr)_52px] min-[390px]:gap-3">
