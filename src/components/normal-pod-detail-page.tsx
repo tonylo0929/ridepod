@@ -688,9 +688,20 @@ function getCurrentUserCanUseHostControls(ride: HomeRide, viewerUserId?: string 
 
   const currentUserName = ride.currentUserName?.trim().toLowerCase();
   const hostName = ride.hostName?.trim().toLowerCase();
+  const visibleHostName = ride.hostDisplayName?.trim().toLowerCase();
   const replacementBookerName = ride.rideAppReplacementBookerName?.trim().toLowerCase();
 
-  return currentUserName === "you" || hostName === "you" || replacementBookerName === "you";
+  if (visibleHostName && visibleHostName !== "you") {
+    return currentUserName === visibleHostName || replacementBookerName === visibleHostName;
+  }
+
+  return (
+    currentUserName === "you" ||
+    hostName === "you" ||
+    replacementBookerName === "you" ||
+    Boolean(currentUserName && hostName && currentUserName === hostName) ||
+    Boolean(currentUserName && replacementBookerName && currentUserName === replacementBookerName)
+  );
 }
 
 function formatRidePickupLabel(date: Date) {
@@ -4990,7 +5001,7 @@ function SelfSettlePodSummaryHero({
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] border border-rose-300/35 bg-rose-500/10 px-3 text-sm font-black text-rose-100 transition hover:bg-rose-500/16"
               >
                 <X className="h-4 w-4" />
-                Delete Ride
+                Cancel Ride
               </button>
             </div>
           ) : canLeaveRideFromHero ? (
