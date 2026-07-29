@@ -5275,7 +5275,7 @@ function TotalRiderStep({
             />
           </div>
 
-          <div className="mt-auto pt-8">
+          <div className="mt-10">
             <CreatePodStepActions
               onBack={() => undefined}
               onContinue={onContinue}
