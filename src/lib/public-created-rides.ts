@@ -22,6 +22,7 @@ export type PublicCreatedRidePod = Pick<
   | "departure_at"
   | "recurring_days"
   | "recurring_pattern"
+  | "confirmation_offset_minutes"
   | "created_at"
   | "updated_at"
 > & {
@@ -253,6 +254,7 @@ export function publicCreatedPodToHomeRide(
     viewerIdentityMatchesHostName(pod.host_display_name, viewerIdentity);
   const dateLabel = pod.pod_type === "RECURRING" ? (pod.recurring_pattern ?? "Recurring") : formatDateLabel(pod.departure_at);
   const timeLabel = formatTimeLabel(pod.departure_at);
+  const recurringOffsetMinutes = pod.confirmation_offset_minutes ?? null;
   const estimateTotal = centsToDollars(pod.current_estimate_cents);
   const seatsTotal = Math.max(1, pod.ideal_pod_size || 4);
   const minimumRiders = Math.max(1, Math.min(pod.minimum_locked_guests || 2, seatsTotal));
@@ -306,8 +308,11 @@ export function publicCreatedPodToHomeRide(
     selfSettleRiskAccepted: isRideApp,
     bookingDetailsShared: false,
     rideAppBookingDetailsFinalized: false,
-    confirmationDeadlineLabel: "Not set yet",
+    confirmationDeadlineLabel: recurringOffsetMinutes
+      ? `${Math.round(recurringOffsetMinutes / 60)} hours before each ride`
+      : "Not set yet",
     confirmationDeadlineAt: null,
+    confirmationOffsetMinutes: recurringOffsetMinutes,
     currentUserJoinIntentStatus: isHost ? "not_joined" : viewerJoined ? "joined_interest" : "not_joined",
     currentUserConfirmationExpired: false,
     bookingDetailsVersion: 1,
@@ -404,5 +409,6 @@ export function homeRideToPublicCreatedPodInsert(ride: HomeRide, hostUserId: str
     departure_at: departureAtFromHomeRide(ride),
     recurring_days: ride.weekdays ?? null,
     recurring_pattern: ride.repeatsPattern ?? ride.scheduleLabel ?? null,
+    confirmation_offset_minutes: ride.rideKind === "recurring" ? ride.confirmationOffsetMinutes ?? 24 * 60 : null,
   };
 }

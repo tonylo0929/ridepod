@@ -45,6 +45,8 @@ export type RecurringPodTemplate = {
   endDate: string | null;
   occurrenceLimit: number | null;
   flexibilityMinutes: number;
+  timezone?: string;
+  confirmationOffsetMinutes?: number;
   status: RecurringPodTemplateStatus;
   createdAt: string;
   updatedAt: string;
@@ -60,6 +62,7 @@ export type PodOccurrence = {
   bookingState: "QUOTE_ALLOWED";
   generatedFromTemplateAt: string;
   isGeneratedFromRecurringTemplate: boolean;
+  confirmationDeadlineAt: string | null;
   quoteIds: string[];
   receiptIds: string[];
   settlementId: string | null;
@@ -124,6 +127,10 @@ export function toLocalDepartureAt(date: string, departureTimeLocal: string) {
   return `${date}T${normalizeTime(departureTimeLocal)}:00`;
 }
 
+function parseHongKongLocalDateTime(localDateTime: string) {
+  return new Date(`${localDateTime}+08:00`);
+}
+
 export function createOneTimeOccurrence(schedule: OneTimePodSchedule): PodOccurrence {
   return {
     id: `one-time-${schedule.occurrenceDate.replaceAll("-", "")}`,
@@ -135,6 +142,7 @@ export function createOneTimeOccurrence(schedule: OneTimePodSchedule): PodOccurr
     bookingState: "QUOTE_ALLOWED",
     generatedFromTemplateAt: new Date(0).toISOString(),
     isGeneratedFromRecurringTemplate: false,
+    confirmationDeadlineAt: null,
     quoteIds: [],
     receiptIds: [],
     settlementId: null,
@@ -172,6 +180,7 @@ export function generateRecurringOccurrences(
   const start = parseDateOnly(template.startDate);
   const end = template.endDate ? parseDateOnly(template.endDate) : null;
   const generatedAt = options.generatedAt ?? new Date(0).toISOString();
+  const confirmationOffsetMinutes = Math.max(0, template.confirmationOffsetMinutes ?? 24 * 60);
   const occurrences: PodOccurrence[] = [];
   let cursor = start;
   let guard = 0;
@@ -208,16 +217,23 @@ export function generateRecurringOccurrences(
       for (const leg of dayLegs) {
         if (occurrences.length >= limit) break;
 
+        const departureAt = toLocalDepartureAt(cursorDate, leg.departureTime);
+        const departureDate = parseHongKongLocalDateTime(departureAt);
+        const confirmationDeadlineAt = Number.isNaN(departureDate.getTime())
+          ? null
+          : new Date(departureDate.getTime() - confirmationOffsetMinutes * 60 * 1000).toISOString();
+
         occurrences.push({
           id: `${template.id}-${cursorDate.replaceAll("-", "")}-${leg.legType.toLowerCase()}`,
           recurringTemplateId: template.id,
           occurrenceDate: cursorDate,
-          departureAt: toLocalDepartureAt(cursorDate, leg.departureTime),
+          departureAt,
           departureWindowMinutes: template.flexibilityMinutes,
           lifecycleState: "FORMING",
           bookingState: "QUOTE_ALLOWED",
           generatedFromTemplateAt: generatedAt,
           isGeneratedFromRecurringTemplate: true,
+          confirmationDeadlineAt,
           quoteIds: [],
           receiptIds: [],
           settlementId: null,

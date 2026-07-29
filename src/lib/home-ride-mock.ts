@@ -177,6 +177,7 @@ export type HomeRide = {
   rideAppBookingDetailsFinalizedBy?: string | null;
   confirmationDeadlineLabel?: string;
   confirmationDeadlineAt?: string | null;
+  confirmationOffsetMinutes?: number | null;
   currentUserJoinIntentStatus?: RideAppJoinIntentStatus;
   joinLeaveCountForCurrentUser?: number;
   lastLeftAt?: string | null;

@@ -50,6 +50,7 @@ export type RidePodPodRow = {
   departure_at: string | null;
   recurring_days: string[] | null;
   recurring_pattern: string | null;
+  confirmation_offset_minutes: number | null;
   created_at: string | null;
   updated_at: string | null;
 };
@@ -61,6 +62,7 @@ export type RidePodRideInstanceRow = {
   leg_type: string | null;
   route_label: string;
   departure_at: string;
+  confirmation_deadline_at: string | null;
   guests_locked_count: number | null;
   required_guests_count: number;
   booking_fare_cap_cents: number;

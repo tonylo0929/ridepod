@@ -27,6 +27,7 @@ const selectPublicCreatedRideColumns = [
   "departure_at",
   "recurring_days",
   "recurring_pattern",
+  "confirmation_offset_minutes",
   "created_at",
   "updated_at",
 ].join(",");

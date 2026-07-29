@@ -69,6 +69,16 @@ import {
   type ScheduleType,
   type Weekday,
 } from "@/lib/pod-schedule";
+import {
+  buildRecurringDeadlinePreview,
+  defaultRecurringConfirmationOffsetMinutes,
+  getRecurringConfirmationOffsetMinutes,
+  getRecurringConfirmationPresetLabel,
+  recurringConfirmationOffsetOptions,
+  recurringConfirmationTimezone,
+  type RecurringConfirmationOffsetPreset,
+  type RecurringConfirmationOffsetUnit,
+} from "@/lib/recurring-confirmation-deadline";
 import { useAuth } from "@/providers/AuthProvider";
 import { getRideAppAccessNotice, getRideAppTrustSummary } from "@/lib/ride-app-trust";
 import {
@@ -165,6 +175,10 @@ type DateTimeState = {
 type ConfirmationDeadlineState = {
   date: string;
   time: string;
+  recurringPreset: RecurringConfirmationOffsetPreset;
+  recurringCustomValue: number;
+  recurringCustomUnit: RecurringConfirmationOffsetUnit;
+  timezone: string;
 };
 type PeopleVehicleState = {
   seatsAvailable: number;
@@ -1011,6 +1025,23 @@ function getConfirmationDeadlineError(deadline: ConfirmationDeadlineState, dateT
   if (!deadline.date || !deadline.time || !parsed) return "Choose both a confirm-by date and time.";
   if (parsed.getTime() <= Date.now()) return "Choose a future confirmation deadline.";
   if (parsed.getTime() >= getRidePickupDateTime(dateTime).getTime()) return "The deadline must be before pickup time.";
+  return null;
+}
+
+function getRecurringConfirmationRule(deadline: ConfirmationDeadlineState) {
+  return {
+    preset: deadline.recurringPreset,
+    customValue: deadline.recurringCustomValue,
+    customUnit: deadline.recurringCustomUnit,
+    timezone: deadline.timezone || recurringConfirmationTimezone,
+  };
+}
+
+function getRecurringConfirmationDeadlineError(deadline: ConfirmationDeadlineState) {
+  if (deadline.recurringPreset !== "custom") return null;
+  if (!Number.isFinite(deadline.recurringCustomValue) || deadline.recurringCustomValue < 1) {
+    return "Enter a custom confirmation window of at least 1.";
+  }
   return null;
 }
 
@@ -5028,6 +5059,8 @@ function RideAppBookingRulesStep({
 function ConfirmationDeadlineStep({
   deadline,
   dateTime,
+  pickupAddress,
+  dropoffAddress,
   currentStep,
   stepLabels,
   onDeadlineChange,
@@ -5036,16 +5069,143 @@ function ConfirmationDeadlineStep({
 }: {
   deadline: ConfirmationDeadlineState;
   dateTime: DateTimeState;
+  pickupAddress: string;
+  dropoffAddress: string;
   currentStep: CreateStep;
   stepLabels: string[];
   onDeadlineChange: (deadline: ConfirmationDeadlineState) => void;
   onBack: () => void;
   onContinue: () => void;
 }) {
-  const validationError = getConfirmationDeadlineError(deadline, dateTime);
+  const isRecurring = dateTime.scheduleType === "RECURRING";
+  const recurringRule = getRecurringConfirmationRule(deadline);
+  const validationError = isRecurring
+    ? getRecurringConfirmationDeadlineError(deadline)
+    : getConfirmationDeadlineError(deadline, dateTime);
   const hasStarted = Boolean(deadline.date || deadline.time);
   const deadlineLabel = formatConfirmationDeadlineLabel(deadline);
   const pickupLabel = `${getScheduleDateSummary(dateTime)} at ${getScheduleTimeSummary(dateTime)}`;
+  const recurringOffsetMinutes = getRecurringConfirmationOffsetMinutes(recurringRule);
+  const recurringPreview = isRecurring
+    ? buildRecurringDeadlinePreview(
+        buildPreviewTemplate({ dateTime, pickupAddress, dropoffAddress }),
+        recurringRule,
+        3,
+      )
+    : [];
+
+  if (isRecurring) {
+    return (
+      <>
+        <CreatePodTopBar currentStep={currentStep} stepLabels={stepLabels} />
+
+        <main className="scrollbar-hide flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pb-8 pt-7">
+          <section className="text-center">
+            <p className="text-xs font-black uppercase tracking-[0.14em] text-[var(--rp-primary)]">Ride app</p>
+            <h1 className="mt-2 text-[27px] font-black leading-tight text-[var(--rp-text)]">Rider confirmation deadline</h1>
+            <p className="mx-auto mt-2 max-w-[320px] text-sm font-medium leading-6 text-[var(--rp-muted)]">
+              Set how long before each scheduled ride riders must confirm their seats.
+            </p>
+          </section>
+
+          <section className="mt-6 rounded-[24px] border border-[var(--rp-primary)]/45 bg-[linear-gradient(145deg,rgba(246,196,83,0.12),rgba(15,23,42,0.82))] p-4 shadow-[0_20px_48px_rgba(0,0,0,0.28)]">
+            <label className="grid gap-2">
+              <span className="text-[11px] font-black uppercase tracking-[0.12em] text-cyan-100">Confirm riders</span>
+              <select
+                value={deadline.recurringPreset}
+                onChange={(event) =>
+                  onDeadlineChange({
+                    ...deadline,
+                    recurringPreset: event.target.value as RecurringConfirmationOffsetPreset,
+                  })
+                }
+                className="min-h-12 rounded-[15px] border border-[var(--rp-border)] bg-[rgba(5,12,20,0.76)] px-3 text-sm font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+              >
+                {recurringConfirmationOffsetOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}{"recommended" in option && option.recommended ? " - Recommended" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {deadline.recurringPreset === "custom" ? (
+              <div className="mt-3 grid grid-cols-[minmax(0,1fr)_120px] gap-3">
+                <label className="grid gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-[0.12em] text-cyan-100">Number</span>
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={deadline.recurringCustomValue}
+                    onChange={(event) =>
+                      onDeadlineChange({
+                        ...deadline,
+                        recurringCustomValue: Number(event.target.value),
+                      })
+                    }
+                    className="min-h-12 rounded-[15px] border border-[var(--rp-border)] bg-[rgba(5,12,20,0.76)] px-3 text-sm font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+                  />
+                </label>
+                <label className="grid gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-[0.12em] text-cyan-100">Unit</span>
+                  <select
+                    value={deadline.recurringCustomUnit}
+                    onChange={(event) =>
+                      onDeadlineChange({
+                        ...deadline,
+                        recurringCustomUnit: event.target.value as RecurringConfirmationOffsetUnit,
+                      })
+                    }
+                    className="min-h-12 rounded-[15px] border border-[var(--rp-border)] bg-[rgba(5,12,20,0.76)] px-3 text-sm font-black text-[var(--rp-text)] outline-none focus:border-[var(--rp-primary)]"
+                  >
+                    <option value="hours">hours</option>
+                    <option value="days">days</option>
+                  </select>
+                </label>
+              </div>
+            ) : null}
+
+            <p className="mt-3 text-xs font-semibold leading-5 text-[var(--rp-muted-strong)]">
+              Unconfirmed seats will be released after the deadline for that ride only.
+            </p>
+            <p className="mt-2 text-xs font-black text-[var(--rp-primary)]">
+              {getRecurringConfirmationPresetLabel(recurringRule)} · {recurringOffsetMinutes} minutes
+            </p>
+            {validationError ? (
+              <p className="mt-3 rounded-[14px] border border-[var(--rp-danger)]/35 bg-[var(--rp-danger)]/10 px-3 py-2 text-xs font-black leading-5 text-[var(--rp-danger)]">
+                {validationError}
+              </p>
+            ) : null}
+          </section>
+
+          <section className="mt-4 rounded-[22px] border border-cyan-300/35 bg-[rgba(8,25,34,0.72)] p-4">
+            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-cyan-200">Deadline preview</p>
+            <div className="mt-3 grid gap-3">
+              {recurringPreview.length > 0 ? (
+                recurringPreview.map((item) => (
+                  <div key={item.occurrenceId} className="rounded-[16px] border border-white/10 bg-white/[0.045] p-3">
+                    <p className="text-sm font-black text-[var(--rp-text)]">{item.rideLabel}</p>
+                    <p className="mt-1 text-xs font-bold leading-5 text-[var(--rp-muted-strong)]">
+                      Confirm by {item.confirmByLabel}
+                    </p>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm font-bold leading-6 text-[var(--rp-muted-strong)]">
+                  Select recurring days and a departure time to preview deadlines.
+                </p>
+              )}
+            </div>
+          </section>
+
+          <div className="mt-5">
+            <CreatePodStepActions onBack={onBack} onContinue={onContinue} disabled={Boolean(validationError)} />
+          </div>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
@@ -5983,11 +6143,16 @@ function buildCreatedRideAppHomeRide({
   const splitMethod = getSelfSettleSplitMethodLabel(peopleVehicle.splitMethod);
   const estimatedFare = peopleVehicle.estimatedRideAppFare.trim();
   const luggageLabel = airportDetails ? getAirportLuggageSummary(airportDetails) : getLuggageLabel(peopleVehicle);
+  const isRecurringRide = !isAirportRide && dateTime.scheduleType === "RECURRING";
+  const recurringConfirmationRule = getRecurringConfirmationRule(confirmationDeadline);
+  const recurringConfirmationOffsetMinutes = getRecurringConfirmationOffsetMinutes(recurringConfirmationRule);
   const confirmationDeadlineDate = getConfirmationDeadlineDate(confirmationDeadline);
-  const confirmationDeadlineAt = confirmationDeadlineDate?.toISOString() ?? null;
-  const confirmationDeadlineLabel = confirmationDeadlineDate
-    ? formatConfirmationDeadlineLabel(confirmationDeadline)
-    : "Not set yet";
+  const confirmationDeadlineAt = isRecurringRide ? null : confirmationDeadlineDate?.toISOString() ?? null;
+  const confirmationDeadlineLabel = isRecurringRide
+    ? getRecurringConfirmationPresetLabel(recurringConfirmationRule)
+    : confirmationDeadlineDate
+      ? formatConfirmationDeadlineLabel(confirmationDeadline)
+      : "Not set yet";
 
   return {
     id,
@@ -6000,7 +6165,7 @@ function buildCreatedRideAppHomeRide({
     seatsUsed: 1,
     seatsTotal: peopleVehicle.seatsAvailable,
     pricePerPerson: 24,
-    rideKind: isAirportRide ? "airport" : dateTime.scheduleType === "RECURRING" ? "recurring" : "one_off",
+    rideKind: isAirportRide ? "airport" : isRecurringRide ? "recurring" : "one_off",
     rideService: "ride_app",
     rideCategory: "ride_app_self_settle",
     selfSettleRiskAccepted: true,
@@ -6008,6 +6173,7 @@ function buildCreatedRideAppHomeRide({
     rideAppBookingDetailsFinalized: false,
     confirmationDeadlineLabel,
     confirmationDeadlineAt,
+    confirmationOffsetMinutes: isRecurringRide ? recurringConfirmationOffsetMinutes : null,
     currentUserJoinIntentStatus: "not_joined",
     currentUserConfirmationExpired: false,
     bookingDetailsVersion: 1,
@@ -6486,6 +6652,9 @@ function SelfSettleReviewSummaryCard({
   confirmationDeadline: ConfirmationDeadlineState;
   onEditDetails: () => void;
 }) {
+  const confirmationDeadlineValue = dateTime.scheduleType === "RECURRING"
+    ? getRecurringConfirmationPresetLabel(getRecurringConfirmationRule(confirmationDeadline))
+    : formatConfirmationDeadlineLabel(confirmationDeadline);
   const rows: Array<{ icon: ReactNode; label: string; value: string }> = [
     { icon: <Smartphone className="h-4 w-4" />, label: "Ride type", value: "Ride App" },
     { icon: <MapPin className="h-4 w-4" />, label: "Route", value: `${routePointSummary(pickupAddress, "None")} -> ${routePointSummary(dropoffAddress, "None")}` },
@@ -6494,7 +6663,7 @@ function SelfSettleReviewSummaryCard({
     { icon: <LocateFixed className="h-4 w-4" />, label: "Gather point", value: peopleVehicle.pickupVenue || "None" },
     { icon: <CarFront className="h-4 w-4" />, label: "Ride app", value: getRideAppProviderLabel(peopleVehicle.rideAppProvider, peopleVehicle.rideAppProviderOther) },
     { icon: <CalendarDays className="h-4 w-4" />, label: "Date/time", value: `${getScheduleDateSummary(dateTime)} / ${getScheduleTimeSummary(dateTime)}` },
-    { icon: <Clock3 className="h-4 w-4" />, label: "Rider confirmation deadline", value: formatConfirmationDeadlineLabel(confirmationDeadline) },
+    { icon: <Clock3 className="h-4 w-4" />, label: "Rider confirmation deadline", value: confirmationDeadlineValue },
     { icon: <UsersRound className="h-4 w-4" />, label: "Seats", value: `${peopleVehicle.seatsAvailable} seats total` },
   ];
 
@@ -7953,6 +8122,10 @@ export function CreatePodChooseType() {
   const [confirmationDeadline, setConfirmationDeadline] = useState<ConfirmationDeadlineState>({
     date: "",
     time: "",
+    recurringPreset: String(defaultRecurringConfirmationOffsetMinutes) as RecurringConfirmationOffsetPreset,
+    recurringCustomValue: 24,
+    recurringCustomUnit: "hours",
+    timezone: recurringConfirmationTimezone,
   });
   const [peopleVehicle, setPeopleVehicle] = useState<PeopleVehicleState>({
     seatsAvailable: 4,
@@ -8237,6 +8410,8 @@ export function CreatePodChooseType() {
         <ConfirmationDeadlineStep
           deadline={confirmationDeadline}
           dateTime={dateTime}
+          pickupAddress={pickupAddress}
+          dropoffAddress={dropoffAddress}
           currentStep={confirmationDeadlineStepIndex}
           stepLabels={activeStepLabels}
           onDeadlineChange={setConfirmationDeadline}
