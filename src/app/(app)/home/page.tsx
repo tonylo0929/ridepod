@@ -33,6 +33,7 @@ import {
   districtOptions,
   districtGroups,
   homeRides,
+  isDirectRoutePolicy,
   isHostApprovedStopPolicy,
   matchesDistrict,
   rideMatchesTab,
@@ -1262,6 +1263,49 @@ function getPodDetailHref(ride: HomeRide, sourceTab: HomeTab, returnHref?: strin
   return `/pods/${ride.id}?${params.toString()}`;
 }
 
+function getHomeRideRoutePolicyBadge(ride: HomeRide) {
+  if (ride.rideKind === "recurring" || ride.is_recurring) {
+    return { label: "Direct Route", tone: "direct" as const };
+  }
+
+  if (isHostApprovedStopPolicy(ride.stopRequestPolicy)) {
+    return { label: "Stop Request", tone: "stop" as const };
+  }
+
+  if (isDirectRoutePolicy(ride.stopRequestPolicy)) {
+    return { label: "Direct Route", tone: "direct" as const };
+  }
+
+  return { label: "Direct Route", tone: "direct" as const };
+}
+
+function HomeRoutePolicyBadge({
+  badge,
+  compact = false,
+}: {
+  badge: ReturnType<typeof getHomeRideRoutePolicyBadge> | null;
+  compact?: boolean;
+}) {
+  if (!badge) return null;
+
+  const Icon = badge.tone === "stop" ? SlidersHorizontal : ArrowRightLeft;
+
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 rounded-full border font-black uppercase leading-none",
+        compact ? "min-h-6 px-2 text-[9px] min-[390px]:text-[10px]" : "min-h-6 px-2.5 text-[10px]",
+        badge.tone === "stop"
+          ? "border-cyan-300/42 bg-cyan-300/12 text-cyan-100"
+          : "border-[#ffd968]/42 bg-[#ffd968]/12 text-[#ffd968]",
+      )}
+    >
+      <Icon className={cn("shrink-0 stroke-[2.5]", compact ? "h-3 w-3" : "h-3.5 w-3.5")} />
+      <span>{badge.label}</span>
+    </span>
+  );
+}
+
 function HomeRideCard({
   ride,
   currentUserAvatar,
@@ -1304,6 +1348,7 @@ function HomeRideCard({
       : "Estimate pending"
     : `Est. share HK$${ride.pricePerPerson}`;
   const secondaryRouteLabel = displayHostName ? `Host: ${displayHostName}` : getRideAppProviderLabel(ride) ?? ride.taxiType;
+  const routePolicyBadge = getHomeRideRoutePolicyBadge(ride);
 
   return (
     <Link
@@ -1345,6 +1390,7 @@ function HomeRideCard({
             {secondaryRouteLabel}
           </p>
           <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-black leading-4 min-[390px]:text-xs min-[560px]:text-sm">
+            <HomeRoutePolicyBadge badge={routePolicyBadge} compact />
             <span className="inline-flex items-center gap-1 text-[var(--rp-muted-strong)]">
               <UsersRound className="h-3.5 w-3.5 shrink-0 text-[var(--rp-primary)]" />
               {ride.seatsUsed} / {ride.seatsTotal}
@@ -1920,6 +1966,7 @@ function CategoryCompactResultCard({
       : "Joined"
     : null;
   const sideStatusLabel = currentUserRelationship?.tone === "deleted" ? "Deleted" : seatLabel;
+  const routePolicyBadge = getHomeRideRoutePolicyBadge(ride);
 
   return (
     <Link
@@ -1966,7 +2013,7 @@ function CategoryCompactResultCard({
         ) : null}
       </div>
       <div className="relative z-10 min-w-0">
-        {ownershipBadgeLabel || airportRideAppProviderLabel ? (
+        {ownershipBadgeLabel || airportRideAppProviderLabel || routePolicyBadge ? (
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             {ownershipBadgeLabel ? (
               <span
@@ -1993,10 +2040,11 @@ function CategoryCompactResultCard({
                 {airportRideAppProviderLabel}
               </span>
             ) : null}
+            <HomeRoutePolicyBadge badge={routePolicyBadge} />
           </div>
         ) : null}
         <h2
-          className={cn("min-w-0 truncate text-[15px] font-black leading-5 text-[var(--rp-text)] min-[390px]:text-base", ownershipBadgeLabel || airportRideAppProviderLabel ? "mt-1.5" : "")}
+          className={cn("min-w-0 truncate text-[15px] font-black leading-5 text-[var(--rp-text)] min-[390px]:text-base", ownershipBadgeLabel || airportRideAppProviderLabel || routePolicyBadge ? "mt-1.5" : "")}
           title={previewRoute.full}
         >
           {previewRoute.from} <span className="text-[var(--rp-primary)]">{"\u2192"}</span> {previewRoute.to}
