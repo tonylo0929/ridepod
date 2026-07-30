@@ -4636,6 +4636,16 @@ function SelfSettlePodSummaryHero({
   const rejoinRestriction = getRideAppRejoinRestrictionCopy(ride, ride.seatsUsed < ride.seatsTotal);
   const canLeaveRideFromHero = summaryUserHadRideAppSeat && !summaryUserIsHost;
   const showInlineJoinRide = !summaryUserIsHost && !canLeaveRideFromHero && canJoinRide;
+  const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
+  const hostCancellationActive = hostCancellationStatus !== "active";
+  const heroCurrentUserStopRequest = getNormalizedRouteRequests(ride).currentUserRequest ?? null;
+  const canRequestStopFromHero =
+    canLeaveRideFromHero &&
+    isHostApprovedStopPolicy(ride.stopRequestPolicy) &&
+    ride.rideKind !== "recurring" &&
+    hostCancellationStatus === "active" &&
+    heroCurrentUserStopRequest?.status !== "pending" &&
+    heroCurrentUserStopRequest?.status !== "approved";
   const hasStopRequestJoinStatus = stopJoinIntentStatuses.has(stopJoinIntentStatus);
   const isPreJoinLayout = showInlineJoinRide || hasStopRequestJoinStatus;
   const summaryUserCanOpenChat =
@@ -4647,8 +4657,6 @@ function SelfSettlePodSummaryHero({
       !isRideAppSeatHoldExpired(ride)));
   const fareReviewState = getRideAppFareEstimateReviewState(ride);
   const displayEstimateLabel = estimateLabel;
-  const hostCancellationStatus = getRideAppHostCancellationStatus(ride);
-  const hostCancellationActive = hostCancellationStatus !== "active";
   const estimateActionLabel = fareReviewState.confirmed ? "View breakdown" : "Review fare";
   const compactSummaryDateLabel = getCompactPodSummaryDateLabel(ride.dateLabel);
   const manageActionsPendingCount = getManagePodActionsPendingCount(ride);
@@ -5013,6 +5021,16 @@ function SelfSettlePodSummaryHero({
                 <BarChart3 className="h-4 w-4" />
                 View status
               </Link>
+              {canRequestStopFromHero ? (
+                <button
+                  type="button"
+                  onClick={onRequestStopRide}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/12 px-3 text-sm font-black text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(242,193,91,0.1)] transition hover:bg-[var(--rp-primary)]/18"
+                >
+                  <MapPin className="h-4 w-4" />
+                  Request a stop
+                </button>
+              ) : null}
               <button
                 type="button"
                 onPointerUp={(event) => {
