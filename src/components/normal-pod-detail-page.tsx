@@ -5025,7 +5025,7 @@ function SelfSettlePodSummaryHero({
                 <button
                   type="button"
                   onClick={onRequestStopRide}
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)]/45 bg-[var(--rp-primary)]/12 px-3 text-sm font-black text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(242,193,91,0.1)] transition hover:bg-[var(--rp-primary)]/18"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] border border-[var(--rp-primary)] bg-[var(--rp-primary)] px-3 text-sm font-black text-[#07111a] shadow-[0_14px_30px_color-mix(in_srgb,var(--rp-primary)_28%,transparent)] transition hover:border-[#ffe08a] hover:bg-[#ffd86a]"
                 >
                   <MapPin className="h-4 w-4" />
                   Request a stop
