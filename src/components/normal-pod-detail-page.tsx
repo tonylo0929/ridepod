@@ -47,10 +47,13 @@ import {
   isDirectRoutePolicy,
   isHostApprovedStopPolicy,
   routeRequestToRoutePlanStop,
+  type GeoCoordinates,
   type HomeRide,
   type RouteRequest,
   type RoutePlanStop,
 } from "@/lib/home-ride-mock";
+import { LocationPicker } from "@/components/ride-location-picker";
+import type { RideLocation } from "@/lib/ride-location-types";
 import {
   formatHkdCents,
   LockSeatConfirmationModal,
@@ -1006,12 +1009,19 @@ function buildHostCancelledRidePatch(ride: HomeRide, cancelledBy: string, cancel
   };
 }
 
-function buildRideAppStopRequestPatch(ride: HomeRide, stopLabel: string, requestedBy: string, now = new Date()): Partial<HomeRide> {
+function buildRideAppStopRequestPatch(
+  ride: HomeRide,
+  stopLabel: string,
+  requestedBy: string,
+  stopCoordinates: GeoCoordinates | null = null,
+  now = new Date(),
+): Partial<HomeRide> {
   const requestId = `stop-${now.getTime()}`;
   const requestedByKey = requestedBy.trim().toLowerCase();
   const requestedStop: RoutePlanStop = {
     id: requestId,
     label: stopLabel,
+    coordinates: stopCoordinates,
     requestedBy,
     stopType: "quick_stop",
     reason: "Rider requested an extra stop.",
@@ -1039,7 +1049,7 @@ function buildRideAppStopRequestPatch(ride: HomeRide, stopLabel: string, request
         id: requestId,
         requestedByName: requestedBy,
         stopLocation: stopLabel,
-        stopCoordinates: requestedStop.coordinates ?? null,
+        stopCoordinates,
         reason: requestedStop.reason,
         status: "pending" as const,
         requestedAtLabel: "Just now",
@@ -2417,7 +2427,7 @@ export function PodStatusPanel({
     setShowRejoinModal(false);
   }
 
-  function requestRideAppStopFromStatus(stopLabel: string) {
+  function requestRideAppStopFromStatus(stopLabel: string, stopCoordinates: GeoCoordinates | null = null) {
     const trimmedStopLabel = stopLabel.trim();
     const routeLocked =
       ride.bookingDetailsShared === true ||
@@ -2428,7 +2438,7 @@ export function PodStatusPanel({
       return;
     }
 
-    const patch = buildRideAppStopRequestPatch(ride, trimmedStopLabel, podStatusActorName);
+    const patch = buildRideAppStopRequestPatch(ride, trimmedStopLabel, podStatusActorName, stopCoordinates);
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
     saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
@@ -2444,6 +2454,7 @@ export function PodStatusPanel({
       dedupe: false,
       metadata: {
         stopLabel: trimmedStopLabel,
+        stopCoordinates,
         requestedBy: podStatusActorName,
       },
     });
@@ -4149,11 +4160,13 @@ function CompactRideAppRoutePanel({
   canRequestStop?: boolean;
   canReviewStop?: boolean;
   requestStopOpenSignal?: number;
-  onRequestStop?: (stopLabel: string) => void;
+  onRequestStop?: (stopLabel: string, stopCoordinates?: GeoCoordinates | null) => void;
   onApproveStop?: (stop: RoutePlanStop) => void;
   onDeclineStop?: (stop: RoutePlanStop) => void;
 }) {
   const [stopRequestDraft, setStopRequestDraft] = useState("");
+  const [selectedStopLocation, setSelectedStopLocation] = useState<RideLocation | null>(null);
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
   const [requestScreenOpen, setRequestScreenOpen] = useState(false);
   const [dismissedRequestStopOpenSignal, setDismissedRequestStopOpenSignal] = useState(0);
   const [approvalStop, setApprovalStop] = useState<RoutePlanStop | null>(null);
@@ -4208,6 +4221,21 @@ function CompactRideAppRoutePanel({
   const trimmedStopRequest = stopRequestDraft.trim();
   const displayedStops = getDisplayedRouteStops(ride);
   const routeMapPoints = buildRouteMapPoints(ride, displayedStops);
+  const selectedStopMapPoint = selectedStopLocation
+    ? routeMapPoint({
+        id: "requested-stop",
+        label: selectedStopLocation.name,
+        mapLabel: "Requested stop",
+        helper: "Pending host approval",
+        coordinates: { lat: selectedStopLocation.latitude, lng: selectedStopLocation.longitude },
+        kind: "stop",
+        markerLabel: "+",
+      })
+    : null;
+  const requestRouteMapPoints =
+    selectedStopMapPoint && routeMapPoints.length >= 2
+      ? [routeMapPoints[0], selectedStopMapPoint, ...routeMapPoints.slice(1)]
+      : routeMapPoints;
   const policyLabel = directRouteOnly ? "Direct route only" : "Stops allowed";
   const routeSectionTitle = directRouteOnly ? "Suggested route" : "Route + stop requests";
   const destinationLabel = getAirportRouteDisplayLabel(ride.dropoffLabel ?? ride.toLabel);
@@ -4216,103 +4244,142 @@ function CompactRideAppRoutePanel({
   const stopPolicyHelper = directRouteOnly
     ? "This pod does not allow extra stop requests."
     : "Extra stop requests are reviewed by the host.";
-  const stopRequestMapHref = trimmedStopRequest
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(trimmedStopRequest)}`
+  const stopRequestMapQuery = selectedStopLocation
+    ? `${selectedStopLocation.latitude},${selectedStopLocation.longitude}`
+    : trimmedStopRequest;
+  const stopRequestMapHref = stopRequestMapQuery
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(stopRequestMapQuery)}`
     : null;
   const requestScreenExternallyOpened = requestStopOpenSignal > dismissedRequestStopOpenSignal && canShowStopRequestForm;
   const showRequestScreen = requestScreenOpen || requestScreenExternallyOpened;
 
   function submitStopRequest() {
     if (!canShowStopRequestForm || !trimmedStopRequest) return;
-    onRequestStop?.(trimmedStopRequest);
+    onRequestStop?.(
+      trimmedStopRequest,
+      selectedStopLocation
+        ? { lat: selectedStopLocation.latitude, lng: selectedStopLocation.longitude }
+        : null,
+    );
     setStopRequestDraft("");
+    setSelectedStopLocation(null);
+    setLocationPickerOpen(false);
     setRequestScreenOpen(false);
     setDismissedRequestStopOpenSignal(requestStopOpenSignal);
   }
 
   if (showRequestScreen && canShowStopRequestForm) {
     return (
-      <div id="route-requests" className="scroll-mt-24 grid gap-3">
-        <section className="overflow-hidden rounded-[22px] border border-cyan-100/16 bg-[radial-gradient(circle_at_20%_0%,rgba(34,211,238,0.14),transparent_34%),linear-gradient(180deg,rgba(12,26,39,0.98),rgba(6,14,24,0.98))] p-4 shadow-[0_18px_44px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.06)]">
-          <button
-            type="button"
-            onClick={() => {
-              setRequestScreenOpen(false);
-              setDismissedRequestStopOpenSignal(requestStopOpenSignal);
-            }}
-            aria-label="Back to stop request details"
-            className="ridepod-back-button"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-
-          <div className="mt-5 grid gap-4">
-            <div className="flex items-start gap-3">
-              <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[17px] border border-[var(--rp-primary)]/38 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(0,0,0,0.24)]">
-                <MapPin className="h-6 w-6" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Stop requests</p>
-                <h3 className="mt-1 text-2xl font-black leading-tight text-white">Request a stop</h3>
-                <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-                  Add your requested pickup or drop-off point. Check it in Google Maps, then send it to the host for approval.
-                </p>
-              </div>
-            </div>
-
-            <form
-              className="grid gap-3 rounded-[18px] border border-cyan-100/12 bg-black/18 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
-              onSubmit={(event) => {
-                event.preventDefault();
-                submitStopRequest();
+      <>
+        <div id="route-requests" className="scroll-mt-24 grid gap-3">
+          <section className="overflow-hidden rounded-[22px] border border-cyan-100/16 bg-[radial-gradient(circle_at_20%_0%,rgba(34,211,238,0.14),transparent_34%),linear-gradient(180deg,rgba(12,26,39,0.98),rgba(6,14,24,0.98))] p-4 shadow-[0_18px_44px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <button
+              type="button"
+              onClick={() => {
+                setRequestScreenOpen(false);
+                setDismissedRequestStopOpenSignal(requestStopOpenSignal);
               }}
+              aria-label="Back to stop request details"
+              className="ridepod-back-button"
             >
-              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[14px] border border-white/10 bg-white/[0.035] px-3 py-2 text-[11px] font-black text-[var(--rp-muted-strong)]">
-                <span className="truncate">{ride.fromDistrict || ride.fromLabel}</span>
-                <Route className="h-4 w-4 text-cyan-200" />
-                <span className="truncate text-right">{ride.toDistrict || ride.toLabel}</span>
-              </div>
-              <label className="grid gap-2" htmlFor={`stop-request-${ride.id}`}>
-                <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Pickup / drop-off point</span>
-                <span className="flex min-h-[52px] items-center gap-2 rounded-[16px] border border-cyan-300/24 bg-[#07111d]/82 px-3 shadow-[0_0_0_3px_rgba(246,196,83,0.08),inset_0_1px_0_rgba(255,255,255,0.05)] transition focus-within:border-cyan-200/60 focus-within:bg-cyan-300/8">
-                  <MapPin className="h-4 w-4 shrink-0 text-cyan-200" />
-                  <input
-                    id={`stop-request-${ride.id}`}
-                    value={stopRequestDraft}
-                    onChange={(event) => setStopRequestDraft(event.target.value)}
-                    placeholder="e.g. Admiralty Station Exit A"
-                    autoFocus
-                    className="min-h-12 w-full bg-transparent text-sm font-bold text-white outline-none placeholder:text-[var(--rp-muted-strong)]"
-                  />
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+
+            <div className="mt-5 grid gap-4">
+              <div className="flex items-start gap-3">
+                <span className="grid h-[52px] w-[52px] shrink-0 place-items-center rounded-[17px] border border-[var(--rp-primary)]/38 bg-[var(--rp-primary)]/12 text-[var(--rp-primary)] shadow-[0_10px_24px_rgba(0,0,0,0.24)]">
+                  <MapPin className="h-6 w-6" />
                 </span>
-              </label>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Stop requests</p>
+                  <h3 className="mt-1 text-2xl font-black leading-tight text-white">Request a stop</h3>
+                  <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
+                    Type a place or choose it on the map. The host can approve it before ride details are locked.
+                  </p>
+                </div>
+              </div>
 
-              <a
-                href={stopRequestMapHref ?? "#"}
-                target={stopRequestMapHref ? "_blank" : undefined}
-                rel={stopRequestMapHref ? "noreferrer" : undefined}
-                aria-disabled={!stopRequestMapHref}
-                className={cn(
-                  "inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-cyan-300/28 bg-cyan-300/10 px-4 text-xs font-black text-cyan-100 transition hover:border-cyan-200/55 hover:bg-cyan-300/16",
-                  !stopRequestMapHref ? "pointer-events-none opacity-45" : "",
-                )}
-              >
-                <ExternalLink className="h-4 w-4" />
-                Check in Google Maps
-              </a>
+              <RealDrivingRouteMap points={requestRouteMapPoints} policyLabel={selectedStopLocation ? "Stop preview" : policyLabel} />
 
-              <button
-                type="submit"
-                disabled={!trimmedStopRequest}
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] px-4 text-sm font-black text-[#07131C] shadow-[0_10px_24px_rgba(255,193,55,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+              <form
+                className="grid gap-3 rounded-[18px] border border-cyan-100/12 bg-black/18 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  submitStopRequest();
+                }}
               >
-                <MapPin className="h-4 w-4" />
-                Confirm request
-              </button>
-            </form>
-          </div>
-        </section>
-      </div>
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-[14px] border border-white/10 bg-white/[0.035] px-3 py-2 text-[11px] font-black text-[var(--rp-muted-strong)]">
+                  <span className="truncate">{ride.fromDistrict || ride.fromLabel}</span>
+                  <Route className="h-4 w-4 text-cyan-200" />
+                  <span className="truncate text-right">{ride.toDistrict || ride.toLabel}</span>
+                </div>
+                <label className="grid gap-2" htmlFor={`stop-request-${ride.id}`}>
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Pickup / drop-off point</span>
+                  <span className="grid min-h-[52px] grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-2 rounded-[16px] border border-cyan-300/24 bg-[#07111d]/82 px-3 shadow-[0_0_0_3px_rgba(246,196,83,0.08),inset_0_1px_0_rgba(255,255,255,0.05)] transition focus-within:border-cyan-200/60 focus-within:bg-cyan-300/8">
+                    <MapPin className="h-4 w-4 shrink-0 text-cyan-200" />
+                    <input
+                      id={`stop-request-${ride.id}`}
+                      value={stopRequestDraft}
+                      onChange={(event) => {
+                        setStopRequestDraft(event.target.value);
+                        setSelectedStopLocation(null);
+                      }}
+                      placeholder="Type or choose a location"
+                      autoFocus
+                      className="min-h-12 w-full min-w-0 bg-transparent text-sm font-bold text-white outline-none placeholder:text-[var(--rp-muted-strong)]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setLocationPickerOpen(true)}
+                      className="inline-flex min-h-9 shrink-0 items-center justify-center rounded-[12px] border border-cyan-300/28 bg-cyan-300/10 px-3 text-[11px] font-black text-cyan-100 transition hover:border-cyan-200/55 hover:bg-cyan-300/16"
+                    >
+                      Choose
+                    </button>
+                  </span>
+                  {selectedStopLocation ? (
+                    <span className="text-[11px] font-bold leading-4 text-cyan-100">
+                      Selected: {selectedStopLocation.name}
+                    </span>
+                  ) : null}
+                </label>
+
+                <a
+                  href={stopRequestMapHref ?? "#"}
+                  target={stopRequestMapHref ? "_blank" : undefined}
+                  rel={stopRequestMapHref ? "noreferrer" : undefined}
+                  aria-disabled={!stopRequestMapHref}
+                  className={cn(
+                    "inline-flex min-h-11 items-center justify-center gap-2 rounded-[14px] border border-cyan-300/28 bg-cyan-300/10 px-4 text-xs font-black text-cyan-100 transition hover:border-cyan-200/55 hover:bg-cyan-300/16",
+                    !stopRequestMapHref ? "pointer-events-none opacity-45" : "",
+                  )}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Check in Google Maps
+                </a>
+
+                <button
+                  type="submit"
+                  disabled={!trimmedStopRequest}
+                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[14px] bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] px-4 text-sm font-black text-[#07131C] shadow-[0_10px_24px_rgba(255,193,55,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  <MapPin className="h-4 w-4" />
+                  Confirm request
+                </button>
+              </form>
+            </div>
+          </section>
+        </div>
+        <LocationPicker
+          mode="pickup"
+          value={selectedStopLocation}
+          open={locationPickerOpen}
+          onClose={() => setLocationPickerOpen(false)}
+          onConfirm={(location) => {
+            setSelectedStopLocation(location);
+            setStopRequestDraft(location.formattedAddress || location.name);
+          }}
+        />
+      </>
     );
   }
 
@@ -6205,7 +6272,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
   }
 
-  function requestRideAppStopFromDetail(stopLabel: string) {
+  function requestRideAppStopFromDetail(stopLabel: string, stopCoordinates: GeoCoordinates | null = null) {
     const trimmedStopLabel = stopLabel.trim();
     const routeLocked =
       ride.bookingDetailsShared === true ||
@@ -6214,7 +6281,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     const hasActiveCurrentUserStopRequest = getCurrentUserHasActiveStopRequest(ride);
     if (!trimmedStopLabel || rideCancelledRecord || !canRequestRideAppStop || routeLocked || hasActiveCurrentUserStopRequest) return;
 
-    const patch = buildRideAppStopRequestPatch(ride, trimmedStopLabel, detailActorName);
+    const patch = buildRideAppStopRequestPatch(ride, trimmedStopLabel, detailActorName, stopCoordinates);
     applyRideActionPatch(patch);
     notifyRideDetailAction({
       type: "ride_app_action_required",
@@ -6228,6 +6295,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
       dedupe: false,
       metadata: {
         stopLabel: trimmedStopLabel,
+        stopCoordinates,
         requestedBy: detailActorName,
       },
     });
