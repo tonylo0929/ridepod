@@ -1752,8 +1752,9 @@ function CategoryResultsScreen({
         <div
           className={cn(
             "relative overflow-hidden rounded-[28px] border-2 bg-[rgba(9,20,31,0.92)]",
-            config.borderClassName,
-            config.shadowClassName,
+            isScheduleScreen
+              ? "border-[3px] border-[var(--rp-primary)] bg-[linear-gradient(145deg,rgba(255,217,104,0.16),rgba(5,14,22,0.94))] p-2 shadow-[0_0_0_1px_rgba(255,217,104,0.18),0_18px_54px_rgba(242,193,91,0.25)]"
+              : cn(config.borderClassName, config.shadowClassName),
           )}
         >
           <Image
@@ -1762,10 +1763,10 @@ function CategoryResultsScreen({
             width={1448}
             height={1086}
             sizes="(max-width: 720px) calc(100vw - 32px), 680px"
-            className="block h-auto w-full"
+            className={cn("block h-auto w-full", isScheduleScreen ? "rounded-[22px]" : "")}
             priority={false}
           />
-          <div className="pointer-events-none absolute inset-0 rounded-[26px] ring-1 ring-inset ring-white/12" />
+          <div className={cn("pointer-events-none absolute inset-0 rounded-[26px] ring-1 ring-inset", isScheduleScreen ? "ring-[rgba(255,217,104,0.32)]" : "ring-white/12")} />
           <div className="sr-only">
             <h1>{categoryRecommendationLabels[config.tab]}</h1>
             {config.bullets ? (
