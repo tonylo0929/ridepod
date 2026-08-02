@@ -4713,7 +4713,12 @@ function SelfSettlePodSummaryHero({
     hostCancellationStatus === "active" &&
     heroCurrentUserStopRequest?.status !== "pending" &&
     heroCurrentUserStopRequest?.status !== "approved";
-  const hasStopRequestJoinStatus = stopJoinIntentStatuses.has(stopJoinIntentStatus);
+  const canRequestStopBeforeJoin =
+    showInlineJoinRide &&
+    isHostApprovedStopPolicy(ride.stopRequestPolicy) &&
+    ride.rideKind !== "recurring" &&
+    hostCancellationStatus === "active";
+  const hasStopRequestJoinStatus = canRequestStopBeforeJoin && stopJoinIntentStatuses.has(stopJoinIntentStatus);
   const isPreJoinLayout = showInlineJoinRide || hasStopRequestJoinStatus;
   const summaryUserCanOpenChat =
     !currentUserCancelledHosting &&
@@ -4891,7 +4896,7 @@ function SelfSettlePodSummaryHero({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className={cn("grid gap-3", canRequestStopBeforeJoin ? "grid-cols-2" : "grid-cols-1")}>
             <button
               type="button"
               onClick={onJoinRide}
@@ -4904,17 +4909,19 @@ function SelfSettlePodSummaryHero({
               <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">Use the current route.</span>
             </button>
 
-            <button
-              type="button"
-              onClick={onRequestStopRide}
-              className="grid min-h-[136px] content-center rounded-[18px] border border-cyan-300/40 bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(7,17,29,0.78))] p-4 text-left shadow-[0_14px_34px_rgba(34,211,238,0.1),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-200/70 hover:bg-cyan-300/14"
-            >
-              <span className="grid h-12 w-12 place-items-center rounded-full border border-cyan-200/45 bg-cyan-300/10 text-cyan-100">
-                <MapPin className="h-6 w-6" />
-              </span>
-              <span className="mt-4 block text-xl font-black leading-tight text-white">Request a Stop</span>
-              <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">Ask to add your stop.</span>
-            </button>
+            {canRequestStopBeforeJoin ? (
+              <button
+                type="button"
+                onClick={onRequestStopRide}
+                className="grid min-h-[136px] content-center rounded-[18px] border border-cyan-300/40 bg-[linear-gradient(135deg,rgba(34,211,238,0.18),rgba(7,17,29,0.78))] p-4 text-left shadow-[0_14px_34px_rgba(34,211,238,0.1),inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-200/70 hover:bg-cyan-300/14"
+              >
+                <span className="grid h-12 w-12 place-items-center rounded-full border border-cyan-200/45 bg-cyan-300/10 text-cyan-100">
+                  <MapPin className="h-6 w-6" />
+                </span>
+                <span className="mt-4 block text-xl font-black leading-tight text-white">Request a Stop</span>
+                <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">Ask to add your stop.</span>
+              </button>
+            ) : null}
           </div>
         )}
       </section>
