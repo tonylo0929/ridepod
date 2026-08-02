@@ -7045,8 +7045,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                 </div>
                 {selfSettlePod ? showPreJoinRideAppLayout ? (
                   <div className="grid gap-4">
-                    <PreJoinRideAppTripDetails ride={ride} />
-                    <div className="px-4 pb-4">
+                    <div className="px-4">
                       <CompactRideAppRoutePanel
                         ride={ride}
                         canRequestStop={canRequestRideAppStop}
@@ -7055,6 +7054,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                         onRequestStop={requestRideAppStopFromDetail}
                       />
                     </div>
+                    <PreJoinRideAppTripDetails ride={ride} />
                   </div>
                 ) : (
                   <div className="grid gap-3">
