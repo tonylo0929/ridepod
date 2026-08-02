@@ -4249,6 +4249,7 @@ function CompactRideAppRoutePanel({
   ride,
   canRequestStop = false,
   canReviewStop = false,
+  hideSummaryUntilRequested = false,
   requestStopOpenSignal = 0,
   onRequestStop,
   onApproveStop,
@@ -4257,6 +4258,7 @@ function CompactRideAppRoutePanel({
   ride: HomeRide;
   canRequestStop?: boolean;
   canReviewStop?: boolean;
+  hideSummaryUntilRequested?: boolean;
   requestStopOpenSignal?: number;
   onRequestStop?: (stopLabel: string, stopCoordinates?: GeoCoordinates | null, stopType?: PodStopRequestType, optionalNote?: string | null) => void;
   onApproveStop?: (stop: RoutePlanStop) => void;
@@ -4525,6 +4527,10 @@ function CompactRideAppRoutePanel({
         />
       </>
     );
+  }
+
+  if (hideSummaryUntilRequested && canShowStopRequestForm && !currentUserHasActiveStopRequest) {
+    return null;
   }
 
   return (
@@ -7044,6 +7050,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
                       <CompactRideAppRoutePanel
                         ride={ride}
                         canRequestStop={canRequestRideAppStop}
+                        hideSummaryUntilRequested
                         requestStopOpenSignal={requestStopOpenSignal}
                         onRequestStop={requestRideAppStopFromDetail}
                       />
