@@ -28,6 +28,7 @@ export type PublicCreatedRidePod = Pick<
 > & {
   active_member_count?: number | null;
   active_member_user_ids?: string[] | null;
+  active_hold_count?: number | null;
   host_display_name?: string | null;
 };
 
@@ -272,7 +273,8 @@ export function publicCreatedPodToHomeRide(
     Math.max(0, seatsTotal - 1),
     Math.max(0, activeMemberCount),
   );
-  const seatsUsed = Math.min(seatsTotal, Math.max(1, 1 + joinedRiderCount));
+  const activeHoldCount = Math.max(0, pod.active_hold_count ?? 0);
+  const seatsUsed = Math.min(seatsTotal, Math.max(1, 1 + joinedRiderCount + activeHoldCount));
   const viewerJoined = Boolean(!isHost && viewerUserId && activeMemberUserIds.includes(viewerUserId));
   const joinedRiderNames = Array.from({ length: joinedRiderCount }, (_, index) => {
     const memberId = activeMemberUserIds[index];

@@ -27,7 +27,18 @@ export type RiderPickupStatus = "NOT_ARRIVED" | "ARRIVED_AT_PICKUP";
 export type RecurringTripPattern = "one_way" | "back_and_forth";
 export type StopRequestPolicy = "direct_only" | "host_approved_before_quote" | "host_approved_stops";
 export type RoutePlanStopStatus = "pending_host_approval" | "approved" | "declined";
-export type RouteRequestStatus = "pending" | "approved" | "declined" | "joined" | "closed_pod_cancelled" | "withdrawn" | "expired";
+export type RouteRequestStatus =
+  | "pending"
+  | "pending_capacity_blocked"
+  | "approved"
+  | "approved_hold_active"
+  | "joined"
+  | "declined"
+  | "closed_pod_cancelled"
+  | "withdrawn"
+  | "approval_expired"
+  | "expired"
+  | "cancelled_by_host";
 
 export type GeoCoordinates = {
   lat: number;
@@ -39,7 +50,7 @@ export type RoutePlanStop = {
   label: string;
   coordinates?: GeoCoordinates | null;
   requestedBy?: string;
-  stopType?: "pickup_stop" | "dropoff_stop" | "quick_stop";
+  stopType?: "pickup_stop" | "dropoff_stop" | "both" | "quick_stop";
   reason?: string;
   status: RoutePlanStopStatus;
 };
@@ -52,9 +63,12 @@ export type RouteRequest = {
   stopCoordinates?: GeoCoordinates | null;
   reason?: string;
   status: RouteRequestStatus;
+  requestType?: RoutePlanStop["stopType"];
   requestedAtLabel?: string;
   reviewedAtLabel?: string;
   reviewedByName?: string;
+  holdExpiresAt?: string | null;
+  completedAtLabel?: string;
 };
 
 export type NormalizedRouteRequests = {
@@ -94,8 +108,12 @@ export type RideAppRiderConfirmationStatus =
 export type RideAppJoinIntentStatus =
   | "not_joined"
   | "stop_request_pending"
+  | "stop_request_capacity_blocked"
   | "stop_request_approved"
+  | "stop_request_hold_active"
+  | "stop_request_joined"
   | "stop_request_declined"
+  | "stop_request_expired"
   | "joined"
   | "joined_interest"
   | "confirmed"
@@ -1182,6 +1200,7 @@ function routePlanStopToRouteRequest(stop: RoutePlanStop, status: RouteRequestSt
     stopCoordinates: stop.coordinates ?? null,
     reason: stop.reason,
     status,
+    requestType: stop.stopType ?? "quick_stop",
   };
 }
 
@@ -1195,12 +1214,16 @@ export function routeRequestToRoutePlanStop(request: RouteRequest): RoutePlanSto
     label: request.stopLocation,
     coordinates: request.stopCoordinates ?? null,
     requestedBy: request.requestedByName,
-    stopType: "quick_stop",
+    stopType: request.requestType ?? "quick_stop",
     reason: request.reason,
     status:
-      request.status === "approved"
+      request.status === "approved" || request.status === "approved_hold_active" || request.status === "joined"
         ? "approved"
-        : request.status === "declined"
+        : request.status === "declined" ||
+            request.status === "withdrawn" ||
+            request.status === "approval_expired" ||
+            request.status === "expired" ||
+            request.status === "cancelled_by_host"
           ? "declined"
           : "pending_host_approval",
   };
@@ -1240,9 +1263,15 @@ export function getNormalizedRouteRequests(ride: HomeRide): NormalizedRouteReque
     });
 
   const all = [...byKey.values()].filter((request) => request.stopLocation);
-  const pending = all.filter((request) => request.status === "pending");
-  const approved = all.filter((request) => request.status === "approved");
-  const declined = all.filter((request) => request.status === "declined");
+  const pending = all.filter((request) => request.status === "pending" || request.status === "pending_capacity_blocked");
+  const approved = all.filter((request) => request.status === "approved" || request.status === "approved_hold_active" || request.status === "joined");
+  const declined = all.filter((request) =>
+    request.status === "declined" ||
+    request.status === "withdrawn" ||
+    request.status === "approval_expired" ||
+    request.status === "expired" ||
+    request.status === "cancelled_by_host",
+  );
   const currentUserNames = currentUserRouteRequestNames(ride);
   const currentUserRequest =
     all.find((request) => currentUserNames.has(request.requestedByName.trim().toLowerCase())) ?? null;

@@ -188,6 +188,50 @@ export type RidePodUserNotificationRow = {
   created_at: string | null;
 };
 
+export type RidePodStopRequestStatus =
+  | "pending"
+  | "pending_capacity_blocked"
+  | "approved_hold_active"
+  | "joined"
+  | "declined"
+  | "withdrawn"
+  | "approval_expired"
+  | "cancelled_by_host";
+
+export type RidePodStopRequestRow = {
+  id: string;
+  ride_id: string;
+  requester_id: string;
+  request_type: "pickup_stop" | "dropoff_stop" | "both" | "quick_stop" | string;
+  requested_location: string;
+  requested_coordinates: Json | null;
+  optional_note: string | null;
+  status: RidePodStopRequestStatus;
+  created_at: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  approved_at: string | null;
+  declined_at: string | null;
+  withdrawn_at: string | null;
+  completed_at: string | null;
+  updated_at: string | null;
+};
+
+export type RidePodSeatHoldStatus = "active" | "converted" | "expired" | "released";
+
+export type RidePodSeatHoldRow = {
+  id: string;
+  ride_id: string;
+  rider_id: string;
+  stop_request_id: string;
+  status: RidePodSeatHoldStatus;
+  created_at: string | null;
+  expires_at: string;
+  converted_at: string | null;
+  released_at: string | null;
+  updated_at: string | null;
+};
+
 export type RidePodLiveUpdateRow = {
   id: string;
   pod_id: string;
@@ -228,6 +272,8 @@ export type Database = {
       pod_events: TableDefinition<RidePodEventRow>;
       payment_events: TableDefinition<RidePodPaymentEventRow>;
       user_notifications: TableDefinition<RidePodUserNotificationRow>;
+      pod_stop_requests: TableDefinition<RidePodStopRequestRow>;
+      pod_seat_holds: TableDefinition<RidePodSeatHoldRow>;
       pod_live_updates: TableDefinition<RidePodLiveUpdateRow>;
       pod_member_status: TableDefinition<RidePodMemberStatusRow>;
     };
@@ -248,6 +294,69 @@ export type Database = {
           p_dedupe?: boolean;
         };
         Returns: number;
+      };
+      ridepod_capacity_snapshot: {
+        Args: { p_ride_id: string };
+        Returns: {
+          rider_capacity: number;
+          joined_count: number;
+          active_hold_count: number;
+          available_count: number;
+        }[];
+      };
+      ridepod_submit_stop_request: {
+        Args: {
+          p_ride_id: string;
+          p_requester_id: string;
+          p_request_type: string;
+          p_requested_location: string;
+          p_optional_note?: string | null;
+          p_requested_coordinates?: Json | null;
+        };
+        Returns: RidePodStopRequestRow;
+      };
+      ridepod_approve_stop_request: {
+        Args: {
+          p_stop_request_id: string;
+          p_reviewer_id: string;
+        };
+        Returns: {
+          request_row: RidePodStopRequestRow;
+          hold_row: RidePodSeatHoldRow;
+          capacity_available: number;
+        }[];
+      };
+      ridepod_decline_stop_request: {
+        Args: {
+          p_stop_request_id: string;
+          p_reviewer_id: string;
+        };
+        Returns: RidePodStopRequestRow;
+      };
+      ridepod_withdraw_stop_request: {
+        Args: {
+          p_stop_request_id: string;
+          p_requester_id: string;
+        };
+        Returns: RidePodStopRequestRow;
+      };
+      ridepod_join_pod_direct: {
+        Args: {
+          p_pod_id: string;
+          p_user_id: string;
+        };
+        Returns: RidePodMemberRow;
+      };
+      ridepod_complete_stop_request_join: {
+        Args: {
+          p_stop_request_id: string;
+          p_requester_id: string;
+        };
+        Returns: {
+          request_row: RidePodStopRequestRow;
+          hold_row: RidePodSeatHoldRow;
+          membership_row: RidePodMemberRow;
+        }[];
       };
     };
     Enums: Record<string, never>;

@@ -217,39 +217,17 @@ export async function POST(request: NextRequest) {
       return noStoreJson({ membership: existingResult.data as RidePodMemberRow, pod: podResult.data as RidePodPodRow });
     }
 
-    const activeRiderCount = joinedMemberUserIdsBeforeAction.length;
-    const riderCapacity = Math.max(0, (podResult.data.ideal_pod_size || 1) - 1);
-    if (activeRiderCount >= riderCapacity) return noStoreJson({ error: "Pod full" }, { status: 409 });
-
-    const timestamp = new Date().toISOString();
-    const payload = {
-      pod_id: podId,
-      user_id: userId,
-      role: "guest",
-      member_state: "REQUESTED",
-      status: "joined",
-      joined_at: timestamp,
-      cancelled_at: null,
-      updated_at: timestamp,
-    };
-
-    const result = existingResult.data
-      ? await client
-          .from("pod_members")
-          .update(payload)
-          .eq("id", existingResult.data.id)
-          .select("*")
-          .maybeSingle()
-      : await client
-          .from("pod_members")
-          .insert({
-            ...payload,
-            created_at: timestamp,
-          })
-          .select("*")
-          .maybeSingle();
-
-    if (result.error) throw result.error;
+    const result = await client.rpc("ridepod_join_pod_direct", {
+      p_pod_id: podId,
+      p_user_id: userId,
+    });
+    if (result.error) {
+      const message = result.error.message || "Could not join this pod.";
+      if (message.toLowerCase().includes("pod full") || message.toLowerCase().includes("last available seat")) {
+        return noStoreJson({ error: "Pod full" }, { status: 409 });
+      }
+      throw result.error;
+    }
     try {
       await notifyMembershipAudience({
         client,
@@ -259,8 +237,8 @@ export async function POST(request: NextRequest) {
         action: "joined",
       });
     } catch (error) {
-      console.warn("RidePod membership join notification failed", error);
-    }
+        console.warn("RidePod membership join notification failed", error);
+      }
     return noStoreJson({ membership: result.data as RidePodMemberRow | null, pod: podResult.data as RidePodPodRow });
   } catch (error) {
     console.warn("RidePod membership join failed", error);

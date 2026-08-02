@@ -138,6 +138,7 @@ export async function GET() {
       new Set(pods.map((pod) => pod.host_user_id).filter((userId): userId is string => Boolean(userId))),
     );
     const activeMemberUserIdsByPod = new Map<string, string[]>();
+    const activeHoldCountByPod = new Map<string, number>();
     const hostDisplayNamesByUserId = new Map<string, string>();
 
     if (podIds.length > 0) {
@@ -156,6 +157,22 @@ export async function GET() {
             ...(activeMemberUserIdsByPod.get(member.pod_id) ?? []),
             member.user_id,
           ]);
+        }
+      }
+
+      const holdsResult = await client
+        .from("pod_seat_holds")
+        .select("ride_id")
+        .in("ride_id", podIds)
+        .eq("status", "active")
+        .gt("expires_at", new Date().toISOString());
+
+      if (holdsResult.error) {
+        console.warn("RidePod public created ride active holds unavailable", holdsResult.error);
+      } else {
+        for (const hold of holdsResult.data ?? []) {
+          if (!hold.ride_id) continue;
+          activeHoldCountByPod.set(hold.ride_id, (activeHoldCountByPod.get(hold.ride_id) ?? 0) + 1);
         }
       }
     }
@@ -182,6 +199,7 @@ export async function GET() {
           ...pod,
           active_member_count: activeMemberUserIds.length,
           active_member_user_ids: activeMemberUserIds,
+          active_hold_count: activeHoldCountByPod.get(pod.id) ?? 0,
           host_display_name: pod.host_user_id ? hostDisplayNamesByUserId.get(pod.host_user_id) ?? null : null,
         } satisfies PublicCreatedRidePod;
       }),

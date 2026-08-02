@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:recurring-deadline": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/test-recurring-confirmation-deadline.mjs",
+    "test:stop-request-capacity": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/test-stop-request-capacity.mjs",
     "test:hk-taxi-fare": "node scripts/test-hk-taxi-fare.mjs",
     "test:money-safety": "node scripts/test-money-safety.mjs",
     "screenshots": "node scripts/capture-screenshots.mjs"

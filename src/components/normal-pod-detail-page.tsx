@@ -101,6 +101,13 @@ import {
 } from "@/lib/notifications/pod-notification-fanout";
 import { cancelPodAttendance, joinPod as joinRidePodMembership } from "@/lib/pods/ridepod-membership";
 import {
+  approvePodStopRequest,
+  completeStopRequestJoin,
+  declinePodStopRequest,
+  submitPodStopRequest,
+  type PodStopRequestType,
+} from "@/lib/pods/stop-requests";
+import {
   isUuid,
   publicCreatedPodToHomeRide,
   publicCreatedRideSignature,
@@ -233,12 +240,25 @@ function DetailItem({
 }
 
 type DetailTab = "trip" | "pod";
-type StopJoinIntentStatus = "not_joined" | "stop_request_pending" | "stop_request_approved" | "stop_request_declined" | "joined";
+type StopJoinIntentStatus =
+  | "not_joined"
+  | "stop_request_pending"
+  | "stop_request_capacity_blocked"
+  | "stop_request_approved"
+  | "stop_request_hold_active"
+  | "stop_request_joined"
+  | "stop_request_declined"
+  | "stop_request_expired"
+  | "joined";
 
 const stopJoinIntentStatuses = new Set([
   "stop_request_pending",
+  "stop_request_capacity_blocked",
   "stop_request_approved",
+  "stop_request_hold_active",
+  "stop_request_joined",
   "stop_request_declined",
+  "stop_request_expired",
 ]);
 
 const detailTabs: Array<{ id: DetailTab; label: string }> = [
@@ -935,17 +955,25 @@ function getCurrentUserStopJoinIntentStatus(ride: HomeRide): StopJoinIntentStatu
 
   const routeRequest = getNormalizedRouteRequests(ride).currentUserRequest;
   if (routeRequest?.status === "pending") return "stop_request_pending";
+  if (routeRequest?.status === "pending_capacity_blocked") return "stop_request_capacity_blocked";
+  if (routeRequest?.status === "approved_hold_active") return "stop_request_hold_active";
   if (routeRequest?.status === "approved") return "stop_request_approved";
+  if (routeRequest?.status === "joined") return "stop_request_joined";
   if (routeRequest?.status === "declined") return "stop_request_declined";
+  if (routeRequest?.status === "approval_expired" || routeRequest?.status === "expired" || routeRequest?.status === "withdrawn") return "stop_request_expired";
   if (ride.currentUserJoinIntentStatus === "stop_request_pending") return "stop_request_pending";
+  if (ride.currentUserJoinIntentStatus === "stop_request_capacity_blocked") return "stop_request_capacity_blocked";
+  if (ride.currentUserJoinIntentStatus === "stop_request_hold_active") return "stop_request_hold_active";
   if (ride.currentUserJoinIntentStatus === "stop_request_approved") return "stop_request_approved";
+  if (ride.currentUserJoinIntentStatus === "stop_request_joined") return "stop_request_joined";
   if (ride.currentUserJoinIntentStatus === "stop_request_declined") return "stop_request_declined";
+  if (ride.currentUserJoinIntentStatus === "stop_request_expired" || ride.currentUserJoinIntentStatus === "seat_hold_expired") return "stop_request_expired";
   return "not_joined";
 }
 
 function getCurrentUserHasActiveStopRequest(ride: HomeRide) {
   const status = getCurrentUserStopJoinIntentStatus(ride);
-  return status === "stop_request_pending" || status === "stop_request_approved";
+  return status === "stop_request_pending" || status === "stop_request_capacity_blocked" || status === "stop_request_approved" || status === "stop_request_hold_active";
 }
 
 function buildHostCancelledRidePatch(ride: HomeRide, cancelledBy: string, cancellationReason: string, now = new Date()): Partial<HomeRide> {
@@ -1014,17 +1042,21 @@ function buildRideAppStopRequestPatch(
   stopLabel: string,
   requestedBy: string,
   stopCoordinates: GeoCoordinates | null = null,
+  stopType: PodStopRequestType = "quick_stop",
+  optionalNote?: string | null,
+  requestIdOverride?: string | null,
   now = new Date(),
 ): Partial<HomeRide> {
-  const requestId = `stop-${now.getTime()}`;
+  const requestId = requestIdOverride || `stop-${now.getTime()}`;
   const requestedByKey = requestedBy.trim().toLowerCase();
+  const stopReason = optionalNote?.trim() || "Rider requested an extra stop.";
   const requestedStop: RoutePlanStop = {
     id: requestId,
     label: stopLabel,
     coordinates: stopCoordinates,
     requestedBy,
-    stopType: "quick_stop",
-    reason: "Rider requested an extra stop.",
+    stopType,
+    reason: stopReason,
     status: "pending_host_approval",
   };
   const routeRequests = getNormalizedRouteRequests(ride).all.filter((request) => {
@@ -1050,6 +1082,7 @@ function buildRideAppStopRequestPatch(
         requestedByName: requestedBy,
         stopLocation: stopLabel,
         stopCoordinates,
+        requestType: stopType,
         reason: requestedStop.reason,
         status: "pending" as const,
         requestedAtLabel: "Just now",
@@ -1121,26 +1154,56 @@ function upsertRouteStop(stops: RoutePlanStop[] = [], stop: RoutePlanStop) {
 }
 
 function buildApproveRideAppStopPatch(ride: HomeRide, stop: RoutePlanStop): Partial<HomeRide> {
+  const reviewedByName = ride.hostName || "Host";
+  const routeRequests = getNormalizedRouteRequests(ride).all.map((request) =>
+    routeRequestMatchesStop(request, stop)
+      ? {
+          ...request,
+          status: "approved_hold_active" as const,
+          reviewedByName,
+          reviewedAtLabel: "Just now",
+          holdExpiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+        }
+      : request,
+  );
+
+  return {
+    proposedStops: removeMatchingRouteStop(ride.proposedStops, stop),
+    routeRequests,
+    lastBookingDetailsUpdateReason: "Host approved stop request; seat held for 10 minutes.",
+  };
+}
+
+function buildCompleteRideAppStopJoinPatch(ride: HomeRide, stop: RoutePlanStop, joinedBy: string): Partial<HomeRide> {
   const approvedStop: RoutePlanStop = { ...stop, status: "approved" };
-  const routeRequests = buildRouteRequestDecisionList(ride, stop, "approved");
+  const joinedRiders = Array.from(new Set([...(ride.joinedRiders ?? []), joinedBy]));
+  const routeRequests = getNormalizedRouteRequests(ride).all.map((request) =>
+    routeRequestMatchesStop(request, stop)
+      ? {
+          ...request,
+          status: "joined" as const,
+          completedAtLabel: "Just now",
+        }
+      : request,
+  );
   const nextRoutePatch = {
     routeRequests,
     proposedStops: removeMatchingRouteStop(ride.proposedStops, stop),
     approvedStops: upsertRouteStop(ride.approvedStops, approvedStop),
   };
-  const reviewPatch = applyRideAppMeaningfulDetailUpdate(
-    {
-      ...ride,
-      ...nextRoutePatch,
-    },
-    "stop_added",
-  );
+  const reviewPatch = applyRideAppMeaningfulDetailUpdate({ ...ride, ...nextRoutePatch }, "stop_added");
 
   return {
     ...nextRoutePatch,
     ...reviewPatch,
+    currentUserJoined: true,
+    currentUserRole: "joined_rider",
+    currentUserJoinIntentStatus: "joined",
+    quoteStatus: "joined",
+    joinedRiders,
+    seatsUsed: Math.min(ride.seatsTotal, ride.seatsUsed + 1),
     rideAppFareEstimateReviewStatus: "needs_review",
-    lastBookingDetailsUpdateReason: "Host approved stop request.",
+    lastBookingDetailsUpdateReason: "Approved stop added after rider joined.",
   };
 }
 
@@ -2427,7 +2490,12 @@ export function PodStatusPanel({
     setShowRejoinModal(false);
   }
 
-  function requestRideAppStopFromStatus(stopLabel: string, stopCoordinates: GeoCoordinates | null = null) {
+  async function requestRideAppStopFromStatus(
+    stopLabel: string,
+    stopCoordinates: GeoCoordinates | null = null,
+    stopType: PodStopRequestType = "quick_stop",
+    optionalNote: string | null = null,
+  ) {
     const trimmedStopLabel = stopLabel.trim();
     const routeLocked =
       ride.bookingDetailsShared === true ||
@@ -2438,7 +2506,23 @@ export function PodStatusPanel({
       return;
     }
 
-    const patch = buildRideAppStopRequestPatch(ride, trimmedStopLabel, podStatusActorName, stopCoordinates);
+    let serverRequestId: string | null = null;
+    if (user?.id && isUuid(ride.id)) {
+      const result = await submitPodStopRequest({
+        rideId: ride.id,
+        requestType: stopType,
+        requestedLocation: trimmedStopLabel,
+        requestedCoordinates: stopCoordinates,
+        optionalNote,
+      });
+      if (!result.success) {
+        console.warn("RidePod status stop request submit failed", result.error);
+      } else {
+        serverRequestId = result.request?.id ?? null;
+      }
+    }
+
+    const patch = buildRideAppStopRequestPatch(ride, trimmedStopLabel, podStatusActorName, stopCoordinates, stopType, optionalNote, serverRequestId);
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
     saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
@@ -2448,7 +2532,7 @@ export function PodStatusPanel({
       title: "New stop request",
       body: `${podStatusActorName} requested to add ${trimmedStopLabel} to this ride.`,
       selfTitle: "Stop request sent",
-      selfBody: `${trimmedStopLabel} is waiting for host approval.`,
+      selfBody: "The host will review your requested stop. You will only join after it is approved and you complete joining.",
       action: "route_stop_requested",
       relatedUrl: `/pods/${ride.id}/status?tab=route#route-requests`,
       dedupe: false,
@@ -2460,7 +2544,14 @@ export function PodStatusPanel({
     });
   }
 
-  function approveRouteStopFromStatus(stop: RoutePlanStop) {
+  async function approveRouteStopFromStatus(stop: RoutePlanStop) {
+    if (isUuid(stop.id)) {
+      const result = await approvePodStopRequest(stop.id);
+      if (!result.success) {
+        console.warn("RidePod status stop approval failed", result.error);
+        return;
+      }
+    }
     const patch = buildApproveRideAppStopPatch(ride, stop);
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
     saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
@@ -2469,9 +2560,9 @@ export function PodStatusPanel({
       type: "ride_app_action_required",
       audiences: ["riders"],
       title: "Stop approved",
-      body: `Your stop ${stop.label} has been added to the route.`,
+      body: `Your stop ${stop.label} was approved. Join within 10 minutes to secure your seat.`,
       selfTitle: "Stop approved",
-      selfBody: `${stop.label} has been added to the route.`,
+      selfBody: `${stop.label} is approved. The seat is held for 10 minutes.`,
       action: "route_request_approved",
       relatedUrl: `/pods/${ride.id}#route-requests`,
       dedupe: false,
@@ -2484,7 +2575,7 @@ export function PodStatusPanel({
       type: "ride_app_details_updated",
       audiences: ["riders"],
       title: "Route updated",
-      body: `${stop.label} has been added to this ride. Please check the updated route.`,
+      body: `${stop.label} is approved. The rider must join within 10 minutes before the stop is added.`,
       selfTitle: "You approved a stop request",
       selfBody: stop.label,
       action: "route_updated",
@@ -2497,7 +2588,14 @@ export function PodStatusPanel({
     });
   }
 
-  function declineRouteStopFromStatus(stop: RoutePlanStop) {
+  async function declineRouteStopFromStatus(stop: RoutePlanStop) {
+    if (isUuid(stop.id)) {
+      const result = await declinePodStopRequest(stop.id);
+      if (!result.success) {
+        console.warn("RidePod status stop decline failed", result.error);
+        return;
+      }
+    }
     const patch = buildDeclineRideAppStopPatch(ride, stop);
     setRidePatchOverride((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
     saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
@@ -4160,11 +4258,13 @@ function CompactRideAppRoutePanel({
   canRequestStop?: boolean;
   canReviewStop?: boolean;
   requestStopOpenSignal?: number;
-  onRequestStop?: (stopLabel: string, stopCoordinates?: GeoCoordinates | null) => void;
+  onRequestStop?: (stopLabel: string, stopCoordinates?: GeoCoordinates | null, stopType?: PodStopRequestType, optionalNote?: string | null) => void;
   onApproveStop?: (stop: RoutePlanStop) => void;
   onDeclineStop?: (stop: RoutePlanStop) => void;
 }) {
   const [stopRequestDraft, setStopRequestDraft] = useState("");
+  const [stopRequestType, setStopRequestType] = useState<PodStopRequestType>("pickup_stop");
+  const [stopRequestNote, setStopRequestNote] = useState("");
   const [selectedStopLocation, setSelectedStopLocation] = useState<RideLocation | null>(null);
   const [locationPickerOpen, setLocationPickerOpen] = useState(false);
   const [requestScreenOpen, setRequestScreenOpen] = useState(false);
@@ -4177,7 +4277,11 @@ function CompactRideAppRoutePanel({
   const declinedRequest = routeRequests.declined[0] ?? null;
   const declinedStop = declinedRequest ? routeRequestToRoutePlanStop(declinedRequest) : null;
   const currentUserRequest = routeRequests.currentUserRequest ?? null;
-  const currentUserHasActiveStopRequest = currentUserRequest?.status === "pending" || currentUserRequest?.status === "approved";
+  const currentUserHasActiveStopRequest =
+    currentUserRequest?.status === "pending" ||
+    currentUserRequest?.status === "pending_capacity_blocked" ||
+    currentUserRequest?.status === "approved" ||
+    currentUserRequest?.status === "approved_hold_active";
   const directRouteOnly = isDirectRoutePolicy(ride.stopRequestPolicy);
   const allowStopRequests = isHostApprovedStopPolicy(ride.stopRequestPolicy) && ride.rideKind !== "recurring";
   const routeLocked =
@@ -4260,8 +4364,12 @@ function CompactRideAppRoutePanel({
       selectedStopLocation
         ? { lat: selectedStopLocation.latitude, lng: selectedStopLocation.longitude }
         : null,
+      stopRequestType,
+      stopRequestNote.trim() || null,
     );
     setStopRequestDraft("");
+    setStopRequestType("pickup_stop");
+    setStopRequestNote("");
     setSelectedStopLocation(null);
     setLocationPickerOpen(false);
     setRequestScreenOpen(false);
@@ -4313,8 +4421,32 @@ function CompactRideAppRoutePanel({
                   <Route className="h-4 w-4 text-cyan-200" />
                   <span className="truncate text-right">{ride.toDistrict || ride.toLabel}</span>
                 </div>
+                <div className="grid gap-2">
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Request type</span>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      ["pickup_stop", "Pickup"],
+                      ["dropoff_stop", "Drop-off"],
+                      ["both", "Both"],
+                    ].map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setStopRequestType(value as PodStopRequestType)}
+                        className={cn(
+                          "min-h-10 rounded-[13px] border px-2 text-xs font-black transition",
+                          stopRequestType === value
+                            ? "border-cyan-200 bg-cyan-300/18 text-cyan-50 shadow-[0_10px_22px_rgba(34,211,238,0.12)]"
+                            : "border-white/10 bg-white/[0.035] text-[var(--rp-muted-strong)] hover:border-cyan-200/35 hover:text-white",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <label className="grid gap-2" htmlFor={`stop-request-${ride.id}`}>
-                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Pickup / drop-off point</span>
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Requested stop</span>
                   <span className="grid min-h-[52px] grid-cols-[18px_minmax(0,1fr)_auto] items-center gap-2 rounded-[16px] border border-cyan-300/24 bg-[#07111d]/82 px-3 shadow-[0_0_0_3px_rgba(246,196,83,0.08),inset_0_1px_0_rgba(255,255,255,0.05)] transition focus-within:border-cyan-200/60 focus-within:bg-cyan-300/8">
                     <MapPin className="h-4 w-4 shrink-0 text-cyan-200" />
                     <input
@@ -4341,6 +4473,18 @@ function CompactRideAppRoutePanel({
                       Selected: {selectedStopLocation.name}
                     </span>
                   ) : null}
+                </label>
+
+                <label className="grid gap-2" htmlFor={`stop-request-note-${ride.id}`}>
+                  <span className="text-xs font-black uppercase tracking-[0.12em] text-[var(--rp-primary)]">Short note</span>
+                  <textarea
+                    id={`stop-request-note-${ride.id}`}
+                    value={stopRequestNote}
+                    onChange={(event) => setStopRequestNote(event.target.value)}
+                    placeholder="Optional note for the host"
+                    maxLength={140}
+                    className="min-h-[78px] resize-none rounded-[16px] border border-cyan-300/18 bg-[#07111d]/82 px-3 py-3 text-sm font-bold leading-5 text-white outline-none transition placeholder:text-[var(--rp-muted-strong)] focus:border-cyan-200/55 focus:bg-cyan-300/8"
+                  />
                 </label>
 
                 <a
@@ -4646,6 +4790,7 @@ function SelfSettlePodSummaryHero({
   stopJoinIntentStatus?: StopJoinIntentStatus;
   stopRequestSeatUnavailable?: boolean;
 }) {
+  const [stopHoldNow, setStopHoldNow] = useState(() => Date.now());
   const profileReturnTo = useCurrentReturnTo(`/pods/${ride.id}`);
   const chatAccess = getRideAppChatAccessState(ride);
   const summaryRiders = buildPodStatusRiders(ride, isHost);
@@ -4712,7 +4857,9 @@ function SelfSettlePodSummaryHero({
     ride.rideKind !== "recurring" &&
     hostCancellationStatus === "active" &&
     heroCurrentUserStopRequest?.status !== "pending" &&
-    heroCurrentUserStopRequest?.status !== "approved";
+    heroCurrentUserStopRequest?.status !== "pending_capacity_blocked" &&
+    heroCurrentUserStopRequest?.status !== "approved" &&
+    heroCurrentUserStopRequest?.status !== "approved_hold_active";
   const canRequestStopBeforeJoin =
     showInlineJoinRide &&
     isHostApprovedStopPolicy(ride.stopRequestPolicy) &&
@@ -4720,6 +4867,18 @@ function SelfSettlePodSummaryHero({
     hostCancellationStatus === "active";
   const hasStopRequestJoinStatus = canRequestStopBeforeJoin && stopJoinIntentStatuses.has(stopJoinIntentStatus);
   const isPreJoinLayout = showInlineJoinRide || hasStopRequestJoinStatus;
+  const stopHoldExpiresAtRaw = heroCurrentUserStopRequest?.holdExpiresAt ?? null;
+  const stopHoldExpiresAtMs = stopHoldExpiresAtRaw ? new Date(stopHoldExpiresAtRaw).getTime() : null;
+  const stopHoldExpiresInLabel =
+    stopHoldExpiresAtMs && !Number.isNaN(stopHoldExpiresAtMs)
+      ? `${Math.max(0, Math.ceil((stopHoldExpiresAtMs - stopHoldNow) / 60000))} min`
+      : "10 min";
+
+  useEffect(() => {
+    if (!stopHoldExpiresAtRaw || stopJoinIntentStatus !== "stop_request_hold_active") return;
+    const timer = window.setInterval(() => setStopHoldNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [stopHoldExpiresAtRaw, stopJoinIntentStatus]);
   const summaryUserCanOpenChat =
     !currentUserCancelledHosting &&
     (summaryUserIsHost ||
@@ -4829,39 +4988,44 @@ function SelfSettlePodSummaryHero({
           </div>
         </div>
 
-        {stopJoinIntentStatus === "stop_request_pending" ? (
+        {stopJoinIntentStatus === "stop_request_pending" || stopJoinIntentStatus === "stop_request_capacity_blocked" ? (
           <div className="rounded-[20px] border border-cyan-300/32 bg-[linear-gradient(145deg,rgba(8,47,73,0.34),rgba(7,17,29,0.9))] p-4 shadow-[0_16px_36px_rgba(34,211,238,0.1),inset_0_1px_0_rgba(255,255,255,0.06)]">
             <p className="text-[11px] font-black uppercase tracking-[0.16em] text-cyan-200">Stop Request Pending</p>
-            <h3 className="mt-2 text-2xl font-black leading-tight text-white">Waiting for host approval</h3>
+            <h3 className="mt-2 text-2xl font-black leading-tight text-white">
+              {stopJoinIntentStatus === "stop_request_capacity_blocked" ? "Ride currently full" : "Stop request pending"}
+            </h3>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              You are not in this pod yet. No seat is reserved until the host approves and you confirm joining.
+              The host is reviewing your stop. You have not joined yet, and a seat is not reserved.
             </p>
-            {stopRequestSeatUnavailable ? (
+            {stopJoinIntentStatus === "stop_request_capacity_blocked" || stopRequestSeatUnavailable ? (
               <p className="mt-3 rounded-[14px] border border-amber-300/34 bg-amber-300/12 px-3 py-2 text-xs font-black leading-5 text-amber-100">
-                The pod is full right now. Your stop may still be approved, but you can only join if a seat opens.
+                Your request is still pending, but no seat is available right now.
               </p>
             ) : null}
           </div>
-        ) : stopJoinIntentStatus === "stop_request_approved" ? (
+        ) : stopJoinIntentStatus === "stop_request_approved" || stopJoinIntentStatus === "stop_request_hold_active" ? (
           <div className="rounded-[20px] border border-emerald-300/34 bg-[linear-gradient(145deg,rgba(16,185,129,0.15),rgba(7,17,29,0.92))] p-4 shadow-[0_16px_36px_rgba(16,185,129,0.1),inset_0_1px_0_rgba(255,255,255,0.06)]">
             <p className="text-[11px] font-black uppercase tracking-[0.16em] text-emerald-200">Approved</p>
-            <h3 className="mt-2 text-2xl font-black leading-tight text-white">Your stop was approved</h3>
+            <h3 className="mt-2 text-2xl font-black leading-tight text-white">Stop approved</h3>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              Review the updated route and fare before joining.
+              Join within 10 minutes.
+            </p>
+            <p className="mt-3 inline-flex rounded-full border border-emerald-200/35 bg-emerald-300/12 px-3 py-1 text-xs font-black text-emerald-100">
+              Seat held for {stopHoldExpiresInLabel}
             </p>
             {stopRequestSeatUnavailable ? (
               <p className="mt-3 rounded-[14px] border border-amber-300/34 bg-amber-300/12 px-3 py-2 text-xs font-black leading-5 text-amber-100">
-                The pod is full right now. You can join once a seat opens.
+                This hold is reserving the last seat for you.
               </p>
             ) : null}
             <div className="mt-4 grid grid-cols-[minmax(0,1fr)_112px] gap-2">
               <button
                 type="button"
                 onClick={onJoinRide}
-                disabled={stopRequestSeatUnavailable}
+                disabled={stopRequestSeatUnavailable && stopJoinIntentStatus !== "stop_request_hold_active"}
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[15px] bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] px-4 text-sm font-black text-[#07131C] shadow-[0_10px_24px_rgba(255,193,55,0.24)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
               >
-                Confirm & Join
+                Join Ride
                 <ArrowRight className="h-4 w-4" />
               </button>
               <Link
@@ -4872,12 +5036,14 @@ function SelfSettlePodSummaryHero({
               </Link>
             </div>
           </div>
-        ) : stopJoinIntentStatus === "stop_request_declined" ? (
+        ) : stopJoinIntentStatus === "stop_request_declined" || stopJoinIntentStatus === "stop_request_expired" ? (
           <div className="rounded-[20px] border border-rose-300/34 bg-[linear-gradient(145deg,rgba(244,63,94,0.13),rgba(7,17,29,0.92))] p-4 shadow-[0_16px_36px_rgba(244,63,94,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]">
-            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-rose-200">Declined</p>
-            <h3 className="mt-2 text-2xl font-black leading-tight text-white">Your stop request was declined</h3>
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-rose-200">{stopJoinIntentStatus === "stop_request_expired" ? "Expired" : "Declined"}</p>
+            <h3 className="mt-2 text-2xl font-black leading-tight text-white">
+              {stopJoinIntentStatus === "stop_request_expired" ? "Seat hold expired" : "Stop request declined"}
+            </h3>
             <p className="mt-2 text-sm font-semibold leading-6 text-[var(--rp-muted-strong)]">
-              You have not joined this pod.
+              {stopJoinIntentStatus === "stop_request_expired" ? "The seat is available to others again." : "You have not joined this ride."}
             </p>
             <div className="mt-4 grid grid-cols-[minmax(0,1fr)_128px] gap-2">
               <button
@@ -4885,7 +5051,7 @@ function SelfSettlePodSummaryHero({
                 onClick={onJoinRide}
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-[15px] bg-[linear-gradient(180deg,#FFD968_0%,#F5B934_100%)] px-4 text-sm font-black text-[#07131C] shadow-[0_10px_24px_rgba(255,193,55,0.24)] transition hover:brightness-105"
               >
-                Join Original Route
+                {stopJoinIntentStatus === "stop_request_expired" ? "Request again" : "Join Original Route"}
               </button>
               <Link
                 href="/home"
@@ -4919,7 +5085,7 @@ function SelfSettlePodSummaryHero({
                   <MapPin className="h-6 w-6" />
                 </span>
                 <span className="mt-4 block text-xl font-black leading-tight text-white">Request a Stop</span>
-                <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">Ask to add your stop.</span>
+                <span className="mt-1 block text-sm font-semibold leading-5 text-[var(--rp-muted-strong)]">Join once approved.</span>
               </button>
             ) : null}
           </div>
@@ -6042,12 +6208,33 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     setShowJoinedModal(true);
   }
 
-  function completeSelfSettleJoin(showSuccessModal: boolean) {
+  async function completeSelfSettleJoin(showSuccessModal: boolean) {
     if (rideCancelledRecord) return;
     if (getRideAppRejoinRestrictionCopy(ride, ride.seatsUsed < ride.seatsTotal)) return;
+    const currentUserStopRequest = getNormalizedRouteRequests(ride).currentUserRequest ?? null;
+    const completingApprovedStop =
+      currentUserStopRequest &&
+      (currentUserStopRequest.status === "approved_hold_active" || currentUserStopRequest.status === "approved");
+    if (completingApprovedStop && isUuid(currentUserStopRequest.id)) {
+      const result = await completeStopRequestJoin(currentUserStopRequest.id);
+      if (!result.success) {
+        console.warn("RidePod approved stop join failed", result.error);
+        const expiredPatch: Partial<HomeRide> = {
+          currentUserJoinIntentStatus: "stop_request_expired",
+          routeRequests: getNormalizedRouteRequests(ride).all.map((request) =>
+            request.id === currentUserStopRequest.id ? { ...request, status: "approval_expired" as const } : request,
+          ),
+        };
+        setRideActionPatch((current) => mergeRidePatch(current ?? {}, expiredPatch) as Partial<HomeRide>);
+        saveStoredSelfSettleRidePatch(ride.id, expiredPatch, user?.id ?? null);
+        return;
+      }
+    }
     setSelfSettleLeft(false);
     joinSelfSettlePod();
-    const patch = buildInitialSelfSettleJoinPatch(ride, getRideAppCurrentDetailVersion(ride));
+    const patch = completingApprovedStop
+      ? buildCompleteRideAppStopJoinPatch(ride, routeRequestToRoutePlanStop(currentUserStopRequest), detailActorName)
+      : buildInitialSelfSettleJoinPatch(ride, getRideAppCurrentDetailVersion(ride));
     setRideActionPatch((current) => mergeRidePatch(current ?? {}, patch) as Partial<HomeRide>);
     saveStoredSelfSettleRidePatch(ride.id, patch, user?.id ?? null);
     const joinedViewerRide = mergeRidePatch(ride, patch) as HomeRide;
@@ -6279,7 +6466,12 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     updateCreatedHomeRide(ride.id, (storedRide) => mergeRidePatch(storedRide, patch) as HomeRide);
   }
 
-  function requestRideAppStopFromDetail(stopLabel: string, stopCoordinates: GeoCoordinates | null = null) {
+  async function requestRideAppStopFromDetail(
+    stopLabel: string,
+    stopCoordinates: GeoCoordinates | null = null,
+    stopType: PodStopRequestType = "quick_stop",
+    optionalNote: string | null = null,
+  ) {
     const trimmedStopLabel = stopLabel.trim();
     const routeLocked =
       ride.bookingDetailsShared === true ||
@@ -6288,7 +6480,23 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     const hasActiveCurrentUserStopRequest = getCurrentUserHasActiveStopRequest(ride);
     if (!trimmedStopLabel || rideCancelledRecord || !canRequestRideAppStop || routeLocked || hasActiveCurrentUserStopRequest) return;
 
-    const patch = buildRideAppStopRequestPatch(ride, trimmedStopLabel, detailActorName, stopCoordinates);
+    let serverRequestId: string | null = null;
+    if (user?.id && isUuid(ride.id)) {
+      const result = await submitPodStopRequest({
+        rideId: ride.id,
+        requestType: stopType,
+        requestedLocation: trimmedStopLabel,
+        requestedCoordinates: stopCoordinates,
+        optionalNote,
+      });
+      if (!result.success) {
+        console.warn("RidePod stop request submit failed", result.error);
+      } else {
+        serverRequestId = result.request?.id ?? null;
+      }
+    }
+
+    const patch = buildRideAppStopRequestPatch(ride, trimmedStopLabel, detailActorName, stopCoordinates, stopType, optionalNote, serverRequestId);
     applyRideActionPatch(patch);
     notifyRideDetailAction({
       type: "ride_app_action_required",
@@ -6296,7 +6504,7 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
       title: "New stop request",
       body: `${detailActorName} requested to add ${trimmedStopLabel} to this ride.`,
       selfTitle: "Stop request sent",
-      selfBody: `${trimmedStopLabel} is waiting for host approval.`,
+      selfBody: "The host will review your requested stop. You will only join after it is approved and you complete joining.",
       action: "route_stop_requested",
       relatedUrl: `/pods/${ride.id}#route-requests`,
       dedupe: false,
@@ -6422,8 +6630,15 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     setShowManagePodActionsModal(false);
   }
 
-  function approveRouteStop(stop: RoutePlanStop) {
+  async function approveRouteStop(stop: RoutePlanStop) {
     if (rideCancelledRecord) return;
+    if (isUuid(stop.id)) {
+      const result = await approvePodStopRequest(stop.id);
+      if (!result.success) {
+        console.warn("RidePod stop approval failed", result.error);
+        return;
+      }
+    }
     const patch = buildApproveRideAppStopPatch(ride, stop);
 
     applyRideActionPatch(patch);
@@ -6431,9 +6646,9 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
       type: "ride_app_action_required",
       audiences: ["riders"],
       title: "Stop approved",
-      body: `Your stop ${stop.label} has been added to the route.`,
+      body: `Your stop ${stop.label} was approved. Join within 10 minutes to secure your seat.`,
       selfTitle: "Stop approved",
-      selfBody: `${stop.label} has been added to the route.`,
+      selfBody: `${stop.label} is approved. The seat is held for 10 minutes.`,
       action: "route_request_approved",
       relatedUrl: `/pods/${ride.id}#route-requests`,
       dedupe: false,
@@ -6445,8 +6660,8 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     notifyRideDetailAction({
       type: "ride_app_details_updated",
       audiences: ["riders"],
-      title: "Route updated",
-      body: `${stop.label} has been added to this ride. Please check the updated route.`,
+      title: "Stop hold active",
+      body: `${stop.label} is approved. The rider must join within 10 minutes before the stop is added.`,
       selfTitle: "You approved a stop request",
       selfBody: stop.label,
       action: "route_updated",
@@ -6459,8 +6674,15 @@ export function NormalPodDetailPage({ ride: baseRide, backHref = "/home" }: { ri
     });
   }
 
-  function declineRouteStop(stop: RoutePlanStop) {
+  async function declineRouteStop(stop: RoutePlanStop) {
     if (rideCancelledRecord) return;
+    if (isUuid(stop.id)) {
+      const result = await declinePodStopRequest(stop.id);
+      if (!result.success) {
+        console.warn("RidePod stop decline failed", result.error);
+        return;
+      }
+    }
     const patch = buildDeclineRideAppStopPatch(ride, stop);
 
     applyRideActionPatch(patch);
