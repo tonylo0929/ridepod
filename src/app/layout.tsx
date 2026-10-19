@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { SplashScreen } from "@/components/splash-screen";
-import { AuthProvider } from "@/providers/AuthProvider";
+import { RouteRuntime } from "@/components/route-runtime";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -69,8 +68,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        <AuthProvider>{children}</AuthProvider>
-        <SplashScreen />
+        <RouteRuntime>{children}</RouteRuntime>
       </body>
     </html>
   );
