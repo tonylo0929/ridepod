@@ -72,6 +72,8 @@ V2 has no fetch calls, API routes, database clients, production record imports, 
 
 ## Validation
 
+The reusable [automated UX review package](ux-review/UX-REPORT.md) records the reviewed UI commit/hash, screenshots, flows, current tests and accessibility findings. Set up with `npm ci` and `npx playwright install chromium`, then run `npm run ux:review`. Read [the workflow guide](ux-review/README.md) for its synthetic-data/network boundary and Actions artifacts. It captures ten states at 390px and 1440px, without changing the product. Automated findings and keyboard boundary observations are review evidence; a passing interaction suite is not an accessibility certification.
+
 - `npm run build`: passed, including TypeScript and generation of existing routes.
 - `npx tsc --noEmit`: passed.
 - `node --experimental-strip-types scripts/test-v2-airport-timing.mjs`: 9 passed. Node may emit an informational module-type warning; no package configuration was changed merely to suppress it.

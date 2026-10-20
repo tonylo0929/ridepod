@@ -11,7 +11,9 @@
     "test:stop-request-capacity": "node --experimental-strip-types --experimental-specifier-resolution=node scripts/test-stop-request-capacity.mjs",
     "test:hk-taxi-fare": "node scripts/test-hk-taxi-fare.mjs",
     "test:money-safety": "node scripts/test-money-safety.mjs",
-    "screenshots": "node scripts/capture-screenshots.mjs"
+    "screenshots": "node scripts/capture-screenshots.mjs",
+    "ux:review": "playwright test --config=playwright.ux.config.mjs",
+    "ux:review:open": "playwright show-report playwright-report/ux-review"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.1.1",
@@ -27,6 +29,8 @@
     "stripe": "^22.1.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4",
     "@types/google.maps": "^3.65.3",
     "@types/node": "^20",
