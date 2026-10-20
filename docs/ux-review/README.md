@@ -29,7 +29,7 @@ To inspect the local HTML test report:
 npm run ux:review:open
 ```
 
-Use `npm run ux:review -- --project=mobile` for a partial diagnostic run. Partial/failed runs write their current report under `test-results/ux-review/package/` and leave the last complete curated package intact. Only an all-project passing run with all 20 images and total PNG size at most 3 MiB replaces `docs/ux-review/UX-REPORT.md` and the generator-owned `screenshots/mobile-*.png` / `desktop-*.png` files. The limit is a binary-size guard, not a visual-quality score.
+Use `npm run ux:review -- --project=mobile` for a partial diagnostic run. Partial/failed runs write their current report under `test-results/ux-review/package/` and leave the last complete curated package intact. Only an all-project passing run with all 20 images and total PNG size at most 4 MiB replaces `docs/ux-review/UX-REPORT.md` and the generator-owned `screenshots/mobile-*.png` / `desktop-*.png` files. The limit allows for Windows/Linux font differences and is a binary-size guard, not a visual-quality score.
 
 ## What is exercised
 

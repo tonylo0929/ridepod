@@ -9,6 +9,7 @@ if (!Number.isInteger(port) || port < 1024 || port > 65535)
 export const baseURL = `http://127.0.0.1:${port}`;
 export const reviewDir = join(repoRoot, "docs", "ux-review");
 export const resultsDir = join(repoRoot, "test-results", "ux-review");
+export const maxScreenshotBytes = 4 * 1024 * 1024;
 export const screens = [
   ["01-homepage", "Homepage and masonry feed", "Default airport feed, with route/date, optional flight, independent interest and capacity, and author."],
   ["02-airport-search", "Airport search", "Destination search plus a normalized `cx 734` flight filter; one synthetic matching journey."],

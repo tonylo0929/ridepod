@@ -1,11 +1,11 @@
 # FareEnough V2.2 — automated UX review
 
-Generated: 2026-10-20T16:52:31.530Z (UTC). **PASS — complete package**. This is captured evidence and a product inventory, not an accessibility certification or a pixel-diff baseline.
+Generated: 2026-10-20T16:59:09.161Z (UTC). **PASS — complete package**. This is captured evidence and a product inventory, not an accessibility certification or a pixel-diff baseline.
 
 ## Version and reproducibility
 
 - Reviewed UI source commit: [`2f3c9a58406e073febb21288bf3daa06cb889bf7`](https://github.com/tonylo0929/ridepod/commit/2f3c9a58406e073febb21288bf3daa06cb889bf7).
-- Generation checkout: `2f3c9a58406e073febb21288bf3daa06cb889bf7`; branch: `feature/ridepod-social-discovery`.
+- Generation checkout: `ab26b959880bad56ac441e78cba2e10ce3484ce3`; branch: `feature/ridepod-social-discovery`.
 - UI source files modified/untracked at capture: **no**.
 - SHA-256 of preview/runtime/global styles/avatar source files: `3385032a32b2dccf89735083ae3f6ef69cf7f2490ea78a82e1565da67fefaaa7`.
 - Toolchain: Node v24.14.0, Playwright 1.64.1, Chromium 156.0.8078.4, win32.
@@ -48,12 +48,12 @@ All fixture people, posts, flight examples and interactions are synthetic. “Li
 
 ## Test results
 
-Run duration: 33.9 seconds. 20/20 curated images; 2702 KiB total; 3 MiB budget **passed**; capture completeness **passed**.
+Run duration: 34.0 seconds. 20/20 curated images; 2702 KiB total; 4 MiB budget **passed**; capture completeness **passed**.
 
 | Test | Status | Duration |
 | --- | --- | --- |
 | logic: airport/count logic and capture network isolation | passed | 0.1s |
-| mobile: curated preview review journeys | passed | 6.8s |
+| mobile: curated preview review journeys | passed | 6.9s |
 | desktop: curated preview review journeys | passed | 8.0s |
 
 The logic test executes the nine airport/count/copy assertions in `scripts/test-v2-airport-timing.mjs`, plus allow/deny cases for the capture network boundary. Playwright's web server runs `npm run build` (including Next's TypeScript check) before browser tests; a failed build prevents capture. This report does not imply that every production flow or repository test was run.

@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mkdir, copyFile, writeFile, stat, readdir, rm } from "node:fs/promises";
 import { join, resolve, sep } from "node:path";
-import { repoRoot, resultsDir, reviewDir, screens } from "./settings.mjs";
+import { repoRoot, resultsDir, reviewDir, screens, maxScreenshotBytes } from "./settings.mjs";
 
 const sourcePaths = ["src/app/v2-preview", "src/app/layout.tsx", "src/app/globals.css", "src/components/route-runtime.tsx", "public/avatars/animals"];
 const git = (...args) => execFileSync("git", args, { cwd: repoRoot, encoding: "utf8" }).trim();
@@ -52,7 +52,7 @@ export default class UXReporter {
       bytes += (await stat(c.path)).size;
       await copyFile(c.path, join(artifactDir, "screenshots", c.filename));
     }
-    const withinBudget = bytes <= 3 * 1024 * 1024;
+    const withinBudget = bytes <= maxScreenshotBytes;
     const passed = result.status === "passed" && complete && withinBudget;
     const status = passed ? "PASS — complete package" : result.status === "passed" && !complete ? "PARTIAL — package not published" : "FAIL — package not published";
     const report = this.report({ captures, bytes, status, duration: result.duration, complete, withinBudget });
@@ -72,7 +72,7 @@ export default class UXReporter {
       await writeFile(join(reviewDir, "UX-REPORT.md"), report);
       console.log(`\nUX review: ${captures.length} screenshots, ${(bytes / 1024).toFixed(0)} KiB. Published docs/ux-review/UX-REPORT.md`);
     } else {
-      console.log("\nUX review incomplete/failed: kept the previous committed package. Inspect test-results/ux-review/package/UX-REPORT.md and the HTML report.");
+      console.log(`\nUX review ${status}: ${captures.length}/20 images, ${(bytes / 1024).toFixed(0)} KiB / ${maxScreenshotBytes / 1024} KiB limit. Kept the previous curated package. Inspect test-results/ux-review/package/UX-REPORT.md and the HTML report.`);
     }
     if (!withinBudget || (result.status === "passed" && complete && !passed)) return { status: "failed" };
   }
@@ -151,7 +151,7 @@ All fixture people, posts, flight examples and interactions are synthetic. “Li
 
 ## Test results
 
-Run duration: ${(duration / 1000).toFixed(1)} seconds. ${captures.length}/20 curated images; ${(bytes / 1024).toFixed(0)} KiB total; 3 MiB budget **${withinBudget ? "passed" : "exceeded"}**; capture completeness **${complete ? "passed" : "failed"}**.
+Run duration: ${(duration / 1000).toFixed(1)} seconds. ${captures.length}/20 curated images; ${(bytes / 1024).toFixed(0)} KiB total; ${maxScreenshotBytes / 1024 / 1024} MiB budget **${withinBudget ? "passed" : "exceeded"}**; capture completeness **${complete ? "passed" : "failed"}**.
 
 | Test | Status | Duration |
 | --- | --- | --- |
