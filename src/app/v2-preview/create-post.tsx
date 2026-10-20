@@ -1,16 +1,19 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { ArrowRight, Check, RefreshCw, Sparkles } from "lucide-react";
 import {
   automaticCover,
   covers,
   generatePost,
+  normalizeFlight,
+  validateAirportTiming,
   type CoverId,
   type Journey,
 } from "./data";
 import { Modal } from "./modal";
 import { RouteCover } from "./route-cover";
+import { AirportTiming, FlightBadge } from "./airport-info";
 import s from "./preview.module.css";
 
 export function CreatePost({
@@ -29,19 +32,26 @@ export function CreatePost({
   const [origin, setOrigin] = useState("香港機場");
   const [destination, setDestination] = useState("屯門");
   const [date, setDate] = useState(today);
-  const [time, setTime] = useState("21:30");
+  const [time, setTime] = useState("21:50");
   const [seats, setSeats] = useState(3);
   const [luggage, setLuggage] = useState(1);
   const [wait, setWait] = useState(20);
   const [flight, setFlight] = useState("");
-  const [flightTime, setFlightTime] = useState("");
+  const [scheduledFlightAt, setScheduledFlightAt] = useState("");
+  const [airportReadyAt, setAirportReadyAt] = useState(`${today}T21:30`);
   const [meeting, setMeeting] = useState("");
   const [message, setMessage] = useState("");
   const [cover, setCover] = useState<CoverId | "auto">("auto");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
-  const chosenCover = cover === "auto" ? automaticCover(kind, time) : cover;
+  const generatedCopy = useRef<{ title: string; description: string } | null>(
+    null,
+  );
+  const chosenCover =
+    cover === "auto"
+      ? automaticCover(kind, time, `${origin}${destination}`)
+      : cover;
   const draftInput = {
     rideKind: kind,
     direction: kind === "airport" ? direction : null,
@@ -51,14 +61,36 @@ export function CreatePost({
     time,
     luggage,
     wait,
+    flight: kind === "airport" ? normalizeFlight(flight) : "",
+    scheduledFlightAt:
+      kind === "airport" ? scheduledFlightAt || undefined : undefined,
+    airportReadyAt:
+      kind === "airport" && direction === "from_airport"
+        ? airportReadyAt
+        : undefined,
   };
 
   function generate() {
     const result = generatePost(draftInput, today);
+    const description = `${result.description}${message.trim() ? `\n\n${message.trim()}` : ""}`;
     setTitle(result.title);
-    setDescription(
-      `${result.description}${message.trim() ? `\n\n${message.trim()}` : ""}`,
-    );
+    setDescription(description);
+    generatedCopy.current = { title: result.title, description };
+  }
+  function updateFlight(value: string) {
+    const number = normalizeFlight(value);
+    setFlight(number);
+    if (step !== 2 || !generatedCopy.current) return;
+    const result = generatePost({ ...draftInput, flight: number }, today);
+    const nextDescription = `${result.description}${message.trim() ? `\n\n${message.trim()}` : ""}`;
+    // Keep untouched generated copy in sync; preserve the user's own wording.
+    if (title === generatedCopy.current.title) setTitle(result.title);
+    if (description === generatedCopy.current.description)
+      setDescription(nextDescription);
+    generatedCopy.current = {
+      title: result.title,
+      description: nextDescription,
+    };
   }
 
   function next(event: FormEvent<HTMLFormElement>) {
@@ -71,13 +103,9 @@ export function CreatePost({
       setError("請填寫唔同嘅出發地同目的地。");
       return;
     }
-    if (
-      kind === "airport" &&
-      flightTime &&
-      direction === "from_airport" &&
-      flightTime > time
-    ) {
-      setError("預計出到機場嘅時間，應該喺航班抵達之後。");
+    const timingError = validateAirportTiming(draftInput);
+    if (timingError) {
+      setError(timingError);
       return;
     }
     setError("");
@@ -91,6 +119,11 @@ export function CreatePost({
       setError("標題同內文都要填寫。咁先知你想去邊！");
       return;
     }
+    const timingError = validateAirportTiming(draftInput);
+    if (timingError) {
+      setError(timingError);
+      return;
+    }
     onPublish({
       ...draftInput,
       id: `local-${crypto.randomUUID()}`,
@@ -101,8 +134,6 @@ export function CreatePost({
       cover: chosenCover,
       seatsUsed: 1,
       seatsTotal: seats + 1,
-      flight: kind === "airport" ? flight.trim().toUpperCase() : "",
-      flightTime: kind === "airport" ? flightTime : "",
       luggage: kind === "airport" ? luggage : 0,
       wait: kind === "airport" ? wait : 0,
       meeting: meeting.trim() || "集合位置再傾",
@@ -135,6 +166,7 @@ export function CreatePost({
                   setOrigin(value === "airport" ? "香港機場" : "屯門市廣場");
                   setDestination(value === "airport" ? "屯門" : "中環");
                   setDirection("from_airport");
+                  setScheduledFlightAt("");
                 }}
               >
                 <option value="airport">機場同路</option>
@@ -150,6 +182,7 @@ export function CreatePost({
                   onChange={(e) => {
                     const value = e.target.value as Journey["direction"];
                     setDirection(value);
+                    setScheduledFlightAt("");
                     setOrigin(value === "from_airport" ? "香港機場" : "屯門");
                     setDestination(
                       value === "from_airport" ? "屯門" : "香港機場",
@@ -188,13 +221,22 @@ export function CreatePost({
                 type="date"
                 min={today}
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(e) => {
+                  const nextDate = e.target.value;
+                  if (airportReadyAt.startsWith(`${date}T`))
+                    setAirportReadyAt(
+                      `${nextDate}T${airportReadyAt.split("T")[1]}`,
+                    );
+                  if (scheduledFlightAt.startsWith(`${date}T`))
+                    setScheduledFlightAt(
+                      `${nextDate}T${scheduledFlightAt.split("T")[1]}`,
+                    );
+                  setDate(nextDate);
+                }}
               />
             </label>
             <label>
-              {kind === "airport" && direction === "from_airport"
-                ? "預計出到機場時間"
-                : "出發時間"}
+              {kind === "airport" ? "預計夾車出發時間" : "出發時間"}
               <input
                 required
                 type="time"
@@ -237,19 +279,30 @@ export function CreatePost({
                     maxLength={10}
                     pattern="[A-Za-z0-9 -]{2,10}"
                     value={flight}
-                    onChange={(e) => setFlight(e.target.value)}
+                    onChange={(e) => updateFlight(e.target.value)}
                   />
                 </label>
                 <label>
                   {direction === "from_airport"
-                    ? "航班抵達時間（選填）"
-                    : "航班起飛時間（選填）"}
+                    ? "航班預定抵達（選填）"
+                    : "航班預定起飛（選填）"}
                   <input
-                    type="time"
-                    value={flightTime}
-                    onChange={(e) => setFlightTime(e.target.value)}
+                    type="datetime-local"
+                    value={scheduledFlightAt}
+                    onChange={(e) => setScheduledFlightAt(e.target.value)}
                   />
                 </label>
+                {direction === "from_airport" && (
+                  <label>
+                    預計出閘時間
+                    <input
+                      required
+                      type="datetime-local"
+                      value={airportReadyAt}
+                      onChange={(e) => setAirportReadyAt(e.target.value)}
+                    />
+                  </label>
+                )}
                 <label>
                   最多可以等
                   <select
@@ -265,7 +318,7 @@ export function CreatePost({
                 </label>
                 <p className={s.fieldHint}>
                   {direction === "from_airport"
-                    ? "出到機場時間係指過關、拎完行李之後。唔使同一班機都可以同路。"
+                    ? "預定抵達係航班時間；預計出閘係過關、拎完行李之後；夾車出發係你想開車嘅時間。三個時間分開填，全部以香港時間為準，支援跨日。"
                     : "出發時間係你出發去機場嘅時間，請預留足夠時間辦理登機。"}
                 </p>
               </>
@@ -307,6 +360,32 @@ export function CreatePost({
             <RouteCover scene={chosenCover} />
             <span>已自動配搭路線封面</span>
           </div>
+          <section className={s.publishSummary} aria-label="發佈前行程預覽">
+            <h3>
+              {origin} <ArrowRight size={16} /> {destination}
+            </h3>
+            {kind === "airport" ? (
+              <>
+                <FlightBadge flight={flight} />
+                <AirportTiming journey={draftInput} today={today} />
+                <label>
+                  航班編號（選填）
+                  <input
+                    aria-label="預覽航班編號（選填）"
+                    placeholder="例如 CX734"
+                    maxLength={10}
+                    pattern="[A-Za-z0-9 -]{2,10}"
+                    value={flight}
+                    onChange={(e) => updateFlight(e.target.value)}
+                  />
+                </label>
+              </>
+            ) : (
+              <p>
+                {date} {time} 出發
+              </p>
+            )}
+          </section>
           <fieldset className={s.coverOptions}>
             <legend>揀個沿途風景</legend>
             <button

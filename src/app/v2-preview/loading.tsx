@@ -4,7 +4,7 @@ export default function Loading() {
   return (
     <div className={s.app} lang="zh-HK" aria-busy="true">
       <main className={s.main}>
-        <div className={s.hero}>
+        <div className={s.compactIntro}>
           <h1>搵緊同路人…</h1>
         </div>
         <p className={s.demoNote} role="status">

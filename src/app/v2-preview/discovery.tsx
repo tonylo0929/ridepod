@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowDown,
   ArrowRight,
   ArrowUpRight,
   Backpack,
@@ -22,7 +21,6 @@ import {
   Plus,
   Search,
   SlidersHorizontal,
-  Sparkles,
   UserRound,
   Users,
   X,
@@ -31,12 +29,15 @@ import {
   addDays,
   corridors,
   dateLabel,
+  momentLabel,
+  normalizeFlight,
   sampleJourneys,
   type Journey,
 } from "./data";
 import { CreatePost } from "./create-post";
 import { Modal } from "./modal";
 import { Masonry } from "./masonry";
+import { AirportTiming, FlightBadge } from "./airport-info";
 import { RouteCover } from "./route-cover";
 import s from "./preview.module.css";
 
@@ -164,7 +165,10 @@ export default function Discovery({ today }: { today: string }) {
       if (category === "airport") {
         if (direction !== "all" && post.direction !== direction) return false;
         if (post.luggage > maxBags || post.wait < minimumWait) return false;
-        if (flight.trim() && !post.flight.includes(flight.trim().toUpperCase()))
+        if (
+          flight.trim() &&
+          !normalizeFlight(post.flight).includes(normalizeFlight(flight))
+        )
           return false;
       } else {
         if (recurring && post.rideKind !== "recurring") return false;
@@ -209,7 +213,8 @@ export default function Discovery({ today }: { today: string }) {
               <CarFront size={23} />
             </span>
             <span>
-              RidePod<small>同路，啱啱好。</small>
+              Fare<span className={s.wordmarkAccent}>Enough</span>
+              <small>同路就夾，車費齊齊慳。</small>
             </span>
           </a>
           <div className={s.desktopLinks}>
@@ -217,7 +222,7 @@ export default function Discovery({ today }: { today: string }) {
             <span>香港 · HONG KONG</span>
           </div>
           <div className={s.headerActions}>
-            <span className={s.previewBadge}>V2 設計預覽</span>
+            <span className={s.previewBadge}>V2.1 預覽</span>
             <button
               onClick={() => setPanel("create")}
               className={s.desktopPublish}
@@ -235,56 +240,14 @@ export default function Discovery({ today }: { today: string }) {
             <button onClick={closePost}>返回發現同路</button>
           </div>
         )}
-        <section className={s.hero}>
-          <div className={s.heroCopy}>
-            <div className={s.eyebrow}>
-              <span /> EVERY JOURNEY STARTS WITH SOMEONE
-            </div>
-            <h1>
-              下一程，
-              <br />
-              搵個<span>同路人。</span>
-            </h1>
-            <p>
-              機場返屋企，定係聽朝返工。
-              <br className={s.mobileBreak} />
-              搵到同路嘅人，分擔車費，分享沿途。
-            </p>
-            <a href="#journeys" className={s.heroLink}>
-              睇吓邊個同你同路 <ArrowDown size={15} />
-            </a>
+        <section className={s.compactIntro}>
+          <div>
+            <h1>下一程，搵個同路人。</h1>
+            <p>機場返屋企，返工出街，一齊順路。</p>
           </div>
-          <div className={s.heroArt}>
-            <div className={s.heroStamp}>
-              同路
-              <br />
-              <b>啱啱好</b>
-              <Sparkles size={18} />
-            </div>
-            <svg viewBox="0 0 440 240" aria-hidden="true">
-              <path
-                d="M40 183 C120 183 68 59 167 59 S265 207 355 120"
-                stroke="#b7cebc"
-                strokeWidth="40"
-                strokeLinecap="round"
-                fill="none"
-              />
-              <path
-                d="M40 183 C120 183 68 59 167 59 S265 207 355 120"
-                stroke="#f8f6e7"
-                strokeWidth="2"
-                strokeDasharray="8 10"
-                fill="none"
-              />
-              <circle cx="40" cy="183" r="13" fill="#167467" />
-              <circle cx="355" cy="120" r="13" fill="#167467" />
-            </svg>
-            <span className={s.mapLabel}>📍 香港機場</span>
-            <span className={s.mapLabelEnd}>屋企見 🏡</span>
-            <div className={s.mapCar}>
-              <CarFront size={35} />
-            </div>
-          </div>
+          <span className={s.introEmblem} aria-hidden="true">
+            <CarFront size={27} />
+          </span>
         </section>
         <div className={s.demoNote}>
           <span className={s.liveDot} />
@@ -425,6 +388,24 @@ export default function Discovery({ today }: { today: string }) {
               篩選{filterCount > 0 && <b>{filterCount}</b>}
             </button>
           </div>
+          {category === "airport" && (
+            <label className={s.flightSearch}>
+              <Plane size={16} />
+              <span>搵航班</span>
+              <input
+                aria-label="按航班編號篩選"
+                value={flight}
+                placeholder="例如 CX734（選填）"
+                maxLength={10}
+                onChange={(e) => setFlight(normalizeFlight(e.target.value))}
+              />
+              {flight && (
+                <button onClick={() => setFlight("")} aria-label="清除航班篩選">
+                  <X size={15} />
+                </button>
+              )}
+            </label>
+          )}
           {category === "routes" && (
             <div className={s.corridors} aria-label="熱門同路走廊">
               {corridors.map((route) => (
@@ -504,25 +485,29 @@ export default function Discovery({ today }: { today: string }) {
                       </span>
                     </div>
                     <div className={s.cardBody}>
-                      <h3>{post.title}</h3>
-                      <div className={s.route}>
-                        <MapPin size={13} />
-                        <span>
-                          {post.fromLabel}
-                          <ArrowRight size={12} />
-                          {post.toLabel}
-                        </span>
+                      <div className={s.routeMain}>
+                        <span>{post.fromLabel}</span>
+                        <ArrowRight size={15} />
+                        <span>{post.toLabel}</span>
                       </div>
                       <div className={s.cardTime}>
-                        <Clock3 size={13} />
-                        {dateLabel(post.date, today)} {post.time}
+                        <Clock3 size={14} />
+                        <span>
+                          {dateLabel(post.date, today)} <b>{post.time}</b>
+                          <small>
+                            {post.rideKind === "airport" ? "夾車出發" : "出發"}
+                          </small>
+                        </span>
                       </div>
                       {post.rideKind === "airport" && (
-                        <div className={s.cardExtra}>
-                          <Luggage size={11} />
-                          {post.luggage} 個喼<span>·</span>可等 {post.wait} 分鐘
-                        </div>
+                        <FlightBadge flight={post.flight} />
                       )}
+                      {post.direction === "from_airport" &&
+                        post.airportReadyAt && (
+                          <div className={s.readyHint}>
+                            預計出閘 {momentLabel(post.airportReadyAt, today)}
+                          </div>
+                        )}
                       <div className={s.seats}>
                         <span className={s.seatDots}>
                           {Array.from({ length: post.seatsTotal }, (_, n) => (
@@ -542,6 +527,13 @@ export default function Discovery({ today }: { today: string }) {
                           / {post.seatsTotal} 人有興趣
                         </span>
                       </div>
+                      <h3>{post.title}</h3>
+                      {post.rideKind === "airport" && (
+                        <div className={s.cardExtra}>
+                          <Luggage size={11} />
+                          {post.luggage} 個喼<span>·</span>可等 {post.wait} 分鐘
+                        </div>
+                      )}
                       <div className={s.author}>
                         <Image
                           src={`/avatars/animals/${post.avatar}.png`}
@@ -651,10 +643,13 @@ export default function Discovery({ today }: { today: string }) {
               />
               <div>
                 <b>{selected.author}</b>
-                <span>RidePod 同路友 · 示範人物</span>
+                <span>FareEnough 同路友 · 示範人物</span>
               </div>
               <span className={s.softBadge}>同路傾吓</span>
             </div>
+            {selected.rideKind === "airport" && (
+              <FlightBadge flight={selected.flight} />
+            )}
             <h2>{selected.title}</h2>
             <p className={s.description}>{selected.description}</p>
             <div className={s.detailRoute}>
@@ -681,9 +676,7 @@ export default function Discovery({ today }: { today: string }) {
               <div>
                 <Clock3 />
                 <span>
-                  {selected.direction === "from_airport"
-                    ? "預計出到機場"
-                    : "出發時間"}
+                  預計夾車出發
                   <b>{selected.time}</b>
                 </span>
               </div>
@@ -729,21 +722,22 @@ export default function Discovery({ today }: { today: string }) {
               )}
             </div>
             {selected.rideKind === "airport" && (
-              <div className={s.flightInfo}>
-                <Plane size={18} />
-                <div>
-                  <b>{selected.flight || "未提供航班 · 唔同班機都歡迎"}</b>
-                  <p>
-                    {selected.flightTime
-                      ? `${selected.direction === "from_airport" ? "航班抵達" : "航班起飛"} ${selected.flightTime} · `
-                      : ""}
-                    {selected.direction === "from_airport"
-                      ? `預計 ${selected.time} 過關、拎完行李後出到嚟。`
-                      : "集合出發時間同航班起飛時間唔同，請自行預留登機時間。"}
-                  </p>
-                  <small>航班資料只供示範，未連接即時航班追蹤。</small>
-                </div>
-              </div>
+              <section className={s.airportTimes} aria-label="航班與夾車時間">
+                <h3>
+                  {selected.direction === "from_airport"
+                    ? "落機、出閘、出發，分清楚。"
+                    : "夾車出發同起飛，分清楚。"}
+                </h3>
+                <AirportTiming journey={selected} today={today} />
+                <p>
+                  {selected.direction === "from_airport"
+                    ? "出閘係過關、拎完行李之後；出發係計劃夾車嘅時間。唔同航班都可以同路。"
+                    : "夾車出發係由集合地點開車去機場嘅時間。請自行預留到機場、辦理登機同安檢嘅時間。"}
+                </p>
+                <small>
+                  所有時間以香港時間為準。航班資料只供示範，未有即時追蹤。
+                </small>
+              </section>
             )}
             <div className={s.detailFooter}>
               <button
@@ -813,7 +807,7 @@ export default function Discovery({ today }: { today: string }) {
                 </select>
               </label>
               <label>
-                最早可以出發
+                最早夾車出發
                 <input
                   type="time"
                   value={earliest}
@@ -865,11 +859,13 @@ export default function Discovery({ today }: { today: string }) {
                       placeholder="唔同航班都可以"
                       maxLength={10}
                       value={flight}
-                      onChange={(e) => setFlight(e.target.value)}
+                      onChange={(e) =>
+                        setFlight(normalizeFlight(e.target.value))
+                      }
                     />
                   </label>
                   <p className={s.fieldHint}>
-                    時間篩選以旅程嘅出發／出到機場時間為準，唔係航班抵達時間。行李數量只供配對參考。
+                    時間篩選以計劃夾車出發時間為準，唔係航班抵達或出閘時間。行李數量只供配對參考。
                   </p>
                 </>
               ) : (

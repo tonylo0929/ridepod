@@ -6,7 +6,10 @@ export type CoverId =
   | "night"
   | "bridge"
   | "town"
-  | "sunset";
+  | "sunset"
+  | "boarding"
+  | "luggage"
+  | "airport-sign";
 export type Journey = Pick<
   HomeRide,
   "id" | "fromLabel" | "toLabel" | "seatsUsed" | "seatsTotal" | "rideKind"
@@ -20,7 +23,9 @@ export type Journey = Pick<
   cover: CoverId;
   direction: AirportDirection;
   flight: string;
-  flightTime: string;
+  /** Local Hong Kong date-times. Neither field implies a real flight update. */
+  scheduledFlightAt?: string;
+  airportReadyAt?: string;
   luggage: number;
   wait: number;
   meeting: string;
@@ -34,6 +39,9 @@ export const covers: { id: CoverId; label: string }[] = [
   { id: "bridge", label: "沿途海風" },
   { id: "town", label: "日常小城" },
   { id: "sunset", label: "黃昏出走" },
+  { id: "boarding", label: "同路登機證" },
+  { id: "luggage", label: "行李小日子" },
+  { id: "airport-sign", label: "機場指示牌" },
 ];
 export const corridors = [
   "全部路線",
@@ -58,12 +66,64 @@ export function dateLabel(date: string, today: string) {
 export function automaticCover(
   kind: Journey["rideKind"],
   time: string,
+  route = "",
 ): CoverId {
   if (Number(time.slice(0, 2)) >= 19 || Number(time.slice(0, 2)) < 6)
     return "night";
-  if (kind === "airport") return "terminal";
+  if (kind === "airport") {
+    const airportCovers: CoverId[] = [
+      "terminal",
+      "boarding",
+      "luggage",
+      "airport-sign",
+    ];
+    return airportCovers[
+      Array.from(route).reduce((sum, letter) => sum + letter.charCodeAt(0), 0) %
+        airportCovers.length
+    ];
+  }
   if (Number(time.slice(0, 2)) >= 17) return "sunset";
   return "harbour";
+}
+export function normalizeFlight(value: string) {
+  return value.replace(/\s+/g, "").toUpperCase();
+}
+export function momentLabel(value: string, today: string) {
+  const [date, time] = value.split("T");
+  return `${dateLabel(date, today)} ${time}`;
+}
+export function departureAt(journey: Pick<Journey, "date" | "time">) {
+  return `${journey.date}T${journey.time}`;
+}
+export function validateAirportTiming(
+  journey: Pick<
+    Journey,
+    | "rideKind"
+    | "direction"
+    | "date"
+    | "time"
+    | "airportReadyAt"
+    | "scheduledFlightAt"
+  >,
+) {
+  if (journey.rideKind !== "airport") return "";
+  if (journey.direction === "from_airport") {
+    if (!journey.airportReadyAt)
+      return "請填寫預計過關、拎完行李後嘅出閘時間。";
+    if (
+      journey.scheduledFlightAt &&
+      journey.scheduledFlightAt > journey.airportReadyAt
+    )
+      return "預計出閘時間要喺航班預定抵達之後。";
+    if (journey.airportReadyAt > departureAt(journey))
+      return "夾車出發時間要喺預計出閘時間之後。";
+  } else if (
+    journey.scheduledFlightAt &&
+    journey.scheduledFlightAt <= departureAt(journey)
+  ) {
+    return "去機場嘅夾車出發時間要喺航班預定起飛之前。";
+  }
+  return "";
 }
 export function generatePost(
   input: Pick<
@@ -76,15 +136,22 @@ export function generatePost(
     | "date"
     | "luggage"
     | "wait"
+    | "flight"
+    | "airportReadyAt"
   >,
   today: string,
 ) {
   const when = `${dateLabel(input.date, today)} ${input.time}`;
-  const title = `${when} ${input.fromLabel}出發，有冇人一齊去${input.toLabel}？${input.rideKind === "airport" ? "✈️" : "🚕"}`;
   const arrival =
     input.rideKind === "airport" && input.direction === "from_airport";
+  const flight =
+    input.rideKind === "airport" ? normalizeFlight(input.flight) : "";
+  const title =
+    arrival && flight
+      ? `${dateLabel(input.date, today)} ${flight} 落機，有冇人一齊返${input.toLabel}？✈️`
+      : `${when} ${input.fromLabel}出發，有冇人一齊去${input.toLabel}？${input.rideKind === "airport" ? "✈️" : "🚕"}`;
   const start = arrival
-    ? `我${dateLabel(input.date, today)}落機，預計 ${input.time} 左右過關、拎完行李出到嚟`
+    ? `我${flight ? `搭 ${flight} 落機，` : "落機之後，"}預計 ${input.airportReadyAt ? momentLabel(input.airportReadyAt, today) : "拎完行李後"} 出閘，打算 ${when} 夾車出發`
     : `我${dateLabel(input.date, today)}預計 ${input.time} 由${input.fromLabel}出發`;
   const details =
     input.rideKind === "airport"
@@ -110,9 +177,9 @@ export function sampleJourneys(today: string): Journey[] {
       "香港機場",
       "屯門",
       "21:30",
-      "今晚落機，有冇人一齊返屯門？✈️",
+      "今晚 CX734 落機，有冇人一齊返屯門？✈️",
       "Mandy",
-      "terminal",
+      "boarding",
       "cat",
       0,
       "CX734",
@@ -136,7 +203,7 @@ export function sampleJourneys(today: string): Journey[] {
       "07:00",
       "早機唔想轉幾程車，一齊出發？",
       "Yuna",
-      "bridge",
+      "airport-sign",
       "rabbit",
       1,
       "",
@@ -160,7 +227,7 @@ export function sampleJourneys(today: string): Journey[] {
       "14:20",
       "下晝落機，有冇元朗友？",
       "Ken",
-      "terminal",
+      "luggage",
       "frog",
       1,
       "",
@@ -277,7 +344,11 @@ export function sampleJourneys(today: string): Journey[] {
     id: `demo-${i + 1}`,
     fromLabel: r[0],
     toLabel: r[1],
-    time: r[2],
+    // In arrival examples the existing time is ready-to-leave, not departure.
+    time:
+      i < 8 && r[1] !== "香港機場"
+        ? `${String(Math.floor((Number(r[2].slice(0, 2)) * 60 + Number(r[2].slice(3)) + 20) / 60)).padStart(2, "0")}:${String((Number(r[2].slice(3)) + 20) % 60).padStart(2, "0")}`
+        : r[2],
     title: r[3],
     author: r[4],
     cover: r[5],
@@ -288,10 +359,14 @@ export function sampleJourneys(today: string): Journey[] {
     rideKind: i < 8 ? "airport" : i === 13 ? "recurring" : "one_off",
     direction:
       i < 8 ? (r[1] === "香港機場" ? "to_airport" : "from_airport") : null,
-    flightTime:
+    airportReadyAt:
       i < 8 && r[1] !== "香港機場"
-        ? `${String(Number(r[2].slice(0, 2)) - 1).padStart(2, "0")}:50`
-        : "",
+        ? `${addDays(today, r[7])}T${r[2]}`
+        : undefined,
+    scheduledFlightAt:
+      i < 8 && r[1] !== "香港機場" && r[8]
+        ? `${addDays(today, r[7])}T${String(Number(r[2].slice(0, 2)) - 1).padStart(2, "0")}:50`
+        : undefined,
     seatsUsed: (i % 3) + 1,
     seatsTotal: 4,
     wait: 20,
