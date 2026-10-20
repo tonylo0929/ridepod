@@ -274,7 +274,7 @@ export function CreatePost({
                   <input
                     placeholder="例如 CX734"
                     maxLength={10}
-                    pattern="[A-Za-z0-9 -]{2,10}"
+                    pattern={"[A-Za-z0-9 \\-]{2,10}"}
                     value={flight}
                     onChange={(e) => updateFlight(e.target.value)}
                   />
@@ -374,7 +374,7 @@ export function CreatePost({
                     aria-label="預覽航班編號（選填）"
                     placeholder="例如 CX734"
                     maxLength={10}
-                    pattern="[A-Za-z0-9 -]{2,10}"
+                    pattern={"[A-Za-z0-9 \\-]{2,10}"}
                     value={flight}
                     onChange={(e) => updateFlight(e.target.value)}
                   />
