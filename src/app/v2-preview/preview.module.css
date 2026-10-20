@@ -1464,14 +1464,14 @@
 }
 .profileStats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
   background: #eef3e7;
   border-radius: 13px;
   padding: 21px 12px;
 }
 .profileStats span {
-  font-size: 9px;
+  font-size: 12px;
   display: flex;
   align-items: center;
   flex-direction: column;
@@ -2132,14 +2132,16 @@
   color: #5e775d;
 }
 .timingList dd {
+  margin: 0;
   text-align: right;
   font-weight: 650;
   color: #2b5840;
   font-variant-numeric: tabular-nums;
 }
 .timingList > .departureRow {
-  border: 0;
+  border-bottom: 1px solid #dce6d2;
 }
+.timingList > div:last-child { border: 0; }
 .departureRow dt,
 .departureRow dd {
   color: #1f6142;
@@ -2468,4 +2470,61 @@
   .introEmblem {
     display: none;
   }
+}
+
+/* V2.2: interest never represents confirmed seats. */
+.interestSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 10px 0;
+  color: #365f45;
+  font-size: 12px;
+  line-height: 1.65;
+}
+.interestSummary > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.interestSummary svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+.interestSummary > small {
+  font-size: 11px;
+  color: #59735a;
+  margin: 0;
+  line-height: 1.65;
+}
+.detailGrid .interestSummary { margin-bottom: 0; }
+.detailGrid .interestSummary,
+.detailGrid .interestSummary > span { color: #365f45; }
+.detailParticipants { grid-column: 1 / -1; }
+.detailGrid .interestSummary > small { text-align: left; }
+.miniPost .interestSummary { margin: 5px 0 0; }
+.optionalFields {
+  border: 1px solid #d7e3cf;
+  border-radius: 12px;
+  padding: 14px;
+  background: #f4f6ed;
+}
+.optionalFields > summary {
+  cursor: pointer;
+  color: #355e43;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.8;
+}
+.optionalFields[open] > summary { margin-bottom: 17px; }
+.ownerNotice { font-size: 13px; color: #3c684a; line-height: 1.8; }
+.publishSummary > p { font-size: 13px; line-height: 1.8; }
+.publishSummary > small { font-size: 11px; color: #59735a; }
+@media (max-width: 600px) {
+  .timingList > div { flex-direction: column; gap: 2px; }
+  .timingList dd { text-align: left; }
+  .authorHint { display: none; }
+  .optionalFields { padding: 12px; }
+  .miniPost > div { width: 44px; height: 60px; }
 }

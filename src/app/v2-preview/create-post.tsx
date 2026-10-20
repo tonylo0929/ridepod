@@ -18,32 +18,34 @@ import s from "./preview.module.css";
 
 export function CreatePost({
   today,
+  initialJourney,
   onClose,
   onPublish,
 }: {
   today: string;
+  initialJourney?: Journey;
   onClose: () => void;
   onPublish: (post: Journey) => void;
 }) {
   const [step, setStep] = useState(1);
-  const [kind, setKind] = useState<Journey["rideKind"]>("airport");
+  const [kind, setKind] = useState<Journey["rideKind"]>(initialJourney?.rideKind ?? "airport");
   const [direction, setDirection] =
-    useState<Journey["direction"]>("from_airport");
-  const [origin, setOrigin] = useState("香港機場");
-  const [destination, setDestination] = useState("屯門");
-  const [date, setDate] = useState(today);
-  const [time, setTime] = useState("21:50");
-  const [seats, setSeats] = useState(3);
-  const [luggage, setLuggage] = useState(1);
-  const [wait, setWait] = useState(20);
-  const [flight, setFlight] = useState("");
-  const [scheduledFlightAt, setScheduledFlightAt] = useState("");
-  const [airportReadyAt, setAirportReadyAt] = useState(`${today}T21:30`);
-  const [meeting, setMeeting] = useState("");
+    useState<Journey["direction"]>(initialJourney?.direction ?? "from_airport");
+  const [origin, setOrigin] = useState(initialJourney?.fromLabel ?? "香港機場");
+  const [destination, setDestination] = useState(initialJourney?.toLabel ?? "屯門");
+  const [date, setDate] = useState(initialJourney?.date ?? today);
+  const [time, setTime] = useState(initialJourney?.time ?? "21:50");
+  const [seats, setSeats] = useState(initialJourney?.offeredPlaces ?? 3);
+  const [luggage, setLuggage] = useState<number | "">(initialJourney?.luggage ?? "");
+  const [wait, setWait] = useState<number | "">(initialJourney?.wait ?? "");
+  const [flight, setFlight] = useState(initialJourney?.flight ?? "");
+  const [scheduledFlightAt, setScheduledFlightAt] = useState(initialJourney?.scheduledFlightAt ?? "");
+  const [airportReadyAt, setAirportReadyAt] = useState(initialJourney?.airportReadyAt ?? "");
+  const [meeting, setMeeting] = useState(initialJourney?.meeting ?? "");
   const [message, setMessage] = useState("");
-  const [cover, setCover] = useState<CoverId | "auto">("auto");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const [cover, setCover] = useState<CoverId | "auto">(initialJourney?.cover ?? "auto");
+  const [title, setTitle] = useState(initialJourney?.title ?? "");
+  const [description, setDescription] = useState(initialJourney?.description ?? "");
   const [error, setError] = useState("");
   const generatedCopy = useRef<{ title: string; description: string } | null>(
     null,
@@ -59,23 +61,25 @@ export function CreatePost({
     toLabel: destination.trim(),
     date,
     time,
-    luggage,
-    wait,
+    luggage: kind === "airport" && luggage !== "" ? luggage : undefined,
+    wait: kind === "airport" && wait !== "" ? wait : undefined,
     flight: kind === "airport" ? normalizeFlight(flight) : "",
     scheduledFlightAt:
       kind === "airport" ? scheduledFlightAt || undefined : undefined,
     airportReadyAt:
       kind === "airport" && direction === "from_airport"
-        ? airportReadyAt
+        ? airportReadyAt || undefined
         : undefined,
   };
 
-  function generate() {
+  function generate(preserveEdits = false) {
     const result = generatePost(draftInput, today);
-    const description = `${result.description}${message.trim() ? `\n\n${message.trim()}` : ""}`;
-    setTitle(result.title);
-    setDescription(description);
-    generatedCopy.current = { title: result.title, description };
+    const nextDescription = `${result.description}${message.trim() ? `\n\n${message.trim()}` : ""}`;
+    if (!preserveEdits || !title || title === generatedCopy.current?.title)
+      setTitle(result.title);
+    if (!preserveEdits || !description || description === generatedCopy.current?.description)
+      setDescription(nextDescription);
+    generatedCopy.current = { title: result.title, description: nextDescription };
   }
   function updateFlight(value: string) {
     const number = normalizeFlight(value);
@@ -109,7 +113,7 @@ export function CreatePost({
       return;
     }
     setError("");
-    generate();
+    generate(true);
     setStep(2);
   }
 
@@ -126,27 +130,25 @@ export function CreatePost({
     }
     onPublish({
       ...draftInput,
-      id: `local-${crypto.randomUUID()}`,
+      id: initialJourney?.id ?? `local-${crypto.randomUUID()}`,
       title: title.trim(),
       description: description.trim(),
       author: "你",
       avatar: "duck",
       cover: chosenCover,
-      seatsUsed: 1,
-      seatsTotal: seats + 1,
-      luggage: kind === "airport" ? luggage : 0,
-      wait: kind === "airport" ? wait : 0,
+      interestCount: initialJourney?.interestCount ?? 0,
+      offeredPlaces: seats,
       meeting: meeting.trim() || "集合位置再傾",
       mine: true,
     });
   }
 
   return (
-    <Modal label="發佈示範旅程" onClose={onClose} wide>
+    <Modal label={initialJourney ? "編輯示範旅程" : "發佈示範旅程"} onClose={onClose} wide>
       <div className={s.formHeader}>
         <span className={s.kicker}>SHARE YOUR NEXT JOURNEY</span>
-        <h2>分享你嘅下一程。</h2>
-        <p>填好行程，我哋幫你寫。唔使上載相。</p>
+        <h2>{initialJourney ? "更新你嘅同路行程。" : "分享你嘅下一程。"}</h2>
+        <p>先填基本行程，其他資料可以之後再加。</p>
         <div className={s.steps}>
           <span data-current={step === 1}>01 行程資料</span>
           <ArrowRight size={14} />
@@ -215,24 +217,13 @@ export function CreatePost({
               />
             </label>
             <label>
-              出發日期
+              夾車出發日期
               <input
                 required
                 type="date"
                 min={today}
                 value={date}
-                onChange={(e) => {
-                  const nextDate = e.target.value;
-                  if (airportReadyAt.startsWith(`${date}T`))
-                    setAirportReadyAt(
-                      `${nextDate}T${airportReadyAt.split("T")[1]}`,
-                    );
-                  if (scheduledFlightAt.startsWith(`${date}T`))
-                    setScheduledFlightAt(
-                      `${nextDate}T${scheduledFlightAt.split("T")[1]}`,
-                    );
-                  setDate(nextDate);
-                }}
+                onChange={(e) => setDate(e.target.value)}
               />
             </label>
             <label>
@@ -257,14 +248,20 @@ export function CreatePost({
                 ))}
               </select>
             </label>
+          </div>
+          <p className={s.fieldHint}>日期同時間以香港時間為準（24 小時制）。同行名額係計劃人數，唔代表已確認座位。</p>
+          <details key="journey-extras" className={s.optionalFields}>
+            <summary>加啲行程資料（選填）</summary>
+            <div className={s.formGrid}>
             {kind === "airport" && (
               <>
                 <label>
-                  行李數量
+                  行李數量（選填）
                   <select
                     value={luggage}
-                    onChange={(e) => setLuggage(Number(e.target.value))}
+                    onChange={(e) => setLuggage(e.target.value === "" ? "" : Number(e.target.value))}
                   >
+                    <option value="">未提供</option>
                     {[0, 1, 2, 3, 4].map((n) => (
                       <option key={n} value={n}>
                         {n} 個喼
@@ -294,9 +291,8 @@ export function CreatePost({
                 </label>
                 {direction === "from_airport" && (
                   <label>
-                    預計出閘時間
+                    預計出閘時間（選填）
                     <input
-                      required
                       type="datetime-local"
                       value={airportReadyAt}
                       onChange={(e) => setAirportReadyAt(e.target.value)}
@@ -304,11 +300,12 @@ export function CreatePost({
                   </label>
                 )}
                 <label>
-                  最多可以等
+                  最多可以等（選填）
                   <select
                     value={wait}
-                    onChange={(e) => setWait(Number(e.target.value))}
+                    onChange={(e) => setWait(e.target.value === "" ? "" : Number(e.target.value))}
                   >
+                    <option value="">未提供</option>
                     {[0, 10, 15, 20, 30, 45, 60].map((n) => (
                       <option key={n} value={n}>
                         {n === 0 ? "準時出發" : `${n} 分鐘`}
@@ -318,8 +315,8 @@ export function CreatePost({
                 </label>
                 <p className={s.fieldHint}>
                   {direction === "from_airport"
-                    ? "預定抵達係航班時間；預計出閘係過關、拎完行李之後；夾車出發係你想開車嘅時間。三個時間分開填，全部以香港時間為準，支援跨日。"
-                    : "出發時間係你出發去機場嘅時間，請預留足夠時間辦理登機。"}
+                    ? "航班抵達、過關取行李後出閘、夾車出發係唔同時間。只填你有嘅資料；每項日期獨立，支援跨日。"
+                    : "夾車出發同航班起飛嘅日期可以唔同。例如 21 日 21:50 出發，22 日 00:17 起飛。請預留足夠登機時間。"}
                 </p>
               </>
             )}
@@ -342,7 +339,8 @@ export function CreatePost({
                 onChange={(e) => setMessage(e.target.value)}
               />
             </label>
-          </div>
+            </div>
+          </details>
           {error && (
             <p role="alert" className={s.formError}>
               {error}
@@ -350,7 +348,7 @@ export function CreatePost({
           )}
           <button className={s.primary} type="submit">
             <Sparkles size={17} />
-            幫我寫個帖文
+            {initialJourney ? "預覽修改" : "幫我寫個帖文"}
             <ArrowRight size={16} />
           </button>
         </form>
@@ -358,12 +356,14 @@ export function CreatePost({
         <form onSubmit={publish} className={s.form}>
           <div className={s.editorPreview}>
             <RouteCover scene={chosenCover} />
-            <span>已自動配搭路線封面</span>
+            <span>{cover === "auto" ? "已自動配搭路線封面" : "已揀選路線封面"}</span>
           </div>
           <section className={s.publishSummary} aria-label="發佈前行程預覽">
             <h3>
               {origin} <ArrowRight size={16} /> {destination}
             </h3>
+            <p>計劃最多 {seats + 1} 人（連你） · 可供同行 {seats} 個名額</p>
+            <small>所有時間：香港時間 · 24 小時制</small>
             {kind === "airport" ? (
               <>
                 <FlightBadge flight={flight} />
@@ -386,6 +386,8 @@ export function CreatePost({
               </p>
             )}
           </section>
+          <details key="cover-choices" className={s.optionalFields}>
+            <summary>揀個封面（選填，已自動配搭）</summary>
           <fieldset className={s.coverOptions}>
             <legend>揀個沿途風景</legend>
             <button
@@ -408,6 +410,7 @@ export function CreatePost({
               </button>
             ))}
           </fieldset>
+          </details>
           <label>
             帖文標題
             <input
@@ -427,7 +430,7 @@ export function CreatePost({
               onChange={(e) => setDescription(e.target.value)}
             />
           </label>
-          <button type="button" className={s.textButton} onClick={generate}>
+          <button type="button" className={s.textButton} onClick={() => generate()}>
             <RefreshCw size={13} />
             重新產生文字（會取代目前內容）
           </button>
@@ -449,7 +452,7 @@ export function CreatePost({
             </button>
             <button className={s.primary} type="submit">
               <Check size={17} />
-              發佈示範帖文
+              {initialJourney ? "儲存示範修改" : "發佈示範帖文"}
             </button>
           </div>
         </form>

@@ -29,7 +29,6 @@ import {
   addDays,
   corridors,
   dateLabel,
-  momentLabel,
   normalizeFlight,
   sampleJourneys,
   type Journey,
@@ -39,6 +38,7 @@ import { Modal } from "./modal";
 import { Masonry } from "./masonry";
 import { AirportTiming, FlightBadge } from "./airport-info";
 import { RouteCover } from "./route-cover";
+import { JourneyInterest } from "./journey-interest";
 import s from "./preview.module.css";
 
 type Panel = "create" | "filters" | "messages" | "profile" | null;
@@ -50,6 +50,7 @@ export default function Discovery({ today }: { today: string }) {
   const [query, setQuery] = useState("");
   const [interested, setInterested] = useState<string[]>([]);
   const [panel, setPanel] = useState<Panel>(null);
+  const [editing, setEditing] = useState<Journey>();
   const [toast, setToast] = useState("");
   const [day, setDay] = useState("");
   const [direction, setDirection] = useState("all");
@@ -119,16 +120,22 @@ export default function Discovery({ today }: { today: string }) {
   function closePost() {
     window.history.replaceState(null, "", "/v2-preview");
   }
+  function startCreate() {
+    setEditing(undefined);
+    closePost();
+    setPanel("create");
+  }
+  function editPost(post: Journey) {
+    setEditing(post);
+    closePost();
+    setPanel("create");
+  }
   function toggleInterest(post: Journey) {
     if (post.mine) {
       notify("呢個係你發佈嘅示範旅程，可以喺「我的」查看。");
       return;
     }
     const hasInterest = interested.includes(post.id);
-    if (!hasInterest && post.seatsUsed >= post.seatsTotal) {
-      notify("呢程暫時已滿，試吓其他同路旅程。");
-      return;
-    }
     setInterested((current) =>
       hasInterest
         ? current.filter((id) => id !== post.id)
@@ -136,7 +143,7 @@ export default function Discovery({ today }: { today: string }) {
     );
     notify(
       hasInterest
-        ? "已取消示範興趣。"
+        ? "已撤回示範興趣。"
         : "已記低你嘅興趣！只供示範，未有預訂座位。",
     );
   }
@@ -156,7 +163,7 @@ export default function Discovery({ today }: { today: string }) {
         !`${post.fromLabel} ${post.toLabel}`.includes(district.trim())
       )
         return false;
-      if (post.seatsTotal - post.seatsUsed < party) return false;
+      if (post.offeredPlaces < party) return false;
       if (period === "morning" && Number(post.time.slice(0, 2)) >= 12)
         return false;
       if (period === "evening" && Number(post.time.slice(0, 2)) < 17)
@@ -164,7 +171,8 @@ export default function Discovery({ today }: { today: string }) {
       if (earliest && post.time < earliest) return false;
       if (category === "airport") {
         if (direction !== "all" && post.direction !== direction) return false;
-        if (post.luggage > maxBags || post.wait < minimumWait) return false;
+        if (maxBags < 4 && (post.luggage === undefined || post.luggage > maxBags)) return false;
+        if (minimumWait > 0 && (post.wait === undefined || post.wait < minimumWait)) return false;
         if (
           flight.trim() &&
           !normalizeFlight(post.flight).includes(normalizeFlight(flight))
@@ -184,15 +192,18 @@ export default function Discovery({ today }: { today: string }) {
       sort === "earliest"
         ? `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`)
         : sort === "seats"
-          ? b.seatsTotal - b.seatsUsed - (a.seatsTotal - a.seatsUsed)
+          ? b.offeredPlaces - a.offeredPlaces
           : 0,
     );
   function publish(post: Journey) {
-    setJourneys((current) => [post, ...current]);
+    setJourneys((current) => current.some((p) => p.id === post.id)
+      ? current.map((p) => p.id === post.id ? post : p)
+      : [post, ...current]);
     switchCategory(post.rideKind === "airport" ? "airport" : "routes");
     setPanel(null);
     openPost(post);
-    notify("示範帖文已發佈！重新整理頁面後會清除。");
+    notify(editing ? "示範修改已儲存！重新整理頁面後會清除。" : "示範帖文已發佈！重新整理頁面後會清除。");
+    setEditing(undefined);
   }
   function focusSearch() {
     searchRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -222,9 +233,9 @@ export default function Discovery({ today }: { today: string }) {
             <span>香港 · HONG KONG</span>
           </div>
           <div className={s.headerActions}>
-            <span className={s.previewBadge}>V2.1 預覽</span>
+            <span className={s.previewBadge}>V2.2 預覽</span>
             <button
-              onClick={() => setPanel("create")}
+              onClick={startCreate}
               className={s.desktopPublish}
             >
               <Plus size={16} />
@@ -442,7 +453,7 @@ export default function Discovery({ today }: { today: string }) {
                 <select value={sort} onChange={(e) => setSort(e.target.value)}>
                   <option value="recommended">為你推薦</option>
                   <option value="earliest">最早出發</option>
-                  <option value="seats">最多空位</option>
+                  <option value="seats">同行名額較多</option>
                 </select>
               </label>
             </div>
@@ -502,38 +513,8 @@ export default function Discovery({ today }: { today: string }) {
                       {post.rideKind === "airport" && (
                         <FlightBadge flight={post.flight} />
                       )}
-                      {post.direction === "from_airport" &&
-                        post.airportReadyAt && (
-                          <div className={s.readyHint}>
-                            預計出閘 {momentLabel(post.airportReadyAt, today)}
-                          </div>
-                        )}
-                      <div className={s.seats}>
-                        <span className={s.seatDots}>
-                          {Array.from({ length: post.seatsTotal }, (_, n) => (
-                            <i
-                              key={n}
-                              data-filled={
-                                n <
-                                post.seatsUsed +
-                                  Number(interested.includes(post.id))
-                              }
-                            />
-                          ))}
-                        </span>
-                        <span>
-                          {post.seatsUsed +
-                            Number(interested.includes(post.id))}{" "}
-                          / {post.seatsTotal} 人有興趣
-                        </span>
-                      </div>
+                      <JourneyInterest journey={post} interested={interested.includes(post.id)} />
                       <h3>{post.title}</h3>
-                      {post.rideKind === "airport" && (
-                        <div className={s.cardExtra}>
-                          <Luggage size={11} />
-                          {post.luggage} 個喼<span>·</span>可等 {post.wait} 分鐘
-                        </div>
-                      )}
                       <div className={s.author}>
                         <Image
                           src={`/avatars/animals/${post.avatar}.png`}
@@ -541,16 +522,16 @@ export default function Discovery({ today }: { today: string }) {
                           width={25}
                           height={25}
                         />
-                        <span>{post.author}</span>
+                        <span>{post.mine ? "你 · 發帖人" : post.author}</span>
                         <span className={s.authorHint}>
                           {post.mine ? "你嘅帖文" : "同路友"}
                         </span>
                       </div>
                     </div>
                   </button>
-                  <button
+                  {!post.mine && <button
                     className={s.save}
-                    aria-label={`${interested.includes(post.id) ? "取消興趣" : "我有興趣"}：${post.title}`}
+                    aria-label={`${interested.includes(post.id) ? "撤回興趣" : "我有興趣"}：${post.title}`}
                     aria-pressed={interested.includes(post.id)}
                     onClick={() => toggleInterest(post)}
                   >
@@ -560,7 +541,7 @@ export default function Discovery({ today }: { today: string }) {
                         interested.includes(post.id) ? "currentColor" : "none"
                       }
                     />
-                  </button>
+                  </button>}
                 </article>
               ))}
             </Masonry>
@@ -571,7 +552,7 @@ export default function Discovery({ today }: { today: string }) {
                 <p>試吓放寬時間或地區，又或者分享自己嘅行程。</p>
                 <div className={s.formActions}>
                   <button onClick={clearFilters}>清除篩選</button>
-                  <button onClick={() => setPanel("create")}>
+                  <button onClick={startCreate}>
                     分享行程 <Plus size={14} />
                   </button>
                 </div>
@@ -600,7 +581,7 @@ export default function Discovery({ today }: { today: string }) {
           <Search />
           <span>搜尋</span>
         </button>
-        <button onClick={() => setPanel("create")} className={s.publishNav}>
+        <button onClick={startCreate} className={s.publishNav}>
           <Plus />
           <span>發佈</span>
         </button>
@@ -643,9 +624,9 @@ export default function Discovery({ today }: { today: string }) {
               />
               <div>
                 <b>{selected.author}</b>
-                <span>FareEnough 同路友 · 示範人物</span>
+                <span>{selected.mine ? "你係呢程嘅發帖人" : "FareEnough 同路友 · 示範人物"}</span>
               </div>
-              <span className={s.softBadge}>同路傾吓</span>
+              <span className={s.softBadge}>{selected.mine ? "我發佈嘅旅程" : "同路傾吓"}</span>
             </div>
             {selected.rideKind === "airport" && (
               <FlightBadge flight={selected.flight} />
@@ -680,22 +661,12 @@ export default function Discovery({ today }: { today: string }) {
                   <b>{selected.time}</b>
                 </span>
               </div>
-              <div>
+              <div className={s.detailParticipants}>
                 <Users />
                 <span>
-                  有興趣嘅人
-                  <b>
-                    {selected.seatsUsed +
-                      Number(interested.includes(selected.id))}{" "}
-                    / {selected.seatsTotal} 人 · 仲有{" "}
-                    {Math.max(
-                      0,
-                      selected.seatsTotal -
-                        selected.seatsUsed -
-                        Number(interested.includes(selected.id)),
-                    )}{" "}
-                    個位
-                  </b>
+                  計劃同行人數
+                  <b>發帖人 1 人 + 同行名額 {selected.offeredPlaces} 個</b>
+                  <JourneyInterest journey={selected} interested={interested.includes(selected.id)} />
                 </span>
               </div>
               <div>
@@ -706,18 +677,18 @@ export default function Discovery({ today }: { today: string }) {
               </div>
               {selected.rideKind === "airport" && (
                 <>
-                  <div>
+                  {selected.luggage !== undefined && <div>
                     <Luggage />
                     <span>
                       發帖人嘅行李<b>{selected.luggage} 個喼</b>
                     </span>
-                  </div>
-                  <div>
+                  </div>}
+                  {selected.wait !== undefined && <div>
                     <Clock3 />
                     <span>
                       最多可以等<b>{selected.wait} 分鐘</b>
                     </span>
-                  </div>
+                  </div>}
                 </>
               )}
             </div>
@@ -735,11 +706,15 @@ export default function Discovery({ today }: { today: string }) {
                     : "夾車出發係由集合地點開車去機場嘅時間。請自行預留到機場、辦理登機同安檢嘅時間。"}
                 </p>
                 <small>
-                  所有時間以香港時間為準。航班資料只供示範，未有即時追蹤。
+                  所有時間：香港時間 · 24 小時制。航班資料只供示範，未有即時追蹤。
                 </small>
               </section>
             )}
             <div className={s.detailFooter}>
+              {selected.mine ? <>
+                <p className={s.ownerNotice}>你係發帖人，可以修改呢程嘅示範資料。</p>
+                <button className={s.primary} onClick={() => editPost(selected)}>編輯旅程</button>
+              </> : <>
               <button
                 className={s.primary}
                 onClick={() => toggleInterest(selected)}
@@ -749,20 +724,19 @@ export default function Discovery({ today }: { today: string }) {
                 ) : (
                   <Heart size={18} />
                 )}
-                {selected.mine
-                  ? "你嘅示範旅程"
-                  : interested.includes(selected.id)
-                    ? "已有興趣 · 按此取消"
-                    : "我有興趣"}
+                {interested.includes(selected.id) ? "撤回興趣" : "我有興趣"}
               </button>
-              <small>只記錄示範意向，唔代表已預訂或確認共乘；唔會收費。</small>
+              </>}
+              <small>興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。</small>
             </div>
           </div>
         </Modal>
       )}
       {panel === "create" && (
         <CreatePost
+          key={editing?.id ?? "new"}
           today={today}
+          initialJourney={editing}
           onClose={() => setPanel(null)}
           onPublish={publish}
         />
@@ -794,14 +768,14 @@ export default function Discovery({ today }: { today: string }) {
                 />
               </label>
               <label>
-                同行人數
+                計劃同行名額最少
                 <select
                   value={party}
                   onChange={(e) => setParty(Number(e.target.value))}
                 >
                   {[1, 2, 3].map((n) => (
                     <option key={n} value={n}>
-                      {n} 人 · 需要 {n} 個位
+                      {n} 個名額（唔計發帖人）
                     </option>
                   ))}
                 </select>
@@ -865,7 +839,7 @@ export default function Discovery({ today }: { today: string }) {
                     />
                   </label>
                   <p className={s.fieldHint}>
-                    時間篩選以計劃夾車出發時間為準，唔係航班抵達或出閘時間。行李數量只供配對參考。
+                    時間篩選以計劃夾車出發時間為準。同行名額只係發帖人嘅計劃，唔係已確認餘位；有啟用行李或等候篩選時，未提供資料嘅旅程唔會顯示。
                   </p>
                 </>
               ) : (
@@ -931,10 +905,7 @@ export default function Discovery({ today }: { today: string }) {
                 <b>{myPosts.length}</b>已發佈旅程
               </span>
               <span>
-                <b>{interested.length}</b>有興趣旅程
-              </span>
-              <span>
-                <b>HK</b>香港同路友
+                <b>{interestPosts.length}</b>有興趣旅程
               </span>
             </div>
             {panel === "profile" && (
@@ -946,6 +917,7 @@ export default function Discovery({ today }: { today: string }) {
                       key={p.id}
                       post={p}
                       today={today}
+                      interested={interested.includes(p.id)}
                       open={() => openPost(p)}
                     />
                   ))
@@ -956,7 +928,7 @@ export default function Discovery({ today }: { today: string }) {
                 )}
                 <button
                   className={s.secondary}
-                  onClick={() => setPanel("create")}
+                  onClick={startCreate}
                 >
                   <Plus size={15} />
                   分享下一程
@@ -970,6 +942,7 @@ export default function Discovery({ today }: { today: string }) {
                   key={p.id}
                   post={p}
                   today={today}
+                  interested={interested.includes(p.id)}
                   open={() => openPost(p)}
                 />
               ))
@@ -1009,10 +982,12 @@ export default function Discovery({ today }: { today: string }) {
 function MiniPost({
   post,
   today,
+  interested,
   open,
 }: {
   post: Journey;
   today: string;
+  interested: boolean;
   open: () => void;
 }) {
   return (
@@ -1025,8 +1000,9 @@ function MiniPost({
           {post.fromLabel} → {post.toLabel}
         </b>
         <small>
-          {dateLabel(post.date, today)} {post.time} · {post.author}
+          {dateLabel(post.date, today)} {post.time} 夾車出發 · {post.mine ? "你係發帖人" : post.author}
         </small>
+        <JourneyInterest journey={post} interested={interested} />
       </span>
       <ArrowUpRight size={17} />
     </button>

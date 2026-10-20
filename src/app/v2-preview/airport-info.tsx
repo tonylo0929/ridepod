@@ -1,7 +1,7 @@
 import { Plane } from "lucide-react";
 import {
   departureAt,
-  momentLabel,
+  fullMomentLabel,
   normalizeFlight,
   type Journey,
 } from "./data";
@@ -22,7 +22,6 @@ export function FlightBadge({ flight }: { flight: string }) {
 
 export function AirportTiming({
   journey,
-  today,
 }: {
   journey: Pick<
     Journey,
@@ -32,6 +31,16 @@ export function AirportTiming({
 }) {
   return (
     <dl className={s.timingList} aria-label="機場旅程時間">
+      {journey.direction === "from_airport" && journey.airportReadyAt && (
+        <div>
+          <dt>預計出閘 · 已過關及取行李</dt>
+          <dd>{fullMomentLabel(journey.airportReadyAt)}</dd>
+        </div>
+      )}
+      <div className={s.departureRow}>
+        <dt>預計夾車出發</dt>
+        <dd>{fullMomentLabel(departureAt(journey))}</dd>
+      </div>
       {journey.scheduledFlightAt && (
         <div>
           <dt>
@@ -39,19 +48,9 @@ export function AirportTiming({
               ? "航班預定抵達"
               : "航班預定起飛"}
           </dt>
-          <dd>{momentLabel(journey.scheduledFlightAt, today)}</dd>
+          <dd>{fullMomentLabel(journey.scheduledFlightAt)}</dd>
         </div>
       )}
-      {journey.direction === "from_airport" && journey.airportReadyAt && (
-        <div>
-          <dt>預計出閘</dt>
-          <dd>{momentLabel(journey.airportReadyAt, today)}</dd>
-        </div>
-      )}
-      <div className={s.departureRow}>
-        <dt>預計夾車出發</dt>
-        <dd>{momentLabel(departureAt(journey), today)}</dd>
-      </div>
     </dl>
   );
 }

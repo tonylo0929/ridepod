@@ -1,8 +1,8 @@
-# FareEnough V2.1 preview handover
+# FareEnough V2.2 preview handover
 
 Updated: 21 October 2026, Hong Kong time.
 
-The public preview brand is **FareEnough** with the tagline **同路就夾，車費齊齊慳。** The repository, branch, Vercel project and production experience retain their existing names. V2.1 changes remain confined to the prototype, its timing tests and this handover.
+The public preview brand is **FareEnough** with the tagline **同路就夾，車費齊齊慳。** The repository, branch, Vercel project and production experience retain their existing names. V2.2 is a focused refinement confined to the prototype, its logic tests and this handover.
 
 ## Open and review
 
@@ -24,16 +24,21 @@ V2 uses the same app and dependencies. It does not replace `/home`, change the d
 
 ## Completed prototype
 
+- V2.2 separates the host (one person), advertised companion places, maximum planned group size (host plus companion places), and expressions of interest. Interest excludes the host and is never subtracted from capacity. There is no confirmed-participant or remaining-seat model. The same `journeyCounts` helper and `JourneyInterest` component serve feed cards, details and My Journeys. Interest may exceed the planned group size without creating a booking or blocking further interest.
+- Group-size filtering/sorting uses advertised companion places, independent of interest. Active luggage/waiting filters exclude journeys with missing information; inactive filters retain them.
+- Own posts have an explicit creator label and no interest/heart action. Their detail view offers local editing through the existing two-step form. Saving updates the same ID, preserves the interest baseline and avoids duplicate posts. Other posts offer **我有興趣** / **撤回興趣**, with a clear explanation that interest does not confirm a booking.
+- My Journeys shows only published and interested journey counts, calculated from the available session state. The decorative HK statistic is removed. Refresh warnings remain visible.
 - Responsive social discovery: two masonry lanes on phones, three on tablets, four on desktop. Lane assignment preserves row-wise post ordering and avoids an empty desktop column after publishing an additional post.
 - The intro is reduced from roughly 208px to 72px on mobile, with a simple typographic FareEnough wordmark. Routes use 13–14px mobile text; flight badges and departure times use 13px. Interest counts and authors use 12px. The mint, cream and warm yellow palette is retained.
-- Cantonese journey cards with structured origin/destination, Hong Kong-relative dates, departure time, interest counts, luggage, author avatars and a detail action.
-- Airport discovery: arrivals/departures, date, district, group size, earliest ready/departure time, waiting tolerance, luggage and optional flight filter.
+- Cantonese journey cards prioritize origin/destination, Hong Kong-relative departure date/time, optional flight, independent interest/group counts and author. Luggage, waiting tolerance and airport-exit details live in the detail view to reduce mobile clutter.
+- Airport discovery: arrivals/departures, date, district, planned companion places, earliest shared-car departure time, waiting tolerance, luggage and optional flight filter.
 - Popular corridors, today/tomorrow, morning/evening, recurring journeys and sorting.
 - Optional flight badges are prominent on feed cards, details and the publishing preview. A direct flight filter accepts lowercase and spaces (for example `cx 734`). Blank flight numbers produce no badge and no fabricated schedule.
-- Journey details in a native accessible modal, with query-addressable sample journeys (for example `/v2-preview?journey=demo-1`). Three separate structured fields represent scheduled flight arrival/takeoff, expected airport exit and planned shared-car departure. Hong Kong local date-times support overnight flights. Chronology is validated; none of these fields claims an actual live departure or flight update.
+- Journey details in a native accessible modal, with query-addressable sample journeys (for example `/v2-preview?journey=demo-1`). Three separate structured fields represent scheduled flight arrival/takeoff, expected airport exit and planned shared-car departure. Timelines and creation reviews show the full date, year and 24-hour time for each event, with a Hong Kong time note. Arrivals prioritize exit and car departure; outbound trips show car departure before scheduled takeoff. `demo-3` illustrates departure today at 21:50 and takeoff tomorrow at 00:17; anchored to 21 October 2026, these display 21 and 22 October respectively. Changing the car date does not silently move the flight/exit dates. Chronology is validated even when the optional exit time is absent. No field claims live flight information.
 - Add/withdraw demo interest, consistent counts, message-centre shortlist and My journeys.
-- Two-step structured post creation; template-generated editable Cantonese title/description; optional message/meeting point/flight; auto-selected cover and nine selectable original cover illustrations. Three new airport graphics (boarding pass, suitcase and wayfinding sign) vary the feed alongside the city covers. No photos, external assets or image API are required.
+- Two-step creation keeps essential type/direction, route, car departure date/time and companion places upfront. An optional disclosure contains flight number/schedule, airport exit, luggage, waiting tolerance, meeting point and message. Optional fields start empty, including airport exit; generated text does not fabricate missing luggage/waiting/exit information. Covers are automatically selected, with all nine original illustrations available in an optional chooser. No external images or APIs are required.
 - Flight numbers can be edited at both creation steps. Untouched generated title/description track preview flight edits; custom wording is preserved.
+- Going back to step one and returning to review preserves custom title/body text. Explicit regeneration warns that it replaces the current copy. Flight-based arrival titles avoid assigning the car departure date to the flight's landing date.
 - Loading skeleton, recoverable route error boundary, invalid/expired demo-link notice, empty-state recovery, keyboard tabs, native modal focus trapping/Escape dismissal and reduced-motion styles.
 
 Everything is clearly labelled as a demo. Posts and interests exist in React memory only, on the current page. Reloading clears them; there is no cross-device sync of demo content. A newly created post's query link stops resolving after reload and shows an explicit notice. No real messages, bookings, dispatch, payments, user uploads, flight tracking, or live matching have been added.
@@ -53,6 +58,7 @@ V2 has no fetch calls, API routes, database clients, production record imports, 
 | `src/app/v2-preview/page.tsx` | Preview route, metadata/noindex and Hong Kong date anchor. |
 | `src/app/v2-preview/data.ts` | Typed sample journeys, date helpers, cover assignment and Cantonese templates. |
 | `src/app/v2-preview/airport-info.tsx` | Shared optional flight badge and separate flight/exit/car-departure timeline. |
+| `src/app/v2-preview/journey-interest.tsx` | Shared interest and planned-capacity presentation. |
 | `src/app/v2-preview/discovery.tsx` | Feed, filters, detail, navigation, interest, profile and message shortlist. |
 | `src/app/v2-preview/create-post.tsx` | Structured creation, validation, editable copy and cover choices. |
 | `src/app/v2-preview/masonry.tsx` | Responsive masonry lane distribution. |
@@ -62,19 +68,20 @@ V2 has no fetch calls, API routes, database clients, production record imports, 
 | `src/app/v2-preview/loading.tsx` | Loading state. |
 | `src/app/v2-preview/error.tsx` | Recoverable error state. |
 | `docs/ridepod-v2-handover.md` | This cross-device implementation and continuation guide. |
-| `scripts/test-v2-airport-timing.mjs` | Six meaningful checks for independent times, overnight chronology, optional flights and generated copy. |
+| `scripts/test-v2-airport-timing.mjs` | Nine checks for times/dates, optional data, generated copy and independent host/interest/capacity calculations. |
 
 ## Validation
 
 - `npm run build`: passed, including TypeScript and generation of existing routes.
-- `node --experimental-strip-types scripts/test-v2-airport-timing.mjs`: 6 passed. Node may emit an informational module-type warning; no package configuration was changed merely to suppress it.
-- Focused ESLint: passed with zero warnings/errors for V2, the runtime boundary and root layout.
+- `npx tsc --noEmit`: passed.
+- `node --experimental-strip-types scripts/test-v2-airport-timing.mjs`: 9 passed. Node may emit an informational module-type warning; no package configuration was changed merely to suppress it.
+- `npm run lint`: zero errors; 44 existing unused-variable warnings in production files outside this change. Focused ESLint on V2 and its logic tests passes with `--max-warnings 0`.
 - HTTP smoke checks: `/v2-preview`, `/home?tab=one_off`, `/create/scheduled` and `/pods` returned 200 locally.
 - Browser checks passed: airport details, distinct arrival/exit times, interest/count updates, message shortlist, popular corridor selection, recurring filter, airport district/direction filter, no-result search/recovery, generated-copy editing, cover choice, publishing a demo journey and finding it under My journeys.
-- V2.1 browser checks include prominent flight filtering, absent tags for blank flights, all three times in details/review, invalid chronology feedback, preview flight editing, preserved custom text, and publishing the changed flight/cover.
+- V2.2 browser checks cover distinct arrival/exit/car times, full cross-midnight dates in review and details, outbound/arrival validation, independently edited dates, creation without optional fields, custom text surviving back/forward navigation, own-post edit/save without duplicate counting, no self-interest button, other-post interest/withdrawal, matching counts in My Journeys, optional flight tags/filtering, planned-place filtering, cover choice, recurring journeys, empty recovery and expired local links after refresh.
 - Responsive checks passed at requested viewport widths 320, 390, 900 and 1440: 2/2/3/4 lanes, no horizontal page overflow. Browser reserves a scrollbar, so measured content widths are slightly smaller.
 - No browser console errors observed from the new UI.
-- Initial Vercel deployment reported Ready/success. Anonymous requests reach Vercel's authentication gate, so protected remote content cannot be independently checked without an authorised Vercel session. Local route and interaction checks are separate from this deployment status check.
+- Vercel Preview deployment is checked through GitHub commit/deployment status after pushing. The final delivery note records the exact commit and immutable Preview URL. Anonymous requests reach Vercel's authentication gate, so protected remote content cannot be independently checked without an authorised Vercel session. Local route and interaction checks are separate from this deployment status check.
 
 The existing app's entire authenticated journey/payment flow has not been retested against production data. Its implementation files, API logic and database/auth configuration are untouched. No claim is made that the prototype verifies real seats, fares, flight information or rider identities.
 
@@ -95,4 +102,4 @@ Git syncs committed source and these notes; it does not move this running local 
 
 Paste this into a new Codex chat opened in the office repository:
 
-> Continue FareEnough V2.1 in `tonylo0929/ridepod`, branch `feature/ridepod-social-discovery`, draft PR #1. Read `AGENTS.md` and `docs/ridepod-v2-handover.md` first. Public branding is FareEnough only inside `/v2-preview`. Flight schedule, expected airport exit and planned car departure are separate fields; flight numbers stay optional. The social discovery prototype uses in-memory demo data and bypasses production AuthProvider only on that route. The preview is https://ridepod-git-feature-ridepod-social-8e15af-tonylo0929s-projects.vercel.app/v2-preview and may require authorised Vercel sign-in. Preserve existing functionality and keep working on this feature branch. Push completed changes for Vercel Preview. Do not rename the repository/Vercel project, merge, promote, change production data/auth/schema, or deploy to production without my explicit approval. Ask me what design changes I want next.
+> Continue FareEnough V2.2 in `tonylo0929/ridepod`, branch `feature/ridepod-social-discovery`, draft PR #1. Read `AGENTS.md` and `docs/ridepod-v2-handover.md` first. Public branding is FareEnough only inside `/v2-preview`. Host, interest and advertised group capacity are independent; there are no confirmed passengers or computed remaining seats. Flight schedule, optional airport exit and car departure have independent Hong Kong dates/times. The two-step form supports local edits and optional extras; custom copy survives back navigation. Demo data lives in memory and clears on refresh. Production auth/profile boot is bypassed only on the preview route. The preview is https://ridepod-git-feature-ridepod-social-8e15af-tonylo0929s-projects.vercel.app/v2-preview and may require authorised Vercel sign-in. Preserve the branding, palette and mobile masonry; keep working on this feature branch. Push completed changes for Vercel Preview. Do not rename the repository/Vercel project, merge, promote, change production data/auth/schema, or deploy to production without my explicit approval. Ask me what design changes I want next.
