@@ -1636,7 +1636,6 @@
   }
   .quickFilters {
     gap: 5px;
-    mask-image: linear-gradient(to right, #000 94%, transparent);
   }
   .quickFilters button {
     font-size: 9px;
@@ -2568,6 +2567,7 @@
   .quickFilters { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); flex: 1; overflow: visible; }
   .quickFilters button { grid-column: span 2; padding-left: 4px; padding-right: 4px; }
   .quickFilters[data-category="airport"] button:nth-child(n+4) { grid-column: span 3; }
+  .corridors button { flex-shrink: 0; font-size: 12px; }
   .filterBar { align-items: flex-start; }
   .cardBody .routeMain { font-size: 14px; }
   .cardBody .interestSummary { margin: 9px 0 6px; }
