@@ -471,7 +471,6 @@ export default function Discovery({ today }: { today: string }) {
                   <button
                     className={s.cardOpen}
                     onClick={() => openPost(post)}
-                    aria-label={`睇旅程：${post.title}`}
                   >
                     <div
                       className={`${s.cardCover} ${index % 3 === 1 ? s.tall : ""}`}
@@ -523,9 +522,6 @@ export default function Discovery({ today }: { today: string }) {
                           height={25}
                         />
                         <span>{post.mine ? "你 · 發帖人" : post.author}</span>
-                        <span className={s.authorHint}>
-                          {post.mine ? "你嘅帖文" : "同路友"}
-                        </span>
                       </div>
                     </div>
                   </button>

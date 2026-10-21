@@ -65,6 +65,8 @@ async function capture(page, testInfo, evidence, id) {
     nodes: v.nodes.map((n) => ({ target: n.target, failureSummary: n.failureSummary })),
   }));
   evidence.captures.push({ id, filename: `${testInfo.project.name}-${id}.png`, path, layout, violations, incompleteRules: audit.incomplete.map((v) => v.id) });
+  // P0 regressions gate publication; keep all audit rules and detailed evidence.
+  expect(violations.filter((v) => ["color-contrast", "label-content-name-mismatch"].includes(v.id)), `${id}: contrast and visible-label accessible names`).toEqual([]);
 }
 
 async function closeDialog(page) {
@@ -72,8 +74,11 @@ async function closeDialog(page) {
   await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 async function openArrival(page) {
-  await page.getByRole("button", { name: `睇旅程：${arrivalTitle}`, exact: true }).click();
+  await journeyCard(page, arrivalTitle).locator("button").first().click();
   await expect(page.getByRole("dialog", { name: "旅程詳情", exact: true })).toBeVisible();
+}
+function journeyCard(page, title) {
+  return page.getByRole("article").filter({ has: page.getByRole("heading", { name: title, exact: true }) });
 }
 async function detailBottom(page) {
   await page.getByRole("dialog").evaluate((el) => { el.scrollTop = el.scrollHeight; });
@@ -162,13 +167,13 @@ test("curated preview review journeys", async ({ page, evidence }, testInfo) => 
     await shot("05-journey-details");
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
-    const focusReturned = await page.getByRole("button", { name: `睇旅程：${arrivalTitle}`, exact: true }).evaluate((el) => document.activeElement === el);
+    const focusReturned = await journeyCard(page, arrivalTitle).locator("button").first().evaluate((el) => document.activeElement === el);
     evidence.observations.push({ kind: "focus-return", passed: focusReturned });
     const noFlight = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "下晝落機，有冇元朗友？", exact: true }) });
     await expect(noFlight).not.toContainText("航班");
   });
   await test.step("Outbound example: car and takeoff keep independent full dates", async () => {
-    await page.getByRole("button", { name: "睇旅程：聽日凌晨 00:17 起飛，今晚一齊去機場？", exact: true }).click();
+    await journeyCard(page, "聽日凌晨 00:17 起飛，今晚一齊去機場？").locator("button").first().click();
     const values = await dialog.locator("dl dd").allTextContents();
     expect(values).toHaveLength(2);
     // Obtain the server's date anchor from its structured departure date, not an assumed timezone.
@@ -258,7 +263,7 @@ test("curated preview review journeys", async ({ page, evidence }, testInfo) => 
     await closeDialog(page);
   });
   await test.step("Refresh: local posts expire and both activity counters reset", async () => {
-    await page.getByRole("button", { name: `睇旅程：${ownTitle}`, exact: true }).click();
+    await journeyCard(page, ownTitle).locator("button").first().click();
     await page.reload();
     await expect(page.getByRole("status")).toContainText("呢個示範旅程已清除");
     await page.getByRole("button", { name: "返回發現同路", exact: true }).click();
