@@ -33,14 +33,14 @@ Use `npm run ux:review -- --project=mobile` for a partial diagnostic run. Partia
 
 ## What is exercised
 
-- Homepage/masonry, airport destination and flight search, advanced filters and a native-dialog keyboard boundary probe (background controls must not receive focus; document/browser boundary stops are reported).
+- Homepage/masonry source/visual/keyboard order, airport destination and flight search, common/advanced filters and cycling Tab/Shift+Tab dialog boundaries (body/background focus stops fail).
 - Popular corridors, recurring filter, empty results and clear-filter recovery.
 - Arrival details, separate flight/exit/car times, blank flight tags and an overnight outbound example.
 - Essential-only creation, optional chronology validation, preview, editable Cantonese copy retained on back navigation, publishing, own-post editing without duplicates or self-interest.
 - Other-post interest before/after, withdrawal, capacity independence, My Journeys and message shortlist.
 - Refresh reset and explicit recovery for an expired local-post link.
 
-The suite asserts interaction behavior, page overflow, masonry lane count, browser errors and the network boundary. Each capture also runs axe scans; these are **reported findings**, not a zero-violation pass gate. A green workflow means the tested flows and package guards passed, even if the report lists contrast or other accessibility issues. No automated audit can replace screen-reader, zoom, keyboard and user-comprehension reviews.
+The suite asserts interaction behavior, page overflow, masonry columns/order/non-overlap, keyboard cycling and opener restoration, browser errors and the network boundary. Each capture and the expanded filter/cover states run axe scans. **Color contrast and visible-label/name mismatches fail the run**; no rules are disabled/excluded. Other findings and incomplete rules are reported for review. A green workflow confirms these tested contracts, not overall WCAG conformance. No automated audit can replace screen-reader, zoom, keyboard and user-comprehension reviews. Use the [five-person usability-test package](USABILITY-TEST.md) before adding features; its sessions and results are pending real participants.
 
 ## Evidence and retention
 

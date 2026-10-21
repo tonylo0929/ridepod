@@ -1,8 +1,18 @@
-# FareEnough V2.2 preview handover
+# FareEnough V2.3 preview handover
 
 Updated: 21 October 2026, Hong Kong time.
 
-The public preview brand is **FareEnough** with the tagline **同路就夾，車費齊齊慳。** The repository, branch, Vercel project and production experience retain their existing names. V2.2 is a focused refinement confined to the prototype, its logic tests and this handover.
+The public preview brand is **FareEnough** with the tagline **同路就夾，車費齊齊慳。** The repository, branch, Vercel project and production experience retain their existing names. V2.3 refines the isolated prototype's accessibility/usability and its review workflow.
+
+## V2.3 review outcome
+
+- Read PR #1's available discussion: only the Vercel bot deployment comment was present. The owner's pasted V2.3 review is the implementation brief.
+- P0 first: darker green secondary text/disclaimers on the existing pastel surfaces, stronger input boundaries/focus indicators, and natural card button names matching visible content. Expanded cover-choice testing exposed additional visible-name mismatches; removing their redundant overrides fixes those too. Axe rules are never disabled/excluded. Contrast and label/name mismatches now fail the reusable review command.
+- P1: cards keep route, departure, optional flight, interest and host-inclusive planned capacity; post title/body are in details. Common airport filters use clearer Cantonese and shorter choices, with an explicit non-booking places note; advanced timing/luggage/wait/flight fields are optional. Mobile quick filters wrap and common touch controls have 44px areas.
+- Step 2 shows a compact cover/route/full-date car-departure summary, then editable Cantonese copy. Full independent airport dates/times, flight editing and nine covers remain available in disclosures. The publish control stays in normal flow and is tested as visible/unobscured at both capture sizes. Step transitions focus the heading and return to the top.
+- P2 evidence and repairs: the previous column DOM traversed whole lanes and Escape did not restore the card opener. A flat sparse row-flow grid now measures card heights while retaining 2/3/4 columns and source order. Regressions compare visual/source order, Tab progression, non-overlap and responsive widths. Modal Tab/Shift+Tab explicitly cycle and cleanup restores a connected opener, with a main-navigation fallback when that opener was removed. Replacement dialogs retain focus.
+- Regenerate the [20-image UX report](ux-review/UX-REPORT.md) with `npm run ux:review`. It includes expanded filter/cover audits, source identity and remaining limitations; full diagnostics stay in Actions artifacts. Production authentication, records, database, payment and dispatch are untouched. Existing airport timing/count/copy logic is unchanged.
+- **Remaining human work:** incomplete contrast checks over decorative SVGs/overlapping elements, real screen-reader comprehension, native zoom/text resizing and broader browser/input coverage. The [five-person usability-test package](ux-review/USABILITY-TEST.md) is prepared at the owner's request. Sessions have not been conducted; recruit real participants and resolve critical findings before adding features.
 
 ## Open and review
 
@@ -28,7 +38,7 @@ V2 uses the same app and dependencies. It does not replace `/home`, change the d
 - Group-size filtering/sorting uses advertised companion places, independent of interest. Active luggage/waiting filters exclude journeys with missing information; inactive filters retain them.
 - Own posts have an explicit creator label and no interest/heart action. Their detail view offers local editing through the existing two-step form. Saving updates the same ID, preserves the interest baseline and avoids duplicate posts. Other posts offer **我有興趣** / **撤回興趣**, with a clear explanation that interest does not confirm a booking.
 - My Journeys shows only published and interested journey counts, calculated from the available session state. The decorative HK statistic is removed. Refresh warnings remain visible.
-- Responsive social discovery: two masonry lanes on phones, three on tablets, four on desktop. Lane assignment preserves row-wise post ordering and avoids an empty desktop column after publishing an additional post.
+- Responsive social discovery: two masonry columns on phones, three on tablets, four on desktop. V2.3 replaces whole-column DOM groups with flat source-ordered cards and measured grid spans; sparse row flow avoids visual/source reordering and overlap.
 - The intro is reduced from roughly 208px to 72px on mobile, with a simple typographic FareEnough wordmark. Routes use 13–14px mobile text; flight badges and departure times use 13px. Interest counts and authors use 12px. The mint, cream and warm yellow palette is retained.
 - Cantonese journey cards prioritize origin/destination, Hong Kong-relative departure date/time, optional flight, independent interest/group counts and author. Luggage, waiting tolerance and airport-exit details live in the detail view to reduce mobile clutter.
 - Airport discovery: arrivals/departures, date, district, planned companion places, earliest shared-car departure time, waiting tolerance, luggage and optional flight filter.
@@ -47,7 +57,7 @@ Everything is clearly labelled as a demo. Posts and interests exist in React mem
 
 `RouteRuntime` chooses the original AuthProvider/SplashScreen for all existing routes. It bypasses those components only for `/v2-preview` and its descendants. This matters because the original auth boot can initialise a Supabase profile; simply avoiding `useAuth` inside V2 would not isolate that mount-time behaviour.
 
-V2 has no fetch calls, API routes, database clients, production record imports, secret reads, or storage writes. Its only shared journey dependency is a type-only import. Illustrations are original SVG route postcards rendered locally, with a generic harbour fallback; author animal-avatar assets are reused from the existing project through Next Image. No random photo hotlinks, image-generation service, new dependency, or infrastructure was introduced.
+V2 has no fetch calls, API routes, database clients, production record imports, secret reads, or storage writes. Its only shared journey dependency is a type-only import. Illustrations are original SVG route postcards rendered locally, with a generic harbour fallback; author animal-avatar assets are reused through Next Image. Production dependencies are unchanged; development-only Playwright/axe tooling and a read-only CI workflow support automated review.
 
 ## Changed files
 
@@ -61,8 +71,8 @@ V2 has no fetch calls, API routes, database clients, production record imports, 
 | `src/app/v2-preview/journey-interest.tsx` | Shared interest and planned-capacity presentation. |
 | `src/app/v2-preview/discovery.tsx` | Feed, filters, detail, navigation, interest, profile and message shortlist. |
 | `src/app/v2-preview/create-post.tsx` | Structured creation, validation, editable copy and cover choices. |
-| `src/app/v2-preview/masonry.tsx` | Responsive masonry lane distribution. |
-| `src/app/v2-preview/modal.tsx` | Native accessible dialog and scroll handling. |
+| `src/app/v2-preview/masonry.tsx` | Flat source order and measured sparse grid spans. |
+| `src/app/v2-preview/modal.tsx` | Native dialog, explicit keyboard cycling, focus restoration and scroll handling. |
 | `src/app/v2-preview/route-cover.tsx` | Nine original SVG cover scenes; no external assets. |
 | `src/app/v2-preview/preview.module.css` | Scoped V2 styling; no changes to global CSS. |
 | `src/app/v2-preview/loading.tsx` | Loading state. |

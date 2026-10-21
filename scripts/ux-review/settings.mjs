@@ -13,11 +13,11 @@ export const maxScreenshotBytes = 4 * 1024 * 1024;
 export const screens = [
   ["01-homepage", "Homepage and masonry feed", "Default airport feed, with route/date, optional flight, independent interest and capacity, and author."],
   ["02-airport-search", "Airport search", "Destination search plus a normalized `cx 734` flight filter; one synthetic matching journey."],
-  ["03-airport-filters", "Airport filters", "Advanced filters with a district and planned companion places; these are not confirmed remaining seats."],
+  ["03-airport-filters", "Airport filters", "Common district/planned places/direction filters, with selected advanced conditions folded away. Places are not confirmed remaining seats."],
   ["04-popular-routes", "Popular routes", "The 屯門 → 中環 corridor; both one-off and recurring demo journeys are discoverable."],
   ["05-journey-details", "Arrival journey details", "Scrolled to the host/interest information, distinct exit/car/flight dates and demo disclaimer."],
   ["06-create-step-1", "Create Post — step 1", "Essential fields first; optional trip details are collapsed."],
-  ["07-create-step-2", "Create Post — preview", "Synthetic airport timings, planned capacity, optional cover and editable Cantonese copy. The form continues vertically."],
+  ["07-create-step-2", "Create Post — preview", "Compact full-date car departure summary, editable Cantonese copy, optional flight timeline/cover, and normal-flow publish action."],
   ["08-interest-before", "Interest — before", "Another person's journey: zero interested people, maximum planned group of four, and 我有興趣."],
   ["09-interest-after", "Interest — after", "The same viewport after interest: one interested person, capacity still four, and 撤回興趣."],
   ["10-my-journeys", "My Journeys", "One local published journey and one interested journey, with the refresh warning."],

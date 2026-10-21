@@ -211,6 +211,8 @@ export default function Discovery({ today }: { today: string }) {
   }
   const interestPosts = journeys.filter((p) => interested.includes(p.id));
   const myPosts = journeys.filter((p) => p.mine);
+  const advancedFilterCount = Number(Boolean(earliest)) + (category === "airport"
+    ? Number(maxBags < 4) + Number(minimumWait > 0) + Number(Boolean(flight)) : 0);
 
   return (
     <div className={s.app} lang="zh-HK">
@@ -233,7 +235,7 @@ export default function Discovery({ today }: { today: string }) {
             <span>香港 · HONG KONG</span>
           </div>
           <div className={s.headerActions}>
-            <span className={s.previewBadge}>V2.2 預覽</span>
+            <span className={s.previewBadge}>V2.3 預覽</span>
             <button
               onClick={startCreate}
               className={s.desktopPublish}
@@ -323,7 +325,7 @@ export default function Discovery({ today }: { today: string }) {
             </label>
           </div>
           <div className={s.filterBar}>
-            <div className={s.quickFilters}>
+            <div className={s.quickFilters} data-category={category}>
               <button aria-pressed={!day} onClick={() => setDay("")}>
                 全部日期
               </button>
@@ -418,7 +420,7 @@ export default function Discovery({ today }: { today: string }) {
             </label>
           )}
           {category === "routes" && (
-            <div className={s.corridors} aria-label="熱門同路走廊">
+            <div className={s.corridors} role="group" aria-label="熱門同路走廊">
               {corridors.map((route) => (
                 <button
                   key={route}
@@ -467,7 +469,7 @@ export default function Discovery({ today }: { today: string }) {
             </div>
             <Masonry>
               {posts.map((post, index) => (
-                <article className={s.card} key={post.id}>
+                <article className={s.card} key={post.id} data-journey-id={post.id}>
                   <button
                     className={s.cardOpen}
                     onClick={() => openPost(post)}
@@ -495,11 +497,12 @@ export default function Discovery({ today }: { today: string }) {
                       </span>
                     </div>
                     <div className={s.cardBody}>
-                      <div className={s.routeMain}>
+                      <h3 className={s.routeMain}>
                         <span>{post.fromLabel}</span>
                         <ArrowRight size={15} />
+                        <span className={s.srOnly}>去</span>
                         <span>{post.toLabel}</span>
-                      </div>
+                      </h3>
                       <div className={s.cardTime}>
                         <Clock3 size={14} />
                         <span>
@@ -513,7 +516,6 @@ export default function Discovery({ today }: { today: string }) {
                         <FlightBadge flight={post.flight} />
                       )}
                       <JourneyInterest journey={post} interested={interested.includes(post.id)} />
-                      <h3>{post.title}</h3>
                       <div className={s.author}>
                         <Image
                           src={`/avatars/animals/${post.avatar}.png`}
@@ -756,7 +758,7 @@ export default function Discovery({ today }: { today: string }) {
                 />
               </label>
               <label>
-                {category === "airport" ? "同路地區" : "出發地或目的地"}
+                {category === "airport" ? "想去邊區？" : "出發地或目的地"}
                 <input
                   placeholder="例如 屯門"
                   value={district}
@@ -764,25 +766,17 @@ export default function Discovery({ today }: { today: string }) {
                 />
               </label>
               <label>
-                計劃同行名額最少
+                想搵幾多個同行名額？
                 <select
                   value={party}
                   onChange={(e) => setParty(Number(e.target.value))}
                 >
                   {[1, 2, 3].map((n) => (
                     <option key={n} value={n}>
-                      {n} 個名額（唔計發帖人）
+                      最少 {n} 個
                     </option>
                   ))}
                 </select>
-              </label>
-              <label>
-                最早夾車出發
-                <input
-                  type="time"
-                  value={earliest}
-                  onChange={(e) => setEarliest(e.target.value)}
-                />
               </label>
               {category === "airport" ? (
                 <>
@@ -797,8 +791,34 @@ export default function Discovery({ today }: { today: string }) {
                       <option value="to_airport">出發去機場</option>
                     </select>
                   </label>
+                </>
+              ) : (
+                <>
                   <label>
-                    發帖人最多幾多個喼
+                    出發時段
+                    <select value={period} onChange={(e) => setPeriod(e.target.value)}>
+                      <option value="all">任何時間</option>
+                      <option value="morning">朝早 · 12:00 前</option>
+                      <option value="evening">傍晚 · 17:00 後</option>
+                    </select>
+                  </label>
+                  <label className={s.checkLabel}>
+                    <input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} />
+                    只睇定期旅程
+                  </label>
+                </>
+              )}
+              <p className={s.fieldHint}>同行名額唔計發帖人，唔係已確認餘位。</p>
+              <details className={`${s.optionalFields} ${s.fullField}`}>
+                <summary>更多條件{advancedFilterCount ? `（${advancedFilterCount} 項已選）` : "（選填）"}</summary>
+                <div className={s.formGrid}>
+                  <label>
+                    幾點之後夾車出發？
+                    <input type="time" value={earliest} onChange={(e) => setEarliest(e.target.value)} />
+                  </label>
+                  {category === "airport" && <>
+                  <label>
+                    對方最多帶幾多個喼？
                     <select
                       value={maxBags}
                       onChange={(e) => setMaxBags(Number(e.target.value))}
@@ -811,7 +831,7 @@ export default function Discovery({ today }: { today: string }) {
                     </select>
                   </label>
                   <label>
-                    希望對方最少可以等
+                    對方最少等到幾耐？
                     <select
                       value={minimumWait}
                       onChange={(e) => setMinimumWait(Number(e.target.value))}
@@ -837,30 +857,9 @@ export default function Discovery({ today }: { today: string }) {
                   <p className={s.fieldHint}>
                     時間篩選以計劃夾車出發時間為準。同行名額只係發帖人嘅計劃，唔係已確認餘位；有啟用行李或等候篩選時，未提供資料嘅旅程唔會顯示。
                   </p>
-                </>
-              ) : (
-                <>
-                  <label>
-                    出發時段
-                    <select
-                      value={period}
-                      onChange={(e) => setPeriod(e.target.value)}
-                    >
-                      <option value="all">任何時間</option>
-                      <option value="morning">朝早 · 12:00 前</option>
-                      <option value="evening">傍晚 · 17:00 後</option>
-                    </select>
-                  </label>
-                  <label className={s.checkLabel}>
-                    <input
-                      type="checkbox"
-                      checked={recurring}
-                      onChange={(e) => setRecurring(e.target.checked)}
-                    />
-                    只睇定期旅程
-                  </label>
-                </>
-              )}
+                  </>}
+                </div>
+              </details>
             </div>
             <div className={s.formActions}>
               <button className={s.secondary} onClick={clearFilters}>

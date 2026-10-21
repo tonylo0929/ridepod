@@ -1,36 +1,38 @@
 "use client";
 
-import { Children, useSyncExternalStore, type ReactNode } from "react";
+import { Children, useEffect, useRef, type ReactNode } from "react";
 import s from "./preview.module.css";
 
-function subscribe(onChange: () => void) {
-  const queries = [
-    window.matchMedia("(min-width: 761px)"),
-    window.matchMedia("(min-width: 1101px)"),
-  ];
-  queries.forEach((query) => query.addEventListener("change", onChange));
-  return () =>
-    queries.forEach((query) => query.removeEventListener("change", onChange));
-}
-function columns() {
-  return window.matchMedia("(min-width: 1101px)").matches
-    ? 4
-    : window.matchMedia("(min-width: 761px)").matches
-      ? 3
-      : 2;
-}
-
-/** Distribute cards by row; native columns can leave an entire lane blank. */
+/** Sparse row-flow preserves source/keyboard order; measured spans keep masonry. */
 export function Masonry({ children }: { children: ReactNode }) {
-  const count = useSyncExternalStore(subscribe, columns, () => 2);
-  const cards = Children.toArray(children);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const feed = ref.current;
+    if (!feed) return;
+    let frame = 0;
+    const measure = () => {
+      const gap = Number.parseFloat(getComputedStyle(feed).columnGap) || 10;
+      Array.from(feed.children).forEach((item) => {
+        const card = item.firstElementChild;
+        if (item instanceof HTMLElement && card) {
+          item.style.gridRowEnd = `span ${Math.ceil(card.getBoundingClientRect().height + gap)}`;
+        }
+      });
+      feed.dataset.measured = "true";
+    };
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(measure);
+    });
+    Array.from(feed.children).forEach((item) => {
+      if (item.firstElementChild) observer.observe(item.firstElementChild);
+    });
+    measure();
+    return () => { observer.disconnect(); cancelAnimationFrame(frame); };
+  }, [children]);
   return (
-    <div className={s.feed}>
-      {Array.from({ length: count }, (_, lane) => (
-        <div className={s.lane} key={lane}>
-          {cards.filter((_, index) => index % count === lane)}
-        </div>
-      ))}
+    <div className={s.feed} ref={ref}>
+      {Children.map(children, (child) => <div className={s.masonryItem}>{child}</div>)}
     </div>
   );
 }

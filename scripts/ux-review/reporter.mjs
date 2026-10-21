@@ -58,6 +58,7 @@ export default class UXReporter {
     const report = this.report({ captures, bytes, status, duration: result.duration, complete, withinBudget });
     await writeFile(join(artifactDir, "UX-REPORT.md"), report);
     await copyFile(join(reviewDir, "README.md"), join(artifactDir, "README.md"));
+    await copyFile(join(reviewDir, "USABILITY-TEST.md"), join(artifactDir, "USABILITY-TEST.md"));
     await writeFile(join(resultsDir, "results.json"), JSON.stringify({ metadata: this.meta, status, complete, withinBudget, bytes, tests: this.tests, steps: this.steps, evidence: this.evidence }, null, 2));
     if (passed) {
       const screenshotDir = resolve(reviewDir, "screenshots");
@@ -80,7 +81,10 @@ export default class UXReporter {
   report({ captures, bytes, status, duration, complete, withinBudget }) {
     const m = this.meta;
     const audits = new Map();
-    for (const capture of captures) for (const violation of capture.violations) {
+    const scans = [...captures, ...this.evidence.flatMap((e) => e.observations
+      .filter((o) => Array.isArray(o.violations)).map((o) => ({ project: e.project, id: o.kind, ...o })))];
+    const incomplete = [...new Set(scans.flatMap((scan) => scan.incompleteRules || []))];
+    for (const capture of scans) for (const violation of capture.violations) {
       if (!audits.has(violation.id)) audits.set(violation.id, { ...violation, nodes: 0, states: new Set(), example: violation.nodes[0] });
       const row = audits.get(violation.id);
       row.nodes += violation.nodes.length;
@@ -123,11 +127,11 @@ The product is a passenger-led, Cantonese journey-discovery demo under \`/v2-pre
 | Screen | Reach it | Available actions |
 | --- | --- | --- |
 | Home / airport feed | Default category; 首頁 returns to top | Search text, today/tomorrow, direction, flight filter, sorting; open cards or express interest |
-| Airport filters | 篩選 | Date, district, planned companion places, earliest car departure, direction, luggage, waiting and optional flight |
+| Airport filters | 篩選 | Common date/district/planned places/direction; optional 更多條件 for earliest car departure, luggage, waiting and flight |
 | Popular routes | 熱門路線 tab | Corridors, morning/evening, recurring journeys and shared search/sorting |
 | Journey details | Card; sample query \`?journey=demo-1\` | Route, author, planned group size, interest, meeting/luggage/waiting and independent airport times |
 | Create Post — step 1 | 發佈, 分享行程 or 分享下一程 | Essential trip fields; optional flight/exit/luggage/wait/meeting/message disclosure |
-| Create Post — step 2 | 幫我寫個帖文 | Review full dates/times, edit title/body, optional cover, back/edit, publish local demo |
+| Create Post — step 2 | 幫我寫個帖文 | Compact route/car departure summary, editable title/body, optional full flight timeline/number and cover, normal-flow publish action |
 | Own journey | Publish, then view; or 我的 | Creator label and local edit; no self-interest action |
 | My Journeys | 我的 | Published/interested counts and lists; refresh warning |
 | Message shortlist | 訊息 | Revisit interested journeys; text explicitly says real chat is unavailable |
@@ -169,25 +173,26 @@ No horizontal page overflow is required at every capture point. Browser errors o
 
 ## Accessibility and usability findings
 
-Automated axe scans run at every captured state against WCAG 2 A/AA, 2.1 A/AA and 2.2 AA tags. Findings are reported rather than treated as an accessibility pass gate. Duplicate occurrences across states are counted, not unique UI defects. \`incomplete\` rules and full element-level findings are in the JSON artifact for human review. No audit rules are silently disabled.
+Automated axe scans run at every captured state and the expanded filter/cover states against WCAG 2 A/AA, 2.1 A/AA and 2.2 AA tags (${scans.length} scans). **Contrast and visible-label/name mismatches are mandatory regression gates**; all other findings are also reported. Duplicate occurrences across states are counted, not unique UI defects. No audit rules are disabled or excluded. Incomplete rules requiring human review: **${incomplete.join(", ") || "none reported"}**; element-level findings are retained in the JSON artifact. Zero automatic violations does not establish full WCAG conformance.
 
-| Automated rule | Impact | Affected captured states | Node occurrences across states | Example selector |
+| Automated rule | Impact | Affected audited states | Node occurrences across states | Example selector |
 | --- | --- | --- | --- | --- |
 ${auditRows || "| No automatic violations detected in completed scans | — | 0 | 0 | — |"}
 
 ${[...audits.values()].slice(0, 4).map((v) => `- **${cell(v.help)}:** ${cell(v.example?.failureSummary || "Inspect the detailed audit artifact.")}`).join("\n")}
 
 - **Touch-size advisory:** ${sampleTargets.length ? sampleTargets.map((t) => `${t.project} “${cell(t.label)}” ${t.width}×${t.height}px`).join("; ") : "No sampled visible controls below 44×44px."} These are a small visibility-based sample, not a WCAG target-size conformance result; spacing exceptions and overlap need human assessment. Prefer larger touch areas where practical.
-- **Keyboard:** a Tab/Shift+Tab probe asserts that no background control receives focus; Escape is exercised. ${boundaryStops.length ? `The native-dialog boundary reached a document/browser focus stop on ${boundaryStops.map((e) => e.project).join(", ")}; this is not a fully cycling custom focus trap. Check continuity in an interactive browser and with assistive technology.` : "The tested boundary stops remained in the dialog."} ${focusIssues.length ? `Opener focus restoration needs review on ${focusIssues.map((e) => e.project).join(", ")}.` : "Opener focus restoration was observed for the tested arrival dialog."} A screen-reader session and all focus-order paths were not assessed.
-- **Masonry reading order:** DOM/keyboard order follows whole columns, while sighted users may scan rows. Review this with keyboard and screen-reader users; screenshots alone cannot establish a meaningful reading order.
-- **Dense mobile cards and scrollable forms:** two columns constrain route/count text. Detail/review screenshots intentionally show scrolled interiors, so some fields remain outside the viewport. Assess legibility, discoverability of optional disclosures and sticky footer behavior with real users and large text/zoom.
+- **Keyboard:** Tab/Shift+Tab explicitly cycle between the first/last eligible dialog controls; the regression fails on a body/background stop. Escape is exercised. ${boundaryStops.length ? `Unexpected boundary stops recorded on ${boundaryStops.map((e) => e.project).join(", ")}.` : "Both tested boundary directions remained in the dialog."} ${focusIssues.length ? `Opener focus restoration failed on ${focusIssues.map((e) => e.project).join(", ")}.` : "Escape restored the arrival-card opener at both widths."} Create step changes focus their heading and return to the top. A screen-reader session and every modal/assistive-technology path remain untested.
+- **Masonry reading order:** cards use a flat DOM and a sparse row-flow grid with measured heights, preserving two/three/four columns. Tests compare every source-ordered card's top/left position, check same-column separation and Tab progression to the next visual card. The previous whole-column DOM order was replaced. Human screen-reader comprehension still requires evaluation.
+- **Mobile usability:** duplicate post copy moved to details; route, departure, optional flight and independent interest/capacity stay in cards. Common filters remain visible and advanced options are disclosed. Main filter/input/icon targets are at least 44px. Step 2 uses a compact cover/route summary, editable copy and optional timing/cover disclosures; its publish control is in document flow. Detail screenshots show scrolled interiors. Verify disclosure comprehension and action discoverability with people and enlarged text.
 
 ## Known limitations and review guidance
 
 - This workflow uses Chromium at two widths, not every browser/device. No pixel equality assertions: OS/CJK fonts, browser updates, current demo dates and rendering can alter images. CI installs CJK fonts; Windows and Linux may render differently.
 - Source-driven labels and synthetic fixture routes are intentional test contracts. If the product's screens or accessible names change, update the scenarios and this product inventory rather than weakening assertions.
 - Captures are viewport images, not exhaustive full-page composites. Use the report's flow descriptions, the local UI and test traces to inspect content beyond the fold.
-- Automated checks cannot establish overall usability or accessibility. Check incomplete axe results, keyboard reading order, contrast context, zoom, screen readers and comprehension with people. A passing interaction suite can still have the listed accessibility findings.
+- Automated checks cannot establish overall usability or accessibility. Incomplete axe checks, screen-reader comprehension, browser/OS control behavior, zoom and every focus path need human review. Other audit-rule findings, if listed above, are unresolved even when the P0 gates pass.
+- The [five-person usability-test package](USABILITY-TEST.md) is prepared but sessions have not been conducted. Recruit five real participants, record actual observations and resolve critical findings before adding more features; no AI or synthetic participant results are claimed.
 - Demo state disappears on refresh, including interests and created/edited posts; local links then expire. No live customer or production integration is tested. Preview deployment may require authorised Vercel sign-in; this package is generated locally and does not depend on that login.
 - The last complete passing package is retained if a later run fails or is partial. Check this report's timestamp/commit against the PR and inspect the latest Actions artifact before assuming it describes newer code. The workflow uploads current failure evidence and never commits generated changes automatically.
 

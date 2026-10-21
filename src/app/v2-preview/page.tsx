@@ -3,9 +3,9 @@ import Discovery from "./discovery";
 
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
-  title: "FareEnough · 同路就夾，車費齊齊慳。| V2.2 Preview",
+  title: "FareEnough · 同路就夾，車費齊齊慳。| V2.3 Preview",
   description:
-    "FareEnough 機場同路、日常夾車。搵個同路人，車費齊齊慳。V2.2 示範體驗。",
+    "FareEnough 機場同路、日常夾車。搵個同路人，車費齊齊慳。V2.3 示範體驗。",
   robots: { index: false, follow: false },
 };
 

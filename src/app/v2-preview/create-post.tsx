@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowRight, Check, RefreshCw, Sparkles } from "lucide-react";
 import {
   automaticCover,
   covers,
+  fullMomentLabel,
   generatePost,
   normalizeFlight,
   validateAirportTiming,
@@ -28,6 +29,11 @@ export function CreatePost({
   onPublish: (post: Journey) => void;
 }) {
   const [step, setStep] = useState(1);
+  const stepHeading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    stepHeading.current?.focus({ preventScroll: true });
+    stepHeading.current?.closest("dialog")?.scrollTo({ top: 0 });
+  }, [step]);
   const [kind, setKind] = useState<Journey["rideKind"]>(initialJourney?.rideKind ?? "airport");
   const [direction, setDirection] =
     useState<Journey["direction"]>(initialJourney?.direction ?? "from_airport");
@@ -145,14 +151,14 @@ export function CreatePost({
 
   return (
     <Modal label={initialJourney ? "編輯示範旅程" : "發佈示範旅程"} onClose={onClose} wide>
-      <div className={s.formHeader}>
+      <div className={`${s.formHeader} ${step === 2 ? s.previewHeader : ""}`}>
         <span className={s.kicker}>SHARE YOUR NEXT JOURNEY</span>
-        <h2>{initialJourney ? "更新你嘅同路行程。" : "分享你嘅下一程。"}</h2>
-        <p>先填基本行程，其他資料可以之後再加。</p>
+        <h2 ref={stepHeading} tabIndex={-1}>{step === 2 ? "預覽同發佈帖文。" : initialJourney ? "更新你嘅同路行程。" : "分享你嘅下一程。"}</h2>
+        <p>{step === 1 ? "先填基本行程，其他資料可以之後再加。" : "改好標題同內文，就可以發佈示範帖文。"}</p>
         <div className={s.steps}>
-          <span data-current={step === 1}>01 行程資料</span>
+          <span data-current={step === 1} aria-current={step === 1 ? "step" : undefined}>01 行程資料</span>
           <ArrowRight size={14} />
-          <span data-current={step === 2}>02 預覽發佈</span>
+          <span data-current={step === 2} aria-current={step === 2 ? "step" : undefined}>02 預覽發佈</span>
         </div>
       </div>
       {step === 1 ? (
@@ -353,20 +359,33 @@ export function CreatePost({
           </button>
         </form>
       ) : (
-        <form onSubmit={publish} className={s.form}>
-          <div className={s.editorPreview}>
-            <RouteCover scene={chosenCover} />
-            <span>{cover === "auto" ? "已自動配搭路線封面" : "已揀選路線封面"}</span>
-          </div>
-          <section className={s.publishSummary} aria-label="發佈前行程預覽">
+        <form onSubmit={publish} className={`${s.form} ${s.previewForm}`}>
+          <section className={`${s.publishSummary} ${s.compactSummary}`} aria-label="發佈前行程預覽">
+            <div className={s.editorPreview}>
+              <RouteCover scene={chosenCover} />
+            </div>
+            <div>
             <h3>
               {origin} <ArrowRight size={16} /> {destination}
             </h3>
+            <p><b>夾車出發：{fullMomentLabel(`${date}T${time}`)}</b></p>
             <p>計劃最多 {seats + 1} 人（連你） · 可供同行 {seats} 個名額</p>
             <small>所有時間：香港時間 · 24 小時制</small>
-            {kind === "airport" ? (
+            {kind === "airport" && <FlightBadge flight={flight} />}
+            </div>
+          </section>
+          <label>
+            帖文標題
+            <input required maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)} />
+          </label>
+          <label>
+            帖文內文
+            <textarea required rows={3} maxLength={1200} value={description} onChange={(e) => setDescription(e.target.value)} />
+          </label>
+          {kind === "airport" && (
+            <details className={s.optionalFields}>
+              <summary>核對航班時間／改航班編號</summary>
               <>
-                <FlightBadge flight={flight} />
                 <AirportTiming journey={draftInput} today={today} />
                 <label>
                   航班編號（選填）
@@ -380,12 +399,8 @@ export function CreatePost({
                   />
                 </label>
               </>
-            ) : (
-              <p>
-                {date} {time} 出發
-              </p>
-            )}
-          </section>
+            </details>
+          )}
           <details key="cover-choices" className={s.optionalFields}>
             <summary>揀個封面（選填，已自動配搭）</summary>
           <fieldset className={s.coverOptions}>
@@ -401,7 +416,6 @@ export function CreatePost({
               <button
                 key={c.id}
                 type="button"
-                aria-label={c.label}
                 aria-pressed={cover === c.id}
                 onClick={() => setCover(c.id)}
               >
@@ -411,25 +425,6 @@ export function CreatePost({
             ))}
           </fieldset>
           </details>
-          <label>
-            帖文標題
-            <input
-              required
-              maxLength={100}
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </label>
-          <label>
-            帖文內文
-            <textarea
-              required
-              rows={4}
-              maxLength={1200}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-          </label>
           <button type="button" className={s.textButton} onClick={() => generate()}>
             <RefreshCw size={13} />
             重新產生文字（會取代目前內容）

@@ -1866,14 +1866,17 @@
   gap: 18px;
   columns: auto;
 }
-.lane {
+.masonryItem {
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  align-self: start;
 }
-.lane .card {
+.masonryItem .card {
   margin: 0;
+}
+.feed[data-measured="true"] {
+  grid-auto-rows: 1px;
+  row-gap: 0;
+  grid-auto-flow: row;
 }
 @media (max-width: 1100px) {
   .feed {
@@ -1884,9 +1887,6 @@
   .feed {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
-  }
-  .lane {
-    gap: 12px;
   }
 }
 
@@ -2532,3 +2532,50 @@
 /* V2.3: input boundaries and focus indicators remain visible on pastel surfaces. */
 .form input, .form select, .form textarea, .search, .flightSearch { border-color: #778a73; }
 .app input::placeholder, .app textarea::placeholder { color: var(--muted); opacity: 1; }
+
+/* Keep route/time/flight as the card hierarchy; the post copy is in details. */
+.cardBody .routeMain {
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.5;
+  color: #274d3c;
+  margin: 0;
+}
+.cardBody .author { padding-right: 38px; min-height: 52px; }
+.save { width: 44px; height: 44px; right: 5px; bottom: 5px; }
+.quickFilters button, .corridors button, .filterButton, .sortLabel select,
+.bottomNav button, .desktopPublish, .textButton, .close,
+.form input, .form select, .optionalFields > summary, .resultsLine button {
+  min-height: 44px;
+  min-width: 44px;
+}
+.optionalFields > summary { padding: 8px 0; }
+.optionalFields { padding-top: 4px; padding-bottom: 4px; }
+.search, .flightSearch { padding: 0 10px; min-height: 44px; }
+.search input, .flightSearch input { min-height: 44px; }
+.search button, .flightSearch button { min-width: 44px; min-height: 44px; flex-shrink: 0; }
+.close { z-index: 5; }
+.previewForm { gap: 12px; }
+.previewHeader { padding-top: 22px; padding-bottom: 16px; }
+.previewHeader .steps { margin-top: 12px; }
+.compactSummary { display: flex; gap: 12px; align-items: flex-start; }
+.compactSummary .editorPreview { width: 72px; height: 100px; flex: 0 0 72px; }
+.compactSummary h3 { margin: 0 0 8px; }
+.compactSummary p { font-size: 12px; line-height: 1.6; margin: 5px 0; }
+.compactSummary small { display: block; font-size: 11px; color: var(--muted); line-height: 1.7; }
+.compactSummary .flightBadge { margin-top: 6px; padding: 4px 6px; font-size: 12px; }
+@media (max-width: 760px) {
+  .quickFilters { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); flex: 1; overflow: visible; }
+  .quickFilters button { grid-column: span 2; padding-left: 4px; padding-right: 4px; }
+  .quickFilters[data-category="airport"] button:nth-child(n+4) { grid-column: span 3; }
+  .filterBar { align-items: flex-start; }
+  .cardBody .routeMain { font-size: 14px; }
+  .cardBody .interestSummary { margin: 9px 0 6px; }
+  .previewForm { padding-top: 16px; }
+  .coverOptions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 360px) {
+  .cardBody .routeMain { font-size: 13px; }
+  .compactSummary { flex-direction: column; }
+  .compactSummary .editorPreview { width: 100%; height: 70px; flex-basis: auto; }
+}

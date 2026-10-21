@@ -57,16 +57,21 @@ async function capture(page, testInfo, evidence, id) {
   const path = testInfo.outputPath(`${id}.png`);
   await page.screenshot({ path, fullPage: false, animations: "disabled", caret: "hide" });
   await testInfo.attach(id, { path, contentType: "image/png" });
+  const audit = await accessibilityAudit(page);
+  const violations = audit.violations;
+  evidence.captures.push({ id, filename: `${testInfo.project.name}-${id}.png`, path, layout, ...audit });
+  // P0 regressions gate publication; keep all audit rules and detailed evidence.
+  expect(violations.filter((v) => ["color-contrast", "label-content-name-mismatch"].includes(v.id)), `${id}: contrast and visible-label accessible names`).toEqual([]);
+}
+async function accessibilityAudit(page) {
   const audit = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();
-  const violations = audit.violations.map((v) => ({
+  const rules = (items) => items.map((v) => ({
     id: v.id, impact: v.impact, help: v.help, helpUrl: v.helpUrl,
     nodes: v.nodes.map((n) => ({ target: n.target, failureSummary: n.failureSummary })),
   }));
-  evidence.captures.push({ id, filename: `${testInfo.project.name}-${id}.png`, path, layout, violations, incompleteRules: audit.incomplete.map((v) => v.id) });
-  // P0 regressions gate publication; keep all audit rules and detailed evidence.
-  expect(violations.filter((v) => ["color-contrast", "label-content-name-mismatch"].includes(v.id)), `${id}: contrast and visible-label accessible names`).toEqual([]);
+  return { violations: rules(audit.violations), incompleteRules: audit.incomplete.map((v) => v.id), incomplete: rules(audit.incomplete) };
 }
 
 async function closeDialog(page) {
@@ -78,7 +83,8 @@ async function openArrival(page) {
   await expect(page.getByRole("dialog", { name: "旅程詳情", exact: true })).toBeVisible();
 }
 function journeyCard(page, title) {
-  return page.getByRole("article").filter({ has: page.getByRole("heading", { name: title, exact: true }) });
+  const id = title === arrivalTitle ? "demo-1" : "demo-3";
+  return title === ownTitle ? page.locator('article[data-journey-id^="local-"]') : page.locator(`article[data-journey-id="${id}"]`);
 }
 async function detailBottom(page) {
   await page.getByRole("dialog").evaluate((el) => { el.scrollTop = el.scrollHeight; });
@@ -96,16 +102,44 @@ function fullDateTime(date, time) {
 test("curated preview review journeys", async ({ page, evidence }, testInfo) => {
   const shot = (id) => capture(page, testInfo, evidence, id);
   const dialog = page.getByRole("dialog");
-  const defaultCard = page.getByRole("article").filter({ has: page.getByRole("heading", { name: arrivalTitle, exact: true }) });
+  const defaultCard = journeyCard(page, arrivalTitle);
 
   await test.step("Homepage: synthetic feed, responsive masonry and no overflow", async () => {
     await page.goto("/v2-preview");
     await expect(page).toHaveTitle(/FareEnough.*V\d/);
     await expect(page.getByRole("article")).toHaveCount(8);
-    await expect.poll(() => page.getByRole("article").evaluateAll((cards) => new Set(cards.map((card) => card.parentElement)).size)).toBe(testInfo.project.name === "mobile" ? 2 : 4);
+    const columns = testInfo.project.name === "mobile" ? 2 : 4;
+    await expect.poll(() => page.getByRole("article").evaluateAll((cards) => new Set(cards.map((card) => Math.round(card.getBoundingClientRect().x))).size)).toBe(columns);
     await page.addStyleTag({ content: "*, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }" });
-    const positions = await page.getByRole("article").evaluateAll((cards) => cards.slice(0, 4).map((el) => { const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y) }; }));
-    evidence.observations.push({ kind: "masonry-order", positions, note: "DOM/keyboard order follows columns; assess visual reading order manually." });
+    const positions = await page.getByRole("article").evaluateAll((cards) => cards.map((el) => { const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), bottom: Math.round(r.bottom) }; }));
+    expect(positions.slice(0, columns).every((p) => p.y === positions[0].y)).toBe(true);
+    for (let i = 1; i < positions.length; i++) {
+      expect(positions[i].y).toBeGreaterThanOrEqual(positions[i-1].y);
+      if (positions[i].y === positions[i-1].y) expect(positions[i].x).toBeGreaterThan(positions[i-1].x);
+      for (let j = 0; j < i; j++) if (positions[j].x === positions[i].x) expect(positions[i].y).toBeGreaterThanOrEqual(positions[j].bottom + 9);
+    }
+    // Keyboard follows the next visual card, including its separate interest action.
+    const firstCard = page.getByRole("article").first();
+    await firstCard.locator("button").first().focus();
+    await page.keyboard.press("Tab");
+    await expect(firstCard.locator("button").last()).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByRole("article").nth(1).locator("button").first()).toBeFocused();
+    await expect(firstCard.locator("button").first()).toHaveAccessibleName(/香港機場.*屯門.*21:50.*CX734/);
+    evidence.observations.push({ kind: "masonry-order", positions, note: "Flat DOM follows sparse row-flow grid positions, with no overlap; keyboard advances to the next visual card." });
+    if (testInfo.project.name === "mobile") {
+      for (const [width, count] of [[320, 2], [900, 3], [390, 2]]) {
+        await page.setViewportSize({ width, height: 1100 });
+        await expect.poll(() => page.getByRole("article").evaluateAll((cards) => {
+          const r = cards.map((c) => c.getBoundingClientRect());
+          const noOverlap = r.every((b, i) => r.slice(0, i).every((a) => Math.abs(a.x-b.x) > 1 || b.top >= a.bottom + 9));
+          return { columns: new Set(r.map((x) => Math.round(x.x))).size, noOverlap, overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth };
+        })).toEqual({ columns: count, noOverlap: true, overflow: false });
+        evidence.observations.push({ kind: "responsive-smoke", width, columns: count, noOverlap: true, overflow: false });
+      }
+    }
+    await page.getByRole("heading", { level: 1 }).click();
+    await page.evaluate(() => window.scrollTo(0, 0));
     await shot("01-homepage");
   });
   await test.step("Airport search: route text and normalized optional flight", async () => {
@@ -118,8 +152,18 @@ test("curated preview review journeys", async ({ page, evidence }, testInfo) => 
   });
   await test.step("Airport filters: planned places and district, native-dialog keyboard audit", async () => {
     await page.getByRole("button", { name: /^篩選/ }).click();
-    await dialog.getByLabel("同路地區", { exact: true }).fill("屯門");
-    await dialog.getByRole("combobox", { name: "計劃同行名額最少", exact: true }).selectOption("2");
+    await dialog.getByLabel("想去邊區？", { exact: true }).fill("屯門");
+    await dialog.getByRole("combobox", { name: "想搵幾多個同行名額？", exact: true }).selectOption("2");
+    await expect(dialog.getByLabel("幾點之後夾車出發？", { exact: true })).toBeHidden();
+    const advanced = dialog.locator("summary").filter({ hasText: "更多條件" });
+    await advanced.click();
+    await dialog.getByLabel("幾點之後夾車出發？", { exact: true }).fill("21:00");
+    await dialog.getByRole("combobox", { name: "對方最多帶幾多個喼？", exact: true }).selectOption("1");
+    await dialog.getByRole("combobox", { name: "對方最少等到幾耐？", exact: true }).selectOption("20");
+    const filterAudit = await accessibilityAudit(page);
+    evidence.observations.push({ kind: "expanded-filter-audit", ...filterAudit });
+    expect(filterAudit.violations.filter((v) => ["color-contrast", "label-content-name-mismatch"].includes(v.id))).toEqual([]);
+    await advanced.click();
     await dialog.getByRole("button", { name: "關閉", exact: true }).focus();
     const focusStop = () => page.evaluate(() => ({
       tag: document.activeElement?.tagName,
@@ -131,9 +175,9 @@ test("curated preview review journeys", async ({ page, evidence }, testInfo) => 
     stops.push(await focusStop());
     await page.keyboard.press("Tab");
     stops.push(await focusStop());
-    // Native dialogs may expose a browser-chrome/body stop at the boundary.
-    // Fail if a background control receives focus; report boundary behavior for review.
-    expect(stops.every((stop) => stop.inside || stop.tag === "BODY")).toBe(true);
+    expect(stops.every((stop) => stop.inside)).toBe(true);
+    expect(stops[1].label).toContain("睇 1 個旅程");
+    expect(stops[2].label).toBe("關閉");
     evidence.observations.push({ kind: "dialog-keyboard", stops });
     await dialog.getByRole("heading").click();
     await shot("03-airport-filters");
@@ -169,7 +213,8 @@ test("curated preview review journeys", async ({ page, evidence }, testInfo) => 
     await expect(dialog).toHaveCount(0);
     const focusReturned = await journeyCard(page, arrivalTitle).locator("button").first().evaluate((el) => document.activeElement === el);
     evidence.observations.push({ kind: "focus-return", passed: focusReturned });
-    const noFlight = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "下晝落機，有冇元朗友？", exact: true }) });
+    expect(focusReturned, "Escape restores the card opener").toBe(true);
+    const noFlight = page.locator('article[data-journey-id="demo-5"]');
     await expect(noFlight).not.toContainText("航班");
   });
   await test.step("Outbound example: car and takeoff keep independent full dates", async () => {
@@ -205,18 +250,38 @@ test("curated preview review journeys", async ({ page, evidence }, testInfo) => 
     await dialog.getByRole("button", { name: "幫我寫個帖文", exact: true }).click();
   });
   await test.step("Create step 2: preview, edited copy survives back navigation, publish", async () => {
+    await expect(dialog.getByRole("heading", { name: "預覽同發佈帖文。", exact: true })).toBeFocused();
+    const flightDetails = dialog.locator("summary").filter({ hasText: "核對航班時間" });
+    await flightDetails.click();
     const previewFlight = dialog.getByRole("textbox", { name: "預覽航班編號（選填）", exact: true });
     await previewFlight.fill("CX<734");
     expect(await previewFlight.evaluate((el) => el.validity.patternMismatch)).toBe(true);
     await previewFlight.fill("CX734");
     expect(await previewFlight.evaluate((el) => el.validity.valid)).toBe(true);
+    await expect(dialog.locator("dl")).toContainText("20:50");
+    await expect(dialog.locator("dl")).toContainText("21:30");
+    await flightDetails.click();
+    const coverChoices = dialog.locator("summary").filter({ hasText: "揀個封面" });
+    await coverChoices.click();
+    await dialog.getByRole("button", { name: "同路登機證", exact: true }).click();
+    await expect(dialog.getByRole("button", { name: "同路登機證", exact: true })).toHaveAttribute("aria-pressed", "true");
+    const expandedAudit = await accessibilityAudit(page);
+    evidence.observations.push({ kind: "expanded-cover-audit", ...expandedAudit });
+    expect(expandedAudit.violations.filter((v) => ["color-contrast", "label-content-name-mismatch"].includes(v.id))).toEqual([]);
+    await coverChoices.click();
     await dialog.getByRole("textbox", { name: "帖文標題", exact: true }).fill(ownTitle);
     await dialog.getByRole("textbox", { name: "帖文內文", exact: true }).fill(ownBody);
     await dialog.getByRole("button", { name: "返回修改", exact: true }).click();
     await dialog.getByRole("button", { name: "幫我寫個帖文", exact: true }).click();
     await expect(dialog.getByRole("textbox", { name: "帖文標題", exact: true })).toHaveValue(ownTitle);
     await expect(dialog.getByRole("textbox", { name: "帖文內文", exact: true })).toHaveValue(ownBody);
-    await dialog.getByRole("textbox", { name: "帖文內文", exact: true }).scrollIntoViewIfNeeded();
+    await dialog.evaluate((el) => { el.scrollTop = 0; });
+    const publishButton = dialog.getByRole("button", { name: "發佈示範帖文", exact: true });
+    const action = await publishButton.evaluate((el) => {
+      const r = el.getBoundingClientRect(), modal = el.closest("dialog").getBoundingClientRect();
+      return { visible: r.top >= modal.top && r.bottom <= Math.min(modal.bottom, innerHeight), unobscured: el.contains(document.elementFromPoint(r.x + r.width/2, r.y + r.height/2)), fixed: ["fixed", "sticky"].includes(getComputedStyle(el.parentElement).position) };
+    });
+    expect(action, "Step 2 primary action is visible and unobscured without a fixed toolbar").toEqual({ visible: true, unobscured: true, fixed: false });
     await shot("07-create-step-2");
     await dialog.getByRole("button", { name: "發佈示範帖文", exact: true }).click();
     await expect(dialog).toContainText("你係呢程嘅發帖人");
@@ -230,7 +295,7 @@ test("curated preview review journeys", async ({ page, evidence }, testInfo) => 
     await dialog.getByRole("button", { name: "儲存示範修改", exact: true }).click();
     await expect(dialog).toContainText("計劃最多 3 人 · 連發帖人");
     await closeDialog(page);
-    const own = page.getByRole("article").filter({ has: page.getByRole("heading", { name: ownTitle, exact: true }) });
+    const own = journeyCard(page, ownTitle);
     await expect(own).toHaveCount(1);
     await expect(own.getByRole("button")).toHaveCount(1);
   });
