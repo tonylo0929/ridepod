@@ -189,6 +189,7 @@ ${[...audits.values()].slice(0, 4).map((v) => `- **${cell(v.help)}:** ${cell(v.e
 ## Known limitations and review guidance
 
 - This workflow uses Chromium at two widths, not every browser/device. No pixel equality assertions: OS/CJK fonts, browser updates, current demo dates and rendering can alter images. CI installs CJK fonts; Windows and Linux may render differently.
+- Native date/time inputs follow browser/OS formatting; zh-HK Chromium can show 上午/下午 even though values and full-date summaries use Hong Kong 24-hour times. Native input formatting and the Step 1 format hint need human usability review.
 - Source-driven labels and synthetic fixture routes are intentional test contracts. If the product's screens or accessible names change, update the scenarios and this product inventory rather than weakening assertions.
 - Captures are viewport images, not exhaustive full-page composites. Use the report's flow descriptions, the local UI and test traces to inspect content beyond the fold.
 - Automated checks cannot establish overall usability or accessibility. Incomplete axe checks, screen-reader comprehension, browser/OS control behavior, zoom and every focus path need human review. Other audit-rule findings, if listed above, are unresolved even when the P0 gates pass.

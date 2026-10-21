@@ -47,8 +47,8 @@ jobs:
           npx playwright install --with-deps chromium
           sudo apt-get update
           sudo apt-get install -y fonts-noto-cjk
-      - name: Lint review infrastructure
-        run: npx eslint scripts/ux-review tests/ux-review playwright.ux.config.mjs --max-warnings 0
+      - name: Lint preview and review infrastructure
+        run: npx eslint src/app/v2-preview scripts/ux-review tests/ux-review playwright.ux.config.mjs --max-warnings 0
       - name: Generate synthetic UX review
         shell: bash
         run: |
