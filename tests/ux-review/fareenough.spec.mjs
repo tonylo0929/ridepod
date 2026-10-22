@@ -79,6 +79,17 @@ async function closeDialog(page) {
   await page.getByRole("dialog").getByRole("button", { name: "關閉", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 }
+async function expectDirectionLayout(page) {
+  const boxes = await page.getByRole("group", { name: "機場方向", exact: true }).getByRole("button").evaluateAll((buttons) => buttons.map((button) => {
+    const r = button.getBoundingClientRect();
+    return { width: r.width, height: r.height, x: r.x, y: r.y };
+  }));
+  expect(boxes).toHaveLength(2);
+  expect(Math.abs(boxes[0].width - boxes[1].width)).toBeLessThan(1);
+  expect(boxes[0].y).toBe(boxes[1].y);
+  expect(boxes.every((box) => box.width >= 44 && box.height >= 44)).toBe(true);
+  return boxes;
+}
 async function openArrival(page) {
   await journeyCard(page, arrivalTitle).locator("button").first().click();
   await expect(page.getByRole("dialog", { name: "旅程詳情", exact: true })).toBeVisible();
@@ -136,6 +147,7 @@ test("curated preview review journeys", async ({ page, evidence }, testInfo) => 
           const noOverlap = r.every((b, i) => r.slice(0, i).every((a) => Math.abs(a.x-b.x) > 1 || b.top >= a.bottom + 9));
           return { columns: new Set(r.map((x) => Math.round(x.x))).size, noOverlap, overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth };
         })).toEqual({ columns: count, noOverlap: true, overflow: false });
+        await expectDirectionLayout(page);
         evidence.observations.push({ kind: "responsive-smoke", width, columns: count, noOverlap: true, overflow: false });
       }
     }
@@ -143,11 +155,72 @@ test("curated preview review journeys", async ({ page, evidence }, testInfo) => 
     await page.evaluate(() => window.scrollTo(0, 0));
     await shot("01-homepage");
   });
+  await test.step("Airport direction: friendly buttons preserve search/date/flight and synchronize filters", async () => {
+    const group = page.getByRole("group", { name: "機場方向", exact: true });
+    const outbound = group.getByRole("button", { name: "準備飛啦！ 去機場", exact: true });
+    const arrival = group.getByRole("button", { name: "落機返屋企！ 由機場出發", exact: true });
+    await expect(outbound).toHaveAttribute("aria-pressed", "false");
+    await expect(arrival).toHaveAttribute("aria-pressed", "false");
+    const boxes = await expectDirectionLayout(page);
+    await outbound.focus();
+    await page.keyboard.press("Space");
+    await expect(outbound).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("article")).toHaveCount(2);
+    expect(await page.getByRole("article").evaluateAll((items) => items.map((item) => item.dataset.journeyId))).toEqual(["demo-3", "demo-6"]);
+    await expect(page.getByRole("heading", { name: "準備飛，一齊去機場。", exact: true })).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    const path = testInfo.outputPath("airport-direction-outbound.png");
+    await page.screenshot({ path, animations: "disabled", caret: "hide" });
+    await testInfo.attach("airport-direction-outbound", { path, contentType: "image/png" });
+    const audit = await accessibilityAudit(page);
+    evidence.observations.push({ kind: "airport-direction-selector", boxes, ...audit });
+    expect(audit.violations).toEqual([]);
+    await page.keyboard.press("Tab");
+    await expect(arrival).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(arrival).toHaveAttribute("aria-pressed", "true");
+    await expect(outbound).toHaveAttribute("aria-pressed", "false");
+    await expect(page.getByRole("article")).toHaveCount(6);
+    await outbound.click();
+    const search = page.getByRole("textbox", { name: "搜尋目的地或旅程", exact: true });
+    const flight = page.getByRole("textbox", { name: "按航班編號篩選", exact: true });
+    await search.fill("屯門");
+    await page.getByRole("button", { name: "今日", exact: true }).click();
+    await expect(page.locator('article[data-journey-id="demo-6"]')).toBeVisible();
+    await expect(page.getByRole("article")).toHaveCount(1);
+    await arrival.click();
+    await expect(defaultCard).toBeVisible();
+    await expect(page.getByRole("article")).toHaveCount(1);
+    await flight.fill("cx 734");
+    await outbound.click();
+    await expect(page.getByRole("article")).toHaveCount(0);
+    await expect(search).toHaveValue("屯門");
+    await expect(flight).toHaveValue("CX734");
+    await expect(page.getByRole("button", { name: "今日", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await arrival.click();
+    await expect(defaultCard).toBeVisible();
+    await page.getByRole("button", { name: /^篩選/ }).click();
+    const direction = dialog.getByRole("combobox", { name: "旅程方向", exact: true });
+    await expect(direction).toHaveValue("from_airport");
+    await direction.selectOption("to_airport");
+    await dialog.getByRole("button", { name: "睇 0 個旅程", exact: true }).click();
+    await expect(outbound).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("article")).toHaveCount(0);
+    await arrival.click();
+    await expect(defaultCard).toBeVisible();
+    await page.keyboard.press("Space");
+    await expect(arrival).toHaveAttribute("aria-pressed", "false");
+    await expect(outbound).toHaveAttribute("aria-pressed", "false");
+    await expect(search).toHaveValue("屯門");
+    await page.getByRole("button", { name: "清除篩選", exact: true }).click();
+    await expect(page.getByRole("article")).toHaveCount(8);
+  });
   await test.step("Airport search: route text and normalized optional flight", async () => {
     await page.getByRole("textbox", { name: "搜尋目的地或旅程", exact: true }).fill("屯門");
     await page.getByRole("textbox", { name: "按航班編號篩選", exact: true }).fill("cx 734");
     await expect(page.getByRole("article")).toHaveCount(1);
     await expect(defaultCard).toContainText("CX734");
+    await page.getByRole("button", { name: "落機返屋企！ 由機場出發", exact: true }).click();
     await page.evaluate(() => window.scrollTo(0, 0));
     await shot("02-airport-search");
   });

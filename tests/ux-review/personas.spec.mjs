@@ -47,7 +47,7 @@ test("P2 — family and luggage", async ({ page, session: s }) => {
 });
 
 test("P3 — late-night and invalid times", async ({ page, session: s }) => {
-  await s.act("Choose outbound direction and open the visible Sha Tin airport journey", async () => { await page.getByRole("button", { name: "出發去機場", exact: true }).click(); await cards(page).filter({ has: page.getByRole("heading", { name: "沙田 去 香港機場", exact: true }) }).getByRole("button").first().click(); return await dialog(page).innerText(); });
+  await s.act("Choose 準備飛啦！ outbound direction and open the visible Sha Tin airport journey", async () => { await page.getByRole("button", { name: "準備飛啦！ 去機場", exact: true }).click(); await cards(page).filter({ has: page.getByRole("heading", { name: "沙田 去 香港機場", exact: true }) }).getByRole("button").first().click(); return await dialog(page).innerText(); });
   s.observe("Existing overnight full-date timeline", await dialog(page).locator("dl").innerText());
   await dialog(page).locator("dl").scrollIntoViewIfNeeded(); await s.shot("03-overnight-timeline");
   await s.act("Create an outbound post and try yesterday's departure date", async () => {

@@ -1,16 +1,16 @@
 # FareEnough V2.3 — automated UX review
 
-Generated: 2026-10-22T15:52:37.782Z (UTC). **PASS — complete package**. This is captured evidence and a product inventory, not an accessibility certification or a pixel-diff baseline.
+Generated: 2026-10-22T16:22:50.559Z (UTC). **PASS — complete package**. This is captured evidence and a product inventory, not an accessibility certification or a pixel-diff baseline.
 
 ## Version and reproducibility
 
 - Reviewed UI source commit: [`d31604f0e840062a5b42339c1cf76d0e6a79f77d`](https://github.com/tonylo0929/ridepod/commit/d31604f0e840062a5b42339c1cf76d0e6a79f77d).
-- Generation checkout: `5177292ded8f62594cbc12c3df373ef6e0f05de8`; branch: `feature/ridepod-social-discovery`.
-- UI source files modified/untracked at capture: **no**.
-- SHA-256 of preview/runtime/global styles/avatar source files: `54b03a41f42d904e83b0585b45b3fde6951fec886a927b96aafd1bf688777d29`.
+- Generation checkout: `923e8b8f5edb257ac086f7fed1aabaa2ff6f2980`; branch: `feature/ridepod-social-discovery`.
+- UI source files modified/untracked at capture: **yes — source hash below identifies the working copy**.
+- SHA-256 of preview/runtime/global styles/avatar source files: `4fa9244acc4b6d0f8de9a1d2b26cfb2da6b1508083587a5ee52c15429500eb66`.
 - Toolchain: Node v24.14.0, Playwright 1.64.1, Chromium 156.0.8078.4, win32.
 - Viewports: mobile **390 × 1100**, desktop **1440 × 1000**, device scale 1, zh-HK locale, Asia/Hong_Kong timezone, reduced motion. PNG viewport captures; modal interiors are scrolled where noted. No content is hidden for screenshots.
-- Server demo date anchor(s): 2026-10-22. “今日/聽日” roll forward on future runs. Each run starts a fresh local production build and new isolated contexts; no saved sessions are loaded.
+- Server demo date anchor(s): 2026-10-23. “今日/聽日” roll forward on future runs. Each run starts a fresh local production build and new isolated contexts; no saved sessions are loaded.
 - The package commit necessarily follows the reviewed checkout because generated files cannot contain their own Git hash. The UI source commit/hash above identify what is pictured. CI artifacts record the actual tested checkout.
 
 ## Screens and navigation
@@ -48,13 +48,13 @@ All fixture people, posts, flight examples and interactions are synthetic. “Li
 
 ## Test results
 
-Run duration: 44.5 seconds. 20/20 curated images; 2704 KiB total; 4 MiB budget **passed**; capture completeness **passed**.
+Run duration: 46.8 seconds. 20/20 curated images; 2644 KiB total; 4 MiB budget **passed**; capture completeness **passed**.
 
 | Test | Status | Duration |
 | --- | --- | --- |
 | logic: airport/count logic and capture network isolation | passed | 0.1s |
-| mobile: curated preview review journeys | passed | 11.5s |
-| desktop: curated preview review journeys | passed | 13.1s |
+| mobile: curated preview review journeys | passed | 12.1s |
+| desktop: curated preview review journeys | passed | 14.7s |
 
 The logic test executes the nine airport/count/copy assertions in `scripts/test-v2-airport-timing.mjs`, plus allow/deny cases for the capture network boundary. Playwright's web server runs `npm run build` (including Next's TypeScript check) before browser tests; a failed build prevents capture. This report does not imply that every production flow or repository test was run.
 
@@ -63,6 +63,7 @@ Both flight inputs are checked with an invalid character and a valid synthetic f
 | Browser flow/assertions | Mobile | Desktop |
 | --- | --- | --- |
 | Homepage: synthetic feed, responsive masonry and no overflow | passed | passed |
+| Airport direction: friendly buttons preserve search/date/flight and synchronize filters | passed | passed |
 | Airport search: route text and normalized optional flight | passed | passed |
 | Airport filters: planned places and district, native-dialog keyboard audit | passed | passed |
 | Popular routes: corridor, recurring filter and empty recovery | passed | passed |
@@ -82,7 +83,7 @@ Detail-cover correction: **18/18** checks cover all nine existing illustrations 
 
 ## Accessibility and usability findings
 
-Automated axe scans run at every captured state and the expanded filter/cover states against WCAG 2 A/AA, 2.1 A/AA and 2.2 AA tags (24 scans). **Contrast and visible-label/name mismatches are mandatory regression gates**; all other findings are also reported. Duplicate occurrences across states are counted, not unique UI defects. No audit rules are disabled or excluded. Incomplete rules requiring human review: **color-contrast**; element-level findings are retained in the JSON artifact. Zero automatic violations does not establish full WCAG conformance.
+Automated axe scans run at every captured state and the expanded filter/cover states against WCAG 2 A/AA, 2.1 A/AA and 2.2 AA tags (26 scans). **Contrast and visible-label/name mismatches are mandatory regression gates**; all other findings are also reported. Duplicate occurrences across states are counted, not unique UI defects. No audit rules are disabled or excluded. Incomplete rules requiring human review: **color-contrast**; element-level findings are retained in the JSON artifact. Zero automatic violations does not establish full WCAG conformance.
 
 | Automated rule | Impact | Affected audited states | Node occurrences across states | Example selector |
 | --- | --- | --- | --- | --- |
@@ -116,8 +117,8 @@ Click an image for its native resolution. The 20-image limit covers ten states a
 
 | State / context | Mobile · 390px | Desktop · 1440px |
 | --- | --- | --- |
-| **Homepage and masonry feed**<br>Default airport feed, with route/date, optional flight, independent interest and capacity, and author. | [![Homepage and masonry feed — mobile](screenshots/mobile-01-homepage.png)](screenshots/mobile-01-homepage.png) | [![Homepage and masonry feed — desktop](screenshots/desktop-01-homepage.png)](screenshots/desktop-01-homepage.png) |
-| **Airport search**<br>Destination search plus a normalized `cx 734` flight filter; one synthetic matching journey. | [![Airport search — mobile](screenshots/mobile-02-airport-search.png)](screenshots/mobile-02-airport-search.png) | [![Airport search — desktop](screenshots/desktop-02-airport-search.png)](screenshots/desktop-02-airport-search.png) |
+| **Homepage and masonry feed**<br>Default airport feed with equal-width 準備飛啦！ / 落機返屋企！ direction buttons, route/date, optional flight, independent interest/capacity, and author. | [![Homepage and masonry feed — mobile](screenshots/mobile-01-homepage.png)](screenshots/mobile-01-homepage.png) | [![Homepage and masonry feed — desktop](screenshots/desktop-01-homepage.png)](screenshots/desktop-01-homepage.png) |
+| **Airport search**<br>Selected 落機返屋企！ direction plus destination search and normalized `cx 734` flight filter; one synthetic matching journey. | [![Airport search — mobile](screenshots/mobile-02-airport-search.png)](screenshots/mobile-02-airport-search.png) | [![Airport search — desktop](screenshots/desktop-02-airport-search.png)](screenshots/desktop-02-airport-search.png) |
 | **Airport filters**<br>Common district/planned places/direction filters, with selected advanced conditions folded away. Places are not confirmed remaining seats. | [![Airport filters — mobile](screenshots/mobile-03-airport-filters.png)](screenshots/mobile-03-airport-filters.png) | [![Airport filters — desktop](screenshots/desktop-03-airport-filters.png)](screenshots/desktop-03-airport-filters.png) |
 | **Popular routes**<br>The 屯門 → 中環 corridor; both one-off and recurring demo journeys are discoverable. | [![Popular routes — mobile](screenshots/mobile-04-popular-routes.png)](screenshots/mobile-04-popular-routes.png) | [![Popular routes — desktop](screenshots/desktop-04-popular-routes.png)](screenshots/desktop-04-popular-routes.png) |
 | **Arrival journey details**<br>Full uncropped illustration and journey overview. Lower airport timing/interest information appears in the before/after states. | [![Arrival journey details — mobile](screenshots/mobile-05-journey-details.png)](screenshots/mobile-05-journey-details.png) | [![Arrival journey details — desktop](screenshots/desktop-05-journey-details.png)](screenshots/desktop-05-journey-details.png) |

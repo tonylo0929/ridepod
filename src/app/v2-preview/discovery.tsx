@@ -324,6 +324,29 @@ export default function Discovery({ today }: { today: string }) {
               )}
             </label>
           </div>
+          {category === "airport" && (
+            <div className={s.airportDirections} role="group" aria-label="機場方向">
+              {([
+                ["to_airport", "✈️", "準備飛啦！", "去機場"],
+                ["from_airport", "🧳", "落機返屋企！", "由機場出發"],
+              ] as const).map(([value, icon, title, subtitle]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={s.airportDirection}
+                  aria-pressed={direction === value}
+                  onClick={() => setDirection(direction === value ? "all" : value)}
+                >
+                  <span className={s.directionIcon} aria-hidden="true">{icon}</span>
+                  <span className={s.directionTitle}>{title}</span>
+                  <span className={s.directionSubtitle}>{subtitle}</span>
+                  <span className={s.directionCheck} aria-hidden="true">
+                    {direction === value && <Check size={14} strokeWidth={3} />}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className={s.filterBar}>
             <div className={s.quickFilters} data-category={category}>
               <button aria-pressed={!day} onClick={() => setDay("")}>
@@ -343,30 +366,7 @@ export default function Discovery({ today }: { today: string }) {
               >
                 聽日
               </button>
-              {category === "airport" ? (
-                <>
-                  <button
-                    aria-pressed={direction === "from_airport"}
-                    onClick={() =>
-                      setDirection(
-                        direction === "from_airport" ? "all" : "from_airport",
-                      )
-                    }
-                  >
-                    落機返屋企
-                  </button>
-                  <button
-                    aria-pressed={direction === "to_airport"}
-                    onClick={() =>
-                      setDirection(
-                        direction === "to_airport" ? "all" : "to_airport",
-                      )
-                    }
-                  >
-                    出發去機場
-                  </button>
-                </>
-              ) : (
+              {category === "routes" && (
                 <>
                   <button
                     aria-pressed={period === "morning"}
@@ -441,7 +441,9 @@ export default function Discovery({ today }: { today: string }) {
               <div>
                 <h2>
                   {category === "airport"
-                    ? "落機之後，一齊返屋企。"
+                    ? direction === "to_airport"
+                      ? "準備飛，一齊去機場。"
+                      : "落機之後，一齊返屋企。"
                     : "熟悉嘅路，識個新同路人。"}
                 </h2>
                 <p>

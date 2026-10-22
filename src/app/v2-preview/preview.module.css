@@ -2573,7 +2573,6 @@
 @media (max-width: 760px) {
   .quickFilters { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); flex: 1; overflow: visible; }
   .quickFilters button { grid-column: span 2; padding-left: 4px; padding-right: 4px; }
-  .quickFilters[data-category="airport"] button:nth-child(n+4) { grid-column: span 3; }
   .corridors button { flex-shrink: 0; font-size: 12px; }
   .filterBar { align-items: flex-start; }
   .cardBody .routeMain { font-size: 14px; }
@@ -2585,4 +2584,90 @@
   .cardBody .routeMain { font-size: 13px; }
   .compactSummary { flex-direction: column; }
   .compactSummary .editorPreview { width: 100%; height: 70px; flex-basis: auto; }
+}
+
+/* Airport direction choices share the existing filter state and pastel palette. */
+.airportDirections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0 14px;
+}
+.airportDirection {
+  display: grid;
+  grid-template-areas: "icon title check" "icon subtitle check";
+  grid-template-columns: 40px minmax(0, 1fr) 20px;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 2px;
+  min-width: 0;
+  min-height: 84px;
+  padding: 14px 18px;
+  border: 2px solid #d8e3d2;
+  border-radius: 18px;
+  background: #fffdf7;
+  color: #274d3c;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: 0 2px 6px #274d3c06;
+}
+.airportDirection:hover { border-color: #789780; }
+.airportDirection[aria-pressed="true"] {
+  border-color: #176f60;
+  background: #eaf2e5;
+  box-shadow: 0 3px 10px #176f6010;
+}
+.directionIcon {
+  grid-area: icon;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  background: #fae9bd;
+  font-size: 23px;
+  line-height: 1;
+}
+.airportDirection:nth-child(2) .directionIcon { background: #dce9d4; }
+.directionTitle {
+  grid-area: title;
+  font-size: 16px;
+  font-weight: 750;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.directionSubtitle {
+  grid-area: subtitle;
+  color: #4b6655;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.directionCheck {
+  grid-area: check;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid #789780;
+  border-radius: 50%;
+}
+.airportDirection[aria-pressed="true"] .directionCheck {
+  color: white;
+  border-color: #176f60;
+  background: #176f60;
+}
+@media (max-width: 600px) {
+  .airportDirections { gap: 10px; margin-top: 14px; }
+  .airportDirection {
+    grid-template-areas: "icon check" "title title" "subtitle subtitle";
+    grid-template-columns: minmax(0, 1fr) 20px;
+    gap: 3px 8px;
+    min-height: 114px;
+    padding: 12px;
+    border-radius: 15px;
+  }
+  .directionIcon { width: 32px; height: 32px; font-size: 21px; border-radius: 11px; margin-bottom: 3px; }
+  .directionTitle { font-size: 15px; }
+  .directionSubtitle { font-size: 12px; }
 }
