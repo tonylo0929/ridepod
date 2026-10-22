@@ -1,16 +1,16 @@
 # FareEnough V2.3 — automated UX review
 
-Generated: 2026-10-21T15:47:26.379Z (UTC). **PASS — complete package**. This is captured evidence and a product inventory, not an accessibility certification or a pixel-diff baseline.
+Generated: 2026-10-22T15:05:39.093Z (UTC). **PASS — complete package**. This is captured evidence and a product inventory, not an accessibility certification or a pixel-diff baseline.
 
 ## Version and reproducibility
 
-- Reviewed UI source commit: [`5c63cd86ef63c93fc41aedf8d5fbd3edbc5df052`](https://github.com/tonylo0929/ridepod/commit/5c63cd86ef63c93fc41aedf8d5fbd3edbc5df052).
-- Generation checkout: `5c63cd86ef63c93fc41aedf8d5fbd3edbc5df052`; branch: `feature/ridepod-social-discovery`.
+- Reviewed UI source commit: [`d31604f0e840062a5b42339c1cf76d0e6a79f77d`](https://github.com/tonylo0929/ridepod/commit/d31604f0e840062a5b42339c1cf76d0e6a79f77d).
+- Generation checkout: `d31604f0e840062a5b42339c1cf76d0e6a79f77d`; branch: `feature/ridepod-social-discovery`.
 - UI source files modified/untracked at capture: **no**.
-- SHA-256 of preview/runtime/global styles/avatar source files: `61df145abc8a8441a20283dbd27e3dfbe10c4474a7c4510c8e9e07428c141693`.
+- SHA-256 of preview/runtime/global styles/avatar source files: `54b03a41f42d904e83b0585b45b3fde6951fec886a927b96aafd1bf688777d29`.
 - Toolchain: Node v24.14.0, Playwright 1.64.1, Chromium 156.0.8078.4, win32.
 - Viewports: mobile **390 × 1100**, desktop **1440 × 1000**, device scale 1, zh-HK locale, Asia/Hong_Kong timezone, reduced motion. PNG viewport captures; modal interiors are scrolled where noted. No content is hidden for screenshots.
-- Server demo date anchor(s): 2026-10-21. “今日/聽日” roll forward on future runs. Each run starts a fresh local production build and new isolated contexts; no saved sessions are loaded.
+- Server demo date anchor(s): 2026-10-22. “今日/聽日” roll forward on future runs. Each run starts a fresh local production build and new isolated contexts; no saved sessions are loaded.
 - The package commit necessarily follows the reviewed checkout because generated files cannot contain their own Git hash. The UI source commit/hash above identify what is pictured. CI artifacts record the actual tested checkout.
 
 ## Screens and navigation
@@ -48,13 +48,13 @@ All fixture people, posts, flight examples and interactions are synthetic. “Li
 
 ## Test results
 
-Run duration: 36.5 seconds. 20/20 curated images; 2684 KiB total; 4 MiB budget **passed**; capture completeness **passed**.
+Run duration: 46.0 seconds. 20/20 curated images; 2704 KiB total; 4 MiB budget **passed**; capture completeness **passed**.
 
 | Test | Status | Duration |
 | --- | --- | --- |
 | logic: airport/count logic and capture network isolation | passed | 0.1s |
-| mobile: curated preview review journeys | passed | 8.2s |
-| desktop: curated preview review journeys | passed | 9.3s |
+| mobile: curated preview review journeys | passed | 11.7s |
+| desktop: curated preview review journeys | passed | 14.1s |
 
 The logic test executes the nine airport/count/copy assertions in `scripts/test-v2-airport-timing.mjs`, plus allow/deny cases for the capture network boundary. Playwright's web server runs `npm run build` (including Next's TypeScript check) before browser tests; a failed build prevents capture. This report does not imply that every production flow or repository test was run.
 
@@ -74,8 +74,11 @@ Both flight inputs are checked with an invalid character and a valid synthetic f
 | Interest before/after: add and withdraw without changing capacity | passed | passed |
 | My Journeys and message shortlist: real session counts, demo notices | passed | passed |
 | Refresh: local posts expire and both activity counters reset | passed | passed |
+| All nine detail covers: full artwork, uniform scale, bounded height and unchanged feed fit | passed | passed |
 
 No horizontal page overflow is required at every capture point. Browser errors observed: **0**. Forbidden network attempts observed: **0**. A forbidden attempt fails the run before publication.
+
+Detail-cover correction: **18/18** checks cover all nine existing illustrations at 390×844 mobile and 1440×1000 desktop. ViewBox corner transforms must remain inside the visible SVG frame with uniform scaling; the cover is capped at 320px / 36% of viewport height, and the badge/close control must not obscure artwork. Detail uses containment; feed covers retain their existing crop. Eighteen per-cover screenshots and geometry results stay in the Actions artifact, outside the curated 20-image binary budget. The gallery's journey-detail image shows the top of the modal.
 
 ## Accessibility and usability findings
 
@@ -117,7 +120,7 @@ Click an image for its native resolution. The 20-image limit covers ten states a
 | **Airport search**<br>Destination search plus a normalized `cx 734` flight filter; one synthetic matching journey. | [![Airport search — mobile](screenshots/mobile-02-airport-search.png)](screenshots/mobile-02-airport-search.png) | [![Airport search — desktop](screenshots/desktop-02-airport-search.png)](screenshots/desktop-02-airport-search.png) |
 | **Airport filters**<br>Common district/planned places/direction filters, with selected advanced conditions folded away. Places are not confirmed remaining seats. | [![Airport filters — mobile](screenshots/mobile-03-airport-filters.png)](screenshots/mobile-03-airport-filters.png) | [![Airport filters — desktop](screenshots/desktop-03-airport-filters.png)](screenshots/desktop-03-airport-filters.png) |
 | **Popular routes**<br>The 屯門 → 中環 corridor; both one-off and recurring demo journeys are discoverable. | [![Popular routes — mobile](screenshots/mobile-04-popular-routes.png)](screenshots/mobile-04-popular-routes.png) | [![Popular routes — desktop](screenshots/desktop-04-popular-routes.png)](screenshots/desktop-04-popular-routes.png) |
-| **Arrival journey details**<br>Scrolled to the host/interest information, distinct exit/car/flight dates and demo disclaimer. | [![Arrival journey details — mobile](screenshots/mobile-05-journey-details.png)](screenshots/mobile-05-journey-details.png) | [![Arrival journey details — desktop](screenshots/desktop-05-journey-details.png)](screenshots/desktop-05-journey-details.png) |
+| **Arrival journey details**<br>Full uncropped illustration and journey overview. Lower airport timing/interest information appears in the before/after states. | [![Arrival journey details — mobile](screenshots/mobile-05-journey-details.png)](screenshots/mobile-05-journey-details.png) | [![Arrival journey details — desktop](screenshots/desktop-05-journey-details.png)](screenshots/desktop-05-journey-details.png) |
 | **Create Post — step 1**<br>Essential fields first; optional trip details are collapsed. | [![Create Post — step 1 — mobile](screenshots/mobile-06-create-step-1.png)](screenshots/mobile-06-create-step-1.png) | [![Create Post — step 1 — desktop](screenshots/desktop-06-create-step-1.png)](screenshots/desktop-06-create-step-1.png) |
 | **Create Post — preview**<br>Compact full-date car departure summary, editable Cantonese copy, optional flight timeline/cover, and normal-flow publish action. | [![Create Post — preview — mobile](screenshots/mobile-07-create-step-2.png)](screenshots/mobile-07-create-step-2.png) | [![Create Post — preview — desktop](screenshots/desktop-07-create-step-2.png)](screenshots/desktop-07-create-step-2.png) |
 | **Interest — before**<br>Another person's journey: zero interested people, maximum planned group of four, and 我有興趣. | [![Interest — before — mobile](screenshots/mobile-08-interest-before.png)](screenshots/mobile-08-interest-before.png) | [![Interest — before — desktop](screenshots/desktop-08-interest-before.png)](screenshots/desktop-08-interest-before.png) |
