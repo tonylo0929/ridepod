@@ -15,7 +15,7 @@ export const screens = [
   ["02-airport-search", "Airport search", "Destination search plus a normalized `cx 734` flight filter; one synthetic matching journey."],
   ["03-airport-filters", "Airport filters", "Common district/planned places/direction filters, with selected advanced conditions folded away. Places are not confirmed remaining seats."],
   ["04-popular-routes", "Popular routes", "The 屯門 → 中環 corridor; both one-off and recurring demo journeys are discoverable."],
-  ["05-journey-details", "Arrival journey details", "Scrolled to the host/interest information, distinct exit/car/flight dates and demo disclaimer."],
+  ["05-journey-details", "Arrival journey details", "Full uncropped illustration and journey overview. Lower airport timing/interest information appears in the before/after states."],
   ["06-create-step-1", "Create Post — step 1", "Essential fields first; optional trip details are collapsed."],
   ["07-create-step-2", "Create Post — preview", "Compact full-date car departure summary, editable Cantonese copy, optional flight timeline/cover, and normal-flow publish action."],
   ["08-interest-before", "Interest — before", "Another person's journey: zero interested people, maximum planned group of four, and 我有興趣."],

@@ -1,5 +1,6 @@
 import { test as base, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
+import { covers } from "../../src/app/v2-preview/data.ts";
 import { allowedRequest, baseURL, screens } from "../../scripts/ux-review/settings.mjs";
 
 const arrivalTitle = "今晚 CX734 落機，有冇人一齊返屯門？✈️";
@@ -207,7 +208,7 @@ test("curated preview review journeys", async ({ page, evidence }, testInfo) => 
     await expect(times).toContainText("21:50");
     await expect(times).toContainText("20:50");
     await expect(dialog).toContainText("發帖人 1 人 + 同行名額 3 個");
-    await detailBottom(page);
+    await dialog.evaluate((el) => { el.scrollTop = 0; });
     await shot("05-journey-details");
     await page.keyboard.press("Escape");
     await expect(dialog).toHaveCount(0);
@@ -337,5 +338,48 @@ test("curated preview review journeys", async ({ page, evidence }, testInfo) => 
     await expect(dialog.locator("span").filter({ hasText: /^0有興趣旅程$/ })).toHaveCount(1);
     await closeDialog(page);
     expect(evidence.captures.map((c) => c.id)).toEqual(screens.map(([id]) => id));
+  });
+  await test.step("All nine detail covers: full artwork, uniform scale, bounded height and unchanged feed fit", async () => {
+    if (testInfo.project.name === "mobile") await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole("navigation", { name: "主要導覽", exact: true }).getByRole("button", { name: "發佈", exact: true }).click();
+    await dialog.getByRole("button", { name: "幫我寫個帖文", exact: true }).click();
+    for (const [index, cover] of covers.entries()) {
+      if (index > 0) {
+        await dialog.getByRole("button", { name: "編輯旅程", exact: true }).click();
+        await dialog.getByRole("button", { name: "預覽修改", exact: true }).click();
+      }
+      await dialog.locator("summary").filter({ hasText: "揀個封面" }).click();
+      await dialog.getByRole("button", { name: cover.label, exact: true }).click();
+      await dialog.getByRole("button", { name: /^(發佈示範帖文|儲存示範修改)$/ }).click();
+      await expect(page.locator('article[data-journey-id^="local-"] svg[viewBox="0 0 480 520"]')).toHaveAttribute("preserveAspectRatio", "xMidYMid slice");
+      const svg = dialog.locator('svg[viewBox="0 0 480 520"]');
+      await expect(svg).toBeVisible();
+      await dialog.evaluate((el) => { el.scrollTop = 0; });
+      const geometry = await svg.evaluate((el) => {
+        const frame = el.getBoundingClientRect(), matrix = el.getScreenCTM();
+        const start = new DOMPoint(0, 0).matrixTransform(matrix);
+        const end = new DOMPoint(480, 520).matrixTransform(matrix);
+        const artwork = { left: start.x, top: start.y, right: end.x, bottom: end.y };
+        const overlaps = (r) => artwork.left < r.right && artwork.right > r.left && artwork.top < r.bottom && artwork.bottom > r.top;
+        const modal = el.closest("dialog");
+        return {
+          fullArtwork: start.x >= frame.left - 1 && start.y >= frame.top - 1 && end.x <= frame.right + 1 && end.y <= frame.bottom + 1,
+          uniformScale: Math.abs(matrix.a - matrix.d) < 0.000001 && matrix.b === 0 && matrix.c === 0,
+          centeredArtwork: Math.abs(artwork.left + artwork.right - modal.getBoundingClientRect().left - modal.getBoundingClientRect().right) < 2,
+          boundedHeight: el.parentElement.getBoundingClientRect().height <= Math.min(320, innerHeight * 0.36) + 1,
+          controlsClear: !overlaps(modal.querySelector('button[aria-label="關閉"]').getBoundingClientRect()) && !overlaps(el.previousElementSibling.getBoundingClientRect()),
+          noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+          viewport: { width: innerWidth, height: innerHeight }, artwork,
+        };
+      });
+      evidence.observations.push({ kind: "detail-cover", scene: cover.id, ...geometry });
+      for (const key of ["fullArtwork", "uniformScale", "centeredArtwork", "boundedHeight", "controlsClear", "noOverflow"])
+        expect(geometry[key], `${cover.id}: ${key}`).toBe(true);
+      const path = testInfo.outputPath(`covers/${cover.id}.png`);
+      await page.screenshot({ path, animations: "disabled", caret: "hide" });
+      await testInfo.attach(`detail-cover-${cover.id}`, { path, contentType: "image/png" });
+      if (index === covers.length - 1) await closeDialog(page);
+    }
+    await expect(page.locator('article[data-journey-id^="local-"] svg[viewBox="0 0 480 520"]')).toHaveAttribute("preserveAspectRatio", "xMidYMid slice");
   });
 });

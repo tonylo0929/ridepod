@@ -39,6 +39,7 @@ Use `npm run ux:review -- --project=mobile` for a partial diagnostic run. Partia
 - Essential-only creation, optional chronology validation, preview, editable Cantonese copy retained on back navigation, publishing, own-post editing without duplicates or self-interest.
 - Other-post interest before/after, withdrawal, capacity independence, My Journeys and message shortlist.
 - Refresh reset and explicit recovery for an expired local-post link.
+- All nine cover choices in journey details at 390×844 mobile and 1440×1000 desktop: full ViewBox visible, uniform scale, bounded height, unobstructed artwork and unchanged feed crop mode. Eighteen extra per-cover screenshots remain in the ignored results / Actions artifact; the curated package stays at 20 images.
 
 The suite asserts interaction behavior, page overflow, masonry columns/order/non-overlap, keyboard cycling and opener restoration, browser errors and the network boundary. Each capture and the expanded filter/cover states run axe scans. **Color contrast and visible-label/name mismatches fail the run**; no rules are disabled/excluded. Other findings and incomplete rules are reported for review. A green workflow confirms these tested contracts, not overall WCAG conformance. No automated audit can replace screen-reader, zoom, keyboard and user-comprehension reviews. Use the [five-person usability-test package](USABILITY-TEST.md) before adding features; its sessions and results are pending real participants.
 

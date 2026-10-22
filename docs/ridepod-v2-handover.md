@@ -1,10 +1,12 @@
 # FareEnough V2.3 preview handover
 
-Updated: 21 October 2026, Hong Kong time.
+Updated: 22 October 2026, Hong Kong time.
 
 The public preview brand is **FareEnough** with the tagline **同路就夾，車費齊齊慳。** The repository, branch, Vercel project and production experience retain their existing names. V2.3 refines the isolated prototype's accessibility/usability and its review workflow.
 
 ## V2.3 review outcome
+
+- Detail-cover correction: only the journey-detail renderer opts into SVG containment (`meet`); homepage/card/creation covers keep the default `slice` behavior. The detail cover uses at most 320px / 36dvh, with the label in a separate row. All nine illustrations are checked at mobile/desktop widths for full artwork, uniform scale, bounded height and no badge/close-button obstruction. The detail screenshot now shows the top; eighteen extra cover captures stay in Actions artifacts. No full-cover viewer is needed because the whole illustration is already visible.
 
 - Read PR #1's available discussion: only the Vercel bot deployment comment was present. The owner's pasted V2.3 review is the implementation brief.
 - P0 first: darker green secondary text/disclaimers on the existing pastel surfaces, stronger input boundaries/focus indicators, and natural card button names matching visible content. Expanded cover-choice testing exposed additional visible-name mismatches; removing their redundant overrides fixes those too. Axe rules are never disabled/excluded. Contrast and label/name mismatches now fail the reusable review command.

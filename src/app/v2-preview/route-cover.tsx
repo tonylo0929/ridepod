@@ -4,12 +4,14 @@ import type { CoverId } from "./data";
 export function RouteCover({
   scene,
   className = "",
+  fit = "cover",
 }: {
   scene: CoverId;
   className?: string;
+  fit?: "cover" | "contain";
 }) {
   if (scene === "boarding" || scene === "luggage" || scene === "airport-sign") {
-    return <AirportGraphic scene={scene} className={className} />;
+    return <AirportGraphic scene={scene} className={className} fit={fit} />;
   }
   const night = scene === "night";
   const sunset = scene === "sunset";
@@ -27,7 +29,7 @@ export function RouteCover({
       viewBox="0 0 480 520"
       fill="none"
       aria-hidden="true"
-      preserveAspectRatio="xMidYMid slice"
+      preserveAspectRatio={`xMidYMid ${fit === "contain" ? "meet" : "slice"}`}
     >
       <rect width="480" height="520" fill={sky} />
       <circle
@@ -190,9 +192,11 @@ export function RouteCover({
 function AirportGraphic({
   scene,
   className,
+  fit,
 }: {
   scene: "boarding" | "luggage" | "airport-sign";
   className: string;
+  fit: "cover" | "contain";
 }) {
   const sign = scene === "airport-sign";
   return (
@@ -201,7 +205,7 @@ function AirportGraphic({
       viewBox="0 0 480 520"
       fill="none"
       aria-hidden="true"
-      preserveAspectRatio="xMidYMid slice"
+      preserveAspectRatio={`xMidYMid ${fit === "contain" ? "meet" : "slice"}`}
     >
       <rect
         width="480"

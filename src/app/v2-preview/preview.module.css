@@ -589,12 +589,23 @@
   color: var(--ink);
 }
 .detailCover {
-  height: 230px;
+  width: 100%;
+  height: min(320px, 36dvh);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px;
+  background: #edf1e7;
   overflow: hidden;
 }
 .detailCover svg {
-  width: 100%;
+  width: auto;
   height: 100%;
+  max-width: 100%;
+  aspect-ratio: 12 / 13;
+  justify-self: center;
+  overflow: hidden;
+  min-height: 0;
 }
 .detailBody {
   padding: 28px;
@@ -961,9 +972,6 @@
   .detailBody h2 {
     font-size: 20px;
   }
-  .detailCover {
-    height: 210px;
-  }
 }
 .headerActions {
   display: flex;
@@ -1150,9 +1158,8 @@
   position: relative;
 }
 .detailTag {
-  position: absolute;
-  left: 24px;
-  bottom: 20px;
+  justify-self: start;
+  margin-right: 48px;
   padding: 7px 11px;
   background: #fffef7da;
   font-size: 10px;

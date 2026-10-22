@@ -606,11 +606,11 @@ export default function Discovery({ today }: { today: string }) {
       {selected && (
         <Modal label="旅程詳情" onClose={closePost}>
           <div className={s.detailCover}>
-            <RouteCover scene={selected.cover} />
             <span className={s.detailTag}>
               示範旅程 ·{" "}
               {selected.rideKind === "airport" ? "機場同路" : "日常同路"}
             </span>
+            <RouteCover scene={selected.cover} fit="contain" />
           </div>
           <div className={s.detailBody}>
             <div className={s.detailAuthor}>

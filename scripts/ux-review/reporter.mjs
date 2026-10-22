@@ -97,6 +97,7 @@ export default class UXReporter {
     const sampleTargets = [...new Map(small.map((t) => [`${t.project}/${t.label}`, t])).values()].slice(0, 4);
     const focusIssues = this.evidence.filter((e) => e.observations.some((o) => o.kind === "focus-return" && !o.passed));
     const boundaryStops = this.evidence.filter((e) => e.observations.some((o) => o.kind === "dialog-keyboard" && o.stops.some((s) => !s.inside)));
+    const coverChecks = this.evidence.flatMap((e) => e.observations.filter((o) => o.kind === "detail-cover"));
     const gallery = screens.map(([id, title, description]) => {
       const img = (p) => captures.some((c) => c.project === p && c.id === id)
         ? `[![${title} — ${p}](screenshots/${p}-${id}.png)](screenshots/${p}-${id}.png)` : "Not captured";
@@ -170,6 +171,8 @@ Both flight inputs are checked with an invalid character and a valid synthetic f
 ${steps || "| No browser steps completed | not run | not run |"}
 
 No horizontal page overflow is required at every capture point. Browser errors observed: **${errors}**. Forbidden network attempts observed: **${requests}**. A forbidden attempt fails the run before publication.
+
+Detail-cover correction: **${coverChecks.length}/18** checks cover all nine existing illustrations at 390×844 mobile and 1440×1000 desktop. ViewBox corner transforms must remain inside the visible SVG frame with uniform scaling; the cover is capped at 320px / 36% of viewport height, and the badge/close control must not obscure artwork. Detail uses containment; feed covers retain their existing crop. Eighteen per-cover screenshots and geometry results stay in the Actions artifact, outside the curated 20-image binary budget. The gallery's journey-detail image shows the top of the modal.
 
 ## Accessibility and usability findings
 
