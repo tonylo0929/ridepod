@@ -65,6 +65,17 @@ export default function Discovery({ today }: { today: string }) {
   const [recurring, setRecurring] = useState(false);
   const [sort, setSort] = useState("recommended");
   const searchRef = useRef<HTMLInputElement>(null);
+  const appRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const app = appRef.current;
+    const nav = app?.querySelector("nav");
+    if (!app || !nav) return;
+    const observer = new ResizeObserver(() => {
+      app.style.setProperty("--navigation-height", `${Math.ceil(nav.getBoundingClientRect().height) + 16}px`);
+    });
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, []);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const params = useSearchParams();
   const selected = journeys.find((p) => p.id === params.get("journey"));
@@ -215,7 +226,7 @@ export default function Discovery({ today }: { today: string }) {
     ? Number(maxBags < 4) + Number(minimumWait > 0) + Number(Boolean(flight)) : 0);
 
   return (
-    <div className={s.app} lang="zh-HK">
+    <div className={s.app} ref={appRef} lang="zh-HK">
       <a href="#journeys" className={s.skip}>
         跳至同路動態
       </a>
@@ -474,6 +485,7 @@ export default function Discovery({ today }: { today: string }) {
                 <article className={s.card} key={post.id} data-journey-id={post.id}>
                   <button
                     className={s.cardOpen}
+                    aria-describedby={`journey-author-${post.id}`}
                     onClick={() => openPost(post)}
                   >
                     <div
@@ -518,7 +530,10 @@ export default function Discovery({ today }: { today: string }) {
                         <FlightBadge flight={post.flight} />
                       )}
                       <JourneyInterest journey={post} interested={interested.includes(post.id)} />
-                      <div className={s.author}>
+                    </div>
+                  </button>
+                  <div className={s.cardFooter}>
+                      <div className={s.author} id={`journey-author-${post.id}`}>
                         <Image
                           src={`/avatars/animals/${post.avatar}.png`}
                           alt=""
@@ -527,8 +542,6 @@ export default function Discovery({ today }: { today: string }) {
                         />
                         <span>{post.mine ? "你 · 發帖人" : post.author}</span>
                       </div>
-                    </div>
-                  </button>
                   {!post.mine && <button
                     className={s.save}
                     aria-label={`${interested.includes(post.id) ? "撤回興趣" : "我有興趣"}：${post.title}`}
@@ -542,6 +555,7 @@ export default function Discovery({ today }: { today: string }) {
                       }
                     />
                   </button>}
+                  </div>
                 </article>
               ))}
             </Masonry>

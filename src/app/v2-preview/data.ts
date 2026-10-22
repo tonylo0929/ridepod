@@ -92,6 +92,20 @@ export function automaticCover(
 export function normalizeFlight(value: string) {
   return value.replace(/\s+/g, "").toUpperCase();
 }
+export const pastDepartureMessage = "呢個出發時間已經過咗，請揀返未來嘅時間。";
+
+/** V2 input times are in Hong Kong (UTC+08:00), independent of the host timezone.
+ * Compare the complete instant, with an injectable clock called on every attempt.
+ * A minute input denotes its start: exact equality is valid; even 1ms past is not.
+ */
+export function validateDepartureTime(
+  journey: Pick<Journey, "date" | "time">,
+  now: () => number = Date.now,
+) {
+  const departure = Date.parse(`${journey.date}T${journey.time}+08:00`);
+  if (!Number.isFinite(departure)) return "請填寫有效嘅出發日期同時間。";
+  return departure < now() ? pastDepartureMessage : "";
+}
 export function momentLabel(value: string, today: string) {
   const [date, time] = value.split("T");
   return `${dateLabel(date, today)} ${time}`;

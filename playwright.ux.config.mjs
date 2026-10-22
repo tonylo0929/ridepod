@@ -36,6 +36,7 @@ export default defineConfig({
     { name: "logic", testMatch: /logic\.spec\.mjs/ },
     { name: "mobile", testMatch: /fareenough\.spec\.mjs/, dependencies: ["logic"], use: { viewport: { width: 390, height: 1100 }, isMobile: true, hasTouch: true } },
     { name: "desktop", testMatch: /fareenough\.spec\.mjs/, dependencies: ["logic"], use: { viewport: { width: 1440, height: 1000 } } },
+    { name: "repairs", testMatch: /repairs\.spec\.mjs/, dependencies: ["logic"], use: { viewport: { width: 390, height: 844 } } },
   ],
   webServer: {
     // Always start a fresh local production build; never reuse an existing login/session server.

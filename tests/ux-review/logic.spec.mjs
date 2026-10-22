@@ -2,6 +2,12 @@ import { test, expect } from "@playwright/test";
 import { execFileSync } from "node:child_process";
 import { allowedRequest, baseURL, repoRoot } from "../../scripts/ux-review/settings.mjs";
 
+test("departure validation uses an injectable Hong Kong clock", async ({}, testInfo) => {
+  const output = execFileSync(process.execPath, ["--experimental-strip-types", "scripts/test-v2-departure-time.mjs"], { cwd: repoRoot, encoding: "utf8" });
+  expect(output).toMatch(/pass 5/);
+  await testInfo.attach("fixed-clock-departure-checks", { body: output, contentType: "text/plain" });
+});
+
 test("airport/count logic and capture network isolation", async ({}, testInfo) => {
   const output = execFileSync(process.execPath, ["--experimental-strip-types", "scripts/test-v2-airport-timing.mjs"], { cwd: repoRoot, encoding: "utf8" });
   expect(output).toMatch(/pass 9/);

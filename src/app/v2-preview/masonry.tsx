@@ -12,6 +12,10 @@ export function Masonry({ children }: { children: ReactNode }) {
     let frame = 0;
     const measure = () => {
       const gap = Number.parseFloat(getComputedStyle(feed).columnGap) || 10;
+      const label = feed.querySelector("h3 span");
+      // Use potential two-column width so switching to one column cannot oscillate.
+      const textSize = label ? Number.parseFloat(getComputedStyle(label).fontSize) : 0;
+      feed.dataset.textReflow = String(feed.clientWidth <= 760 && (feed.clientWidth - gap) / 2 < textSize * 9);
       Array.from(feed.children).forEach((item) => {
         const card = item.firstElementChild;
         if (item instanceof HTMLElement && card) {
@@ -24,6 +28,7 @@ export function Masonry({ children }: { children: ReactNode }) {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(measure);
     });
+    observer.observe(feed);
     Array.from(feed.children).forEach((item) => {
       if (item.firstElementChild) observer.observe(item.firstElementChild);
     });

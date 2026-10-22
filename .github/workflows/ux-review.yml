@@ -13,6 +13,7 @@ on:
       - 'tests/ux-review/**'
       - 'scripts/ux-review/**'
       - 'scripts/test-v2-airport-timing.mjs'
+      - 'scripts/test-v2-departure-time.mjs'
       - 'docs/ux-review/**'
       - 'playwright.ux.config.mjs'
       - 'playwright.personas.config.mjs'
@@ -49,7 +50,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y fonts-noto-cjk
       - name: Lint preview and review infrastructure
-        run: npx eslint src/app/v2-preview scripts/ux-review tests/ux-review playwright.ux.config.mjs playwright.personas.config.mjs --max-warnings 0
+        run: npx eslint src/app/v2-preview scripts/ux-review tests/ux-review scripts/test-v2-departure-time.mjs playwright.ux.config.mjs playwright.personas.config.mjs --max-warnings 0
       - name: Generate synthetic UX review
         shell: bash
         run: |
@@ -72,5 +73,6 @@ jobs:
             test-results/persona-review-run.log
             playwright-report/persona-review/
             docs/ux-review/PERSONA-EVIDENCE.json
+            docs/ux-review/REPAIR-REGRESSIONS.json
           retention-days: 7
           if-no-files-found: warn

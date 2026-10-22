@@ -23,6 +23,8 @@ const test = base.extend({
       if (message.type() === "error") evidence.consoleErrors.push(message.text());
     });
     try {
+      const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Hong_Kong", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      await page.clock.setFixedTime(new Date(`${day}T00:06:00+08:00`));
       await provide(evidence);
       expect(evidence.blockedRequests, "No production/API/auth/external requests").toEqual([]);
       expect(evidence.consoleErrors, "No browser errors").toEqual([]);

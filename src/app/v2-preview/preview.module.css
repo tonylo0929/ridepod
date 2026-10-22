@@ -2671,3 +2671,63 @@
   .directionTitle { font-size: 15px; }
   .directionSubtitle { font-size: 12px; }
 }
+
+/* A1–A3 repairs: let enlarged content determine layout instead of clipping it. */
+.app { overflow-wrap: anywhere; padding-bottom: var(--navigation-height, 85px); }
+.headerInner { height: auto; min-height: 84px; flex-wrap: wrap; }
+.brand, .brand > span:last-child, .headerActions { min-width: 0; max-width: 100%; }
+.brandMark { flex-shrink: 0; }
+.headerActions { flex-wrap: wrap; }
+.previewBadge { white-space: normal; }
+.tabs { min-width: 0; }
+.tabs button { white-space: normal; flex-wrap: wrap; min-width: 0; }
+.filterBar, .resultsLine, .sectionTitle, .sortLabel { flex-wrap: wrap; }
+.sectionTitle > div, .sortLabel, .sortLabel select { min-width: 0; max-width: 100%; }
+.quickFilters button { white-space: normal; overflow-wrap: anywhere; }
+.search, .flightSearch { min-width: 0; flex-wrap: wrap; }
+.search input { flex: 1 1 6em; min-width: 0; }
+.flightSearch input { flex: 1 1 8em; min-width: 0; }
+.routeMain, .cardTime, .flightBadge, .detailRoute, .detailAuthor, .steps { flex-wrap: wrap; }
+.routeMain > span, .cardTime > span, .interestSummary > span,
+.detailRoute > div, .detailAuthor > div, .timingList dt, .timingList dd { min-width: 0; }
+.feed[data-text-reflow="true"] { grid-template-columns: minmax(0, 1fr); }
+.cardFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 0 10px 10px;
+}
+.cardFooter .author {
+  flex: 1 1 60px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border-top: 0;
+  font-size: 12px;
+}
+.cardFooter .author img { flex-shrink: 0; }
+.cardFooter .author span { min-width: 0; overflow-wrap: anywhere; }
+.cardFooter .save { position: static; flex: 0 0 44px; width: 44px; height: 44px; }
+.formGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.form label, .form input, .form select, .form textarea { min-width: 0; max-width: 100%; }
+.formActions { flex-wrap: wrap; }
+.formActions > button { flex: 1 1 8rem; }
+.primary, .secondary, .textButton { min-width: 0; white-space: normal; overflow-wrap: anywhere; flex-wrap: wrap; }
+.formHeader { padding-right: 70px; }
+.detailGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.detailFooter { position: static; }
+.bottomNav { height: auto; min-height: 70px; }
+.bottomNav button { min-width: 0; height: auto; white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 760px) {
+  .headerInner { min-height: 68px; padding-block: 8px; }
+  .tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .quickFilters { flex-basis: 12rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .quickFilters button { grid-column: auto; }
+  .formGrid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 280px) {
+  .airportDirections, .detailGrid { grid-template-columns: minmax(0, 1fr); }
+  .quickFilters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bottomNav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

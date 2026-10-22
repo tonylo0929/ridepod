@@ -10,7 +10,7 @@ const git = (...args) => execFileSync("git", args, { cwd: repoRoot, encoding: "u
 const cell = (text) => String(text).replaceAll("|", "\\|").replace(/\s+/g, " ").trim();
 
 export default class UXReporter {
-  constructor() { this.tests = []; this.steps = []; this.evidence = []; }
+  constructor() { this.tests = []; this.steps = []; this.evidence = []; this.repairs = []; }
 
   onBegin() {
     const files = git("ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ...sourcePaths).split("\0").filter(Boolean).sort();
@@ -37,6 +37,8 @@ export default class UXReporter {
     for (const attachment of result.attachments) {
       if (attachment.name === "ux-evidence" && attachment.body)
         this.evidence.push({ project, ...JSON.parse(attachment.body.toString()) });
+      if (attachment.name === "repair-evidence" && attachment.path)
+        this.repairs.push({ title: test.title, ...JSON.parse(readFileSync(attachment.path, "utf8")) });
     }
   }
 
@@ -53,13 +55,16 @@ export default class UXReporter {
       await copyFile(c.path, join(artifactDir, "screenshots", c.filename));
     }
     const withinBudget = bytes <= maxScreenshotBytes;
-    const passed = result.status === "passed" && complete && withinBudget;
+    const repairsComplete = this.repairs.length === 8;
+    const passed = result.status === "passed" && complete && withinBudget && repairsComplete;
     const status = passed ? "PASS — complete package" : result.status === "passed" && !complete ? "PARTIAL — package not published" : "FAIL — package not published";
     const report = this.report({ captures, bytes, status, duration: result.duration, complete, withinBudget });
     await writeFile(join(artifactDir, "UX-REPORT.md"), report);
     await copyFile(join(reviewDir, "README.md"), join(artifactDir, "README.md"));
     await copyFile(join(reviewDir, "USABILITY-TEST.md"), join(artifactDir, "USABILITY-TEST.md"));
     await writeFile(join(resultsDir, "results.json"), JSON.stringify({ metadata: this.meta, status, complete, withinBudget, bytes, tests: this.tests, steps: this.steps, evidence: this.evidence }, null, 2));
+    const repairs = { metadata: this.meta, status, complete: repairsComplete, scenarios: this.repairs };
+    await writeFile(join(resultsDir, "repair-regressions.json"), JSON.stringify(repairs, null, 2));
     if (passed) {
       const screenshotDir = resolve(reviewDir, "screenshots");
       if (!screenshotDir.startsWith(resolve(reviewDir) + sep)) throw new Error("Invalid screenshot output directory");
@@ -71,6 +76,7 @@ export default class UXReporter {
       }
       for (const c of captures) await copyFile(c.path, join(screenshotDir, c.filename));
       await writeFile(join(reviewDir, "UX-REPORT.md"), report);
+      await writeFile(join(reviewDir, "REPAIR-REGRESSIONS.json"), JSON.stringify(repairs, null, 2) + "\n");
       console.log(`\nUX review: ${captures.length} screenshots, ${(bytes / 1024).toFixed(0)} KiB. Published docs/ux-review/UX-REPORT.md`);
     } else {
       console.log(`\nUX review ${status}: ${captures.length}/20 images, ${(bytes / 1024).toFixed(0)} KiB / ${maxScreenshotBytes / 1024} KiB limit. Kept the previous curated package. Inspect test-results/ux-review/package/UX-REPORT.md and the HTML report.`);
@@ -82,7 +88,8 @@ export default class UXReporter {
     const m = this.meta;
     const audits = new Map();
     const scans = [...captures, ...this.evidence.flatMap((e) => e.observations
-      .filter((o) => Array.isArray(o.violations)).map((o) => ({ project: e.project, id: o.kind, ...o })))];
+      .filter((o) => Array.isArray(o.violations)).map((o) => ({ project: e.project, id: o.kind, ...o }))),
+      ...this.repairs.flatMap((r) => r.states.filter((s) => Array.isArray(s.violations)).map((s) => ({ ...s, project: "repairs", id: `${r.title}/${s.state}`, incompleteRules: s.incomplete })))];
     const incomplete = [...new Set(scans.flatMap((scan) => scan.incompleteRules || []))];
     for (const capture of scans) for (const violation of capture.violations) {
       if (!audits.has(violation.id)) audits.set(violation.id, { ...violation, nodes: 0, states: new Set(), example: violation.nodes[0] });
@@ -103,9 +110,9 @@ export default class UXReporter {
         ? `[![${title} — ${p}](screenshots/${p}-${id}.png)](screenshots/${p}-${id}.png)` : "Not captured";
       return `| **${title}**<br>${description} | ${img("mobile")} | ${img("desktop")} |`;
     }).join("\n");
-    const steps = [...new Set(this.steps.map((s) => s.title))].map((title) => `| ${cell(title)} | ${["mobile", "desktop"].map((p) => this.steps.find((s) => s.project === p && s.title === title)?.status || "not run").join(" | ")} |`).join("\n");
-    const errors = this.evidence.reduce((n, e) => n + e.consoleErrors.length, 0);
-    const requests = this.evidence.reduce((n, e) => n + e.blockedRequests.length, 0);
+    const steps = [...new Set(this.steps.filter((s) => ["mobile", "desktop"].includes(s.project)).map((s) => s.title))].map((title) => `| ${cell(title)} | ${["mobile", "desktop"].map((p) => this.steps.find((s) => s.project === p && s.title === title)?.status || "not run").join(" | ")} |`).join("\n");
+    const errors = this.evidence.reduce((n, e) => n + e.consoleErrors.length, 0) + this.repairs.reduce((n, e) => n + e.browserErrors.length, 0);
+    const requests = this.evidence.reduce((n, e) => n + e.blockedRequests.length, 0) + this.repairs.reduce((n, e) => n + e.blocked.length, 0);
     return `# FareEnough ${m.version} — automated UX review
 
 Generated: ${m.generated} (UTC). **${status}**. This is captured evidence and a product inventory, not an accessibility certification or a pixel-diff baseline.
@@ -163,6 +170,12 @@ Run duration: ${(duration / 1000).toFixed(1)} seconds. ${captures.length}/20 cur
 ${this.tests.map((t) => `| ${t.project}: ${cell(t.title)} | ${t.status} | ${(t.duration / 1000).toFixed(1)}s |`).join("\n")}
 
 The logic test executes the nine airport/count/copy assertions in \`scripts/test-v2-airport-timing.mjs\`, plus allow/deny cases for the capture network boundary. Playwright's web server runs \`npm run build\` (including Next's TypeScript check) before browser tests; a failed build prevents capture. This report does not imply that every production flow or repository test was run.
+
+The post-persona repair project adds five deterministic departure-clock unit tests and eight browser regressions. Its two departure matrices cover yesterday, earlier today, exact equality, 1ms past, later today, tomorrow, midnight, expiry during preview, preserved input and recovery, with optional flight time absent/present. Browser clocks are fixed explicitly; a selected minute means its start, with no hidden grace period.
+
+Six layout runs cover normal text, simulated 200% text, and actual Chromium 200% tab zoom at effective widths 320/390px. Native zoom uses a test-only local-host extension in a disposable Chromium profile; starting viewports 640/780px become CSS viewports 320/390px, with zoom factor 2, DPR 2, pinch scale 1 and CSS zoom 1 asserted. Each run checks the homepage, expanded filters, details, creation and preview, keyboard reachability, uncovered actions, document/dialog overflow and author/control separation. Enlarged runs retain all axe rules. See [repair evidence](REPAIR-REGRESSIONS.json) and the [repair handover](POST-PERSONA-REPAIRS.md). This is technical regression evidence, not a human accessibility certification.
+
+The nine original cover scenes retain their normal masonry treatment. Normal mobile feeds remain two columns; when actual text size cannot fit a readable two-column lane, the feed reflows to one. Author and interest controls use separate normal-flow footer items; detail actions scroll with the content. No journey information is hidden to satisfy layout assertions.
 
 Both flight inputs are checked with an invalid character and a valid synthetic flight number. The initial review exposed an unescaped hyphen in their HTML pattern under Unicode-aware browsers; the focused V2 fix is included in the reviewed UI source commit. The suite requires zero browser errors and verifies that the pattern rejects invalid input. See the [HTML pattern standard](https://html.spec.whatwg.org/multipage/input.html#the-pattern-attribute).
 

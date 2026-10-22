@@ -9,6 +9,7 @@ import {
   generatePost,
   normalizeFlight,
   validateAirportTiming,
+  validateDepartureTime,
   type CoverId,
   type Journey,
 } from "./data";
@@ -53,6 +54,13 @@ export function CreatePost({
   const [title, setTitle] = useState(initialJourney?.title ?? "");
   const [description, setDescription] = useState(initialJourney?.description ?? "");
   const [error, setError] = useState("");
+  const errorNotice = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (error) {
+      errorNotice.current?.focus({ preventScroll: true });
+      errorNotice.current?.scrollIntoView({ block: "nearest" });
+    }
+  }, [error]);
   const generatedCopy = useRef<{ title: string; description: string } | null>(
     null,
   );
@@ -113,7 +121,7 @@ export function CreatePost({
       setError("請填寫唔同嘅出發地同目的地。");
       return;
     }
-    const timingError = validateAirportTiming(draftInput);
+    const timingError = validateDepartureTime(draftInput) || validateAirportTiming(draftInput);
     if (timingError) {
       setError(timingError);
       return;
@@ -129,7 +137,7 @@ export function CreatePost({
       setError("標題同內文都要填寫。咁先知你想去邊！");
       return;
     }
-    const timingError = validateAirportTiming(draftInput);
+    const timingError = validateDepartureTime(draftInput) || validateAirportTiming(draftInput);
     if (timingError) {
       setError(timingError);
       return;
@@ -227,7 +235,6 @@ export function CreatePost({
               <input
                 required
                 type="date"
-                min={today}
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
               />
@@ -348,7 +355,7 @@ export function CreatePost({
             </div>
           </details>
           {error && (
-            <p role="alert" className={s.formError}>
+            <p ref={errorNotice} tabIndex={-1} role="alert" className={s.formError}>
               {error}
             </p>
           )}
@@ -433,7 +440,7 @@ export function CreatePost({
             可以隨意修改文字。呢個係示範帖文，只會喺目前頁面出現；重新整理後會清除。
           </p>
           {error && (
-            <p role="alert" className={s.formError}>
+            <p ref={errorNotice} tabIndex={-1} role="alert" className={s.formError}>
               {error}
             </p>
           )}

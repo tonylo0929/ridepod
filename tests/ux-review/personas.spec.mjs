@@ -53,8 +53,11 @@ test("P3 — late-night and invalid times", async ({ page, session: s }) => {
   await s.act("Create an outbound post and try yesterday's departure date", async () => {
     await close(page); await nav(page, "發佈").click(); await combo(page, "旅程方向").selectOption({ label: "出發去機場" });
     const day = await field(page, "夾車出發日期").inputValue(); s.record.demoDate = day;
+    await page.clock.setFixedTime(new Date(`${day}T00:06:00+08:00`));
     await field(page, "夾車出發日期").fill(plusDay(day, -1)); await next(page);
-    const invalid = await field(page, "夾車出發日期").evaluate((el) => ({ rejected: el.validity.rangeUnderflow, message: el.validationMessage }));
+    const message = await dialog(page).getByRole("alert").innerText();
+    const invalid = { rejected: message === "呢個出發時間已經過咗，請揀返未來嘅時間。", message };
+    expect(invalid.rejected).toBe(true);
     s.check("Reject yesterday's departure date", invalid.rejected ? "PASS" : "FAIL", invalid);
     await field(page, "夾車出發日期").fill(day); return invalid;
   });
@@ -80,10 +83,24 @@ test("P3 — late-night and invalid times", async ({ page, session: s }) => {
     const isPast = now.hkDate === s.record.demoDate && Date.parse(`${s.record.demoDate}T00:00:00+08:00`) < now.epoch;
     s.observe("Observed clock and past-departure preview acceptance", { now, date: s.record.demoDate, time: "00:00", isPast, accepted });
     s.check("Reject a same-day departure in the past", !isPast ? "NOT_TESTED" : accepted ? "FAIL" : "PASS", { now, accepted, isPast });
-    if (accepted) { await dialog(page).getByRole("button", { name: "發佈示範帖文", exact: true }).click(); s.observe("Past departure published into own journey", await dialog(page).innerText()); }
+    expect(isPast).toBe(true);
+    expect(accepted, "A1: past departure must not advance").toBe(false);
+    await expect(dialog(page).getByRole("alert")).toHaveText("呢個出發時間已經過咗，請揀返未來嘅時間。");
+    await expect(field(page, "預計夾車出發時間")).toHaveValue("00:00");
   });
-  await dialog(page).locator("dl").first().scrollIntoViewIfNeeded();
   await s.shot("03-same-day-past-departure");
+  await s.act("Advance with 00:07, then expire the fixed clock immediately before publishing", async () => {
+    await field(page, "預計夾車出發時間").fill("00:07"); await next(page);
+    const title = dialog(page).getByRole("textbox", { name: "帖文標題", exact: true });
+    await title.fill("示範：保留我修改過嘅標題");
+    await page.clock.setFixedTime(new Date(`${s.record.demoDate}T00:07:00.001+08:00`));
+    await dialog(page).getByRole("button", { name: "發佈示範帖文", exact: true }).click();
+    const rejected = await dialog(page).getByRole("alert").isVisible();
+    s.check("Reject a journey that becomes past-due before publication", rejected ? "PASS" : "FAIL", await dialog(page).innerText());
+    await expect(dialog(page).getByRole("alert")).toHaveText("呢個出發時間已經過咗，請揀返未來嘅時間。");
+    await expect(title).toHaveValue("示範：保留我修改過嘅標題");
+  });
+  await s.shot("03-expired-at-publication");
 });
 
 test.describe("desktop commuting", () => {
@@ -159,6 +176,7 @@ for (const width of [320, 390]) test.describe(`small screen ${width}`, () => {
     s.observe("Baseline visible control dimensions (CSS pixels)", await page.locator("button,input,select,summary").evaluateAll((items) => items.map((el) => { const r = el.getBoundingClientRect(); return { label: el.getAttribute("aria-label") || el.textContent?.trim().slice(0, 80), width: r.width, height: r.height }; }).filter((r) => r.width > 0 && r.height > 0)));
     await s.shot(`06-${width}-baseline`);
     const textResize = await s.act("Apply a 200% computed-font text-resize simulation, excluding SVG artwork", () => resizeText(page, "body"));
+    await expect(page.locator('[data-text-reflow="true"]')).toHaveCount(1);
     await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     const layout = await page.evaluate(() => {
       const brand = document.querySelector("header a").getBoundingClientRect();
@@ -171,8 +189,10 @@ for (const width of [320, 390]) test.describe(`small screen ${width}`, () => {
     s.check("200% enlarged text fits the small screen without horizontal overflow", layout.scroll <= layout.client ? "PASS" : "FAIL", layout);
     s.check("Author label and separate interest control remain unobscured", layout.authorHeartOverlap ? "FAIL" : "PASS", layout);
     await s.shot(`06-${width}-text-200`);
+    expect(layout.scroll, "A2: enlarged text must not overflow the document").toBeLessThanOrEqual(layout.client);
+    expect(layout.authorHeartOverlap, "A3: author and interest target cannot overlap").toBe(false);
     if (width === 320) {
-      await s.act("Scroll the enlarged first card's author into view to capture the overlap", () => page.getByText("Mandy", { exact: true }).scrollIntoViewIfNeeded());
+      await s.act("Scroll the enlarged first card's author into view to capture repaired spacing", () => page.getByText("Mandy", { exact: true }).scrollIntoViewIfNeeded());
       await s.shot("06-320-author-overlap");
     }
     await s.act("Open filters, enlarge the newly mounted dialog text, scroll to Apply, then close by keyboard", async () => {

@@ -42,6 +42,9 @@ export const test = base.extend({
       },
     };
     try {
+      const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Hong_Kong", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+      await page.clock.setFixedTime(new Date(`${day}T00:06:00+08:00`));
+      record.clockMethod = "Browser Date fixed to 00:06 HKT on the server's current Hong Kong date; P3 explicitly resets it from the form date.";
       await session.act("Begin at the normal V2 homepage in a fresh context", () => page.goto(`${baseURL}/v2-preview`).then(() => ({ url: page.url() })));
       await expect(page.getByRole("heading", { name: "下一程，搵個同路人。", exact: true })).toBeVisible();
       record.homepage = await page.locator("body").ariaSnapshot();
@@ -74,10 +77,10 @@ export const cards = (page) => page.getByRole("article");
 export const resizeText = (page, selector) => page.evaluate((rootSelector) => {
   const root = document.querySelector(rootSelector);
   const elements = [...root.querySelectorAll("*")].filter((el) => !el.closest("svg,script,style") && (el.matches("button,input,select,textarea") || [...el.childNodes].some((n) => n.nodeType === Node.TEXT_NODE && n.textContent.trim())));
-  const sizes = elements.map((el) => ({ el, size: parseFloat(getComputedStyle(el).fontSize) }));
+  const sizes = elements.filter((el) => !el.hasAttribute("data-ux-original-font-size")).map((el) => ({ el, size: parseFloat(getComputedStyle(el).fontSize) }));
   const heading = root.querySelector("h1,h2"), before = getComputedStyle(heading).fontSize;
-  sizes.forEach(({ el, size }) => { el.style.fontSize = `${size * 2}px`; });
-  return { elements: sizes.length, headingBefore: before, headingAfter: getComputedStyle(heading).fontSize, method: "computed CSS font-size doubled; not native browser zoom" };
+  sizes.forEach(({ el, size }) => { el.setAttribute("data-ux-original-font-size", String(size)); el.style.setProperty("font-size", `${size * 2}px`, "important"); });
+  return { elements: sizes.length, headingBefore: before, headingOriginal: heading.getAttribute("data-ux-original-font-size"), headingAfter: getComputedStyle(heading).fontSize, method: "computed CSS font-size doubled once per element; not native browser zoom" };
 }, selector);
 export const plusDay = (date, days) => {
   const value = new Date(`${date}T12:00:00+08:00`);
