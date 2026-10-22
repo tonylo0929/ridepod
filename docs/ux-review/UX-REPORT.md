@@ -1,11 +1,11 @@
 # FareEnough V2.3 — automated UX review
 
-Generated: 2026-10-22T15:05:39.093Z (UTC). **PASS — complete package**. This is captured evidence and a product inventory, not an accessibility certification or a pixel-diff baseline.
+Generated: 2026-10-22T15:52:37.782Z (UTC). **PASS — complete package**. This is captured evidence and a product inventory, not an accessibility certification or a pixel-diff baseline.
 
 ## Version and reproducibility
 
 - Reviewed UI source commit: [`d31604f0e840062a5b42339c1cf76d0e6a79f77d`](https://github.com/tonylo0929/ridepod/commit/d31604f0e840062a5b42339c1cf76d0e6a79f77d).
-- Generation checkout: `d31604f0e840062a5b42339c1cf76d0e6a79f77d`; branch: `feature/ridepod-social-discovery`.
+- Generation checkout: `5177292ded8f62594cbc12c3df373ef6e0f05de8`; branch: `feature/ridepod-social-discovery`.
 - UI source files modified/untracked at capture: **no**.
 - SHA-256 of preview/runtime/global styles/avatar source files: `54b03a41f42d904e83b0585b45b3fde6951fec886a927b96aafd1bf688777d29`.
 - Toolchain: Node v24.14.0, Playwright 1.64.1, Chromium 156.0.8078.4, win32.
@@ -48,13 +48,13 @@ All fixture people, posts, flight examples and interactions are synthetic. “Li
 
 ## Test results
 
-Run duration: 46.0 seconds. 20/20 curated images; 2704 KiB total; 4 MiB budget **passed**; capture completeness **passed**.
+Run duration: 44.5 seconds. 20/20 curated images; 2704 KiB total; 4 MiB budget **passed**; capture completeness **passed**.
 
 | Test | Status | Duration |
 | --- | --- | --- |
 | logic: airport/count logic and capture network isolation | passed | 0.1s |
-| mobile: curated preview review journeys | passed | 11.7s |
-| desktop: curated preview review journeys | passed | 14.1s |
+| mobile: curated preview review journeys | passed | 11.5s |
+| desktop: curated preview review journeys | passed | 13.1s |
 
 The logic test executes the nine airport/count/copy assertions in `scripts/test-v2-airport-timing.mjs`, plus allow/deny cases for the capture network boundary. Playwright's web server runs `npm run build` (including Next's TypeScript check) before browser tests; a failed build prevents capture. This report does not imply that every production flow or repository test was run.
 

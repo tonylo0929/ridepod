@@ -15,6 +15,7 @@ on:
       - 'scripts/test-v2-airport-timing.mjs'
       - 'docs/ux-review/**'
       - 'playwright.ux.config.mjs'
+      - 'playwright.personas.config.mjs'
       - 'package*.json'
       - 'next.config.*'
       - '.github/workflows/ux-review.yml'
@@ -48,12 +49,16 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y fonts-noto-cjk
       - name: Lint preview and review infrastructure
-        run: npx eslint src/app/v2-preview scripts/ux-review tests/ux-review playwright.ux.config.mjs --max-warnings 0
+        run: npx eslint src/app/v2-preview scripts/ux-review tests/ux-review playwright.ux.config.mjs playwright.personas.config.mjs --max-warnings 0
       - name: Generate synthetic UX review
         shell: bash
         run: |
           mkdir -p test-results
           npm run ux:review 2>&1 | tee test-results/ux-review-run.log
+      - name: Replay synthetic persona exploration (diagnostic task results)
+        shell: bash
+        run: |
+          npm run ux:personas 2>&1 | tee test-results/persona-review-run.log
       - name: Upload current evidence, audits and failure traces
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -63,5 +68,9 @@ jobs:
             test-results/ux-review/
             test-results/ux-review-run.log
             playwright-report/ux-review/
+            test-results/persona-review/
+            test-results/persona-review-run.log
+            playwright-report/persona-review/
+            docs/ux-review/PERSONA-EVIDENCE.json
           retention-days: 7
           if-no-files-found: warn

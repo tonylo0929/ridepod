@@ -13,7 +13,8 @@
     "test:money-safety": "node scripts/test-money-safety.mjs",
     "screenshots": "node scripts/capture-screenshots.mjs",
     "ux:review": "playwright test --config=playwright.ux.config.mjs",
-    "ux:review:open": "playwright show-report playwright-report/ux-review"
+    "ux:review:open": "playwright show-report playwright-report/ux-review",
+    "ux:personas": "playwright test --config=playwright.personas.config.mjs && node scripts/ux-review/export-personas.mjs"
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.1.1",

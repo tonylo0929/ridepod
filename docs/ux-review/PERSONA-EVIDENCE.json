@@ -1,0 +1,2250 @@
+{
+  "generated": "2026-10-22T16:07:52.424Z",
+  "checkout": "5177292ded8f62594cbc12c3df373ef6e0f05de8",
+  "branch": "feature/ridepod-social-discovery",
+  "uiCommit": "d31604f0e840062a5b42339c1cf76d0e6a79f77d",
+  "uiHash": "54b03a41f42d904e83b0585b45b3fde6951fec886a927b96aafd1bf688777d29",
+  "uiDirty": false,
+  "node": "v24.14.0",
+  "platform": "win32",
+  "methodology": "Six AI-driven personas, seven fresh-context rendered-browser scenarios. Diagnostic task FAIL results are findings, not harness failures. Automation durations are not human task times. No real participants. Computed-font enlargement is not native browser zoom.",
+  "executions": 7,
+  "harness": {
+    "startTime": "2026-10-22T16:06:27.590Z",
+    "duration": 27582.077999999998,
+    "expected": 7,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "screenshotCount": 9,
+  "screenshotBytes": 684824,
+  "taskResults": {
+    "PASS": 16,
+    "FAIL": 4,
+    "WORKAROUND": 2,
+    "NOT_TESTED": 0
+  },
+  "sessions": [
+    {
+      "scenario": "P1 — first-time airport traveller",
+      "started": "2026-10-22T16:06:46.229Z",
+      "browser": "156.0.8078.4",
+      "actions": [
+        {
+          "n": 1,
+          "label": "Begin at the normal V2 homepage in a fresh context",
+          "elapsedMs": 179,
+          "response": {
+            "url": "http://127.0.0.1:3044/v2-preview"
+          }
+        },
+        {
+          "n": 2,
+          "label": "Unexpected action: search the English destination Tuen Mun",
+          "elapsedMs": 33,
+          "response": {
+            "cards": 0,
+            "empty": true
+          }
+        },
+        {
+          "n": 3,
+          "label": "Recover using the visible clear-search button",
+          "elapsedMs": 62
+        },
+        {
+          "n": 4,
+          "label": "Try incorrect flight CX9999, then correct it to cx 734",
+          "elapsedMs": 46,
+          "response": {
+            "wrongFlightMatches": 0,
+            "correctedMatches": 1,
+            "card": "FAREENOUGH / HONG KONG\nA LITTLE COMPANY\n同路登機證\nHKG\nNEXT STOP / 屋企見\nGOOD COMPANY, LESS FARE.\n一齊返屋企。\n同路就夾 / 車費齊齊慳\n落機返屋企\n香港機場\n去\n屯門\n今日\n21:50\n夾車出發\n航班 CX734\n0 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\nMandy"
+          }
+        },
+        {
+          "n": 5,
+          "label": "Open the matching visible airport-to-Tuen-Mun card",
+          "elapsedMs": 79
+        },
+        {
+          "n": 6,
+          "label": "Scroll to interest and express interest",
+          "elapsedMs": 87,
+          "response": "示範旅程 · 機場同路\nFAREENOUGH / HONG KONG\nA LITTLE COMPANY\n同路登機證\nHKG\nNEXT STOP / 屋企見\nGOOD COMPANY, LESS FARE.\n一齊返屋企。\n同路就夾 / 車費齊齊慳\nMandy\nFareEnough 同路友 · 示範人物\n同路傾吓\n航班 CX734\n今晚 CX734 落機，有冇人一齊返屯門？✈️\n\n我預計 21:30 左右拎完行李出到嚟，有 1 個喼，可以等 15–20 分鐘。唔同航班都冇問題，時間同路線啱就一齊啦！😆\n\n由呢度出發\n香港機場\n一齊去\n屯門\n出發日期\n今日 · 2026-10-23\n預計夾車出發\n21:50\n計劃同行人數\n發帖人 1 人 + 同行名額 3 個\n1 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n集合地點\n一號客運大樓，抵港接機大堂 B\n發帖人嘅行李\n1 個喼\n最多可以等\n20 分鐘\n落機、出閘、出發，分清楚。\n預計出閘 · 已過關及取行李\n2026年10月23日 21:30\n預計夾車出發\n2026年10月23日 21:50\n航班預定抵達\n2026年10月23日 20:50\n\n出閘係過關、拎完行李之後；出發係計劃夾車嘅時間。唔同航班都可以同路。\n\n所有時間：香港時間 · 24 小時制。航班資料只供示範，未有即時追蹤。\n撤回興趣\n興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。"
+        },
+        {
+          "n": 7,
+          "label": "Close details and open My Journeys",
+          "elapsedMs": 87,
+          "response": "YOUR LITTLE JOURNEY BOOK\n你嘅同路小記。\n\n唔使登入都可以試。示範資料會喺重新整理後清除。\n\n0\n已發佈旅程\n1\n有興趣旅程\n我發佈嘅旅程\n\n仲未分享行程。下一程，不如試吓搵個伴？\n\n分享下一程\n我有興趣嘅旅程\nFAREENOUGH / HONG KONG\nA LITTLE COMPANY\n同路登機證\nHKG\nNEXT STOP / 屋企見\nGOOD COMPANY, LESS FARE.\n一齊返屋企。\n同路就夾 / 車費齊齊慳\n香港機場 → 屯門\n今日 21:50 夾車出發 · Mandy\n1 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n\n呢個版本只試玩發現同路人嘅流程。唔會傳送訊息、配對司機、預訂、派車或處理付款。"
+        }
+      ],
+      "checks": [
+        {
+          "task": "Find CX734 journey and separate arrival/exit/car times",
+          "outcome": "PASS",
+          "actual": "示範旅程 · 機場同路\nFAREENOUGH / HONG KONG\nA LITTLE COMPANY\n同路登機證\nHKG\nNEXT STOP / 屋企見\nGOOD COMPANY, LESS FARE.\n一齊返屋企。\n同路就夾 / 車費齊齊慳\nMandy\nFareEnough 同路友 · 示範人物\n同路傾吓\n航班 CX734\n今晚 CX734 落機，有冇人一齊返屯門？✈️\n\n我預計 21:30 左右拎完行李出到嚟，有 1 個喼，可以等 15–20 分鐘。唔同航班都冇問題，時間同路線啱就一齊啦！😆\n\n由呢度出發\n香港機場\n一齊去\n屯門\n出發日期\n今日 · 2026-10-23\n預計夾車出發\n21:50\n計劃同行人數\n發帖人 1 人 + 同行名額 3 個\n0 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n集合地點\n一號客運大樓，抵港接機大堂 B\n發帖人嘅行李\n1 個喼\n最多可以等\n20 分鐘\n落機、出閘、出發，分清楚。\n預計出閘 · 已過關及取行李\n2026年10月23日 21:30\n預計夾車出發\n2026年10月23日 21:50\n航班預定抵達\n2026年10月23日 20:50\n\n出閘係過關、拎完行李之後；出發係計劃夾車嘅時間。唔同航班都可以同路。\n\n所有時間：香港時間 · 24 小時制。航班資料只供示範，未有即時追蹤。\n我有興趣\n興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。"
+        },
+        {
+          "task": "Locate the interested journey afterward",
+          "outcome": "PASS",
+          "actual": "YOUR LITTLE JOURNEY BOOK\n你嘅同路小記。\n\n唔使登入都可以試。示範資料會喺重新整理後清除。\n\n0\n已發佈旅程\n1\n有興趣旅程\n我發佈嘅旅程\n\n仲未分享行程。下一程，不如試吓搵個伴？\n\n分享下一程\n我有興趣嘅旅程\nFAREENOUGH / HONG KONG\nA LITTLE COMPANY\n同路登機證\nHKG\nNEXT STOP / 屋企見\nGOOD COMPANY, LESS FARE.\n一齊返屋企。\n同路就夾 / 車費齊齊慳\n香港機場 → 屯門\n今日 21:50 夾車出發 · Mandy\n1 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n\n呢個版本只試玩發現同路人嘅流程。唔會傳送訊息、配對司機、預訂、派車或處理付款。"
+        }
+      ],
+      "observations": [
+        {
+          "label": "Arrival, exit, departure, capacity and non-booking copy",
+          "actual": "示範旅程 · 機場同路\nFAREENOUGH / HONG KONG\nA LITTLE COMPANY\n同路登機證\nHKG\nNEXT STOP / 屋企見\nGOOD COMPANY, LESS FARE.\n一齊返屋企。\n同路就夾 / 車費齊齊慳\nMandy\nFareEnough 同路友 · 示範人物\n同路傾吓\n航班 CX734\n今晚 CX734 落機，有冇人一齊返屯門？✈️\n\n我預計 21:30 左右拎完行李出到嚟，有 1 個喼，可以等 15–20 分鐘。唔同航班都冇問題，時間同路線啱就一齊啦！😆\n\n由呢度出發\n香港機場\n一齊去\n屯門\n出發日期\n今日 · 2026-10-23\n預計夾車出發\n21:50\n計劃同行人數\n發帖人 1 人 + 同行名額 3 個\n0 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n集合地點\n一號客運大樓，抵港接機大堂 B\n發帖人嘅行李\n1 個喼\n最多可以等\n20 分鐘\n落機、出閘、出發，分清楚。\n預計出閘 · 已過關及取行李\n2026年10月23日 21:30\n預計夾車出發\n2026年10月23日 21:50\n航班預定抵達\n2026年10月23日 20:50\n\n出閘係過關、拎完行李之後；出發係計劃夾車嘅時間。唔同航班都可以同路。\n\n所有時間：香港時間 · 24 小時制。航班資料只供示範，未有即時追蹤。\n我有興趣\n興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。"
+        }
+      ],
+      "screenshots": [
+        {
+          "name": "01-english-search-empty",
+          "path": "test-results/persona-review/personas-P1-—-first-time-airport-traveller-personas/01-english-search-empty.png"
+        },
+        {
+          "name": "01-interested-journey-found",
+          "path": "test-results/persona-review/personas-P1-—-first-time-airport-traveller-personas/01-interested-journey-found.png",
+          "curated": "persona-screenshots/01-interested-journey-found.png"
+        }
+      ],
+      "blocked": [],
+      "browserErrors": [],
+      "homepage": "- link \"跳至同路動態\":\n  - /url: \"#journeys\"\n- banner:\n  - link \"FareEnough 同路就夾，車費齊齊慳。\":\n    - /url: /v2-preview\n  - text: V2.3 預覽\n- main:\n  - heading \"下一程，搵個同路人。\" [level=1]\n  - paragraph: 機場返屋企，返工出街，一齊順路。\n  - text: 試吓搵同路人 · 所有互動只供體驗，唔會預訂或收費\n  - tablist \"旅程類別\":\n    - tab \"機場同路\" [selected]\n    - tab \"熱門路線\"\n  - textbox \"搜尋目的地或旅程\":\n    - /placeholder: 你想去邊？\n  - button \"全部日期\" [pressed]\n  - button \"今日\"\n  - button \"聽日\"\n  - button \"落機返屋企\"\n  - button \"出發去機場\"\n  - button \"篩選\"\n  - text: 搵航班\n  - textbox \"按航班編號篩選\":\n    - /placeholder: 例如 CX734（選填）\n  - tabpanel \"機場同路\":\n    - heading \"落機之後，一齊返屋企。\" [level=2]\n    - text: 排序方式\n    - combobox \"排序方式\":\n      - option \"為你推薦\" [selected]\n      - option \"最早出發\"\n      - option \"同行名額較多\"\n    - text: 8 個示範旅程\n    - article:\n      - button \"落機返屋企 香港機場 去 屯門 今日 21:50 夾車出發 航班 CX734 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Mandy\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 屯門\" [level=3]\n        - text: 今日 21:50 夾車出發 航班 CX734 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Mandy\n      - button \"我有興趣：今晚 CX734 落機，有冇人一齊返屯門？✈️\"\n    - article:\n      - button \"落機返屋企 香港機場 去 大埔 今日 22:35 夾車出發 航班 CX250 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿謙\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 大埔\" [level=3]\n        - text: 今日 22:35 夾車出發 航班 CX250 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿謙\n      - button \"我有興趣：一個喼，一個人，搵個同路人返大埔 🧳\"\n    - article:\n      - button \"出發去機場 沙田 去 香港機場 今日 21:50 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Yuna\":\n        - text: 出發去機場\n        - heading \"沙田 去 香港機場\" [level=3]\n        - text: 今日 21:50 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Yuna\n      - button \"我有興趣：聽日凌晨 00:17 起飛，今晚一齊去機場？\"\n    - article:\n      - button \"落機返屋企 香港機場 去 將軍澳 聽日 19:05 夾車出發 航班 UO623 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿晴\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 將軍澳\" [level=3]\n        - text: 聽日 19:05 夾車出發 航班 UO623 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿晴\n      - button \"我有興趣：旅行完咗，一齊慢慢返屋企 🌅\"\n    - article:\n      - button \"落機返屋企 香港機場 去 元朗 聽日 14:40 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Ken\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 元朗\" [level=3]\n        - text: 聽日 14:40 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Ken\n      - button \"我有興趣：下晝落機，有冇元朗友？\"\n    - article:\n      - button \"出發去機場 屯門 去 香港機場 今日 09:15 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Chloe\":\n        - text: 出發去機場\n        - heading \"屯門 去 香港機場\" [level=3]\n        - text: 今日 09:15 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Chloe\n      - button \"我有興趣：去旅行嘅第一程，就一齊啦 ☀️\"\n    - article:\n      - button \"落機返屋企 香港機場 去 沙田 今日 21:00 夾車出發 航班 CX450 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿樂\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 沙田\" [level=3]\n        - text: 今日 21:00 夾車出發 航班 CX450 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿樂\n      - button \"我有興趣：唔同航班都得，時間啱就一齊返\"\n    - article:\n      - button \"落機返屋企 香港機場 去 屯門 聽日 17:50 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Iris\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 屯門\" [level=3]\n        - text: 聽日 17:50 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Iris\n      - button \"我有興趣：黃昏落機，順便識個同路人\"\n    - text: 每段路，都可以有個伴。\n- navigation \"主要導覽\":\n  - button \"首頁\"\n  - button \"搜尋\"\n  - button \"發佈\"\n  - button \"訊息\"\n  - button \"我的\"\n- alert",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "durationMs": 725,
+      "execution": "passed",
+      "trace": "test-results/persona-review/personas-P1-—-first-time-airport-traveller-personas/trace.zip"
+    },
+    {
+      "scenario": "P2 — family and luggage",
+      "started": "2026-10-22T16:06:47.161Z",
+      "browser": "156.0.8078.4",
+      "actions": [
+        {
+          "n": 1,
+          "label": "Begin at the normal V2 homepage in a fresh context",
+          "elapsedMs": 168,
+          "response": {
+            "url": "http://127.0.0.1:3044/v2-preview"
+          }
+        },
+        {
+          "n": 2,
+          "label": "Open airport filters and request two companion places",
+          "elapsedMs": 126,
+          "response": "- dialog \"篩選同路旅程\":\n  - button \"關閉\"\n  - text: FIND YOUR PEOPLE\n  - heading \"搵個啱你嘅同路人。\" [level=2]\n  - paragraph: 唔使完全一樣，時間夾到就得。\n  - text: 出發日期\n  - textbox \"出發日期\"\n  - text: 想去邊區？\n  - textbox \"想去邊區？\":\n    - /placeholder: 例如 屯門\n  - text: 想搵幾多個同行名額？\n  - combobox \"想搵幾多個同行名額？\":\n    - option \"最少 1 個\"\n    - option \"最少 2 個\" [selected]\n    - option \"最少 3 個\"\n  - text: 旅程方向\n  - combobox \"旅程方向\":\n    - option \"全部方向\" [selected]\n    - option \"落機返屋企\"\n    - option \"出發去機場\"\n  - paragraph: 同行名額唔計發帖人，唔係已確認餘位。\n  - group:\n    - text: 更多條件（選填） 幾點之後夾車出發？\n    - textbox \"幾點之後夾車出發？\"\n    - text: 對方最多帶幾多個喼？\n    - combobox \"對方最多帶幾多個喼？\":\n      - option \"0 個或以下\"\n      - option \"1 個或以下\"\n      - option \"2 個或以下\"\n      - option \"3 個或以下\"\n      - option \"唔限\" [selected]\n    - text: 對方最少等到幾耐？\n    - combobox \"對方最少等到幾耐？\":\n      - option \"唔限\" [selected]\n      - option \"15 分鐘\"\n      - option \"20 分鐘\"\n      - option \"30 分鐘\"\n    - text: 航班編號（選填）\n    - textbox \"航班編號（選填）\":\n      - /placeholder: 唔同航班都可以\n    - paragraph: 時間篩選以計劃夾車出發時間為準。同行名額只係發帖人嘅計劃，唔係已確認餘位；有啟用行李或等候篩選時，未提供資料嘅旅程唔會顯示。\n  - button \"重設\"\n  - button \"睇 8 個旅程\""
+        },
+        {
+          "n": 3,
+          "label": "Set the other poster's luggage to at most two and apply",
+          "elapsedMs": 69,
+          "response": {
+            "cards": 8
+          }
+        },
+        {
+          "n": 4,
+          "label": "Start a new post; attempt the same airport origin/destination",
+          "elapsedMs": 128,
+          "response": "請填寫唔同嘅出發地同目的地。"
+        },
+        {
+          "n": 5,
+          "label": "Correct destination, offer one additional place and enter two bags plus the existing two-adult party",
+          "elapsedMs": 96,
+          "response": "- dialog \"發佈示範旅程\":\n  - button \"關閉\"\n  - text: SHARE YOUR NEXT JOURNEY\n  - heading \"分享你嘅下一程。\" [level=2]\n  - paragraph: 先填基本行程，其他資料可以之後再加。\n  - text: 01 行程資料 02 預覽發佈 旅程類型\n  - combobox \"旅程類型\":\n    - option \"機場同路\" [selected]\n    - option \"日常同路\"\n    - option \"定期同路\"\n  - text: 旅程方向\n  - combobox \"旅程方向\":\n    - option \"落機返屋企\" [selected]\n    - option \"出發去機場\"\n  - text: 出發地\n  - textbox \"出發地\": 香港機場\n  - text: 目的地\n  - textbox \"目的地\": 屯門\n  - text: 夾車出發日期\n  - textbox \"夾車出發日期\": 2026-10-23\n  - text: 預計夾車出發時間\n  - textbox \"預計夾車出發時間\": 21:50\n  - text: 可供同行嘅人數（唔計自己）\n  - combobox \"可供同行嘅人數（唔計自己）\":\n    - option \"1 個位\" [selected]\n    - option \"2 個位\"\n    - option \"3 個位\"\n    - option \"4 個位\"\n    - option \"5 個位\"\n  - paragraph: 日期同時間以香港時間為準（24 小時制）。同行名額係計劃人數，唔代表已確認座位。\n  - group:\n    - text: 加啲行程資料（選填） 行李數量（選填）\n    - combobox \"行李數量（選填）\":\n      - option \"未提供\"\n      - option \"0 個喼\"\n      - option \"1 個喼\"\n      - option \"2 個喼\" [selected]\n      - option \"3 個喼\"\n      - option \"4 個喼\"\n    - text: 航班編號（選填）\n    - textbox \"航班編號（選填）\":\n      - /placeholder: 例如 CX734\n    - text: 航班預定抵達（選填）\n    - textbox \"航班預定抵達（選填）\"\n    - text: 預計出閘時間（選填）\n    - textbox \"預計出閘時間（選填）\"\n    - text: 最多可以等（選填）\n    - combobox \"最多可以等（選填）\":\n      - option \"未提供\" [selected]\n      - option \"準時出發\"\n      - option \"10 分鐘\"\n      - option \"15 分鐘\"\n      - option \"20 分鐘\"\n      - option \"30 分鐘\"\n      - option \"45 分鐘\"\n      - option \"60 分鐘\"\n    - paragraph: 航班抵達、過關取行李後出閘、夾車出發係唔同時間。只填你有嘅資料；每項日期獨立，支援跨日。\n    - text: 集合地點（選填）\n    - textbox \"集合地點（選填）\":\n      - /placeholder: 例如 抵港接機大堂 B\n    - text: 想同大家講啲咩？（選填）\n    - textbox \"想同大家講啲咩？（選填）\":\n      - /placeholder: 例如 時間彈性，唔介意等吓大家 😆\n      - text: 示範：我哋兩位成人，兩個大喼，想再搵一位同路人；實際車型同空間要再確認。\n  - alert: 請填寫唔同嘅出發地同目的地。\n  - button \"幫我寫個帖文\""
+        },
+        {
+          "n": 6,
+          "label": "Preview and publish the synthetic family post",
+          "elapsedMs": 143,
+          "response": "示範旅程 · 機場同路\nFAREENOUGH · ON THE WAY\nHONG KONG / 同路風景\n你\n你係呢程嘅發帖人\n我發佈嘅旅程\n今日 21:50 香港機場出發，有冇人一齊去屯門？✈️\n\n我落機之後，打算 2026年10月23日 21:50 夾車出發。有 2 個喼。有冇人同路想一齊分擔車費？😆\n\n示範：我哋兩位成人，兩個大喼，想再搵一位同路人；實際車型同空間要再確認。\n\n由呢度出發\n香港機場\n一齊去\n屯門\n出發日期\n今日 · 2026-10-23\n預計夾車出發\n21:50\n計劃同行人數\n發帖人 1 人 + 同行名額 1 個\n0 人有興趣\n（唔計發帖人）\n計劃最多 2 人 · 連發帖人\n集合地點\n集合位置再傾\n發帖人嘅行李\n2 個喼\n落機、出閘、出發，分清楚。\n預計夾車出發\n2026年10月23日 21:50\n\n出閘係過關、拎完行李之後；出發係計劃夾車嘅時間。唔同航班都可以同路。\n\n所有時間：香港時間 · 24 小時制。航班資料只供示範，未有即時追蹤。\n\n你係發帖人，可以修改呢程嘅示範資料。\n\n編輯旅程\n興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。"
+        }
+      ],
+      "checks": [
+        {
+          "task": "Reject an identical origin and destination",
+          "outcome": "PASS",
+          "actual": "SHARE YOUR NEXT JOURNEY\n分享你嘅下一程。\n\n先填基本行程，其他資料可以之後再加。\n\n01 行程資料\n02 預覽發佈\n旅程類型\n機場同路\n日常同路\n定期同路\n旅程方向\n落機返屋企\n出發去機場\n出發地\n目的地\n夾車出發日期\n預計夾車出發時間\n可供同行嘅人數（唔計自己）\n1 個位\n2 個位\n3 個位\n4 個位\n5 個位\n\n日期同時間以香港時間為準（24 小時制）。同行名額係計劃人數，唔代表已確認座位。\n\n加啲行程資料（選填）\n\n請填寫唔同嘅出發地同目的地。\n\n幫我寫個帖文"
+        },
+        {
+          "task": "Represent two existing adults plus one new companion",
+          "outcome": "WORKAROUND",
+          "actual": "示範旅程 · 機場同路\nFAREENOUGH · ON THE WAY\nHONG KONG / 同路風景\n你\n你係呢程嘅發帖人\n我發佈嘅旅程\n今日 21:50 香港機場出發，有冇人一齊去屯門？✈️\n\n我落機之後，打算 2026年10月23日 21:50 夾車出發。有 2 個喼。有冇人同路想一齊分擔車費？😆\n\n示範：我哋兩位成人，兩個大喼，想再搵一位同路人；實際車型同空間要再確認。\n\n由呢度出發\n香港機場\n一齊去\n屯門\n出發日期\n今日 · 2026-10-23\n預計夾車出發\n21:50\n計劃同行人數\n發帖人 1 人 + 同行名額 1 個\n0 人有興趣\n（唔計發帖人）\n計劃最多 2 人 · 連發帖人\n集合地點\n集合位置再傾\n發帖人嘅行李\n2 個喼\n落機、出閘、出發，分清楚。\n預計夾車出發\n2026年10月23日 21:50\n\n出閘係過關、拎完行李之後；出發係計劃夾車嘅時間。唔同航班都可以同路。\n\n所有時間：香港時間 · 24 小時制。航班資料只供示範，未有即時追蹤。\n\n你係發帖人，可以修改呢程嘅示範資料。\n\n編輯旅程\n興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。"
+        }
+      ],
+      "observations": [
+        {
+          "label": "Luggage filter labels concern the other poster's bags, not available baggage space",
+          "actual": "FIND YOUR PEOPLE\n搵個啱你嘅同路人。\n\n唔使完全一樣，時間夾到就得。\n\n出發日期\n想去邊區？\n想搵幾多個同行名額？\n最少 1 個\n最少 2 個\n最少 3 個\n旅程方向\n全部方向\n落機返屋企\n出發去機場\n\n同行名額唔計發帖人，唔係已確認餘位。\n\n更多條件（選填）\n幾點之後夾車出發？\n對方最多帶幾多個喼？\n0 個或以下\n1 個或以下\n2 個或以下\n3 個或以下\n唔限\n對方最少等到幾耐？\n唔限\n15 分鐘\n20 分鐘\n30 分鐘\n航班編號（選填）\n\n時間篩選以計劃夾車出發時間為準。同行名額只係發帖人嘅計劃，唔係已確認餘位；有啟用行李或等候篩選時，未提供資料嘅旅程唔會顯示。\n\n重設\n睇 8 個旅程"
+        },
+        {
+          "label": "Free-text existing party versus structured planned group",
+          "actual": "示範旅程 · 機場同路\nFAREENOUGH · ON THE WAY\nHONG KONG / 同路風景\n你\n你係呢程嘅發帖人\n我發佈嘅旅程\n今日 21:50 香港機場出發，有冇人一齊去屯門？✈️\n\n我落機之後，打算 2026年10月23日 21:50 夾車出發。有 2 個喼。有冇人同路想一齊分擔車費？😆\n\n示範：我哋兩位成人，兩個大喼，想再搵一位同路人；實際車型同空間要再確認。\n\n由呢度出發\n香港機場\n一齊去\n屯門\n出發日期\n今日 · 2026-10-23\n預計夾車出發\n21:50\n計劃同行人數\n發帖人 1 人 + 同行名額 1 個\n0 人有興趣\n（唔計發帖人）\n計劃最多 2 人 · 連發帖人\n集合地點\n集合位置再傾\n發帖人嘅行李\n2 個喼\n落機、出閘、出發，分清楚。\n預計夾車出發\n2026年10月23日 21:50\n\n出閘係過關、拎完行李之後；出發係計劃夾車嘅時間。唔同航班都可以同路。\n\n所有時間：香港時間 · 24 小時制。航班資料只供示範，未有即時追蹤。\n\n你係發帖人，可以修改呢程嘅示範資料。\n\n編輯旅程\n興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。"
+        }
+      ],
+      "screenshots": [
+        {
+          "name": "02-family-count-and-luggage",
+          "path": "test-results/persona-review/personas-P2-—-family-and-luggage-personas/02-family-count-and-luggage.png",
+          "curated": "persona-screenshots/02-family-count-and-luggage.png"
+        }
+      ],
+      "blocked": [],
+      "browserErrors": [],
+      "homepage": "- link \"跳至同路動態\":\n  - /url: \"#journeys\"\n- banner:\n  - link \"FareEnough 同路就夾，車費齊齊慳。\":\n    - /url: /v2-preview\n  - text: V2.3 預覽\n- main:\n  - heading \"下一程，搵個同路人。\" [level=1]\n  - paragraph: 機場返屋企，返工出街，一齊順路。\n  - text: 試吓搵同路人 · 所有互動只供體驗，唔會預訂或收費\n  - tablist \"旅程類別\":\n    - tab \"機場同路\" [selected]\n    - tab \"熱門路線\"\n  - textbox \"搜尋目的地或旅程\":\n    - /placeholder: 你想去邊？\n  - button \"全部日期\" [pressed]\n  - button \"今日\"\n  - button \"聽日\"\n  - button \"落機返屋企\"\n  - button \"出發去機場\"\n  - button \"篩選\"\n  - text: 搵航班\n  - textbox \"按航班編號篩選\":\n    - /placeholder: 例如 CX734（選填）\n  - tabpanel \"機場同路\":\n    - heading \"落機之後，一齊返屋企。\" [level=2]\n    - text: 排序方式\n    - combobox \"排序方式\":\n      - option \"為你推薦\" [selected]\n      - option \"最早出發\"\n      - option \"同行名額較多\"\n    - text: 8 個示範旅程\n    - article:\n      - button \"落機返屋企 香港機場 去 屯門 今日 21:50 夾車出發 航班 CX734 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Mandy\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 屯門\" [level=3]\n        - text: 今日 21:50 夾車出發 航班 CX734 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Mandy\n      - button \"我有興趣：今晚 CX734 落機，有冇人一齊返屯門？✈️\"\n    - article:\n      - button \"落機返屋企 香港機場 去 大埔 今日 22:35 夾車出發 航班 CX250 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿謙\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 大埔\" [level=3]\n        - text: 今日 22:35 夾車出發 航班 CX250 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿謙\n      - button \"我有興趣：一個喼，一個人，搵個同路人返大埔 🧳\"\n    - article:\n      - button \"出發去機場 沙田 去 香港機場 今日 21:50 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Yuna\":\n        - text: 出發去機場\n        - heading \"沙田 去 香港機場\" [level=3]\n        - text: 今日 21:50 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Yuna\n      - button \"我有興趣：聽日凌晨 00:17 起飛，今晚一齊去機場？\"\n    - article:\n      - button \"落機返屋企 香港機場 去 將軍澳 聽日 19:05 夾車出發 航班 UO623 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿晴\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 將軍澳\" [level=3]\n        - text: 聽日 19:05 夾車出發 航班 UO623 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿晴\n      - button \"我有興趣：旅行完咗，一齊慢慢返屋企 🌅\"\n    - article:\n      - button \"落機返屋企 香港機場 去 元朗 聽日 14:40 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Ken\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 元朗\" [level=3]\n        - text: 聽日 14:40 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Ken\n      - button \"我有興趣：下晝落機，有冇元朗友？\"\n    - article:\n      - button \"出發去機場 屯門 去 香港機場 今日 09:15 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Chloe\":\n        - text: 出發去機場\n        - heading \"屯門 去 香港機場\" [level=3]\n        - text: 今日 09:15 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Chloe\n      - button \"我有興趣：去旅行嘅第一程，就一齊啦 ☀️\"\n    - article:\n      - button \"落機返屋企 香港機場 去 沙田 今日 21:00 夾車出發 航班 CX450 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿樂\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 沙田\" [level=3]\n        - text: 今日 21:00 夾車出發 航班 CX450 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿樂\n      - button \"我有興趣：唔同航班都得，時間啱就一齊返\"\n    - article:\n      - button \"落機返屋企 香港機場 去 屯門 聽日 17:50 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Iris\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 屯門\" [level=3]\n        - text: 聽日 17:50 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Iris\n      - button \"我有興趣：黃昏落機，順便識個同路人\"\n    - text: 每段路，都可以有個伴。\n- navigation \"主要導覽\":\n  - button \"首頁\"\n  - button \"搜尋\"\n  - button \"發佈\"\n  - button \"訊息\"\n  - button \"我的\"\n- alert",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "durationMs": 894,
+      "execution": "passed",
+      "trace": "test-results/persona-review/personas-P2-—-family-and-luggage-personas/trace.zip"
+    },
+    {
+      "scenario": "P3 — late-night and invalid times",
+      "started": "2026-10-22T16:06:48.232Z",
+      "browser": "156.0.8078.4",
+      "actions": [
+        {
+          "n": 1,
+          "label": "Begin at the normal V2 homepage in a fresh context",
+          "elapsedMs": 158,
+          "response": {
+            "url": "http://127.0.0.1:3044/v2-preview"
+          }
+        },
+        {
+          "n": 2,
+          "label": "Choose outbound direction and open the visible Sha Tin airport journey",
+          "elapsedMs": 131,
+          "response": "示範旅程 · 機場同路\nFAREENOUGH / HONG KONG\nHKG · DEPARTURES\n同路出發\nNEXT JOURNEY, TOGETHER.\n同路就夾 / 車費齊齊慳\nYuna\nFareEnough 同路友 · 示範人物\n同路傾吓\n聽日凌晨 00:17 起飛，今晚一齊去機場？\n\n我預計 21:50 左右出發去機場，有 1 個喼，可以等 15–20 分鐘。唔同航班都冇問題，時間同路線啱就一齊啦！😆\n\n由呢度出發\n沙田\n一齊去\n香港機場\n出發日期\n今日 · 2026-10-23\n預計夾車出發\n21:50\n計劃同行人數\n發帖人 1 人 + 同行名額 3 個\n2 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n集合地點\n沙田附近，詳細位置再傾\n發帖人嘅行李\n1 個喼\n最多可以等\n20 分鐘\n夾車出發同起飛，分清楚。\n預計夾車出發\n2026年10月23日 21:50\n航班預定起飛\n2026年10月24日 00:17\n\n夾車出發係由集合地點開車去機場嘅時間。請自行預留到機場、辦理登機同安檢嘅時間。\n\n所有時間：香港時間 · 24 小時制。航班資料只供示範，未有即時追蹤。\n我有興趣\n興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。"
+        },
+        {
+          "n": 3,
+          "label": "Create an outbound post and try yesterday's departure date",
+          "elapsedMs": 174,
+          "response": {
+            "rejected": true,
+            "message": "Value must be 2026/10/23 or later."
+          }
+        },
+        {
+          "n": 4,
+          "label": "Try same-day 00:17 takeoff before 21:50 car departure",
+          "elapsedMs": 100,
+          "response": "去機場嘅夾車出發時間要喺航班預定起飛之前。"
+        },
+        {
+          "n": 5,
+          "label": "Move takeoff independently to tomorrow 00:17 and preview",
+          "elapsedMs": 124,
+          "response": "預計夾車出發\n2026年10月23日 21:50\n航班預定起飛\n2026年10月24日 00:17"
+        },
+        {
+          "n": 6,
+          "label": "Unexpected action: return and enter today's 00:00 departure without an optional flight schedule",
+          "elapsedMs": 250
+        }
+      ],
+      "checks": [
+        {
+          "task": "Reject yesterday's departure date",
+          "outcome": "PASS",
+          "actual": {
+            "rejected": true,
+            "message": "Value must be 2026/10/23 or later."
+          }
+        },
+        {
+          "task": "Reject takeoff before the car departure",
+          "outcome": "PASS",
+          "actual": "SHARE YOUR NEXT JOURNEY\n分享你嘅下一程。\n\n先填基本行程，其他資料可以之後再加。\n\n01 行程資料\n02 預覽發佈\n旅程類型\n機場同路\n日常同路\n定期同路\n旅程方向\n落機返屋企\n出發去機場\n出發地\n目的地\n夾車出發日期\n預計夾車出發時間\n可供同行嘅人數（唔計自己）\n1 個位\n2 個位\n3 個位\n4 個位\n5 個位\n\n日期同時間以香港時間為準（24 小時制）。同行名額係計劃人數，唔代表已確認座位。\n\n加啲行程資料（選填）\n行李數量（選填）\n未提供\n0 個喼\n1 個喼\n2 個喼\n3 個喼\n4 個喼\n航班編號（選填）\n航班預定起飛（選填）\n最多可以等（選填）\n未提供\n準時出發\n10 分鐘\n15 分鐘\n20 分鐘\n30 分鐘\n45 分鐘\n60 分鐘\n\n夾車出發同航班起飛嘅日期可以唔同。例如 21 日 21:50 出發，22 日 00:17 起飛。請預留足夠登機時間。\n\n集合地點（選填）\n想同大家講啲咩？（選填）\n\n去機場嘅夾車出發時間要喺航班預定起飛之前。\n\n幫我寫個帖文"
+        },
+        {
+          "task": "Retain independent overnight dates",
+          "outcome": "PASS",
+          "actual": "預計夾車出發\n2026年10月23日 21:50\n航班預定起飛\n2026年10月24日 00:17"
+        },
+        {
+          "task": "Reject a same-day departure in the past",
+          "outcome": "FAIL",
+          "actual": {
+            "now": {
+              "iso": "2026-10-22T16:06:49.185Z",
+              "hkDate": "2026-10-23",
+              "epoch": 1792685209191
+            },
+            "accepted": true,
+            "isPast": true
+          }
+        }
+      ],
+      "observations": [
+        {
+          "label": "Existing overnight full-date timeline",
+          "actual": "預計夾車出發\n2026年10月23日 21:50\n航班預定起飛\n2026年10月24日 00:17"
+        },
+        {
+          "label": "Observed clock and past-departure preview acceptance",
+          "actual": {
+            "now": {
+              "iso": "2026-10-22T16:06:49.185Z",
+              "hkDate": "2026-10-23",
+              "epoch": 1792685209191
+            },
+            "date": "2026-10-23",
+            "time": "00:00",
+            "isPast": true,
+            "accepted": true
+          }
+        },
+        {
+          "label": "Past departure published into own journey",
+          "actual": "示範旅程 · 機場同路\nFAREENOUGH · ON THE WAY\nHONG KONG / 同路風景\n你\n你係呢程嘅發帖人\n我發佈嘅旅程\n今日 00:00 屯門出發，有冇人一齊去香港機場？✈️\n\n我今日預計 00:00 由屯門出發。有冇人同路想一齊分擔車費？😆\n\n由呢度出發\n屯門\n一齊去\n香港機場\n出發日期\n今日 · 2026-10-23\n預計夾車出發\n00:00\n計劃同行人數\n發帖人 1 人 + 同行名額 3 個\n0 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n集合地點\n集合位置再傾\n夾車出發同起飛，分清楚。\n預計夾車出發\n2026年10月23日 00:00\n\n夾車出發係由集合地點開車去機場嘅時間。請自行預留到機場、辦理登機同安檢嘅時間。\n\n所有時間：香港時間 · 24 小時制。航班資料只供示範，未有即時追蹤。\n\n你係發帖人，可以修改呢程嘅示範資料。\n\n編輯旅程\n興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。"
+        }
+      ],
+      "screenshots": [
+        {
+          "name": "03-overnight-timeline",
+          "path": "test-results/persona-review/personas-P3-—-late-night-and-invalid-times-personas/03-overnight-timeline.png"
+        },
+        {
+          "name": "03-same-day-past-departure",
+          "path": "test-results/persona-review/personas-P3-—-late-night-and-invalid-times-personas/03-same-day-past-departure.png",
+          "curated": "persona-screenshots/03-same-day-past-departure.png"
+        }
+      ],
+      "blocked": [],
+      "browserErrors": [],
+      "homepage": "- link \"跳至同路動態\":\n  - /url: \"#journeys\"\n- banner:\n  - link \"FareEnough 同路就夾，車費齊齊慳。\":\n    - /url: /v2-preview\n  - text: V2.3 預覽\n- main:\n  - heading \"下一程，搵個同路人。\" [level=1]\n  - paragraph: 機場返屋企，返工出街，一齊順路。\n  - text: 試吓搵同路人 · 所有互動只供體驗，唔會預訂或收費\n  - tablist \"旅程類別\":\n    - tab \"機場同路\" [selected]\n    - tab \"熱門路線\"\n  - textbox \"搜尋目的地或旅程\":\n    - /placeholder: 你想去邊？\n  - button \"全部日期\" [pressed]\n  - button \"今日\"\n  - button \"聽日\"\n  - button \"落機返屋企\"\n  - button \"出發去機場\"\n  - button \"篩選\"\n  - text: 搵航班\n  - textbox \"按航班編號篩選\":\n    - /placeholder: 例如 CX734（選填）\n  - tabpanel \"機場同路\":\n    - heading \"落機之後，一齊返屋企。\" [level=2]\n    - text: 排序方式\n    - combobox \"排序方式\":\n      - option \"為你推薦\" [selected]\n      - option \"最早出發\"\n      - option \"同行名額較多\"\n    - text: 8 個示範旅程\n    - article:\n      - button \"落機返屋企 香港機場 去 屯門 今日 21:50 夾車出發 航班 CX734 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Mandy\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 屯門\" [level=3]\n        - text: 今日 21:50 夾車出發 航班 CX734 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Mandy\n      - button \"我有興趣：今晚 CX734 落機，有冇人一齊返屯門？✈️\"\n    - article:\n      - button \"落機返屋企 香港機場 去 大埔 今日 22:35 夾車出發 航班 CX250 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿謙\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 大埔\" [level=3]\n        - text: 今日 22:35 夾車出發 航班 CX250 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿謙\n      - button \"我有興趣：一個喼，一個人，搵個同路人返大埔 🧳\"\n    - article:\n      - button \"出發去機場 沙田 去 香港機場 今日 21:50 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Yuna\":\n        - text: 出發去機場\n        - heading \"沙田 去 香港機場\" [level=3]\n        - text: 今日 21:50 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Yuna\n      - button \"我有興趣：聽日凌晨 00:17 起飛，今晚一齊去機場？\"\n    - article:\n      - button \"落機返屋企 香港機場 去 將軍澳 聽日 19:05 夾車出發 航班 UO623 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿晴\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 將軍澳\" [level=3]\n        - text: 聽日 19:05 夾車出發 航班 UO623 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿晴\n      - button \"我有興趣：旅行完咗，一齊慢慢返屋企 🌅\"\n    - article:\n      - button \"落機返屋企 香港機場 去 元朗 聽日 14:40 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Ken\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 元朗\" [level=3]\n        - text: 聽日 14:40 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Ken\n      - button \"我有興趣：下晝落機，有冇元朗友？\"\n    - article:\n      - button \"出發去機場 屯門 去 香港機場 今日 09:15 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Chloe\":\n        - text: 出發去機場\n        - heading \"屯門 去 香港機場\" [level=3]\n        - text: 今日 09:15 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Chloe\n      - button \"我有興趣：去旅行嘅第一程，就一齊啦 ☀️\"\n    - article:\n      - button \"落機返屋企 香港機場 去 沙田 今日 21:00 夾車出發 航班 CX450 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿樂\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 沙田\" [level=3]\n        - text: 今日 21:00 夾車出發 航班 CX450 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿樂\n      - button \"我有興趣：唔同航班都得，時間啱就一齊返\"\n    - article:\n      - button \"落機返屋企 香港機場 去 屯門 聽日 17:50 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Iris\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 屯門\" [level=3]\n        - text: 聽日 17:50 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Iris\n      - button \"我有興趣：黃昏落機，順便識個同路人\"\n    - text: 每段路，都可以有個伴。\n- navigation \"主要導覽\":\n  - button \"首頁\"\n  - button \"搜尋\"\n  - button \"發佈\"\n  - button \"訊息\"\n  - button \"我的\"\n- alert",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "demoDate": "2026-10-23",
+      "clock": {
+        "iso": "2026-10-22T16:06:49.185Z",
+        "hkDate": "2026-10-23",
+        "epoch": 1792685209191
+      },
+      "durationMs": 1162,
+      "execution": "passed",
+      "trace": "test-results/persona-review/personas-P3-—-late-night-and-invalid-times-personas/trace.zip"
+    },
+    {
+      "scenario": "P4 — daily commuter",
+      "started": "2026-10-22T16:06:49.629Z",
+      "browser": "156.0.8078.4",
+      "actions": [
+        {
+          "n": 1,
+          "label": "Begin at the normal V2 homepage in a fresh context",
+          "elapsedMs": 160,
+          "response": {
+            "url": "http://127.0.0.1:3044/v2-preview"
+          }
+        },
+        {
+          "n": 2,
+          "label": "Open Popular Routes, Tuen Mun → Central and recurring journeys",
+          "elapsedMs": 144,
+          "response": {
+            "count": 1,
+            "text": [
+              "FAREENOUGH · ON THE WAY\nHONG KONG / 同路風景\n定期同路\n屯門市廣場\n去\n中環\n聽日\n07:45\n出發\n1 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\nChloe"
+            ]
+          }
+        },
+        {
+          "n": 3,
+          "label": "Unexpected action: enter an unmatched route phrase, then clear only search",
+          "elapsedMs": 60,
+          "response": {
+            "empty": 0,
+            "recovered": 1
+          }
+        },
+        {
+          "n": 4,
+          "label": "Create a recurring journey and inspect its visible scheduling controls",
+          "elapsedMs": 111,
+          "response": "- dialog \"發佈示範旅程\":\n  - button \"關閉\"\n  - text: SHARE YOUR NEXT JOURNEY\n  - heading \"分享你嘅下一程。\" [level=2]\n  - paragraph: 先填基本行程，其他資料可以之後再加。\n  - text: 01 行程資料 02 預覽發佈 旅程類型\n  - combobox \"旅程類型\":\n    - option \"機場同路\"\n    - option \"日常同路\"\n    - option \"定期同路\" [selected]\n  - text: 出發地\n  - textbox \"出發地\": 屯門市廣場\n  - text: 目的地\n  - textbox \"目的地\": 中環\n  - text: 夾車出發日期\n  - textbox \"夾車出發日期\": 2026-10-23\n  - text: 出發時間\n  - textbox \"出發時間\": 08:00\n  - text: 可供同行嘅人數（唔計自己）\n  - combobox \"可供同行嘅人數（唔計自己）\":\n    - option \"1 個位\"\n    - option \"2 個位\"\n    - option \"3 個位\" [selected]\n    - option \"4 個位\"\n    - option \"5 個位\"\n  - paragraph: 日期同時間以香港時間為準（24 小時制）。同行名額係計劃人數，唔代表已確認座位。\n  - group: 加啲行程資料（選填）\n  - button \"幫我寫個帖文\""
+        },
+        {
+          "n": 5,
+          "label": "Describe Monday–Friday frequency in the optional body and publish",
+          "elapsedMs": 287,
+          "response": "示範旅程 · 日常同路\nFAREENOUGH · ON THE WAY\nHONG KONG / 同路風景\n你\n你係呢程嘅發帖人\n我發佈嘅旅程\n今日 08:00 屯門市廣場出發，有冇人一齊去中環？🚕\n\n我今日預計 08:00 由屯門市廣場出發。時間可以再傾。有冇人同路想一齊分擔車費？😆\n\n示範：想星期一至五朝早八點由屯門返中環。每次是否成行要再確認。\n\n由呢度出發\n屯門市廣場\n一齊去\n中環\n出發日期\n今日 · 2026-10-23\n預計夾車出發\n08:00\n計劃同行人數\n發帖人 1 人 + 同行名額 3 個\n0 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n集合地點\n集合位置再傾\n\n你係發帖人，可以修改呢程嘅示範資料。\n\n編輯旅程\n興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。"
+        }
+      ],
+      "checks": [
+        {
+          "task": "Find a recurring Tuen Mun → Central journey",
+          "outcome": "PASS",
+          "actual": [
+            "FAREENOUGH · ON THE WAY\nHONG KONG / 同路風景\n定期同路\n屯門市廣場\n去\n中環\n聽日\n07:45\n出發\n1 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\nChloe"
+          ]
+        },
+        {
+          "task": "Specify a regular weekday schedule",
+          "outcome": "WORKAROUND",
+          "actual": "Recurring is selectable, but the form exposes one departure date/time; weekday frequency was added as free text, not a generated schedule."
+        }
+      ],
+      "observations": [
+        {
+          "label": "Recurring creation form",
+          "actual": "- dialog \"發佈示範旅程\":\n  - button \"關閉\"\n  - text: SHARE YOUR NEXT JOURNEY\n  - heading \"分享你嘅下一程。\" [level=2]\n  - paragraph: 先填基本行程，其他資料可以之後再加。\n  - text: 01 行程資料 02 預覽發佈 旅程類型\n  - combobox \"旅程類型\":\n    - option \"機場同路\"\n    - option \"日常同路\"\n    - option \"定期同路\" [selected]\n  - text: 出發地\n  - textbox \"出發地\": 屯門市廣場\n  - text: 目的地\n  - textbox \"目的地\": 中環\n  - text: 夾車出發日期\n  - textbox \"夾車出發日期\": 2026-10-23\n  - text: 出發時間\n  - textbox \"出發時間\": 08:00\n  - text: 可供同行嘅人數（唔計自己）\n  - combobox \"可供同行嘅人數（唔計自己）\":\n    - option \"1 個位\"\n    - option \"2 個位\"\n    - option \"3 個位\" [selected]\n    - option \"4 個位\"\n    - option \"5 個位\"\n  - paragraph: 日期同時間以香港時間為準（24 小時制）。同行名額係計劃人數，唔代表已確認座位。\n  - group: 加啲行程資料（選填）\n  - button \"幫我寫個帖文\""
+        }
+      ],
+      "screenshots": [
+        {
+          "name": "04-recurring-single-date-form",
+          "path": "test-results/persona-review/personas-desktop-commuting-P4-—-daily-commuter-personas/04-recurring-single-date-form.png",
+          "curated": "persona-screenshots/04-recurring-single-date-form.png"
+        },
+        {
+          "name": "04-recurring-published",
+          "path": "test-results/persona-review/personas-desktop-commuting-P4-—-daily-commuter-personas/04-recurring-published.png"
+        }
+      ],
+      "blocked": [],
+      "browserErrors": [],
+      "homepage": "- link \"跳至同路動態\":\n  - /url: \"#journeys\"\n- banner:\n  - link \"FareEnough 同路就夾，車費齊齊慳。\":\n    - /url: /v2-preview\n  - text: 發現同路 香港 · HONG KONG V2.3 預覽\n  - button \"分享行程\"\n- main:\n  - heading \"下一程，搵個同路人。\" [level=1]\n  - paragraph: 機場返屋企，返工出街，一齊順路。\n  - text: 示範旅程 試吓搵同路人 · 所有互動只供體驗，唔會預訂或收費\n  - tablist \"旅程類別\":\n    - tab \"機場同路\" [selected]\n    - tab \"熱門路線\"\n  - textbox \"搜尋目的地或旅程\":\n    - /placeholder: 你想去邊？\n  - button \"全部日期\" [pressed]\n  - button \"今日\"\n  - button \"聽日\"\n  - button \"落機返屋企\"\n  - button \"出發去機場\"\n  - button \"篩選\"\n  - text: 搵航班\n  - textbox \"按航班編號篩選\":\n    - /placeholder: 例如 CX734（選填）\n  - tabpanel \"機場同路\":\n    - heading \"落機之後，一齊返屋企。\" [level=2]\n    - paragraph: 唔使同一班機，時間同路線啱就得。\n    - text: 排序方式\n    - combobox \"排序方式\":\n      - option \"為你推薦\" [selected]\n      - option \"最早出發\"\n      - option \"同行名額較多\"\n    - text: 8 個示範旅程\n    - article:\n      - button \"落機返屋企 香港機場 去 屯門 今日 21:50 夾車出發 航班 CX734 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Mandy\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 屯門\" [level=3]\n        - text: 今日 21:50 夾車出發 航班 CX734 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Mandy\n      - button \"我有興趣：今晚 CX734 落機，有冇人一齊返屯門？✈️\"\n    - article:\n      - button \"落機返屋企 香港機場 去 大埔 今日 22:35 夾車出發 航班 CX250 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿謙\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 大埔\" [level=3]\n        - text: 今日 22:35 夾車出發 航班 CX250 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿謙\n      - button \"我有興趣：一個喼，一個人，搵個同路人返大埔 🧳\"\n    - article:\n      - button \"出發去機場 沙田 去 香港機場 今日 21:50 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Yuna\":\n        - text: 出發去機場\n        - heading \"沙田 去 香港機場\" [level=3]\n        - text: 今日 21:50 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Yuna\n      - button \"我有興趣：聽日凌晨 00:17 起飛，今晚一齊去機場？\"\n    - article:\n      - button \"落機返屋企 香港機場 去 將軍澳 聽日 19:05 夾車出發 航班 UO623 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿晴\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 將軍澳\" [level=3]\n        - text: 聽日 19:05 夾車出發 航班 UO623 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿晴\n      - button \"我有興趣：旅行完咗，一齊慢慢返屋企 🌅\"\n    - article:\n      - button \"落機返屋企 香港機場 去 元朗 聽日 14:40 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Ken\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 元朗\" [level=3]\n        - text: 聽日 14:40 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Ken\n      - button \"我有興趣：下晝落機，有冇元朗友？\"\n    - article:\n      - button \"出發去機場 屯門 去 香港機場 今日 09:15 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Chloe\":\n        - text: 出發去機場\n        - heading \"屯門 去 香港機場\" [level=3]\n        - text: 今日 09:15 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Chloe\n      - button \"我有興趣：去旅行嘅第一程，就一齊啦 ☀️\"\n    - article:\n      - button \"落機返屋企 香港機場 去 沙田 今日 21:00 夾車出發 航班 CX450 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿樂\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 沙田\" [level=3]\n        - text: 今日 21:00 夾車出發 航班 CX450 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿樂\n      - button \"我有興趣：唔同航班都得，時間啱就一齊返\"\n    - article:\n      - button \"落機返屋企 香港機場 去 屯門 聽日 17:50 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Iris\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 屯門\" [level=3]\n        - text: 聽日 17:50 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Iris\n      - button \"我有興趣：黃昏落機，順便識個同路人\"\n    - text: 每段路，都可以有個伴。\n- navigation \"主要導覽\":\n  - button \"首頁\"\n  - button \"搜尋\"\n  - button \"發佈\"\n  - button \"訊息\"\n  - button \"我的\"\n- alert",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "durationMs": 1129,
+      "execution": "passed",
+      "trace": "test-results/persona-review/personas-desktop-commuting-P4-—-daily-commuter-personas/trace.zip"
+    },
+    {
+      "scenario": "P5 — trust-conscious passenger",
+      "started": "2026-10-22T16:06:51.054Z",
+      "browser": "156.0.8078.4",
+      "actions": [
+        {
+          "n": 1,
+          "label": "Begin at the normal V2 homepage in a fresh context",
+          "elapsedMs": 168,
+          "response": {
+            "url": "http://127.0.0.1:3044/v2-preview"
+          }
+        },
+        {
+          "n": 2,
+          "label": "Inspect the first visible airport journey",
+          "elapsedMs": 96
+        },
+        {
+          "n": 3,
+          "label": "Unexpected action: click the organizer's visible name",
+          "elapsedMs": 55,
+          "response": {
+            "sameURL": true,
+            "dialogs": 1,
+            "headings": [
+              "今晚 CX734 落機，有冇人一齊返屯門？✈️",
+              "落機、出閘、出發，分清楚。"
+            ]
+          }
+        },
+        {
+          "n": 4,
+          "label": "Add interest, then tap again to withdraw",
+          "elapsedMs": 78,
+          "response": {
+            "added": "示範旅程 · 機場同路\nFAREENOUGH / HONG KONG\nA LITTLE COMPANY\n同路登機證\nHKG\nNEXT STOP / 屋企見\nGOOD COMPANY, LESS FARE.\n一齊返屋企。\n同路就夾 / 車費齊齊慳\nMandy\nFareEnough 同路友 · 示範人物\n同路傾吓\n航班 CX734\n今晚 CX734 落機，有冇人一齊返屯門？✈️\n\n我預計 21:30 左右拎完行李出到嚟，有 1 個喼，可以等 15–20 分鐘。唔同航班都冇問題，時間同路線啱就一齊啦！😆\n\n由呢度出發\n香港機場\n一齊去\n屯門\n出發日期\n今日 · 2026-10-23\n預計夾車出發\n21:50\n計劃同行人數\n發帖人 1 人 + 同行名額 3 個\n1 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n集合地點\n一號客運大樓，抵港接機大堂 B\n發帖人嘅行李\n1 個喼\n最多可以等\n20 分鐘\n落機、出閘、出發，分清楚。\n預計出閘 · 已過關及取行李\n2026年10月23日 21:30\n預計夾車出發\n2026年10月23日 21:50\n航班預定抵達\n2026年10月23日 20:50\n\n出閘係過關、拎完行李之後；出發係計劃夾車嘅時間。唔同航班都可以同路。\n\n所有時間：香港時間 · 24 小時制。航班資料只供示範，未有即時追蹤。\n撤回興趣\n興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。",
+            "withdrawn": "示範旅程 · 機場同路\nFAREENOUGH / HONG KONG\nA LITTLE COMPANY\n同路登機證\nHKG\nNEXT STOP / 屋企見\nGOOD COMPANY, LESS FARE.\n一齊返屋企。\n同路就夾 / 車費齊齊慳\nMandy\nFareEnough 同路友 · 示範人物\n同路傾吓\n航班 CX734\n今晚 CX734 落機，有冇人一齊返屯門？✈️\n\n我預計 21:30 左右拎完行李出到嚟，有 1 個喼，可以等 15–20 分鐘。唔同航班都冇問題，時間同路線啱就一齊啦！😆\n\n由呢度出發\n香港機場\n一齊去\n屯門\n出發日期\n今日 · 2026-10-23\n預計夾車出發\n21:50\n計劃同行人數\n發帖人 1 人 + 同行名額 3 個\n0 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n集合地點\n一號客運大樓，抵港接機大堂 B\n發帖人嘅行李\n1 個喼\n最多可以等\n20 分鐘\n落機、出閘、出發，分清楚。\n預計出閘 · 已過關及取行李\n2026年10月23日 21:30\n預計夾車出發\n2026年10月23日 21:50\n航班預定抵達\n2026年10月23日 20:50\n\n出閘係過關、拎完行李之後；出發係計劃夾車嘅時間。唔同航班都可以同路。\n\n所有時間：香港時間 · 24 小時制。航班資料只供示範，未有即時追蹤。\n我有興趣\n興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。"
+          }
+        },
+        {
+          "n": 5,
+          "label": "Add interest again and inspect the Messages destination",
+          "elapsedMs": 166,
+          "response": "A CONNECTION STARTS HERE\n同路，由打個招呼開始。\n\n呢度可以重溫有興趣嘅旅程。真人聊天會喺之後開放。\n\n0\n已發佈旅程\n1\n有興趣旅程\n我有興趣嘅旅程\nFAREENOUGH / HONG KONG\nA LITTLE COMPANY\n同路登機證\nHKG\nNEXT STOP / 屋企見\nGOOD COMPANY, LESS FARE.\n一齊返屋企。\n同路就夾 / 車費齊齊慳\n香港機場 → 屯門\n今日 21:50 夾車出發 · Mandy\n1 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n\n呢個版本只試玩發現同路人嘅流程。唔會傳送訊息、配對司機、預訂、派車或處理付款。"
+        }
+      ],
+      "checks": [
+        {
+          "task": "Interest remains distinct from confirmed booking/capacity",
+          "outcome": "PASS",
+          "actual": "示範旅程 · 機場同路\nFAREENOUGH / HONG KONG\nA LITTLE COMPANY\n同路登機證\nHKG\nNEXT STOP / 屋企見\nGOOD COMPANY, LESS FARE.\n一齊返屋企。\n同路就夾 / 車費齊齊慳\nMandy\nFareEnough 同路友 · 示範人物\n同路傾吓\n航班 CX734\n今晚 CX734 落機，有冇人一齊返屯門？✈️\n\n我預計 21:30 左右拎完行李出到嚟，有 1 個喼，可以等 15–20 分鐘。唔同航班都冇問題，時間同路線啱就一齊啦！😆\n\n由呢度出發\n香港機場\n一齊去\n屯門\n出發日期\n今日 · 2026-10-23\n預計夾車出發\n21:50\n計劃同行人數\n發帖人 1 人 + 同行名額 3 個\n0 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n集合地點\n一號客運大樓，抵港接機大堂 B\n發帖人嘅行李\n1 個喼\n最多可以等\n20 分鐘\n落機、出閘、出發，分清楚。\n預計出閘 · 已過關及取行李\n2026年10月23日 21:30\n預計夾車出發\n2026年10月23日 21:50\n航班預定抵達\n2026年10月23日 20:50\n\n出閘係過關、拎完行李之後；出發係計劃夾車嘅時間。唔同航班都可以同路。\n\n所有時間：香港時間 · 24 小時制。航班資料只供示範，未有即時追蹤。\n我有興趣\n興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。"
+        },
+        {
+          "task": "Find the explicit unavailable-live-chat explanation",
+          "outcome": "PASS",
+          "actual": "A CONNECTION STARTS HERE\n同路，由打個招呼開始。\n\n呢度可以重溫有興趣嘅旅程。真人聊天會喺之後開放。\n\n0\n已發佈旅程\n1\n有興趣旅程\n我有興趣嘅旅程\nFAREENOUGH / HONG KONG\nA LITTLE COMPANY\n同路登機證\nHKG\nNEXT STOP / 屋企見\nGOOD COMPANY, LESS FARE.\n一齊返屋企。\n同路就夾 / 車費齊齊慳\n香港機場 → 屯門\n今日 21:50 夾車出發 · Mandy\n1 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n\n呢個版本只試玩發現同路人嘅流程。唔會傳送訊息、配對司機、預訂、派車或處理付款。"
+        }
+      ],
+      "observations": [
+        {
+          "label": "Organizer, counts, meeting and booking/safety wording visible in detail",
+          "actual": "示範旅程 · 機場同路\nFAREENOUGH / HONG KONG\nA LITTLE COMPANY\n同路登機證\nHKG\nNEXT STOP / 屋企見\nGOOD COMPANY, LESS FARE.\n一齊返屋企。\n同路就夾 / 車費齊齊慳\nMandy\nFareEnough 同路友 · 示範人物\n同路傾吓\n航班 CX734\n今晚 CX734 落機，有冇人一齊返屯門？✈️\n\n我預計 21:30 左右拎完行李出到嚟，有 1 個喼，可以等 15–20 分鐘。唔同航班都冇問題，時間同路線啱就一齊啦！😆\n\n由呢度出發\n香港機場\n一齊去\n屯門\n出發日期\n今日 · 2026-10-23\n預計夾車出發\n21:50\n計劃同行人數\n發帖人 1 人 + 同行名額 3 個\n0 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n集合地點\n一號客運大樓，抵港接機大堂 B\n發帖人嘅行李\n1 個喼\n最多可以等\n20 分鐘\n落機、出閘、出發，分清楚。\n預計出閘 · 已過關及取行李\n2026年10月23日 21:30\n預計夾車出發\n2026年10月23日 21:50\n航班預定抵達\n2026年10月23日 20:50\n\n出閘係過關、拎完行李之後；出發係計劃夾車嘅時間。唔同航班都可以同路。\n\n所有時間：香港時間 · 24 小時制。航班資料只供示範，未有即時追蹤。\n我有興趣\n興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。"
+        },
+        {
+          "label": "Messages is a shortlist, with no live chat or verification shown",
+          "actual": "A CONNECTION STARTS HERE\n同路，由打個招呼開始。\n\n呢度可以重溫有興趣嘅旅程。真人聊天會喺之後開放。\n\n0\n已發佈旅程\n1\n有興趣旅程\n我有興趣嘅旅程\nFAREENOUGH / HONG KONG\nA LITTLE COMPANY\n同路登機證\nHKG\nNEXT STOP / 屋企見\nGOOD COMPANY, LESS FARE.\n一齊返屋企。\n同路就夾 / 車費齊齊慳\n香港機場 → 屯門\n今日 21:50 夾車出發 · Mandy\n1 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n\n呢個版本只試玩發現同路人嘅流程。唔會傳送訊息、配對司機、預訂、派車或處理付款。"
+        }
+      ],
+      "screenshots": [
+        {
+          "name": "05-trust-meeting-and-status",
+          "path": "test-results/persona-review/personas-P5-—-trust-conscious-passenger-personas/05-trust-meeting-and-status.png"
+        },
+        {
+          "name": "05-message-shortlist-not-chat",
+          "path": "test-results/persona-review/personas-P5-—-trust-conscious-passenger-personas/05-message-shortlist-not-chat.png",
+          "curated": "persona-screenshots/05-message-shortlist-not-chat.png"
+        }
+      ],
+      "blocked": [],
+      "browserErrors": [],
+      "homepage": "- link \"跳至同路動態\":\n  - /url: \"#journeys\"\n- banner:\n  - link \"FareEnough 同路就夾，車費齊齊慳。\":\n    - /url: /v2-preview\n  - text: V2.3 預覽\n- main:\n  - heading \"下一程，搵個同路人。\" [level=1]\n  - paragraph: 機場返屋企，返工出街，一齊順路。\n  - text: 試吓搵同路人 · 所有互動只供體驗，唔會預訂或收費\n  - tablist \"旅程類別\":\n    - tab \"機場同路\" [selected]\n    - tab \"熱門路線\"\n  - textbox \"搜尋目的地或旅程\":\n    - /placeholder: 你想去邊？\n  - button \"全部日期\" [pressed]\n  - button \"今日\"\n  - button \"聽日\"\n  - button \"落機返屋企\"\n  - button \"出發去機場\"\n  - button \"篩選\"\n  - text: 搵航班\n  - textbox \"按航班編號篩選\":\n    - /placeholder: 例如 CX734（選填）\n  - tabpanel \"機場同路\":\n    - heading \"落機之後，一齊返屋企。\" [level=2]\n    - text: 排序方式\n    - combobox \"排序方式\":\n      - option \"為你推薦\" [selected]\n      - option \"最早出發\"\n      - option \"同行名額較多\"\n    - text: 8 個示範旅程\n    - article:\n      - button \"落機返屋企 香港機場 去 屯門 今日 21:50 夾車出發 航班 CX734 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Mandy\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 屯門\" [level=3]\n        - text: 今日 21:50 夾車出發 航班 CX734 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Mandy\n      - button \"我有興趣：今晚 CX734 落機，有冇人一齊返屯門？✈️\"\n    - article:\n      - button \"落機返屋企 香港機場 去 大埔 今日 22:35 夾車出發 航班 CX250 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿謙\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 大埔\" [level=3]\n        - text: 今日 22:35 夾車出發 航班 CX250 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿謙\n      - button \"我有興趣：一個喼，一個人，搵個同路人返大埔 🧳\"\n    - article:\n      - button \"出發去機場 沙田 去 香港機場 今日 21:50 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Yuna\":\n        - text: 出發去機場\n        - heading \"沙田 去 香港機場\" [level=3]\n        - text: 今日 21:50 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Yuna\n      - button \"我有興趣：聽日凌晨 00:17 起飛，今晚一齊去機場？\"\n    - article:\n      - button \"落機返屋企 香港機場 去 將軍澳 聽日 19:05 夾車出發 航班 UO623 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿晴\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 將軍澳\" [level=3]\n        - text: 聽日 19:05 夾車出發 航班 UO623 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿晴\n      - button \"我有興趣：旅行完咗，一齊慢慢返屋企 🌅\"\n    - article:\n      - button \"落機返屋企 香港機場 去 元朗 聽日 14:40 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Ken\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 元朗\" [level=3]\n        - text: 聽日 14:40 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Ken\n      - button \"我有興趣：下晝落機，有冇元朗友？\"\n    - article:\n      - button \"出發去機場 屯門 去 香港機場 今日 09:15 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Chloe\":\n        - text: 出發去機場\n        - heading \"屯門 去 香港機場\" [level=3]\n        - text: 今日 09:15 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Chloe\n      - button \"我有興趣：去旅行嘅第一程，就一齊啦 ☀️\"\n    - article:\n      - button \"落機返屋企 香港機場 去 沙田 今日 21:00 夾車出發 航班 CX450 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿樂\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 沙田\" [level=3]\n        - text: 今日 21:00 夾車出發 航班 CX450 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿樂\n      - button \"我有興趣：唔同航班都得，時間啱就一齊返\"\n    - article:\n      - button \"落機返屋企 香港機場 去 屯門 聽日 17:50 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Iris\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 屯門\" [level=3]\n        - text: 聽日 17:50 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Iris\n      - button \"我有興趣：黃昏落機，順便識個同路人\"\n    - text: 每段路，都可以有個伴。\n- navigation \"主要導覽\":\n  - button \"首頁\"\n  - button \"搜尋\"\n  - button \"發佈\"\n  - button \"訊息\"\n  - button \"我的\"\n- alert",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "durationMs": 757,
+      "execution": "passed",
+      "trace": "test-results/persona-review/personas-P5-—-trust-conscious-passenger-personas/trace.zip"
+    },
+    {
+      "scenario": "P6 — keyboard and 200% text at 320px",
+      "started": "2026-10-22T16:06:51.988Z",
+      "browser": "156.0.8078.4",
+      "actions": [
+        {
+          "n": 1,
+          "label": "Begin at the normal V2 homepage in a fresh context",
+          "elapsedMs": 168,
+          "response": {
+            "url": "http://127.0.0.1:3044/v2-preview"
+          }
+        },
+        {
+          "n": 2,
+          "label": "Use successive Tab keys from the homepage to reach the first journey card",
+          "elapsedMs": 116,
+          "response": [
+            {
+              "tag": "A",
+              "label": "跳至同路動態",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "A",
+              "label": "FareEnough同路就夾，車費齊齊慳。",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "機場同路",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "INPUT",
+              "label": "搜尋目的地或旅程",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "全部日期",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "今日",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "聽日",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "落機返屋企",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "出發去機場",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "篩選",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "INPUT",
+              "label": "按航班編號篩選",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "SELECT",
+              "label": "為你推薦最早出發同行名額較多",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "FAREENOUGH / HONG KONGA LITTLE COMPANY同路登機證HKGNEXT STOP / 屋企見GOOD COMPANY, LESS FARE.一齊返屋企。同路就夾 / 車費齊齊慳 落機返屋企香港機場去屯門今日 2",
+              "inCard": true,
+              "inDialog": false
+            }
+          ]
+        },
+        {
+          "n": 3,
+          "label": "Enter opens details; Shift+Tab and Tab cycle; Escape closes",
+          "elapsedMs": 205,
+          "response": {
+            "initial": {
+              "tag": "BUTTON",
+              "label": "關閉",
+              "inCard": false,
+              "inDialog": true
+            },
+            "cycle": [
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              }
+            ],
+            "restored": {
+              "tag": "BUTTON",
+              "label": "FAREENOUGH / HONG KONGA LITTLE COMPANY同路登機證HKGNEXT STOP / 屋企見GOOD COMPANY, LESS FARE.一齊返屋企。同路就夾 / 車費齊齊慳 落機返屋企香港機場去屯門今日 2",
+              "inCard": true,
+              "inDialog": false
+            },
+            "opener": {
+              "tag": "BUTTON",
+              "label": "FAREENOUGH / HONG KONGA LITTLE COMPANY同路登機證HKGNEXT STOP / 屋企見GOOD COMPANY, LESS FARE.一齊返屋企。同路就夾 / 車費齊齊慳 落機返屋企香港機場去屯門今日 2",
+              "inCard": true,
+              "inDialog": false
+            }
+          }
+        },
+        {
+          "n": 4,
+          "label": "Continue Tab from the restored card through its interest button to the next card",
+          "elapsedMs": 31,
+          "response": {
+            "stops": [
+              {
+                "tag": "BUTTON",
+                "label": "我有興趣：今晚 CX734 落機，有冇人一齊返屯門？✈️",
+                "inCard": true,
+                "inDialog": false
+              },
+              {
+                "tag": "BUTTON",
+                "label": "FAREENOUGH · ON THE WAYHONG KONG / 同路風景 落機返屋企香港機場去大埔今日 22:35夾車出發航班 CX2501 人有興趣（唔計發帖人）計劃最多 4 人 · 連發帖人阿謙",
+                "inCard": true,
+                "inDialog": false
+              }
+            ],
+            "order": [
+              {
+                "i": 0,
+                "heading": "香港機場去屯門",
+                "x": 12,
+                "y": 449,
+                "width": 143
+              },
+              {
+                "i": 1,
+                "heading": "香港機場去大埔",
+                "x": 165,
+                "y": 449,
+                "width": 143
+              },
+              {
+                "i": 2,
+                "heading": "沙田去香港機場",
+                "x": 12,
+                "y": 828,
+                "width": 143
+              },
+              {
+                "i": 3,
+                "heading": "香港機場去將軍澳",
+                "x": 165,
+                "y": 855,
+                "width": 143
+              },
+              {
+                "i": 4,
+                "heading": "香港機場去元朗",
+                "x": 12,
+                "y": 1169,
+                "width": 143
+              },
+              {
+                "i": 5,
+                "heading": "屯門去香港機場",
+                "x": 165,
+                "y": 1234,
+                "width": 143
+              },
+              {
+                "i": 6,
+                "heading": "香港機場去沙田",
+                "x": 12,
+                "y": 1537,
+                "width": 143
+              },
+              {
+                "i": 7,
+                "heading": "香港機場去屯門",
+                "x": 165,
+                "y": 1575,
+                "width": 143
+              }
+            ]
+          }
+        },
+        {
+          "n": 5,
+          "label": "Unexpected action: clear required destination and submit; recover by typing Tuen Mun in Cantonese",
+          "elapsedMs": 251,
+          "response": {
+            "rejected": {
+              "missing": true,
+              "message": "Please fill out this field."
+            },
+            "recovered": true
+          }
+        },
+        {
+          "n": 6,
+          "label": "Return Home before the enlarged-text exercise",
+          "elapsedMs": 43
+        },
+        {
+          "n": 7,
+          "label": "Apply a 200% computed-font text-resize simulation, excluding SVG artwork",
+          "elapsedMs": 33,
+          "response": {
+            "elements": 154,
+            "headingBefore": "18px",
+            "headingAfter": "36px",
+            "method": "computed CSS font-size doubled; not native browser zoom"
+          }
+        },
+        {
+          "n": 8,
+          "label": "Scroll the enlarged first card's author into view to capture the overlap",
+          "elapsedMs": 67
+        },
+        {
+          "n": 9,
+          "label": "Open filters, enlarge the newly mounted dialog text, scroll to Apply, then close by keyboard",
+          "elapsedMs": 123,
+          "response": {
+            "closed": true,
+            "resized": {
+              "elements": 40,
+              "headingBefore": "21px",
+              "headingAfter": "42px",
+              "method": "computed CSS font-size doubled; not native browser zoom"
+            },
+            "filterText": "FIND YOUR PEOPLE\n搵個啱你嘅同路人。\n\n唔使完全一樣，時間夾到就得。\n\n出發日期\n想去邊區？\n想搵幾多個同行名額？\n最少 1 個\n最少 2 個\n最少 3 個\n旅程方向\n全部方向\n落機返屋企\n出發去機場\n\n同行名額唔計發帖人，唔係已確認餘位。\n\n更多條件（選填）\n重設\n睇 8 個旅程"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "task": "Modal keyboard cycle and opener restoration",
+          "outcome": "PASS",
+          "actual": {
+            "initial": {
+              "tag": "BUTTON",
+              "label": "關閉",
+              "inCard": false,
+              "inDialog": true
+            },
+            "cycle": [
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              }
+            ],
+            "restored": {
+              "tag": "BUTTON",
+              "label": "FAREENOUGH / HONG KONGA LITTLE COMPANY同路登機證HKGNEXT STOP / 屋企見GOOD COMPANY, LESS FARE.一齊返屋企。同路就夾 / 車費齊齊慳 落機返屋企香港機場去屯門今日 2",
+              "inCard": true,
+              "inDialog": false
+            },
+            "opener": {
+              "tag": "BUTTON",
+              "label": "FAREENOUGH / HONG KONGA LITTLE COMPANY同路登機證HKGNEXT STOP / 屋企見GOOD COMPANY, LESS FARE.一齊返屋企。同路就夾 / 車費齊齊慳 落機返屋企香港機場去屯門今日 2",
+              "inCard": true,
+              "inDialog": false
+            }
+          }
+        },
+        {
+          "task": "Keyboard moves from the first card through interest to the next DOM card",
+          "outcome": "PASS",
+          "actual": [
+            {
+              "tag": "BUTTON",
+              "label": "我有興趣：今晚 CX734 落機，有冇人一齊返屯門？✈️",
+              "inCard": true,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "FAREENOUGH · ON THE WAYHONG KONG / 同路風景 落機返屋企香港機場去大埔今日 22:35夾車出發航班 CX2501 人有興趣（唔計發帖人）計劃最多 4 人 · 連發帖人阿謙",
+              "inCard": true,
+              "inDialog": false
+            }
+          ]
+        },
+        {
+          "task": "Required destination validation and correction",
+          "outcome": "PASS",
+          "actual": {
+            "rejected": {
+              "missing": true,
+              "message": "Please fill out this field."
+            },
+            "recovered": true
+          }
+        },
+        {
+          "task": "200% enlarged text fits the small screen without horizontal overflow",
+          "outcome": "FAIL",
+          "actual": {
+            "width": 397,
+            "client": 320,
+            "scroll": 397,
+            "brand": {
+              "left": 13,
+              "right": 293.03125,
+              "width": 280.03125
+            },
+            "authorHeartOverlap": true
+          }
+        },
+        {
+          "task": "Author label and separate interest control remain unobscured",
+          "outcome": "FAIL",
+          "actual": {
+            "width": 397,
+            "client": 320,
+            "scroll": 397,
+            "brand": {
+              "left": 13,
+              "right": 293.03125,
+              "width": 280.03125
+            },
+            "authorHeartOverlap": true
+          }
+        }
+      ],
+      "observations": [
+        {
+          "label": "DOM card order and visible masonry positions",
+          "actual": [
+            {
+              "i": 0,
+              "heading": "香港機場去屯門",
+              "x": 12,
+              "y": 449,
+              "width": 143
+            },
+            {
+              "i": 1,
+              "heading": "香港機場去大埔",
+              "x": 165,
+              "y": 449,
+              "width": 143
+            },
+            {
+              "i": 2,
+              "heading": "沙田去香港機場",
+              "x": 12,
+              "y": 828,
+              "width": 143
+            },
+            {
+              "i": 3,
+              "heading": "香港機場去將軍澳",
+              "x": 165,
+              "y": 855,
+              "width": 143
+            },
+            {
+              "i": 4,
+              "heading": "香港機場去元朗",
+              "x": 12,
+              "y": 1169,
+              "width": 143
+            },
+            {
+              "i": 5,
+              "heading": "屯門去香港機場",
+              "x": 165,
+              "y": 1234,
+              "width": 143
+            },
+            {
+              "i": 6,
+              "heading": "香港機場去沙田",
+              "x": 12,
+              "y": 1537,
+              "width": 143
+            },
+            {
+              "i": 7,
+              "heading": "香港機場去屯門",
+              "x": 165,
+              "y": 1575,
+              "width": 143
+            }
+          ]
+        },
+        {
+          "label": "Baseline layout",
+          "actual": {
+            "width": 320,
+            "scroll": 320,
+            "client": 320
+          }
+        },
+        {
+          "label": "Baseline visible control dimensions (CSS pixels)",
+          "actual": [
+            {
+              "label": "機場同路",
+              "width": 145,
+              "height": 44.5
+            },
+            {
+              "label": "熱門路線",
+              "width": 145,
+              "height": 44.5
+            },
+            {
+              "label": "搜尋目的地或旅程",
+              "width": 247.71875,
+              "height": 44
+            },
+            {
+              "label": "全部日期",
+              "width": 73.65625,
+              "height": 44
+            },
+            {
+              "label": "今日",
+              "width": 73.671875,
+              "height": 44
+            },
+            {
+              "label": "聽日",
+              "width": 73.65625,
+              "height": 44
+            },
+            {
+              "label": "落機返屋企",
+              "width": 112.984375,
+              "height": 44
+            },
+            {
+              "label": "出發去機場",
+              "width": 113,
+              "height": 44
+            },
+            {
+              "label": "篩選",
+              "width": 58,
+              "height": 44
+            },
+            {
+              "label": "按航班編號篩選",
+              "width": 206,
+              "height": 44
+            },
+            {
+              "label": "為你推薦最早出發同行名額較多",
+              "width": 90,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH / HONG KONGA LITTLE COMPANY同路登機證HKGNEXT STOP / 屋企見GOOD COMPANY, LESS ",
+              "width": 141,
+              "height": 366.625
+            },
+            {
+              "label": "我有興趣：今晚 CX734 落機，有冇人一齊返屯門？✈️",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH · ON THE WAYHONG KONG / 同路風景 落機返屋企香港機場去大埔今日 22:35夾車出發航班 CX2501 人有興趣（唔",
+              "width": 141,
+              "height": 393.625
+            },
+            {
+              "label": "我有興趣：一個喼，一個人，搵個同路人返大埔 🧳",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH / HONG KONGHKG · DEPARTURES同路出發NEXT JOURNEY, TOGETHER.同路就夾 / 車費齊齊慳 出發",
+              "width": 141,
+              "height": 328.4375
+            },
+            {
+              "label": "我有興趣：聽日凌晨 00:17 起飛，今晚一齊去機場？",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH · ON THE WAYHONG KONG / 同路風景 落機返屋企香港機場去將軍澳聽日 19:05夾車出發航班 UO6230 人有興趣（",
+              "width": 141,
+              "height": 366.625
+            },
+            {
+              "label": "我有興趣：旅行完咗，一齊慢慢返屋企 🌅",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH / HONG KONGHKG行李唔多，同路啱啱好。同路就夾 / 車費齊齊慳 落機返屋企香港機場去元朗聽日 14:40夾車出發1 人有興趣（",
+              "width": 141,
+              "height": 355.4375
+            },
+            {
+              "label": "我有興趣：下晝落機，有冇元朗友？",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH · ON THE WAYHONG KONG / 同路風景 出發去機場屯門去香港機場今日 09:15夾車出發2 人有興趣（唔計發帖人）計劃最",
+              "width": 141,
+              "height": 328.4375
+            },
+            {
+              "label": "我有興趣：去旅行嘅第一程，就一齊啦 ☀️",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH · ON THE WAYHONG KONG / 同路風景 落機返屋企香港機場去沙田今日 21:00夾車出發航班 CX4500 人有興趣（唔",
+              "width": 141,
+              "height": 366.625
+            },
+            {
+              "label": "我有興趣：唔同航班都得，時間啱就一齊返",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH · ON THE WAYHONG KONG / 同路風景 落機返屋企香港機場去屯門聽日 17:50夾車出發1 人有興趣（唔計發帖人）計劃最",
+              "width": 141,
+              "height": 355.4375
+            },
+            {
+              "label": "我有興趣：黃昏落機，順便識個同路人",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "首頁",
+              "width": 44,
+              "height": 45.5
+            },
+            {
+              "label": "搜尋",
+              "width": 44,
+              "height": 45.5
+            },
+            {
+              "label": "發佈",
+              "width": 50,
+              "height": 47.5
+            },
+            {
+              "label": "訊息",
+              "width": 44,
+              "height": 45.5
+            },
+            {
+              "label": "我的",
+              "width": 44,
+              "height": 45.5
+            }
+          ]
+        },
+        {
+          "label": "200% text layout",
+          "actual": {
+            "elements": 154,
+            "headingBefore": "18px",
+            "headingAfter": "36px",
+            "method": "computed CSS font-size doubled; not native browser zoom",
+            "width": 397,
+            "client": 320,
+            "scroll": 397,
+            "brand": {
+              "left": 13,
+              "right": 293.03125,
+              "width": 280.03125
+            },
+            "authorHeartOverlap": true
+          }
+        }
+      ],
+      "screenshots": [
+        {
+          "name": "06-320-baseline",
+          "path": "test-results/persona-review/personas-small-screen-320--8fd59-board-and-200-text-at-320px-personas/06-320-baseline.png",
+          "curated": "persona-screenshots/06-320-baseline.png"
+        },
+        {
+          "name": "06-320-text-200",
+          "path": "test-results/persona-review/personas-small-screen-320--8fd59-board-and-200-text-at-320px-personas/06-320-text-200.png",
+          "curated": "persona-screenshots/06-320-text-200.png"
+        },
+        {
+          "name": "06-320-author-overlap",
+          "path": "test-results/persona-review/personas-small-screen-320--8fd59-board-and-200-text-at-320px-personas/06-320-author-overlap.png",
+          "curated": "persona-screenshots/06-320-author-overlap.png"
+        }
+      ],
+      "blocked": [],
+      "browserErrors": [],
+      "homepage": "- link \"跳至同路動態\":\n  - /url: \"#journeys\"\n- banner:\n  - link \"FareEnough 同路就夾，車費齊齊慳。\":\n    - /url: /v2-preview\n  - text: V2.3 預覽\n- main:\n  - heading \"下一程，搵個同路人。\" [level=1]\n  - paragraph: 機場返屋企，返工出街，一齊順路。\n  - text: 試吓搵同路人 · 所有互動只供體驗，唔會預訂或收費\n  - tablist \"旅程類別\":\n    - tab \"機場同路\" [selected]\n    - tab \"熱門路線\"\n  - textbox \"搜尋目的地或旅程\":\n    - /placeholder: 你想去邊？\n  - button \"全部日期\" [pressed]\n  - button \"今日\"\n  - button \"聽日\"\n  - button \"落機返屋企\"\n  - button \"出發去機場\"\n  - button \"篩選\"\n  - text: 搵航班\n  - textbox \"按航班編號篩選\":\n    - /placeholder: 例如 CX734（選填）\n  - tabpanel \"機場同路\":\n    - heading \"落機之後，一齊返屋企。\" [level=2]\n    - text: 排序方式\n    - combobox \"排序方式\":\n      - option \"為你推薦\" [selected]\n      - option \"最早出發\"\n      - option \"同行名額較多\"\n    - text: 8 個示範旅程\n    - article:\n      - button \"落機返屋企 香港機場 去 屯門 今日 21:50 夾車出發 航班 CX734 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Mandy\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 屯門\" [level=3]\n        - text: 今日 21:50 夾車出發 航班 CX734 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Mandy\n      - button \"我有興趣：今晚 CX734 落機，有冇人一齊返屯門？✈️\"\n    - article:\n      - button \"落機返屋企 香港機場 去 大埔 今日 22:35 夾車出發 航班 CX250 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿謙\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 大埔\" [level=3]\n        - text: 今日 22:35 夾車出發 航班 CX250 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿謙\n      - button \"我有興趣：一個喼，一個人，搵個同路人返大埔 🧳\"\n    - article:\n      - button \"出發去機場 沙田 去 香港機場 今日 21:50 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Yuna\":\n        - text: 出發去機場\n        - heading \"沙田 去 香港機場\" [level=3]\n        - text: 今日 21:50 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Yuna\n      - button \"我有興趣：聽日凌晨 00:17 起飛，今晚一齊去機場？\"\n    - article:\n      - button \"落機返屋企 香港機場 去 將軍澳 聽日 19:05 夾車出發 航班 UO623 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿晴\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 將軍澳\" [level=3]\n        - text: 聽日 19:05 夾車出發 航班 UO623 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿晴\n      - button \"我有興趣：旅行完咗，一齊慢慢返屋企 🌅\"\n    - article:\n      - button \"落機返屋企 香港機場 去 元朗 聽日 14:40 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Ken\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 元朗\" [level=3]\n        - text: 聽日 14:40 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Ken\n      - button \"我有興趣：下晝落機，有冇元朗友？\"\n    - article:\n      - button \"出發去機場 屯門 去 香港機場 今日 09:15 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Chloe\":\n        - text: 出發去機場\n        - heading \"屯門 去 香港機場\" [level=3]\n        - text: 今日 09:15 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Chloe\n      - button \"我有興趣：去旅行嘅第一程，就一齊啦 ☀️\"\n    - article:\n      - button \"落機返屋企 香港機場 去 沙田 今日 21:00 夾車出發 航班 CX450 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿樂\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 沙田\" [level=3]\n        - text: 今日 21:00 夾車出發 航班 CX450 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿樂\n      - button \"我有興趣：唔同航班都得，時間啱就一齊返\"\n    - article:\n      - button \"落機返屋企 香港機場 去 屯門 聽日 17:50 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Iris\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 屯門\" [level=3]\n        - text: 聽日 17:50 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Iris\n      - button \"我有興趣：黃昏落機，順便識個同路人\"\n    - text: 每段路，都可以有個伴。\n- navigation \"主要導覽\":\n  - button \"首頁\"\n  - button \"搜尋\"\n  - button \"發佈\"\n  - button \"訊息\"\n  - button \"我的\"\n- alert",
+      "viewport": {
+        "width": 320,
+        "height": 844
+      },
+      "keyboardStops": [
+        {
+          "tag": "A",
+          "label": "跳至同路動態",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "A",
+          "label": "FareEnough同路就夾，車費齊齊慳。",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "機場同路",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "搜尋目的地或旅程",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "全部日期",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "今日",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "聽日",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "落機返屋企",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "出發去機場",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "篩選",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "按航班編號篩選",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "為你推薦最早出發同行名額較多",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "FAREENOUGH / HONG KONGA LITTLE COMPANY同路登機證HKGNEXT STOP / 屋企見GOOD COMPANY, LESS FARE.一齊返屋企。同路就夾 / 車費齊齊慳 落機返屋企香港機場去屯門今日 2",
+          "inCard": true,
+          "inDialog": false
+        }
+      ],
+      "durationMs": 1234,
+      "execution": "passed",
+      "trace": "test-results/persona-review/personas-small-screen-320--8fd59-board-and-200-text-at-320px-personas/trace.zip"
+    },
+    {
+      "scenario": "P6 — keyboard and 200% text at 390px",
+      "started": "2026-10-22T16:06:53.477Z",
+      "browser": "156.0.8078.4",
+      "actions": [
+        {
+          "n": 1,
+          "label": "Begin at the normal V2 homepage in a fresh context",
+          "elapsedMs": 156,
+          "response": {
+            "url": "http://127.0.0.1:3044/v2-preview"
+          }
+        },
+        {
+          "n": 2,
+          "label": "Use successive Tab keys from the homepage to reach the first journey card",
+          "elapsedMs": 110,
+          "response": [
+            {
+              "tag": "A",
+              "label": "跳至同路動態",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "A",
+              "label": "FareEnough同路就夾，車費齊齊慳。",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "機場同路",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "INPUT",
+              "label": "搜尋目的地或旅程",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "全部日期",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "今日",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "聽日",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "落機返屋企",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "出發去機場",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "篩選",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "INPUT",
+              "label": "按航班編號篩選",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "SELECT",
+              "label": "為你推薦最早出發同行名額較多",
+              "inCard": false,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "FAREENOUGH / HONG KONGA LITTLE COMPANY同路登機證HKGNEXT STOP / 屋企見GOOD COMPANY, LESS FARE.一齊返屋企。同路就夾 / 車費齊齊慳 落機返屋企香港機場去屯門今日 2",
+              "inCard": true,
+              "inDialog": false
+            }
+          ]
+        },
+        {
+          "n": 3,
+          "label": "Enter opens details; Shift+Tab and Tab cycle; Escape closes",
+          "elapsedMs": 203,
+          "response": {
+            "initial": {
+              "tag": "BUTTON",
+              "label": "關閉",
+              "inCard": false,
+              "inDialog": true
+            },
+            "cycle": [
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              }
+            ],
+            "restored": {
+              "tag": "BUTTON",
+              "label": "FAREENOUGH / HONG KONGA LITTLE COMPANY同路登機證HKGNEXT STOP / 屋企見GOOD COMPANY, LESS FARE.一齊返屋企。同路就夾 / 車費齊齊慳 落機返屋企香港機場去屯門今日 2",
+              "inCard": true,
+              "inDialog": false
+            },
+            "opener": {
+              "tag": "BUTTON",
+              "label": "FAREENOUGH / HONG KONGA LITTLE COMPANY同路登機證HKGNEXT STOP / 屋企見GOOD COMPANY, LESS FARE.一齊返屋企。同路就夾 / 車費齊齊慳 落機返屋企香港機場去屯門今日 2",
+              "inCard": true,
+              "inDialog": false
+            }
+          }
+        },
+        {
+          "n": 4,
+          "label": "Continue Tab from the restored card through its interest button to the next card",
+          "elapsedMs": 36,
+          "response": {
+            "stops": [
+              {
+                "tag": "BUTTON",
+                "label": "我有興趣：今晚 CX734 落機，有冇人一齊返屯門？✈️",
+                "inCard": true,
+                "inDialog": false
+              },
+              {
+                "tag": "BUTTON",
+                "label": "FAREENOUGH · ON THE WAYHONG KONG / 同路風景 落機返屋企香港機場去大埔今日 22:35夾車出發航班 CX2501 人有興趣（唔計發帖人）計劃最多 4 人 · 連發帖人阿謙",
+                "inCard": true,
+                "inDialog": false
+              }
+            ],
+            "order": [
+              {
+                "i": 0,
+                "heading": "香港機場去屯門",
+                "x": 12,
+                "y": 444,
+                "width": 178
+              },
+              {
+                "i": 1,
+                "heading": "香港機場去大埔",
+                "x": 200,
+                "y": 444,
+                "width": 178
+              },
+              {
+                "i": 2,
+                "heading": "沙田去香港機場",
+                "x": 12,
+                "y": 825,
+                "width": 178
+              },
+              {
+                "i": 3,
+                "heading": "香港機場去將軍澳",
+                "x": 200,
+                "y": 855,
+                "width": 178
+              },
+              {
+                "i": 4,
+                "heading": "香港機場去元朗",
+                "x": 12,
+                "y": 1168,
+                "width": 178
+              },
+              {
+                "i": 5,
+                "heading": "屯門去香港機場",
+                "x": 200,
+                "y": 1236,
+                "width": 178
+              },
+              {
+                "i": 6,
+                "heading": "香港機場去沙田",
+                "x": 12,
+                "y": 1541,
+                "width": 178
+              },
+              {
+                "i": 7,
+                "heading": "香港機場去屯門",
+                "x": 200,
+                "y": 1579,
+                "width": 178
+              }
+            ]
+          }
+        },
+        {
+          "n": 5,
+          "label": "Unexpected action: clear required destination and submit; recover by typing Tuen Mun in Cantonese",
+          "elapsedMs": 267,
+          "response": {
+            "rejected": {
+              "missing": true,
+              "message": "Please fill out this field."
+            },
+            "recovered": true
+          }
+        },
+        {
+          "n": 6,
+          "label": "Return Home before the enlarged-text exercise",
+          "elapsedMs": 43
+        },
+        {
+          "n": 7,
+          "label": "Apply a 200% computed-font text-resize simulation, excluding SVG artwork",
+          "elapsedMs": 33,
+          "response": {
+            "elements": 154,
+            "headingBefore": "18px",
+            "headingAfter": "36px",
+            "method": "computed CSS font-size doubled; not native browser zoom"
+          }
+        },
+        {
+          "n": 8,
+          "label": "Open filters, enlarge the newly mounted dialog text, scroll to Apply, then close by keyboard",
+          "elapsedMs": 151,
+          "response": {
+            "closed": true,
+            "resized": {
+              "elements": 40,
+              "headingBefore": "21px",
+              "headingAfter": "42px",
+              "method": "computed CSS font-size doubled; not native browser zoom"
+            },
+            "filterText": "FIND YOUR PEOPLE\n搵個啱你嘅同路人。\n\n唔使完全一樣，時間夾到就得。\n\n出發日期\n想去邊區？\n想搵幾多個同行名額？\n最少 1 個\n最少 2 個\n最少 3 個\n旅程方向\n全部方向\n落機返屋企\n出發去機場\n\n同行名額唔計發帖人，唔係已確認餘位。\n\n更多條件（選填）\n重設\n睇 8 個旅程"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "task": "Modal keyboard cycle and opener restoration",
+          "outcome": "PASS",
+          "actual": {
+            "initial": {
+              "tag": "BUTTON",
+              "label": "關閉",
+              "inCard": false,
+              "inDialog": true
+            },
+            "cycle": [
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "我有興趣",
+                "inCard": false,
+                "inDialog": true
+              },
+              {
+                "key": "Shift+Tab",
+                "tag": "BUTTON",
+                "label": "關閉",
+                "inCard": false,
+                "inDialog": true
+              }
+            ],
+            "restored": {
+              "tag": "BUTTON",
+              "label": "FAREENOUGH / HONG KONGA LITTLE COMPANY同路登機證HKGNEXT STOP / 屋企見GOOD COMPANY, LESS FARE.一齊返屋企。同路就夾 / 車費齊齊慳 落機返屋企香港機場去屯門今日 2",
+              "inCard": true,
+              "inDialog": false
+            },
+            "opener": {
+              "tag": "BUTTON",
+              "label": "FAREENOUGH / HONG KONGA LITTLE COMPANY同路登機證HKGNEXT STOP / 屋企見GOOD COMPANY, LESS FARE.一齊返屋企。同路就夾 / 車費齊齊慳 落機返屋企香港機場去屯門今日 2",
+              "inCard": true,
+              "inDialog": false
+            }
+          }
+        },
+        {
+          "task": "Keyboard moves from the first card through interest to the next DOM card",
+          "outcome": "PASS",
+          "actual": [
+            {
+              "tag": "BUTTON",
+              "label": "我有興趣：今晚 CX734 落機，有冇人一齊返屯門？✈️",
+              "inCard": true,
+              "inDialog": false
+            },
+            {
+              "tag": "BUTTON",
+              "label": "FAREENOUGH · ON THE WAYHONG KONG / 同路風景 落機返屋企香港機場去大埔今日 22:35夾車出發航班 CX2501 人有興趣（唔計發帖人）計劃最多 4 人 · 連發帖人阿謙",
+              "inCard": true,
+              "inDialog": false
+            }
+          ]
+        },
+        {
+          "task": "Required destination validation and correction",
+          "outcome": "PASS",
+          "actual": {
+            "rejected": {
+              "missing": true,
+              "message": "Please fill out this field."
+            },
+            "recovered": true
+          }
+        },
+        {
+          "task": "200% enlarged text fits the small screen without horizontal overflow",
+          "outcome": "FAIL",
+          "actual": {
+            "width": 432,
+            "client": 390,
+            "scroll": 432,
+            "brand": {
+              "left": 13,
+              "right": 319.75,
+              "width": 306.75
+            },
+            "authorHeartOverlap": false
+          }
+        },
+        {
+          "task": "Author label and separate interest control remain unobscured",
+          "outcome": "PASS",
+          "actual": {
+            "width": 432,
+            "client": 390,
+            "scroll": 432,
+            "brand": {
+              "left": 13,
+              "right": 319.75,
+              "width": 306.75
+            },
+            "authorHeartOverlap": false
+          }
+        }
+      ],
+      "observations": [
+        {
+          "label": "DOM card order and visible masonry positions",
+          "actual": [
+            {
+              "i": 0,
+              "heading": "香港機場去屯門",
+              "x": 12,
+              "y": 444,
+              "width": 178
+            },
+            {
+              "i": 1,
+              "heading": "香港機場去大埔",
+              "x": 200,
+              "y": 444,
+              "width": 178
+            },
+            {
+              "i": 2,
+              "heading": "沙田去香港機場",
+              "x": 12,
+              "y": 825,
+              "width": 178
+            },
+            {
+              "i": 3,
+              "heading": "香港機場去將軍澳",
+              "x": 200,
+              "y": 855,
+              "width": 178
+            },
+            {
+              "i": 4,
+              "heading": "香港機場去元朗",
+              "x": 12,
+              "y": 1168,
+              "width": 178
+            },
+            {
+              "i": 5,
+              "heading": "屯門去香港機場",
+              "x": 200,
+              "y": 1236,
+              "width": 178
+            },
+            {
+              "i": 6,
+              "heading": "香港機場去沙田",
+              "x": 12,
+              "y": 1541,
+              "width": 178
+            },
+            {
+              "i": 7,
+              "heading": "香港機場去屯門",
+              "x": 200,
+              "y": 1579,
+              "width": 178
+            }
+          ]
+        },
+        {
+          "label": "Baseline layout",
+          "actual": {
+            "width": 390,
+            "scroll": 390,
+            "client": 390
+          }
+        },
+        {
+          "label": "Baseline visible control dimensions (CSS pixels)",
+          "actual": [
+            {
+              "label": "機場同路",
+              "width": 180,
+              "height": 44.5
+            },
+            {
+              "label": "熱門路線",
+              "width": 180,
+              "height": 44.5
+            },
+            {
+              "label": "搜尋目的地或旅程",
+              "width": 317.390625,
+              "height": 44
+            },
+            {
+              "label": "全部日期",
+              "width": 97,
+              "height": 44
+            },
+            {
+              "label": "今日",
+              "width": 97,
+              "height": 44
+            },
+            {
+              "label": "聽日",
+              "width": 97,
+              "height": 44
+            },
+            {
+              "label": "落機返屋企",
+              "width": 148,
+              "height": 44
+            },
+            {
+              "label": "出發去機場",
+              "width": 148,
+              "height": 44
+            },
+            {
+              "label": "篩選",
+              "width": 58,
+              "height": 44
+            },
+            {
+              "label": "按航班編號篩選",
+              "width": 276,
+              "height": 44
+            },
+            {
+              "label": "為你推薦最早出發同行名額較多",
+              "width": 90,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH / HONG KONGA LITTLE COMPANY同路登機證HKGNEXT STOP / 屋企見GOOD COMPANY, LESS ",
+              "width": 176,
+              "height": 368.625
+            },
+            {
+              "label": "我有興趣：今晚 CX734 落機，有冇人一齊返屯門？✈️",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH · ON THE WAYHONG KONG / 同路風景 落機返屋企香港機場去大埔今日 22:35夾車出發航班 CX2501 人有興趣（唔",
+              "width": 176,
+              "height": 398.625
+            },
+            {
+              "label": "我有興趣：一個喼，一個人，搵個同路人返大埔 🧳",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH / HONG KONGHKG · DEPARTURES同路出發NEXT JOURNEY, TOGETHER.同路就夾 / 車費齊齊慳 出發",
+              "width": 176,
+              "height": 330.4375
+            },
+            {
+              "label": "我有興趣：聽日凌晨 00:17 起飛，今晚一齊去機場？",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH · ON THE WAYHONG KONG / 同路風景 落機返屋企香港機場去將軍澳聽日 19:05夾車出發航班 UO6230 人有興趣（",
+              "width": 176,
+              "height": 368.625
+            },
+            {
+              "label": "我有興趣：旅行完咗，一齊慢慢返屋企 🌅",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH / HONG KONGHKG行李唔多，同路啱啱好。同路就夾 / 車費齊齊慳 落機返屋企香港機場去元朗聽日 14:40夾車出發1 人有興趣（",
+              "width": 176,
+              "height": 360.4375
+            },
+            {
+              "label": "我有興趣：下晝落機，有冇元朗友？",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH · ON THE WAYHONG KONG / 同路風景 出發去機場屯門去香港機場今日 09:15夾車出發2 人有興趣（唔計發帖人）計劃最",
+              "width": 176,
+              "height": 330.4375
+            },
+            {
+              "label": "我有興趣：去旅行嘅第一程，就一齊啦 ☀️",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH · ON THE WAYHONG KONG / 同路風景 落機返屋企香港機場去沙田今日 21:00夾車出發航班 CX4500 人有興趣（唔",
+              "width": 176,
+              "height": 368.625
+            },
+            {
+              "label": "我有興趣：唔同航班都得，時間啱就一齊返",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "FAREENOUGH · ON THE WAYHONG KONG / 同路風景 落機返屋企香港機場去屯門聽日 17:50夾車出發1 人有興趣（唔計發帖人）計劃最",
+              "width": 176,
+              "height": 360.4375
+            },
+            {
+              "label": "我有興趣：黃昏落機，順便識個同路人",
+              "width": 44,
+              "height": 44
+            },
+            {
+              "label": "首頁",
+              "width": 44,
+              "height": 45.5
+            },
+            {
+              "label": "搜尋",
+              "width": 44,
+              "height": 45.5
+            },
+            {
+              "label": "發佈",
+              "width": 50,
+              "height": 47.5
+            },
+            {
+              "label": "訊息",
+              "width": 44,
+              "height": 45.5
+            },
+            {
+              "label": "我的",
+              "width": 44,
+              "height": 45.5
+            }
+          ]
+        },
+        {
+          "label": "200% text layout",
+          "actual": {
+            "elements": 154,
+            "headingBefore": "18px",
+            "headingAfter": "36px",
+            "method": "computed CSS font-size doubled; not native browser zoom",
+            "width": 432,
+            "client": 390,
+            "scroll": 432,
+            "brand": {
+              "left": 13,
+              "right": 319.75,
+              "width": 306.75
+            },
+            "authorHeartOverlap": false
+          }
+        }
+      ],
+      "screenshots": [
+        {
+          "name": "06-390-baseline",
+          "path": "test-results/persona-review/personas-small-screen-390--529f2-board-and-200-text-at-390px-personas/06-390-baseline.png"
+        },
+        {
+          "name": "06-390-text-200",
+          "path": "test-results/persona-review/personas-small-screen-390--529f2-board-and-200-text-at-390px-personas/06-390-text-200.png",
+          "curated": "persona-screenshots/06-390-text-200.png"
+        }
+      ],
+      "blocked": [],
+      "browserErrors": [],
+      "homepage": "- link \"跳至同路動態\":\n  - /url: \"#journeys\"\n- banner:\n  - link \"FareEnough 同路就夾，車費齊齊慳。\":\n    - /url: /v2-preview\n  - text: V2.3 預覽\n- main:\n  - heading \"下一程，搵個同路人。\" [level=1]\n  - paragraph: 機場返屋企，返工出街，一齊順路。\n  - text: 試吓搵同路人 · 所有互動只供體驗，唔會預訂或收費\n  - tablist \"旅程類別\":\n    - tab \"機場同路\" [selected]\n    - tab \"熱門路線\"\n  - textbox \"搜尋目的地或旅程\":\n    - /placeholder: 你想去邊？\n  - button \"全部日期\" [pressed]\n  - button \"今日\"\n  - button \"聽日\"\n  - button \"落機返屋企\"\n  - button \"出發去機場\"\n  - button \"篩選\"\n  - text: 搵航班\n  - textbox \"按航班編號篩選\":\n    - /placeholder: 例如 CX734（選填）\n  - tabpanel \"機場同路\":\n    - heading \"落機之後，一齊返屋企。\" [level=2]\n    - text: 排序方式\n    - combobox \"排序方式\":\n      - option \"為你推薦\" [selected]\n      - option \"最早出發\"\n      - option \"同行名額較多\"\n    - text: 8 個示範旅程\n    - article:\n      - button \"落機返屋企 香港機場 去 屯門 今日 21:50 夾車出發 航班 CX734 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Mandy\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 屯門\" [level=3]\n        - text: 今日 21:50 夾車出發 航班 CX734 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Mandy\n      - button \"我有興趣：今晚 CX734 落機，有冇人一齊返屯門？✈️\"\n    - article:\n      - button \"落機返屋企 香港機場 去 大埔 今日 22:35 夾車出發 航班 CX250 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿謙\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 大埔\" [level=3]\n        - text: 今日 22:35 夾車出發 航班 CX250 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿謙\n      - button \"我有興趣：一個喼，一個人，搵個同路人返大埔 🧳\"\n    - article:\n      - button \"出發去機場 沙田 去 香港機場 今日 21:50 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Yuna\":\n        - text: 出發去機場\n        - heading \"沙田 去 香港機場\" [level=3]\n        - text: 今日 21:50 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Yuna\n      - button \"我有興趣：聽日凌晨 00:17 起飛，今晚一齊去機場？\"\n    - article:\n      - button \"落機返屋企 香港機場 去 將軍澳 聽日 19:05 夾車出發 航班 UO623 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿晴\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 將軍澳\" [level=3]\n        - text: 聽日 19:05 夾車出發 航班 UO623 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿晴\n      - button \"我有興趣：旅行完咗，一齊慢慢返屋企 🌅\"\n    - article:\n      - button \"落機返屋企 香港機場 去 元朗 聽日 14:40 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Ken\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 元朗\" [level=3]\n        - text: 聽日 14:40 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Ken\n      - button \"我有興趣：下晝落機，有冇元朗友？\"\n    - article:\n      - button \"出發去機場 屯門 去 香港機場 今日 09:15 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Chloe\":\n        - text: 出發去機場\n        - heading \"屯門 去 香港機場\" [level=3]\n        - text: 今日 09:15 夾車出發 2 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Chloe\n      - button \"我有興趣：去旅行嘅第一程，就一齊啦 ☀️\"\n    - article:\n      - button \"落機返屋企 香港機場 去 沙田 今日 21:00 夾車出發 航班 CX450 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿樂\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 沙田\" [level=3]\n        - text: 今日 21:00 夾車出發 航班 CX450 0 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 阿樂\n      - button \"我有興趣：唔同航班都得，時間啱就一齊返\"\n    - article:\n      - button \"落機返屋企 香港機場 去 屯門 聽日 17:50 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Iris\":\n        - text: 落機返屋企\n        - heading \"香港機場 去 屯門\" [level=3]\n        - text: 聽日 17:50 夾車出發 1 人有興趣 （唔計發帖人） 計劃最多 4 人 · 連發帖人 Iris\n      - button \"我有興趣：黃昏落機，順便識個同路人\"\n    - text: 每段路，都可以有個伴。\n- navigation \"主要導覽\":\n  - button \"首頁\"\n  - button \"搜尋\"\n  - button \"發佈\"\n  - button \"訊息\"\n  - button \"我的\"\n- alert",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "keyboardStops": [
+        {
+          "tag": "A",
+          "label": "跳至同路動態",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "A",
+          "label": "FareEnough同路就夾，車費齊齊慳。",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "機場同路",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "搜尋目的地或旅程",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "全部日期",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "今日",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "聽日",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "落機返屋企",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "出發去機場",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "篩選",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "INPUT",
+          "label": "按航班編號篩選",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "SELECT",
+          "label": "為你推薦最早出發同行名額較多",
+          "inCard": false,
+          "inDialog": false
+        },
+        {
+          "tag": "BUTTON",
+          "label": "FAREENOUGH / HONG KONGA LITTLE COMPANY同路登機證HKGNEXT STOP / 屋企見GOOD COMPANY, LESS FARE.一齊返屋企。同路就夾 / 車費齊齊慳 落機返屋企香港機場去屯門今日 2",
+          "inCard": true,
+          "inDialog": false
+        }
+      ],
+      "durationMs": 1161,
+      "execution": "passed",
+      "trace": "test-results/persona-review/personas-small-screen-390--529f2-board-and-200-text-at-390px-personas/trace.zip"
+    }
+  ]
+}
