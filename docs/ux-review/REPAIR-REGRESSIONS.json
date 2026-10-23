@@ -1,0 +1,906 @@
+{
+  "metadata": {
+    "generated": "2026-10-23T11:41:14.251Z",
+    "branch": "feature/ridepod-social-discovery",
+    "checkout": "71ab0799ccfb4ff48cc1b551a5111c88008a0123",
+    "uiCommit": "8d98f34072c70b6700751f4d92447aa2e6bc915b",
+    "uiHash": "bb383f62a13d23aa38d205e8ba658dc09fa3732243a971e5d184489d06523a17",
+    "uiDirty": false,
+    "version": "V2.3",
+    "node": "v24.14.0",
+    "platform": "win32",
+    "playwright": "1.64.1"
+  },
+  "status": "PASS — complete package",
+  "complete": true,
+  "scenarios": [
+    {
+      "title": "A1 fixed-clock form matrix; optional flight absent",
+      "states": [
+        {
+          "name": "yesterday",
+          "date": "2026-10-22",
+          "time": "23:59",
+          "fixedClock": "2026-10-22T16:06:00.000Z",
+          "flightPresent": false,
+          "accepted": false
+        },
+        {
+          "name": "earlier-today",
+          "date": "2026-10-23",
+          "time": "00:00",
+          "fixedClock": "2026-10-22T16:06:00.000Z",
+          "flightPresent": false,
+          "accepted": false
+        },
+        {
+          "name": "exact-boundary",
+          "date": "2026-10-23",
+          "time": "00:06",
+          "fixedClock": "2026-10-22T16:06:00.000Z",
+          "flightPresent": false,
+          "accepted": true
+        },
+        {
+          "name": "one-ms-past-boundary",
+          "date": "2026-10-23",
+          "time": "00:06",
+          "fixedClock": "2026-10-22T16:06:00.001Z",
+          "flightPresent": false,
+          "accepted": false
+        },
+        {
+          "name": "later-today",
+          "date": "2026-10-23",
+          "time": "09:00",
+          "fixedClock": "2026-10-22T16:06:00.000Z",
+          "flightPresent": false,
+          "accepted": true
+        },
+        {
+          "name": "tomorrow",
+          "date": "2026-10-24",
+          "time": "00:00",
+          "fixedClock": "2026-10-22T16:06:00.000Z",
+          "flightPresent": false,
+          "accepted": true
+        },
+        {
+          "name": "cross-midnight",
+          "date": "2026-10-24",
+          "time": "00:00",
+          "fixedClock": "2026-10-23T15:59:59.000Z",
+          "flightPresent": false,
+          "accepted": true
+        },
+        {
+          "name": "expired-at-final-publication",
+          "fixedClock": "2026-10-22T16:07:00.001Z",
+          "rejected": true,
+          "customCopyPreserved": true
+        },
+        {
+          "name": "correct-time-and-publish",
+          "published": true
+        }
+      ],
+      "blocked": [],
+      "browserErrors": []
+    },
+    {
+      "title": "A1 fixed-clock form matrix; optional flight present",
+      "states": [
+        {
+          "name": "yesterday",
+          "date": "2026-10-22",
+          "time": "23:59",
+          "fixedClock": "2026-10-22T16:06:00.000Z",
+          "flightPresent": true,
+          "accepted": false
+        },
+        {
+          "name": "earlier-today",
+          "date": "2026-10-23",
+          "time": "00:00",
+          "fixedClock": "2026-10-22T16:06:00.000Z",
+          "flightPresent": true,
+          "accepted": false
+        },
+        {
+          "name": "exact-boundary",
+          "date": "2026-10-23",
+          "time": "00:06",
+          "fixedClock": "2026-10-22T16:06:00.000Z",
+          "flightPresent": true,
+          "accepted": true
+        },
+        {
+          "name": "one-ms-past-boundary",
+          "date": "2026-10-23",
+          "time": "00:06",
+          "fixedClock": "2026-10-22T16:06:00.001Z",
+          "flightPresent": true,
+          "accepted": false
+        },
+        {
+          "name": "later-today",
+          "date": "2026-10-23",
+          "time": "09:00",
+          "fixedClock": "2026-10-22T16:06:00.000Z",
+          "flightPresent": true,
+          "accepted": true
+        },
+        {
+          "name": "tomorrow",
+          "date": "2026-10-24",
+          "time": "00:00",
+          "fixedClock": "2026-10-22T16:06:00.000Z",
+          "flightPresent": true,
+          "accepted": true
+        },
+        {
+          "name": "cross-midnight",
+          "date": "2026-10-24",
+          "time": "00:00",
+          "fixedClock": "2026-10-23T15:59:59.000Z",
+          "flightPresent": true,
+          "accepted": true
+        },
+        {
+          "name": "expired-at-final-publication",
+          "fixedClock": "2026-10-22T16:07:00.001Z",
+          "rejected": true,
+          "customCopyPreserved": true
+        },
+        {
+          "name": "correct-time-and-publish",
+          "published": true
+        }
+      ],
+      "blocked": [],
+      "browserErrors": []
+    },
+    {
+      "title": "A2/A3 normal at 320px: home, filters, detail and creation",
+      "states": [
+        {
+          "state": "homepage",
+          "client": 320,
+          "scroll": 320,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": null
+        },
+        {
+          "state": "airport-filters",
+          "client": 320,
+          "scroll": 320,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 298,
+            "scroll": 298
+          }
+        },
+        {
+          "state": "airport-filters-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 73,
+          "height": 124,
+          "top": 686.84375,
+          "bottom": 810.84375,
+          "viewportHeight": 844,
+          "keyboardStops": 9
+        },
+        {
+          "state": "journey-details",
+          "client": 320,
+          "scroll": 320,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 298,
+            "scroll": 298
+          }
+        },
+        {
+          "state": "journey-details-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 254,
+          "height": 54,
+          "top": 721.21875,
+          "bottom": 775.21875,
+          "viewportHeight": 844,
+          "keyboardStops": 1
+        },
+        {
+          "state": "create-step-1",
+          "client": 320,
+          "scroll": 320,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 298,
+            "scroll": 298
+          }
+        },
+        {
+          "state": "create-step-1-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 254,
+          "height": 54,
+          "top": 756.5625,
+          "bottom": 810.5625,
+          "viewportHeight": 844,
+          "keyboardStops": 10
+        },
+        {
+          "state": "create-preview",
+          "client": 320,
+          "scroll": 320,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 298,
+            "scroll": 298
+          }
+        },
+        {
+          "state": "create-preview-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 73,
+          "height": 125,
+          "top": 686.125,
+          "bottom": 811.125,
+          "viewportHeight": 844,
+          "keyboardStops": 7
+        },
+        {
+          "state": "creation-after-resizing",
+          "published": true
+        }
+      ],
+      "blocked": [],
+      "browserErrors": [],
+      "mode": "normal",
+      "effectiveWidth": 320
+    },
+    {
+      "title": "A2/A3 normal at 390px: home, filters, detail and creation",
+      "states": [
+        {
+          "state": "homepage",
+          "client": 390,
+          "scroll": 390,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": null
+        },
+        {
+          "state": "airport-filters",
+          "client": 390,
+          "scroll": 390,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 368,
+            "scroll": 368
+          }
+        },
+        {
+          "state": "airport-filters-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 108,
+          "height": 100,
+          "top": 711.046875,
+          "bottom": 811.046875,
+          "viewportHeight": 844,
+          "keyboardStops": 9
+        },
+        {
+          "state": "journey-details",
+          "client": 390,
+          "scroll": 390,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 368,
+            "scroll": 368
+          }
+        },
+        {
+          "state": "journey-details-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 324,
+          "height": 54,
+          "top": 722.125,
+          "bottom": 776.125,
+          "viewportHeight": 844,
+          "keyboardStops": 1
+        },
+        {
+          "state": "create-step-1",
+          "client": 390,
+          "scroll": 390,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 368,
+            "scroll": 368
+          }
+        },
+        {
+          "state": "create-step-1-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 324,
+          "height": 54,
+          "top": 756.171875,
+          "bottom": 810.171875,
+          "viewportHeight": 844,
+          "keyboardStops": 10
+        },
+        {
+          "state": "create-preview",
+          "client": 390,
+          "scroll": 390,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 368,
+            "scroll": 368
+          }
+        },
+        {
+          "state": "create-preview-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 108,
+          "height": 101,
+          "top": 709.53125,
+          "bottom": 810.53125,
+          "viewportHeight": 844,
+          "keyboardStops": 7
+        },
+        {
+          "state": "creation-after-resizing",
+          "published": true
+        }
+      ],
+      "blocked": [],
+      "browserErrors": [],
+      "mode": "normal",
+      "effectiveWidth": 390
+    },
+    {
+      "title": "A2/A3 text-200 at 320px: home, filters, detail and creation",
+      "states": [
+        {
+          "state": "homepage",
+          "client": 320,
+          "scroll": 320,
+          "columns": 1,
+          "overlaps": [],
+          "dialog": null,
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "airport-filters",
+          "client": 320,
+          "scroll": 320,
+          "columns": 1,
+          "overlaps": [],
+          "dialog": {
+            "client": 298,
+            "scroll": 298
+          },
+          "violations": [],
+          "incomplete": []
+        },
+        {
+          "state": "airport-filters-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 73,
+          "height": 292,
+          "top": 518.140625,
+          "bottom": 810.140625,
+          "viewportHeight": 844,
+          "keyboardStops": 9
+        },
+        {
+          "state": "journey-details",
+          "client": 320,
+          "scroll": 320,
+          "columns": 1,
+          "overlaps": [],
+          "dialog": {
+            "client": 298,
+            "scroll": 298
+          },
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "journey-details-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 254,
+          "height": 78,
+          "top": 607.640625,
+          "bottom": 685.640625,
+          "viewportHeight": 844,
+          "keyboardStops": 1
+        },
+        {
+          "state": "create-step-1",
+          "client": 320,
+          "scroll": 320,
+          "columns": 1,
+          "overlaps": [],
+          "dialog": {
+            "client": 298,
+            "scroll": 298
+          },
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "create-step-1-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 254,
+          "height": 102,
+          "top": 708.765625,
+          "bottom": 810.765625,
+          "viewportHeight": 844,
+          "keyboardStops": 10
+        },
+        {
+          "state": "create-preview",
+          "client": 320,
+          "scroll": 320,
+          "columns": 1,
+          "overlaps": [],
+          "dialog": {
+            "client": 298,
+            "scroll": 298
+          },
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "create-preview-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 73,
+          "height": 341,
+          "top": 469.59375,
+          "bottom": 810.59375,
+          "viewportHeight": 844,
+          "keyboardStops": 7
+        },
+        {
+          "state": "creation-after-resizing",
+          "published": true
+        }
+      ],
+      "blocked": [],
+      "browserErrors": [],
+      "mode": "text-200",
+      "effectiveWidth": 320
+    },
+    {
+      "title": "A2/A3 text-200 at 390px: home, filters, detail and creation",
+      "states": [
+        {
+          "state": "homepage",
+          "client": 390,
+          "scroll": 390,
+          "columns": 1,
+          "overlaps": [],
+          "dialog": null,
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "airport-filters",
+          "client": 390,
+          "scroll": 390,
+          "columns": 1,
+          "overlaps": [],
+          "dialog": {
+            "client": 368,
+            "scroll": 368
+          },
+          "violations": [],
+          "incomplete": []
+        },
+        {
+          "state": "airport-filters-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 108,
+          "height": 196,
+          "top": 614.40625,
+          "bottom": 810.40625,
+          "viewportHeight": 844,
+          "keyboardStops": 9
+        },
+        {
+          "state": "journey-details",
+          "client": 390,
+          "scroll": 390,
+          "columns": 1,
+          "overlaps": [],
+          "dialog": {
+            "client": 368,
+            "scroll": 368
+          },
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "journey-details-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 324,
+          "height": 78,
+          "top": 637.4375,
+          "bottom": 715.4375,
+          "viewportHeight": 844,
+          "keyboardStops": 1
+        },
+        {
+          "state": "create-step-1",
+          "client": 390,
+          "scroll": 390,
+          "columns": 1,
+          "overlaps": [],
+          "dialog": {
+            "client": 368,
+            "scroll": 368
+          },
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "create-step-1-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 324,
+          "height": 78,
+          "top": 732.828125,
+          "bottom": 810.828125,
+          "viewportHeight": 844,
+          "keyboardStops": 10
+        },
+        {
+          "state": "create-preview",
+          "client": 390,
+          "scroll": 390,
+          "columns": 1,
+          "overlaps": [],
+          "dialog": {
+            "client": 368,
+            "scroll": 368
+          },
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "create-preview-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 108,
+          "height": 197,
+          "top": 613.8125,
+          "bottom": 810.8125,
+          "viewportHeight": 844,
+          "keyboardStops": 7
+        },
+        {
+          "state": "creation-after-resizing",
+          "published": true
+        }
+      ],
+      "blocked": [],
+      "browserErrors": [],
+      "mode": "text-200",
+      "effectiveWidth": 390
+    },
+    {
+      "title": "A2/A3 native-zoom-200 at 320px: home, filters, detail and creation",
+      "states": [
+        {
+          "state": "homepage",
+          "client": 320,
+          "scroll": 320,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": null,
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "airport-filters",
+          "client": 320,
+          "scroll": 320,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 298,
+            "scroll": 298
+          },
+          "violations": [],
+          "incomplete": []
+        },
+        {
+          "state": "airport-filters-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 73,
+          "height": 124,
+          "top": 687.34375,
+          "bottom": 811.34375,
+          "viewportHeight": 844,
+          "keyboardStops": 9
+        },
+        {
+          "state": "journey-details",
+          "client": 320,
+          "scroll": 320,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 298,
+            "scroll": 298
+          },
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "journey-details-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 254,
+          "height": 54,
+          "top": 722.3046875,
+          "bottom": 776.3046875,
+          "viewportHeight": 844,
+          "keyboardStops": 1
+        },
+        {
+          "state": "create-step-1",
+          "client": 320,
+          "scroll": 320,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 298,
+            "scroll": 298
+          },
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "create-step-1-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 254,
+          "height": 54,
+          "top": 757.0625,
+          "bottom": 811.0625,
+          "viewportHeight": 844,
+          "keyboardStops": 10
+        },
+        {
+          "state": "create-preview",
+          "client": 320,
+          "scroll": 320,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 298,
+            "scroll": 298
+          },
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "create-preview-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 73,
+          "height": 125,
+          "top": 686.1640625,
+          "bottom": 811.1640625,
+          "viewportHeight": 844,
+          "keyboardStops": 7
+        },
+        {
+          "state": "creation-after-resizing",
+          "published": true
+        }
+      ],
+      "blocked": [],
+      "browserErrors": [],
+      "mode": "native-zoom-200",
+      "effectiveWidth": 320,
+      "nativeZoom": {
+        "zoom": 2,
+        "physicalViewport": 640,
+        "cssWidth": 320,
+        "dpr": 2,
+        "pinchScale": 1,
+        "cssZoom": "1"
+      }
+    },
+    {
+      "title": "A2/A3 native-zoom-200 at 390px: home, filters, detail and creation",
+      "states": [
+        {
+          "state": "homepage",
+          "client": 390,
+          "scroll": 390,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": null,
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "airport-filters",
+          "client": 390,
+          "scroll": 390,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 368,
+            "scroll": 368
+          },
+          "violations": [],
+          "incomplete": []
+        },
+        {
+          "state": "airport-filters-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 108,
+          "height": 100,
+          "top": 711.046875,
+          "bottom": 811.046875,
+          "viewportHeight": 844,
+          "keyboardStops": 9
+        },
+        {
+          "state": "journey-details",
+          "client": 390,
+          "scroll": 390,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 368,
+            "scroll": 368
+          },
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "journey-details-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 324,
+          "height": 54,
+          "top": 722.2109375,
+          "bottom": 776.2109375,
+          "viewportHeight": 844,
+          "keyboardStops": 1
+        },
+        {
+          "state": "create-step-1",
+          "client": 390,
+          "scroll": 390,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 368,
+            "scroll": 368
+          },
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "create-step-1-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 324,
+          "height": 54,
+          "top": 757.171875,
+          "bottom": 811.171875,
+          "viewportHeight": 844,
+          "keyboardStops": 10
+        },
+        {
+          "state": "create-preview",
+          "client": 390,
+          "scroll": 390,
+          "columns": 2,
+          "overlaps": [],
+          "dialog": {
+            "client": 368,
+            "scroll": 368
+          },
+          "violations": [],
+          "incomplete": [
+            "color-contrast"
+          ]
+        },
+        {
+          "state": "create-preview-primary-action",
+          "fullyVisible": true,
+          "unobscured": true,
+          "width": 108,
+          "height": 101,
+          "top": 710.0703125,
+          "bottom": 811.0703125,
+          "viewportHeight": 844,
+          "keyboardStops": 7
+        },
+        {
+          "state": "creation-after-resizing",
+          "published": true
+        }
+      ],
+      "blocked": [],
+      "browserErrors": [],
+      "mode": "native-zoom-200",
+      "effectiveWidth": 390,
+      "nativeZoom": {
+        "zoom": 2,
+        "physicalViewport": 780,
+        "cssWidth": 390,
+        "dpr": 2,
+        "pinchScale": 1,
+        "cssZoom": "1"
+      }
+    }
+  ]
+}

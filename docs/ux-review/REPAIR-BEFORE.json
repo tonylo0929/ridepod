@@ -1,0 +1,63 @@
+{
+  "checkout": "5bf3847b1b545925bca6a7ca111489c9bdeb0f62",
+  "uiHash": "4fa9244acc4b6d0f8de9a1d2b26cfb2da6b1508083587a5ee52c15429500eb66",
+  "method": "Local pre-repair production build; A1 browser Date fixed at 00:06 HKT from the form date; A2/A3 original computed-font simulation; synthetic demo only.",
+  "observations": [
+    {
+      "width": 320,
+      "client": 320,
+      "scroll": 397,
+      "overlap": true,
+      "overflow": [
+        {
+          "tag": "DIV",
+          "cls": "preview-module__t6ileq__headerActions",
+          "text": "V2.3 預覽分享行程",
+          "x": 303.03125,
+          "right": 396.625,
+          "width": 93.59375
+        },
+        {
+          "tag": "SPAN",
+          "cls": "preview-module__t6ileq__previewBadge",
+          "text": "V2.3 預覽",
+          "x": 303.03125,
+          "right": 396.625,
+          "width": 93.59375
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "client": 390,
+      "scroll": 432,
+      "overlap": false,
+      "overflow": [
+        {
+          "tag": "DIV",
+          "cls": "preview-module__t6ileq__headerActions",
+          "text": "V2.3 預覽分享行程",
+          "x": 329.75,
+          "right": 431.953125,
+          "width": 102.203125
+        },
+        {
+          "tag": "SPAN",
+          "cls": "preview-module__t6ileq__previewBadge",
+          "text": "V2.3 預覽",
+          "x": 329.75,
+          "right": 431.953125,
+          "width": 102.203125
+        }
+      ]
+    },
+    {
+      "A1": {
+        "date": "2026-10-23",
+        "clock": "2026-10-22T16:06:00.000Z",
+        "accepted": true,
+        "published": "示範旅程 · 機場同路\nFAREENOUGH · ON THE WAY\nHONG KONG / 同路風景\n你\n你係呢程嘅發帖人\n我發佈嘅旅程\n今日 00:00 香港機場出發，有冇人一齊去屯門？✈️\n\n我落機之後，打算 2026年10月23日 00:00 夾車出發。有冇人同路想一齊分擔車費？😆\n\n由呢度出發\n香港機場\n一齊去\n屯門\n出發日期\n今日 · 2026-10-23\n預計夾車出發\n00:00\n計劃同行人數\n發帖人 1 人 + 同行名額 3 個\n0 人有興趣\n（唔計發帖人）\n計劃最多 4 人 · 連發帖人\n集合地點\n集合位置再傾\n落機、出閘、出發，分清楚。\n預計夾車出發\n2026年10月23日 00:00\n\n出閘係過關、拎完行李之後；出發係計劃夾車嘅時間。唔同航班都可以同路。\n\n所有時間：香港時間 · 24 小時制。航班資料只供示範，未有即時追蹤。\n\n你係發帖人，可以修改呢程嘅示範資料。\n\n編輯旅程\n興趣人數唔計發帖人，亦唔代表已預訂或確認共乘。呢度未有確認乘客或餘位資料；唔會收費。"
+      }
+    }
+  ]
+}
