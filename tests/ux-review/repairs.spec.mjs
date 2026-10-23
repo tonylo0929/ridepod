@@ -31,9 +31,19 @@ async function finish(record, info) {
   expect(record.blocked).toEqual([]);
   expect(record.browserErrors).toEqual([]);
 }
-async function shot(page, info, name) {
+async function shot(page, info, name, nativeZoom = false) {
   const path = info.outputPath(`${name}.png`);
-  await page.screenshot({ path, animations: "disabled", caret: "hide" });
+  // Wait for native-zoom/scroll changes to reach the compositor before capture.
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  if (nativeZoom) {
+    // Playwright's viewport override mis-scales native-zoom screenshots. Capture
+    // the existing Chromium surface without changing its device metrics.
+    const client = await page.context().newCDPSession(page);
+    try {
+      const { data } = await client.send("Page.captureScreenshot", { format: "png", fromSurface: true, captureBeyondViewport: false });
+      await writeFile(path, Buffer.from(data, "base64"));
+    } finally { await client.detach(); }
+  } else await page.screenshot({ path, animations: "disabled", caret: "hide" });
   await info.attach(name, { path, contentType: "image/png" });
 }
 async function layout(page, record, state, audit) {
@@ -74,13 +84,18 @@ async function usableAction(page, button, record, state) {
   await expect(button).toBeFocused();
   await page.keyboard.press("Shift+Tab"); await page.keyboard.press("Tab");
   await expect(button).toBeFocused();
-  await button.scrollIntoViewIfNeeded();
+  // Use the page's effective CSS viewport, including native browser zoom.
+  await button.evaluate((el) => el.scrollIntoView({ block: "center", inline: "nearest" }));
   const hit = await button.evaluate((el) => {
-    const r = el.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
-    const top = document.elementFromPoint(x, y);
-    return { unobscured: y >= 0 && y < innerHeight && el.contains(top), width: r.width, height: r.height };
+    const r = el.getBoundingClientRect(), modal = el.closest("dialog").getBoundingClientRect();
+    const fullyVisible = r.top >= Math.max(0, modal.top) && r.bottom <= Math.min(innerHeight, modal.bottom)
+      && r.left >= Math.max(0, modal.left) && r.right <= Math.min(innerWidth, modal.right);
+    const points = [[r.left + 5, r.top + 5], [r.right - 5, r.top + 5], [r.left + 5, r.bottom - 5], [r.right - 5, r.bottom - 5], [r.left + r.width / 2, r.top + r.height / 2]];
+    return { fullyVisible, unobscured: points.every(([x, y]) => el.contains(document.elementFromPoint(x, y))),
+      width: r.width, height: r.height, top: r.top, bottom: r.bottom, viewportHeight: innerHeight };
   });
   record.states.push({ state: `${state}-primary-action`, ...hit, keyboardStops: stops.length });
+  expect(hit.fullyVisible, `${state}: whole primary action is inside the viewport and dialog`).toBe(true);
   expect(hit.unobscured, `${state}: primary action is not covered`).toBe(true);
   expect(hit.width).toBeGreaterThanOrEqual(44); expect(hit.height).toBeGreaterThanOrEqual(44);
 }
@@ -118,7 +133,11 @@ for (const flightPresent of [false, true]) test(`A1 fixed-clock form matrix; opt
           await expect(dialog(page).getByRole("alert")).toHaveText(past);
           await expect(field(page, "夾車出發日期")).toHaveValue(date);
           await expect(field(page, "預計夾車出發時間")).toHaveValue(time);
-          if (name === "earlier-today") await shot(page, info, "A1-past-departure-rejected");
+          if (name === "earlier-today") {
+            await dialog(page).locator("summary").filter({ hasText: "加啲行程資料" }).click();
+            await field(page, "預計夾車出發時間").evaluate((el) => el.scrollIntoView({ block: "center" }));
+            await shot(page, info, "A1-past-departure-rejected");
+          }
         }
         if (!(await field(page, "集合地點（選填）").isVisible())) await dialog(page).locator("summary").filter({ hasText: "加啲行程資料" }).click();
         await expect(field(page, "集合地點（選填）")).toHaveValue("示範：保留集合資料");
@@ -178,22 +197,22 @@ for (const mode of ["normal", "text-200", "native-zoom-200"]) for (const width o
       if (mode === "text-200") await expect(page.locator('[data-text-reflow="true"]')).toHaveCount(1);
       const home = await layout(page, record, "homepage", mode !== "normal");
       expect(home.columns).toBe(mode === "text-200" ? 1 : 2);
-      await page.evaluate(() => window.scrollTo(0, 0)); await shot(page, info, "A2-homepage");
+      await page.evaluate(() => window.scrollTo(0, 0)); await shot(page, info, "A2-homepage", owned);
       const heart = page.getByRole("article").first().getByRole("button").last();
       await heart.scrollIntoViewIfNeeded();
       expect(await heart.evaluate((el) => { const r = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)); }), "Home interest action is not covered by navigation").toBe(true);
-      await shot(page, info, "A3-author-and-interest");
+      await shot(page, info, "A3-author-and-interest", owned);
       await page.getByRole("button", { name: /^篩選/ }).click();
       await dialog(page).locator("summary").filter({ hasText: "更多條件" }).click();
       await enlarge(); await layout(page, record, "airport-filters", mode !== "normal");
       const apply = dialog(page).getByRole("button", { name: /^睇 \d+ 個旅程$/ });
-      await usableAction(page, apply, record, "airport-filters"); await shot(page, info, "A2-filters-action");
+      await usableAction(page, apply, record, "airport-filters"); await shot(page, info, "A2-filters-action", owned);
       await page.keyboard.press("Escape");
       await page.getByRole("article").first().getByRole("button").first().click();
       await enlarge(); await layout(page, record, "journey-details", mode !== "normal");
       await expect(dialog(page)).toContainText("發帖人 1 人 + 同行名額 3 個");
       await usableAction(page, dialog(page).getByRole("button", { name: "我有興趣", exact: true }), record, "journey-details");
-      await shot(page, info, "A2-detail-action"); await page.keyboard.press("Escape");
+      await shot(page, info, "A2-detail-action", owned); await page.keyboard.press("Escape");
       await publishNav(page).click();
       const day = await field(page, "夾車出發日期").inputValue(); await page.clock.setFixedTime(new Date(`${day}T00:06:00+08:00`));
       await dialog(page).locator("summary").filter({ hasText: "加啲行程資料" }).click();
@@ -201,12 +220,12 @@ for (const mode of ["normal", "text-200", "native-zoom-200"]) for (const width o
       await field(page, "航班預定抵達（選填）").fill(`${day}T20:50`);
       await field(page, "預計出閘時間（選填）").fill(`${day}T21:30`);
       await enlarge(); await layout(page, record, "create-step-1", mode !== "normal");
-      await usableAction(page, next(page), record, "create-step-1"); await shot(page, info, "A2-create-step-1-action");
+      await usableAction(page, next(page), record, "create-step-1"); await shot(page, info, "A2-create-step-1-action", owned);
       await page.keyboard.press("Enter");
       await expect(dialog(page).getByRole("heading", { name: "預覽同發佈帖文。", exact: true })).toBeVisible();
       await enlarge(); await layout(page, record, "create-preview", mode !== "normal");
       const publish = dialog(page).getByRole("button", { name: "發佈示範帖文", exact: true });
-      await usableAction(page, publish, record, "create-preview"); await shot(page, info, "A2-create-preview-action");
+      await usableAction(page, publish, record, "create-preview"); await shot(page, info, "A2-create-preview-action", owned);
       await page.keyboard.press("Enter"); await expect(dialog(page).getByRole("button", { name: "編輯旅程", exact: true })).toBeVisible();
       record.states.push({ state: "creation-after-resizing", published: true });
     } finally {
