@@ -1,13 +1,13 @@
 # FareEnough V2.3 — automated UX review
 
-Generated: 2026-10-22T16:22:50.559Z (UTC). **PASS — complete package**. This is captured evidence and a product inventory, not an accessibility certification or a pixel-diff baseline.
+Generated: 2026-10-23T11:41:14.251Z (UTC). **PASS — complete package**. This is captured evidence and a product inventory, not an accessibility certification or a pixel-diff baseline.
 
 ## Version and reproducibility
 
-- Reviewed UI source commit: [`d31604f0e840062a5b42339c1cf76d0e6a79f77d`](https://github.com/tonylo0929/ridepod/commit/d31604f0e840062a5b42339c1cf76d0e6a79f77d).
-- Generation checkout: `923e8b8f5edb257ac086f7fed1aabaa2ff6f2980`; branch: `feature/ridepod-social-discovery`.
-- UI source files modified/untracked at capture: **yes — source hash below identifies the working copy**.
-- SHA-256 of preview/runtime/global styles/avatar source files: `4fa9244acc4b6d0f8de9a1d2b26cfb2da6b1508083587a5ee52c15429500eb66`.
+- Reviewed UI source commit: [`8d98f34072c70b6700751f4d92447aa2e6bc915b`](https://github.com/tonylo0929/ridepod/commit/8d98f34072c70b6700751f4d92447aa2e6bc915b).
+- Generation checkout: `71ab0799ccfb4ff48cc1b551a5111c88008a0123`; branch: `feature/ridepod-social-discovery`.
+- UI source files modified/untracked at capture: **no**.
+- SHA-256 of preview/runtime/global styles/avatar source files: `bb383f62a13d23aa38d205e8ba658dc09fa3732243a971e5d184489d06523a17`.
 - Toolchain: Node v24.14.0, Playwright 1.64.1, Chromium 156.0.8078.4, win32.
 - Viewports: mobile **390 × 1100**, desktop **1440 × 1000**, device scale 1, zh-HK locale, Asia/Hong_Kong timezone, reduced motion. PNG viewport captures; modal interiors are scrolled where noted. No content is hidden for screenshots.
 - Server demo date anchor(s): 2026-10-23. “今日/聽日” roll forward on future runs. Each run starts a fresh local production build and new isolated contexts; no saved sessions are loaded.
@@ -48,15 +48,30 @@ All fixture people, posts, flight examples and interactions are synthetic. “Li
 
 ## Test results
 
-Run duration: 46.8 seconds. 20/20 curated images; 2644 KiB total; 4 MiB budget **passed**; capture completeness **passed**.
+Run duration: 79.4 seconds. 20/20 curated images; 2587 KiB total; 4 MiB budget **passed**; capture completeness **passed**.
 
 | Test | Status | Duration |
 | --- | --- | --- |
+| logic: departure validation uses an injectable Hong Kong clock | passed | 0.1s |
 | logic: airport/count logic and capture network isolation | passed | 0.1s |
-| mobile: curated preview review journeys | passed | 12.1s |
-| desktop: curated preview review journeys | passed | 14.7s |
+| mobile: curated preview review journeys | passed | 14.6s |
+| desktop: curated preview review journeys | passed | 16.1s |
+| repairs: A1 fixed-clock form matrix; optional flight absent | passed | 2.1s |
+| repairs: A1 fixed-clock form matrix; optional flight present | passed | 2.2s |
+| repairs: A2/A3 normal at 320px: home, filters, detail and creation | passed | 1.8s |
+| repairs: A2/A3 normal at 390px: home, filters, detail and creation | passed | 1.8s |
+| repairs: A2/A3 text-200 at 320px: home, filters, detail and creation | passed | 4.3s |
+| repairs: A2/A3 text-200 at 390px: home, filters, detail and creation | passed | 4.3s |
+| repairs: A2/A3 native-zoom-200 at 320px: home, filters, detail and creation | passed | 5.0s |
+| repairs: A2/A3 native-zoom-200 at 390px: home, filters, detail and creation | passed | 4.9s |
 
 The logic test executes the nine airport/count/copy assertions in `scripts/test-v2-airport-timing.mjs`, plus allow/deny cases for the capture network boundary. Playwright's web server runs `npm run build` (including Next's TypeScript check) before browser tests; a failed build prevents capture. This report does not imply that every production flow or repository test was run.
+
+The post-persona repair project adds five deterministic departure-clock unit tests and eight browser regressions. Its two departure matrices cover yesterday, earlier today, exact equality, 1ms past, later today, tomorrow, midnight, expiry during preview, preserved input and recovery, with optional flight time absent/present. Browser clocks are fixed explicitly; a selected minute means its start, with no hidden grace period.
+
+Six layout runs cover normal text, simulated 200% text, and actual Chromium 200% tab zoom at effective widths 320/390px. Native zoom uses a test-only local-host extension in a disposable Chromium profile; starting viewports 640/780px become CSS viewports 320/390px, with zoom factor 2, DPR 2, pinch scale 1 and CSS zoom 1 asserted. Each run checks the homepage, expanded filters, details, creation and preview, keyboard reachability, uncovered actions, document/dialog overflow and author/control separation. Enlarged runs retain all axe rules. See [repair evidence](REPAIR-REGRESSIONS.json) and the [repair handover](POST-PERSONA-REPAIRS.md). This is technical regression evidence, not a human accessibility certification.
+
+The nine original cover scenes retain their normal masonry treatment. Normal mobile feeds remain two columns; when actual text size cannot fit a readable two-column lane, the feed reflows to one. Author and interest controls use separate normal-flow footer items; detail actions scroll with the content. No journey information is hidden to satisfy layout assertions.
 
 Both flight inputs are checked with an invalid character and a valid synthetic flight number. The initial review exposed an unescaped hyphen in their HTML pattern under Unicode-aware browsers; the focused V2 fix is included in the reviewed UI source commit. The suite requires zero browser errors and verifies that the pattern rejects invalid input. See the [HTML pattern standard](https://html.spec.whatwg.org/multipage/input.html#the-pattern-attribute).
 
@@ -83,7 +98,7 @@ Detail-cover correction: **18/18** checks cover all nine existing illustrations 
 
 ## Accessibility and usability findings
 
-Automated axe scans run at every captured state and the expanded filter/cover states against WCAG 2 A/AA, 2.1 A/AA and 2.2 AA tags (26 scans). **Contrast and visible-label/name mismatches are mandatory regression gates**; all other findings are also reported. Duplicate occurrences across states are counted, not unique UI defects. No audit rules are disabled or excluded. Incomplete rules requiring human review: **color-contrast**; element-level findings are retained in the JSON artifact. Zero automatic violations does not establish full WCAG conformance.
+Automated axe scans run at every captured state and the expanded filter/cover states against WCAG 2 A/AA, 2.1 A/AA and 2.2 AA tags (46 scans). **Contrast and visible-label/name mismatches are mandatory regression gates**; all other findings are also reported. Duplicate occurrences across states are counted, not unique UI defects. No audit rules are disabled or excluded. Incomplete rules requiring human review: **color-contrast**; element-level findings are retained in the JSON artifact. Zero automatic violations does not establish full WCAG conformance.
 
 | Automated rule | Impact | Affected audited states | Node occurrences across states | Example selector |
 | --- | --- | --- | --- | --- |
@@ -91,7 +106,7 @@ Automated axe scans run at every captured state and the expanded filter/cover st
 
 
 
-- **Touch-size advisory:** No sampled visible controls below 44×44px. These are a small visibility-based sample, not a WCAG target-size conformance result; spacing exceptions and overlap need human assessment. Prefer larger touch areas where practical.
+- **Touch-size advisory:** mobile “首頁” 32×46px; mobile “搜尋” 32×46px; mobile “訊息” 32×46px; mobile “我的” 32×46px These are a small visibility-based sample, not a WCAG target-size conformance result; spacing exceptions and overlap need human assessment. Prefer larger touch areas where practical.
 - **Keyboard:** Tab/Shift+Tab explicitly cycle between the first/last eligible dialog controls; the regression fails on a body/background stop. Escape is exercised. Both tested boundary directions remained in the dialog. Escape restored the arrival-card opener at both widths. Create step changes focus their heading and return to the top. A screen-reader session and every modal/assistive-technology path remain untested.
 - **Masonry reading order:** cards use a flat DOM and a sparse row-flow grid with measured heights, preserving two/three/four columns. Tests compare every source-ordered card's top/left position, check same-column separation and Tab progression to the next visual card. The previous whole-column DOM order was replaced. Human screen-reader comprehension still requires evaluation.
 - **Mobile usability:** duplicate post copy moved to details; route, departure, optional flight and independent interest/capacity stay in cards. Common filters remain visible and advanced options are disclosed. Main filter/input/icon targets are at least 44px. Step 2 uses a compact cover/route summary, editable copy and optional timing/cover disclosures; its publish control is in document flow. Detail screenshots show scrolled interiors. Verify disclosure comprehension and action discoverability with people and enlarged text.

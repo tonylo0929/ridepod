@@ -84,6 +84,8 @@ V2 has no fetch calls, API routes, database clients, production record imports, 
 
 ## Validation
 
+The [post-persona repair handover](ux-review/POST-PERSONA-REPAIRS.md) supersedes earlier A1–A3 findings: past Hong Kong departures are rejected at both creation steps, enlarged text reflows at 320/390px, and author/interest controls have separate space. It includes fixed-clock and genuine Chromium zoom tests, before/after screenshots and the separate diagnostic totals. Keep this scope closed; the next phase is the prepared real-participant usability study.
+
 The reusable [automated UX review package](ux-review/UX-REPORT.md) records the reviewed UI commit/hash, screenshots, flows, current tests and accessibility findings. Set up with `npm ci` and `npx playwright install chromium`, then run `npm run ux:review`. Read [the workflow guide](ux-review/README.md) for its synthetic-data/network boundary and Actions artifacts. It captures ten states at 390px and 1440px, without changing the product. Automated findings and keyboard boundary observations are review evidence; a passing interaction suite is not an accessibility certification.
 
 - `npm run build`: passed, including TypeScript and generation of existing routes.
